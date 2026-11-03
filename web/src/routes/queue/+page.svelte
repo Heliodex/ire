@@ -256,40 +256,42 @@ async function open(item: QueueItem): Promise<void> {
 						{/if}
 					</span>
 					<span class="ship-title" title={item.title}>{item.title}</span>
-					<span
-						class="ui-badge status"
-						data-tone={statusTone(item.status)}
-						title={item.claimedBy ? `Claimed by ${item.claimedBy}` : humanStatus(item.status)}
-					>
-						{item.claimedBy === session.me?.user.email ? "Yours" : humanStatus(item.status)}
+					<span class="badges">
+						<span
+							class="ui-badge status"
+							data-tone={statusTone(item.status)}
+							title={item.claimedBy ? `Claimed by ${item.claimedBy}` : humanStatus(item.status)}
+						>
+							{item.claimedBy === session.me?.user.email ? "Yours" : humanStatus(item.status)}
+						</span>
+						<span class="theme">{item.theme ?? ""}</span>
 					</span>
-					<span class="theme">{item.theme ?? ""}</span>
 					<div class="facts">
 						<span class="maker">{item.makerName}</span>
 						<span class="version">v{item.version}</span>
 						<span class="hours">{formatHours(item.hoursClaimedSeconds)} claimed</span>
 						<span class="age">{timeAgo(item.ingestedAt)}</span>
-						<span class="checks">
-							<span class="counts">
-								{#if item.checkSummary.pass > 0}<span class="pass">{item.checkSummary.pass} pass</span>{/if}
-								{#if item.checkSummary.warn > 0}<span class="warn">{item.checkSummary.warn} warn</span>{/if}
-								{#if item.checkSummary.fail > 0}<span class="fail">{item.checkSummary.fail} fail</span>{/if}
-								{#if item.checkSummary.error > 0}<span class="fail">{item.checkSummary.error} error</span>{/if}
-								{#if item.checkSummary.overall === "pass"}<span class="fast">Fast lane</span>{/if}
-							</span>
-							{#if item.checks.length > 0}
-								<span
-									aria-label={item.checks.map((check) => `${check.label}: ${check.status}`).join(", ")}
-									class="dots"
-									role="img"
-								>
-									{#each item.checks as check (check.key)}
-										<span class="dot" data-tone={checkTone(check)} title={`${check.label}: ${check.status}`}></span>
-									{/each}
-								</span>
-							{/if}
-						</span>
 					</div>
+					<span class="checks">
+						<span class="counts">
+							{#if item.checkSummary.pass > 0}<span class="pass">{item.checkSummary.pass} pass</span>{/if}
+							{#if item.checkSummary.warn > 0}<span class="warn">{item.checkSummary.warn} warn</span>{/if}
+							{#if item.checkSummary.fail > 0}<span class="fail">{item.checkSummary.fail} fail</span>{/if}
+							{#if item.checkSummary.error > 0}<span class="fail">{item.checkSummary.error} error</span>{/if}
+							{#if item.checkSummary.overall === "pass"}<span class="fast">Fast lane</span>{/if}
+						</span>
+						{#if item.checks.length > 0}
+							<span
+								aria-label={item.checks.map((check) => `${check.label}: ${check.status}`).join(", ")}
+								class="dots"
+								role="img"
+							>
+								{#each item.checks as check (check.key)}
+									<span class="dot" data-tone={checkTone(check)} title={`${check.label}: ${check.status}`}></span>
+								{/each}
+							</span>
+						{/if}
+					</span>
 					<span class="row-action">
 						{opening === item.id ? "Claiming…" : "Open"}
 						<svg aria-hidden="true" fill="none" height="14" viewBox="0 0 16 16" width="14">
@@ -456,6 +458,10 @@ h1 {
 	justify-self: start;
 }
 
+.badges {
+	display: contents;
+}
+
 .theme {
 	overflow: hidden;
 	font-size: var(--text-xs);
@@ -590,10 +596,12 @@ h1 {
 
 @media (max-width: 1024px) {
 	.row {
-		grid-template-columns: 64px minmax(0, 1fr) 96px 64px auto;
+		grid-template-columns: 64px minmax(0, 1fr) minmax(200px, 320px);
 		grid-template-areas:
-			"thumb title status theme action"
-			"thumb facts facts facts facts";
+			"thumb title badges"
+			"thumb facts checks"
+			"thumb facts action";
+		column-gap: var(--space-4);
 		row-gap: var(--space-1);
 	}
 
@@ -606,28 +614,32 @@ h1 {
 		grid-area: title;
 	}
 
-	.status {
-		grid-area: status;
+	.badges {
+		display: flex;
+		gap: var(--space-2);
+		align-items: center;
+		grid-area: badges;
 	}
 
-	.theme {
-		grid-area: theme;
+	.checks {
+		grid-area: checks;
 	}
 
 	.row-action {
 		grid-area: action;
+		justify-self: end;
 	}
 
 	.facts {
 		display: grid;
-		grid-template-columns: minmax(110px, 1fr) 36px 96px 64px minmax(120px, 160px);
-		gap: var(--space-3);
+		grid-template-columns: minmax(80px, 1.4fr) 36px minmax(80px, 1fr) minmax(56px, 0.9fr);
+		gap: var(--space-2);
 		grid-area: facts;
 		align-items: baseline;
 	}
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
 	.stats {
 		width: 100%;
 	}
@@ -645,8 +657,9 @@ h1 {
 		grid-template-columns: 64px minmax(0, 1fr) auto;
 		grid-template-areas:
 			"thumb title action"
-			"thumb status theme"
-			"facts facts facts";
+			"thumb badges badges"
+			"facts facts facts"
+			"checks checks checks";
 	}
 
 	.facts {
