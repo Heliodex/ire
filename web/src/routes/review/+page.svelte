@@ -415,7 +415,6 @@ async function saveDraftNow(): Promise<void> {
 									<span class="ui-badge check-status" data-tone={statusTone(check.status)}>{check.status}</span>
 									<span class="check-label">{check.label}</span>
 									<code class="check-key ui-mono" title={check.key}>{check.key}</code>
-									<span class="check-summary">{check.summary}</span>
 									{#if isWarning(check)}
 										<label class="ack" title="Acknowledge this warning">
 											<input
@@ -429,7 +428,10 @@ async function saveDraftNow(): Promise<void> {
 									{:else}
 										<span class="ack-empty"></span>
 									{/if}
-									{#if check.detail}<span class="check-note">{check.detail}</span>{/if}
+									<span class="check-detail">
+										<span class="check-summary">{check.summary}</span>
+										{#if check.detail}<span class="check-note">{check.detail}</span>{/if}
+									</span>
 								</div>
 							{/each}
 						</div>
@@ -842,7 +844,7 @@ h1 {
 
 .check {
 	display: grid;
-	grid-template-columns: 58px 190px 170px minmax(0, 1fr) 64px;
+	grid-template-columns: 58px 190px minmax(0, 1fr) 64px;
 	column-gap: var(--space-3);
 	row-gap: var(--space-1);
 	align-items: start;
@@ -872,13 +874,19 @@ h1 {
 	white-space: nowrap;
 }
 
+.check-detail {
+	display: flex;
+	flex-direction: column;
+	grid-column: 1 / -1;
+	gap: 1px;
+}
+
 .check-summary {
 	font-size: var(--text-sm);
 	color: var(--text-2);
 }
 
 .check-note {
-	grid-column: 1 / -1;
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }
@@ -1064,7 +1072,7 @@ h1 {
 		grid-template-areas:
 			"status label ack"
 			"key key key"
-			"summary summary summary";
+			"detail detail detail";
 		row-gap: var(--space-1);
 	}
 
@@ -1080,8 +1088,8 @@ h1 {
 		grid-area: key;
 	}
 
-	.check-summary {
-		grid-area: summary;
+	.check-detail {
+		grid-area: detail;
 	}
 
 	.ack,
