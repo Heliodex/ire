@@ -401,7 +401,7 @@ h1 {
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
-	padding: var(--space-1) var(--space-4) var(--space-1) var(--space-1);
+	padding: var(--space-1) var(--space-4) var(--space-1) var(--space-3);
 	text-align: left;
 	background: transparent;
 	border: 0;
