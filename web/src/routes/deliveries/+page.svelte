@@ -54,92 +54,90 @@ function eventOf(body: string): string {
 
 <section class="head">
 	<div>
-		<p class="eyebrow">Outbound · signed</p>
 		<h1>Deliveries</h1>
-		<p class="lede">
+		<p>
 			Every final decision is written to the outbox before it is sent. The receiver verifies the same
-			<code>timestamp.delivery_id.body</code> signature Half Life's Ari handler checks.
+			<code class="ui-mono">timestamp.delivery_id.body</code> signature Half Life's Ari handler checks.
 		</p>
 	</div>
-	<div class="hint">
-		<span>{outbox.filter((row) => row.status === "delivered").length} delivered</span>
-		<span>{outbox.filter((row) => row.status !== "delivered").length} pending</span>
+	<div class="counts">
+		<span><strong>{outbox.filter((row) => row.status === "delivered").length}</strong> delivered</span>
+		<span><strong>{outbox.filter((row) => row.status !== "delivered").length}</strong> pending</span>
 	</div>
 </section>
 
 {#if error}
-	<div class="error" role="alert">{error}</div>
+	<div class="ui-notice" data-tone="bad" role="alert">{error}</div>
 {/if}
 
 {#if loading}
-	<div class="loading"><div></div><div></div></div>
+	<div class="loading">
+		<div class="ui-card"></div>
+		<div class="ui-card"></div>
+	</div>
 {:else}
 	<div class="grid">
-		<section class="card">
+		<section class="ui-card">
 			<div class="card-head">
 				<h2>Outbox</h2>
 				<span>{outbox.length} {outbox.length === 1 ? "row" : "rows"}</span>
 			</div>
 			{#if outbox.length === 0}
-				<div class="empty">
-					<p>Nothing sent yet.</p>
+				<div class="ui-empty">
+					<strong>Nothing sent yet</strong>
 					<span>Approve a clean fixture ship to write the first delivery.</span>
 				</div>
 			{:else}
-				<div class="rows">
-					{#each outbox as row (row.id)}
-						<article class="row">
-							<button class="row-head" onclick={(): void => toggle(row.id)} type="button">
-								<div>
-									<strong>{row.event}</strong>
-									<span class="status {statusTone(row.status)}">{row.status}</span>
-									{#if row.attempts > 0}<span class="muted">attempt {row.attempts}</span>{/if}
-								</div>
-								<small>{formatDateTime(row.createdAt)}</small>
-							</button>
-							{#if open === row.id && row.payload}
-								<pre>{row.payload}</pre>
-							{/if}
-						</article>
-					{/each}
-				</div>
+				{#each outbox as row (row.id)}
+					<article class="row">
+						<button class="row-head" onclick={(): void => toggle(row.id)} type="button">
+							<div class="row-title">
+								<strong>{row.event}</strong>
+								<span class="ui-badge" data-tone={statusTone(row.status)}>{row.status}</span>
+								{#if row.attempts > 0}<span class="muted">attempt {row.attempts}</span>{/if}
+							</div>
+							<small>{formatDateTime(row.createdAt)}</small>
+						</button>
+						{#if open === row.id && row.payload}
+							<pre>{row.payload}</pre>
+						{/if}
+					</article>
+				{/each}
 			{/if}
 		</section>
 
-		<section class="card">
+		<section class="ui-card">
 			<div class="card-head">
 				<h2>Receiver</h2>
 				<span>{received.length} verified</span>
 			</div>
 			{#if received.length === 0}
-				<div class="empty">
-					<p>No deliveries received.</p>
+				<div class="ui-empty">
+					<strong>No deliveries received</strong>
 					<span>The fake receiver stores the body and signature it checked.</span>
 				</div>
 			{:else}
-				<div class="rows">
-					{#each received as delivery (delivery.id)}
-						<article class="row">
-							<button class="row-head" onclick={(): void => toggle(delivery.id)} type="button">
-								<div>
-									<strong>{eventOf(delivery.body)}</strong>
-									<span class="status {delivery.verified === 1 ? "good" : "bad"}">
-										{delivery.verified === 1 ? "verified" : "rejected"}
-									</span>
-								</div>
-								<small>{formatDateTime(delivery.receivedAt)}</small>
-							</button>
-							{#if open === delivery.id}
-								<dl>
-									<div><dt>Delivery</dt><dd>{delivery.deliveryId}</dd></div>
-									<div><dt>Timestamp</dt><dd>{delivery.timestamp}</dd></div>
-									<div><dt>Signature</dt><dd class="mono">{delivery.signature}</dd></div>
-								</dl>
-								<pre>{delivery.body}</pre>
-							{/if}
-						</article>
-					{/each}
-				</div>
+				{#each received as delivery (delivery.id)}
+					<article class="row">
+						<button class="row-head" onclick={(): void => toggle(delivery.id)} type="button">
+							<div class="row-title">
+								<strong>{eventOf(delivery.body)}</strong>
+								<span class="ui-badge" data-tone={delivery.verified === 1 ? "approved" : "rejected"}>
+									{delivery.verified === 1 ? "verified" : "rejected"}
+								</span>
+							</div>
+							<small>{formatDateTime(delivery.receivedAt)}</small>
+						</button>
+						{#if open === delivery.id}
+							<dl>
+								<div><dt>Delivery</dt><dd class="ui-mono">{delivery.deliveryId}</dd></div>
+								<div><dt>Timestamp</dt><dd class="ui-mono">{delivery.timestamp}</dd></div>
+								<div><dt>Signature</dt><dd class="ui-mono">{delivery.signature}</dd></div>
+							</dl>
+							<pre>{delivery.body}</pre>
+						{/if}
+					</article>
+				{/each}
 			{/if}
 		</section>
 	</div>
@@ -149,226 +147,159 @@ function eventOf(body: string): string {
 .head {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 24px;
+	gap: var(--space-4);
 	align-items: flex-end;
 	justify-content: space-between;
-	padding-bottom: 22px;
-}
-
-.eyebrow {
-	padding-bottom: 9px;
-	font-size: 0.68rem;
-	font-weight: 750;
-	color: var(--accent);
-	text-transform: uppercase;
-	letter-spacing: 0.13em;
+	padding-bottom: var(--space-5);
 }
 
 h1 {
-	font-size: clamp(2rem, 4.3vw, 3rem);
+	font-size: var(--text-2xl);
 }
 
-.lede {
-	max-width: 720px;
-	padding-top: 10px;
-	font-size: 0.9rem;
-	color: var(--muted);
+.head p {
+	max-width: 680px;
+	padding-top: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 }
 
-code {
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	font-size: 0.85em;
-}
-
-.hint {
+.counts {
 	display: flex;
-	gap: 14px;
-	font-size: 0.74rem;
-	color: var(--muted);
+	gap: var(--space-4);
+	font-size: var(--text-sm);
+	color: var(--text-3);
+}
+
+.counts strong {
+	color: var(--text);
+	font-variant-numeric: tabular-nums;
 }
 
 .grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 16px;
+	gap: var(--space-4);
 	align-items: start;
 }
 
-.card {
-	padding: 18px;
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
+.grid > section {
+	min-width: 0;
 }
 
 .card-head {
 	display: flex;
-	gap: 10px;
+	gap: var(--space-2);
 	align-items: baseline;
 	justify-content: space-between;
-	padding-bottom: 12px;
+	padding: var(--space-3) var(--space-4);
+	border-bottom: 1px solid var(--border);
 }
 
 .card-head h2 {
-	font-size: 1.05rem;
+	font-size: var(--text-md);
+	font-weight: 700;
 }
 
 .card-head span {
-	font-size: 0.72rem;
-	color: var(--muted);
-}
-
-.rows {
-	display: grid;
-	gap: 8px;
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .row {
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 10px;
+	border-bottom: 1px solid var(--border);
+}
+
+.row:last-child {
+	border-bottom: 0;
 }
 
 .row-head {
 	display: flex;
 	width: 100%;
-	gap: 10px;
-	align-items: baseline;
+	gap: var(--space-3);
+	align-items: center;
 	justify-content: space-between;
-	padding: 10px 12px;
+	padding: var(--space-3) var(--space-4);
 	text-align: left;
 	background: transparent;
 	border: 0;
 }
 
-.row-head > div {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 7px;
-	align-items: baseline;
+.row-head:hover {
+	background: var(--surface-2);
 }
 
-.row-head strong {
-	font-size: 0.8rem;
+.row-title {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+}
+
+.row-title strong {
+	font-size: var(--text-sm);
 }
 
 .row-head small {
-	font-size: 0.68rem;
-	color: var(--muted);
-}
-
-.status {
-	padding: 2px 7px;
-	font-size: 0.6rem;
-	font-weight: 750;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	border-radius: 999px;
-}
-
-.status.good {
-	color: var(--teal);
-	background: var(--teal-soft);
-}
-
-.status.warn {
-	color: var(--accent-deep);
-	background: var(--accent-soft);
-}
-
-.status.bad {
-	color: #7d2a12;
-	background: #fbe5df;
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .muted {
-	font-size: 0.68rem;
-	color: var(--muted);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 pre {
 	max-height: 340px;
-	padding: 12px;
-	margin: 0 8px 10px;
-	font-size: 0.7rem;
+	padding: var(--space-3);
+	margin: 0 var(--space-3) var(--space-3);
+	font-size: var(--text-xs);
 	overflow: auto;
-	color: #364043;
-	background: #fff;
-	border: 1px solid var(--line);
-	border-radius: 8px;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: var(--text-2);
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
 }
 
 dl {
 	display: grid;
-	gap: 4px;
-	padding: 0 12px 8px;
-	font-size: 0.72rem;
+	gap: var(--space-1);
+	padding: 0 var(--space-4) var(--space-3);
+	font-size: var(--text-xs);
 }
 
 dl div {
 	display: grid;
 	grid-template-columns: 80px 1fr;
-	gap: 8px;
+	gap: var(--space-2);
 }
 
 dt {
-	color: var(--muted);
+	color: var(--text-3);
 }
 
 dd {
+	margin: 0;
 	overflow-wrap: anywhere;
-}
-
-.mono {
-	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.empty {
-	padding: 24px;
-	text-align: center;
-	color: var(--muted);
-	border: 1px dashed var(--line);
-	border-radius: 10px;
-}
-
-.empty p {
-	font-weight: 700;
-	color: var(--ink);
-}
-
-.empty span {
-	display: block;
-	padding-top: 4px;
-	font-size: 0.76rem;
-}
-
-.error {
-	padding: 10px 13px;
-	margin-bottom: 14px;
-	font-size: 0.84rem;
-	color: #7d2a12;
-	background: #fbe5df;
-	border: 1px solid #e9b9aa;
-	border-radius: 10px;
 }
 
 .loading {
 	display: grid;
-	gap: 12px;
+	gap: var(--space-4);
 }
 
 .loading div {
-	height: 120px;
-	background: linear-gradient(90deg, var(--card), var(--paper-deep), var(--card));
-	background-size: 200% 100%;
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	animation: shimmer 1.4s infinite;
+	height: 180px;
+	animation: pulse 1.4s ease-in-out infinite;
 }
 
-@keyframes shimmer {
-	to {
-		background-position: -200% 0;
+@keyframes pulse {
+	50% {
+		opacity: 0.55;
 	}
 }
 

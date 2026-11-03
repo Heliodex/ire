@@ -1,8 +1,8 @@
 <script lang="ts">
 import { goto } from "$app/navigation"
 import { onMount } from "svelte"
-import { ApiError } from "../../lib/api-error"
 import { claimShip, fetchMe, fetchQueue, type Queue, type QueueItem } from "../../lib/api"
+import { ApiError } from "../../lib/api-error"
 import { formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -110,24 +110,22 @@ async function open(item: QueueItem): Promise<void> {
 	<title>Queue · Half Life Review</title>
 </svelte:head>
 
-<section class="head">
+<section class="page-head">
 	<div>
-		<p class="eyebrow">Stage 1 · first pass</p>
 		<h1>Queue</h1>
-		<p class="lede">
-			Clear the boards that are ready, give the warnings one look, and send the blocked ones back with a note.
-		</p>
+		<p>Stage 1 · first pass</p>
 	</div>
-	<div class="counts" aria-label="Queue counts">
-		<div class="count ready"><strong>{queue.counts.ready}</strong><span>Ready</span></div>
-		<div class="count claimed"><strong>{queue.counts.claimed}</strong><span>In review</span></div>
-		<div class="count attention"><strong>{queue.counts.needsAttention}</strong><span>Needs a look</span></div>
-		<div class="count hold"><strong>{queue.counts.stage2Hold}</strong><span>Second pass</span></div>
+
+	<div class="stats ui-card">
+		<div><strong>{queue.counts.ready}</strong><span>Ready</span></div>
+		<div><strong>{queue.counts.claimed}</strong><span>In review</span></div>
+		<div><strong>{queue.counts.needsAttention}</strong><span>Needs a look</span></div>
+		<div><strong>{queue.counts.stage2Hold}</strong><span>Second pass</span></div>
 	</div>
 </section>
 
 <div class="toolbar">
-	<div class="tabs" role="tablist" aria-label="Filters">
+	<div aria-label="Filters" class="ui-seg" role="tablist">
 		{#each filters as option (option.key)}
 			<button
 				aria-selected={filter === option.key}
@@ -142,74 +140,77 @@ async function open(item: QueueItem): Promise<void> {
 	</div>
 	<label class="search">
 		<span class="visually-hidden">Search the queue</span>
-		<input bind:value={search} placeholder="Search project or maker…" type="search">
+		<input bind:value={search} class="ui-input" placeholder="Search project or maker…" type="search">
 	</label>
 </div>
 
 {#if error}
-	<div class="error" role="alert">{error}</div>
+	<div class="ui-notice" data-tone="bad" role="alert">{error}</div>
 {/if}
 
-<section aria-busy={loading} aria-labelledby="list-title" class="list">
+<section aria-busy={loading} aria-labelledby="list-title">
 	<div class="list-head">
 		<h2 id="list-title">Open ships</h2>
-		<span>{visible.length} {visible.length === 1 ? "ship" : "ships"} · <kbd>J</kbd><kbd>K</kbd> to move · <kbd>Enter</kbd> to open</span>
+		<span>
+			{visible.length} {visible.length === 1 ? "ship" : "ships"} ·
+			<kbd class="ui-kbd">J</kbd><kbd class="ui-kbd">K</kbd> to move ·
+			<kbd class="ui-kbd">Enter</kbd> to open
+		</span>
 	</div>
 
 	{#if loading}
-		<div class="skeletons">
+		<div class="skeleton ui-card">
 			<div></div>
 			<div></div>
 			<div></div>
 		</div>
 	{:else if visible.length === 0}
-		<div class="empty">
-			<p>{search ? "No ships match that search." : "Nothing in this filter."}</p>
-			<span>{filter === "attention" ? "The checks found nothing blocking." : "Try another filter or check back after the next ingest."}</span>
+		<div class="ui-card ui-empty">
+			<strong>{search ? "No ships match that search." : "Nothing in this filter."}</strong>
+			<span>{filter === "attention" ? "The checks found nothing blocking." : "Check back after the next ingest."}</span>
 		</div>
 	{:else}
-		<div class="rows">
+		<div class="ui-card list">
 			{#each visible as item, index (item.id)}
 				<button
 					aria-current={index === selected}
 					class="row"
 					class:selected={index === selected}
-					class:blocked={item.status === "needs_attention"}
 					disabled={opening !== ""}
 					onclick={(): Promise<void> => open(item)}
 					type="button"
 				>
-					<div class="main">
-						<div class="title-line">
+					<div class="row-main">
+						<div class="row-title">
 							<h3>{item.title}</h3>
-							<span class="status {statusTone(item.status)}">{humanStatus(item.status)}</span>
-							{#if item.theme}
-								<span class="theme">{item.theme}</span>
-							{/if}
+							<span class="ui-badge" data-tone={statusTone(item.status)}>{humanStatus(item.status)}</span>
+							{#if item.theme}<span class="theme">{item.theme}</span>{/if}
 						</div>
-						<p class="meta">
+						<div class="row-meta">
 							<span>{item.makerName}</span>
 							<span>v{item.version}</span>
 							<span>{formatHours(item.hoursClaimedSeconds)} claimed</span>
 							<span>{timeAgo(item.ingestedAt)}</span>
 							{#if item.claimedBy}
-								<span class="claim">{item.claimedBy === session.me?.user.email ? "Yours" : `Claimed by ${item.claimedBy}`}</span>
+								<span class="claim">
+									{item.claimedBy === session.me?.user.email ? "Yours" : `Claimed by ${item.claimedBy}`}
+								</span>
 							{/if}
-						</p>
-						<div class="checks" aria-label="Check summary">
-							{#if item.checkSummary.pass > 0}<span class="pip good">{item.checkSummary.pass} pass</span>{/if}
-							{#if item.checkSummary.warn > 0}<span class="pip warn">{item.checkSummary.warn} warn</span>{/if}
-							{#if item.checkSummary.fail > 0}<span class="pip bad">{item.checkSummary.fail} fail</span>{/if}
-							{#if item.checkSummary.error > 0}<span class="pip error">{item.checkSummary.error} error</span>{/if}
-							{#if item.checkSummary.overall === "pass"}<span class="pip quiet">Fast lane</span>{/if}
+						</div>
+						<div class="row-checks">
+							{#if item.checkSummary.pass > 0}<span class="pass">{item.checkSummary.pass} pass</span>{/if}
+							{#if item.checkSummary.warn > 0}<span class="warn">{item.checkSummary.warn} warn</span>{/if}
+							{#if item.checkSummary.fail > 0}<span class="fail">{item.checkSummary.fail} fail</span>{/if}
+							{#if item.checkSummary.error > 0}<span class="fail">{item.checkSummary.error} error</span>{/if}
+							{#if item.checkSummary.overall === "pass"}<span class="fast">Fast lane</span>{/if}
 						</div>
 					</div>
-					<div class="action">
-						<span>{opening === item.id ? "Claiming…" : "Open"}</span>
-						<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 16 16" width="16">
-							<path d="M3 8h9M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
+					<span class="row-action">
+						{opening === item.id ? "Claiming…" : "Open"}
+						<svg aria-hidden="true" fill="none" height="14" viewBox="0 0 16 16" width="14">
+							<path d="M3 8h9M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/>
 						</svg>
-					</div>
+					</span>
 				</button>
 			{/each}
 		</div>
@@ -217,336 +218,212 @@ async function open(item: QueueItem): Promise<void> {
 </section>
 
 <style>
-.head {
+.page-head {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 28px;
+	gap: var(--space-4);
 	align-items: flex-end;
 	justify-content: space-between;
-	padding-bottom: 26px;
-}
-
-.eyebrow {
-	padding-bottom: 9px;
-	font-size: 0.68rem;
-	font-weight: 750;
-	color: var(--accent);
-	text-transform: uppercase;
-	letter-spacing: 0.13em;
+	padding-bottom: var(--space-5);
 }
 
 h1 {
-	font-size: clamp(2.1rem, 4.5vw, 3.2rem);
+	font-size: var(--text-2xl);
 }
 
-.lede {
-	max-width: 640px;
-	padding-top: 10px;
-	font-size: 0.94rem;
-	color: var(--muted);
+.page-head p {
+	padding-top: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 }
 
-.counts {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(78px, 1fr));
-	gap: 8px;
+.stats {
+	display: flex;
+	overflow: hidden;
 }
 
-.count {
-	padding: 10px 12px;
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: 12px;
+.stats div {
+	min-width: 84px;
+	padding: var(--space-2) var(--space-3);
+	border-left: 1px solid var(--border);
 }
 
-.count strong {
+.stats div:first-child {
+	border-left: 0;
+}
+
+.stats strong {
 	display: block;
-	font-size: 1.3rem;
+	font-size: var(--text-lg);
 	font-weight: 800;
-	letter-spacing: -0.03em;
+	font-variant-numeric: tabular-nums;
 }
 
-.count span {
-	font-size: 0.64rem;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.07em;
-}
-
-.count.ready strong {
-	color: var(--teal);
-}
-
-.count.attention strong {
-	color: var(--accent);
+.stats span {
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .toolbar {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 14px;
+	gap: var(--space-3);
 	align-items: center;
 	justify-content: space-between;
-	padding-bottom: 16px;
+	padding-bottom: var(--space-4);
 }
 
-.tabs {
-	display: flex;
-	gap: 4px;
-	padding: 4px;
-	background: var(--paper-deep);
-	border-radius: 999px;
-}
-
-.tabs button {
-	padding: 7px 13px;
-	font-size: 0.76rem;
-	font-weight: 700;
-	color: var(--muted);
-	background: transparent;
-	border: 0;
-	border-radius: 999px;
-}
-
-.tabs button:hover {
-	color: var(--ink);
-}
-
-.tabs button.active {
-	color: var(--ink);
-	background: var(--card);
-	box-shadow: 0 2px 8px rgba(60, 45, 20, 0.08);
-}
-
-.search input {
-	width: min(280px, 70vw);
-	padding: 9px 12px;
-	font-size: 0.82rem;
-	color: var(--ink);
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: 9px;
-	outline: none;
-}
-
-.search input:focus {
-	border-color: var(--accent);
+.search {
+	flex: 0 1 260px;
 }
 
 .list-head {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 12px;
+	gap: var(--space-2);
 	align-items: baseline;
 	justify-content: space-between;
-	padding-bottom: 10px;
+	padding-bottom: var(--space-2);
 }
 
 .list-head h2 {
-	font-size: 1.06rem;
+	font-size: var(--text-md);
+	font-weight: 700;
 }
 
 .list-head span {
-	font-size: 0.72rem;
-	color: var(--muted);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
-kbd {
-	padding: 1px 5px;
-	margin: 0 1px;
-	font-family: inherit;
-	font-size: 0.66rem;
-	font-weight: 700;
-	background: var(--paper-deep);
-	border: 1px solid var(--line);
-	border-radius: 4px;
-}
-
-.rows {
-	display: grid;
-	gap: 8px;
+.list {
+	overflow: hidden;
 }
 
 .row {
-	display: grid;
-	grid-template-columns: 1fr auto;
-	gap: 18px;
+	display: flex;
+	width: 100%;
+	gap: var(--space-4);
 	align-items: center;
-	padding: 15px 16px;
+	justify-content: space-between;
+	padding: var(--space-3) var(--space-4);
 	text-align: left;
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: 13px;
-	transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+	background: transparent;
+	border: 0;
+	border-bottom: 1px solid var(--border);
+}
+
+.row:last-child {
+	border-bottom: 0;
 }
 
 .row:hover:not(:disabled) {
-	border-color: var(--ink);
-	box-shadow: 0 6px 18px rgba(60, 45, 20, 0.06);
+	background: var(--surface-2);
 }
 
 .row.selected {
-	border-color: var(--accent);
-	box-shadow: 0 0 0 1px var(--accent);
-}
-
-.row.blocked {
-	border-left: 3px solid var(--accent);
+	background: var(--surface-2);
+	box-shadow: inset 3px 0 0 var(--primary);
 }
 
 .row:disabled {
 	cursor: wait;
 }
 
-.title-line {
+.row-main {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--space-1);
+	min-width: 0;
+}
+
+.row-title {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
-	align-items: baseline;
+	gap: var(--space-2);
+	align-items: center;
 }
 
-.title-line h3 {
-	font-size: 1.02rem;
-	font-weight: 750;
-}
-
-.status {
-	padding: 2px 7px;
-	font-size: 0.62rem;
-	font-weight: 750;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	border-radius: 999px;
-}
-
-.status.good {
-	color: var(--teal);
-	background: var(--teal-soft);
-}
-
-.status.warn {
-	color: var(--accent-deep);
-	background: var(--accent-soft);
-}
-
-.status.bad,
-.status.error {
-	color: #7d2a12;
-	background: #fbe5df;
-}
-
-.status.neutral {
-	color: var(--muted);
-	background: var(--paper-deep);
+.row-title h3 {
+	font-size: var(--text-md);
+	font-weight: 700;
 }
 
 .theme {
-	font-size: 0.68rem;
-	color: var(--muted);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
-.meta {
+.row-meta {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 6px 14px;
-	padding-top: 6px;
-	font-size: 0.73rem;
-	color: var(--muted);
+	gap: var(--space-3);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 }
 
 .claim {
-	color: var(--accent-deep);
+	color: var(--primary);
 }
 
-.checks {
+.row-checks {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 6px;
-	padding-top: 9px;
-}
-
-.pip {
-	padding: 2px 7px;
-	font-size: 0.64rem;
+	gap: var(--space-3);
+	padding-top: var(--space-1);
+	font-size: var(--text-xs);
 	font-weight: 700;
-	border-radius: 999px;
 }
 
-.pip.good {
-	color: var(--teal);
-	background: var(--teal-soft);
+.row-checks .pass {
+	color: var(--status-approved);
 }
 
-.pip.warn {
-	color: var(--accent-deep);
-	background: var(--accent-soft);
+.row-checks .warn {
+	color: var(--status-pending);
 }
 
-.pip.bad,
-.pip.error {
-	color: #7d2a12;
-	background: #fbe5df;
+.row-checks .fail {
+	color: var(--status-rejected);
 }
 
-.pip.quiet {
-	color: var(--muted);
-	background: var(--paper-deep);
+.row-checks .fast {
+	color: var(--text-3);
+	font-weight: 600;
 }
 
-.action {
-	display: flex;
-	gap: 6px;
+.row-action {
+	display: inline-flex;
+	flex: none;
+	gap: var(--space-1);
 	align-items: center;
-	font-size: 0.74rem;
+	font-size: var(--text-sm);
 	font-weight: 700;
-	color: var(--muted);
+	color: var(--text-3);
 }
 
-.row:hover .action {
-	color: var(--accent);
+.row:hover .row-action {
+	color: var(--primary);
 }
 
-.skeletons {
+.skeleton {
 	display: grid;
-	gap: 8px;
+	gap: 1px;
+	overflow: hidden;
+	background: var(--border);
 }
 
-.skeletons div {
-	height: 88px;
-	background: linear-gradient(90deg, var(--card), var(--paper-deep), var(--card));
-	background-size: 200% 100%;
-	border: 1px solid var(--line);
-	border-radius: 13px;
-	animation: shimmer 1.4s infinite;
+.skeleton div {
+	height: 84px;
+	background: var(--surface);
+	animation: pulse 1.4s ease-in-out infinite;
 }
 
-.empty {
-	padding: 42px;
-	text-align: center;
-	background: var(--card);
-	border: 1px dashed var(--line);
-	border-radius: 13px;
-}
-
-.empty p {
-	font-weight: 750;
-}
-
-.empty span {
-	display: block;
-	padding-top: 5px;
-	font-size: 0.82rem;
-	color: var(--muted);
-}
-
-.error {
-	padding: 10px 13px;
-	margin-bottom: 14px;
-	font-size: 0.84rem;
-	color: #7d2a12;
-	background: #fbe5df;
-	border: 1px solid #e9b9aa;
-	border-radius: 10px;
+@keyframes pulse {
+	50% {
+		opacity: 0.55;
+	}
 }
 
 .visually-hidden {
@@ -558,24 +435,26 @@ kbd {
 	white-space: nowrap;
 }
 
-@keyframes shimmer {
-	to {
-		background-position: -200% 0;
-	}
-}
-
-@media (max-width: 760px) {
-	.counts {
-		grid-template-columns: repeat(2, minmax(90px, 1fr));
+@media (max-width: 640px) {
+	.stats {
 		width: 100%;
 	}
 
-	.row {
-		grid-template-columns: 1fr;
+	.stats div {
+		flex: 1;
+		min-width: 0;
 	}
 
-	.action {
-		justify-content: flex-end;
+	.search {
+		flex: 1 1 100%;
+	}
+
+	.row {
+		align-items: flex-start;
+	}
+
+	.row-action {
+		padding-top: var(--space-1);
 	}
 }
 </style>

@@ -281,20 +281,19 @@ async function saveDraftNow(): Promise<void> {
 
 {#if loading}
 	<div class="loading">
-		<div></div>
-		<div></div>
+		<div class="ui-card"></div>
+		<div class="ui-card"></div>
 	</div>
 {:else if error || !bundle || !submission}
 	<section class="missing">
-		<p class="eyebrow">Cannot open this ship</p>
-		<h1>Back to the queue.</h1>
+		<h1>Cannot open this ship</h1>
 		<p>{error || "This ship does not exist or is not yours to review."}</p>
-		<a class="button primary" href="/queue">Return to queue</a>
+		<a class="ui-button" href="/queue">Return to queue</a>
 	</section>
 {:else}
 	<header class="ship-head">
 		<div class="head-main">
-			<p class="eyebrow">
+			<p class="crumbs">
 				<a href="/queue">Queue</a>
 				<span>/</span>
 				{humanStatus(submission.status)}
@@ -302,7 +301,7 @@ async function saveDraftNow(): Promise<void> {
 			</p>
 			<div class="title-line">
 				<h1>{submission.title}</h1>
-				<span class="status {statusTone(submission.status)}">{humanStatus(submission.status)}</span>
+				<span class="ui-badge" data-tone={statusTone(submission.status)}>{humanStatus(submission.status)}</span>
 				<span class="version">v{submission.version}</span>
 			</div>
 			<p class="maker">
@@ -313,30 +312,33 @@ async function saveDraftNow(): Promise<void> {
 		</div>
 		<div class="head-links">
 			{#if submission.repoUrl}
-				<a class="button ghost" href={submission.repoUrl} rel="noreferrer" target="_blank">Repository ↗</a>
+				<a class="ui-button ghost sm" href={submission.repoUrl} rel="noreferrer" target="_blank">Repository ↗</a>
 			{/if}
 			{#if submission.demoUrl}
-				<a class="button ghost" href={submission.demoUrl} rel="noreferrer" target="_blank">Demo ↗</a>
+				<a class="ui-button ghost sm" href={submission.demoUrl} rel="noreferrer" target="_blank">Demo ↗</a>
 			{/if}
-			<button class="button ghost" onclick={(): void => { showShortcuts = !showShortcuts }} type="button">Shortcuts <kbd>?</kbd></button>
+			<button class="ui-button ghost sm" onclick={(): void => { showShortcuts = !showShortcuts }} type="button">
+				Shortcuts <kbd class="ui-kbd">?</kbd>
+			</button>
 		</div>
 	</header>
 
 	{#if showShortcuts}
 		<div class="shortcuts">
-			<span><kbd>A</kbd> approve</span>
-			<span><kbd>C</kbd> focus the note</span>
-			<span><kbd>R</kbd> reject</span>
-			<span><kbd>Esc</kbd> back to queue</span>
+			<span><kbd class="ui-kbd">A</kbd> approve</span>
+			<span><kbd class="ui-kbd">C</kbd> focus the note</span>
+			<span><kbd class="ui-kbd">R</kbd> reject</span>
+			<span><kbd class="ui-kbd">Esc</kbd> back to queue</span>
 		</div>
 	{/if}
 
 	<div class="layout">
 		<section class="content">
-			<div class="tabs" role="tablist" aria-label="Ship sections">
+			<div aria-label="Ship sections" class="ui-tabs" role="tablist">
 				{#each [{ key: "overview", label: "Overview" }, { key: "checks", label: `Checks (${bundle.checks.length})` }, { key: "journal", label: `Journal (${bundle.journals.length})` }, { key: "bom", label: `BOM (${bundle.bom.length})` }] as item (item.key)}
 					<button
 						aria-selected={tab === item.key}
+						class="ui-tab"
 						class:active={tab === item.key}
 						onclick={(): void => { tab = item.key as Tab }}
 						role="tab"
@@ -346,9 +348,9 @@ async function saveDraftNow(): Promise<void> {
 			</div>
 
 			{#if tab === "overview"}
-				<article class="card prose">
+				<article class="ui-card padded overview">
 					<h2>What the maker built</h2>
-					<p>{submission.description || "No description was sent."}</p>
+					<p class="description">{submission.description || "No description was sent."}</p>
 
 					<div class="stats">
 						<div><span>Claimed</span><strong>{formatHours(submission.hoursClaimedSeconds)}</strong></div>
@@ -358,11 +360,11 @@ async function saveDraftNow(): Promise<void> {
 					</div>
 
 					{#if bundle.priorReviews.length > 0}
-						<div class="prior">
+						<div class="section">
 							<h3>Prior review</h3>
 							{#each bundle.priorReviews as prior (prior.at)}
 								<div class="prior-row">
-									<span class="status {statusTone(prior.result.toLowerCase().includes("approved") ? "approved" : "changes")}">{prior.result}</span>
+									<span class="ui-badge" data-tone={statusTone(prior.result.toLowerCase().includes("approved") ? "approved" : "changes")}>{prior.result}</span>
 									<p>{prior.feedback}</p>
 									<small>{prior.reviewer ?? "Reviewer"} · {formatDateTime(prior.at)}</small>
 								</div>
@@ -370,7 +372,7 @@ async function saveDraftNow(): Promise<void> {
 						</div>
 					{/if}
 
-					<div class="timeline">
+					<div class="section">
 						<h3>Timeline</h3>
 						{#each bundle.events as event (event.id)}
 							<div class="event">
@@ -386,37 +388,37 @@ async function saveDraftNow(): Promise<void> {
 				</article>
 			{:else if tab === "checks"}
 				{#if blocking.length > 0}
-					<div class="blocking" role="alert">
+					<div class="ui-notice" data-tone="bad" role="alert">
 						<strong>Approval is blocked</strong>
-						<p>{blocking[0].summary}. Ask the maker for changes or reject with a note.</p>
+						{blocking[0].summary}. Ask the maker for changes or reject with a note.
 					</div>
 				{/if}
 
 				{#if warnings.length > 0}
-					<div class="warn-box">
+					<div class="ui-notice warn-box" data-tone="warn">
 						<div>
 							<strong>{warnings.length} warning{warnings.length === 1 ? "" : "s"}</strong>
-							<p>Acknowledge each one before approving. Warnings are held for the second pass.</p>
+							Acknowledge each one before approving. Warnings are held for the second pass.
 						</div>
 						{#if missingAcks.length > 0}
-							<button class="button ghost" onclick={acknowledgeAll} type="button">Acknowledge all</button>
+							<button class="ui-button sm" onclick={acknowledgeAll} type="button">Acknowledge all</button>
 						{/if}
 					</div>
 				{/if}
 
-				{#each groups as group (group.group)}
-					<section class="card check-group">
-						<h2>{group.group}</h2>
-						<div class="check-list">
+				<div class="ui-card checks">
+					{#each groups as group (group.group)}
+						<div class="group">
+							<h2>{group.group}</h2>
 							{#each group.items as check (check.key)}
-								<div class="check {statusTone(check.status)}">
+								<div class="check">
 									<div class="check-head">
-										<span class="status {statusTone(check.status)}">{check.status}</span>
+										<span class="ui-badge" data-tone={statusTone(check.status)}>{check.status}</span>
 										<strong>{check.label}</strong>
-										<code>{check.key}</code>
+										<code class="ui-mono">{check.key}</code>
 									</div>
 									<p>{check.summary}</p>
-									{#if check.detail}<small>{check.detail}</small>{/if}
+									{#if check.detail}<span class="detail">{check.detail}</span>{/if}
 									{#if isWarning(check)}
 										<label class="ack">
 											<input
@@ -430,21 +432,24 @@ async function saveDraftNow(): Promise<void> {
 								</div>
 							{/each}
 						</div>
-					</section>
-				{/each}
+					{/each}
+				</div>
 			{:else if tab === "journal"}
 				{#if bundle.journals.length === 0}
-					<div class="empty">No journal entries were sent.</div>
+					<div class="ui-card ui-empty">
+						<strong>No journal entries</strong>
+						<span>Half Life sent no written evidence with this ship.</span>
+					</div>
 				{:else}
 					<div class="journals">
 						{#each bundle.journals as entry (entry.id)}
-							<article class="card journal">
+							<article class="ui-card padded journal">
 								<div class="journal-head">
 									<strong>{entry.title || "Work session"}</strong>
 									<span>{formatHours(entry.seconds)} · {formatDateTime(entry.at)}</span>
 								</div>
 								{#if entry.clipCount > 0}
-									<span class="clip">{entry.clipCount} clip{entry.clipCount === 1 ? "" : "s"} · {formatHours(entry.coveredSeconds)} covered</span>
+									<span class="ui-badge" data-tone="approved">{entry.clipCount} clip{entry.clipCount === 1 ? "" : "s"} · {formatHours(entry.coveredSeconds)} covered</span>
 								{/if}
 								<p>{entry.text || "No written entry."}</p>
 								{#if entry.mediaCount > 0}
@@ -456,10 +461,13 @@ async function saveDraftNow(): Promise<void> {
 				{/if}
 			{:else if tab === "bom"}
 				{#if bundle.bom.length === 0}
-					<div class="empty">No BOM lines were sent.</div>
+					<div class="ui-card ui-empty">
+						<strong>No BOM lines</strong>
+						<span>Half Life sent no priced parts with this ship.</span>
+					</div>
 				{:else}
-					<div class="card table-wrap">
-						<table>
+					<div class="ui-card table-wrap">
+						<table class="ui-table">
 							<thead>
 								<tr><th>Part</th><th>Purpose</th><th class="num">Qty</th><th class="num">Unit</th><th>Vendor</th></tr>
 							</thead>
@@ -484,10 +492,10 @@ async function saveDraftNow(): Promise<void> {
 		</section>
 
 		<aside class="rail">
-			<section class="card summary">
+			<section class="ui-card padded summary">
 				<div class="summary-head">
 					<h2>Checks</h2>
-					<span class="status {statusTone(bundle.checks.length > 0 ? overall(bundle.checks) : "pass")}">
+					<span class="ui-badge" data-tone={statusTone(bundle.checks.length > 0 ? overall(bundle.checks) : "pass")}>
 						{bundle.checks.length > 0 ? overall(bundle.checks) : "pass"}
 					</span>
 				</div>
@@ -506,12 +514,12 @@ async function saveDraftNow(): Promise<void> {
 				</p>
 			</section>
 
-			<section class="card decision">
+			<section class="ui-card padded decision">
 				<h2>Decision</h2>
 
 				<label class="field">
 					<span>Approved hours</span>
-					<input bind:value={hours} max="720" min="0" step="0.25" type="number">
+					<input bind:value={hours} class="ui-input" max="720" min="0" step="0.25" type="number">
 					<small>{formatHours(Math.round(hours * 3600))} of {formatHours(submission.hoursClaimedSeconds)} claimed</small>
 				</label>
 
@@ -520,6 +528,7 @@ async function saveDraftNow(): Promise<void> {
 					<textarea
 						bind:this={noteElement}
 						bind:value={note}
+						class="ui-input"
 						onblur={(): void => void saveDraftNow()}
 						placeholder="What should they change, or why is this good?"
 						rows="5"
@@ -530,6 +539,7 @@ async function saveDraftNow(): Promise<void> {
 					<span>Internal note</span>
 					<textarea
 						bind:value={internalNote}
+						class="ui-input"
 						onblur={(): void => void saveDraftNow()}
 						placeholder="Only the team sees this."
 						rows="2"
@@ -537,39 +547,39 @@ async function saveDraftNow(): Promise<void> {
 				</label>
 
 				{#if missingAcks.length > 0}
-					<div class="gate warn">
+					<div class="ui-notice" data-tone="warn">
 						<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
-						<p>Acknowledge them in Checks to unlock approve.</p>
+						Acknowledge them in Checks to unlock approve.
 						<button class="link" onclick={(): void => { tab = "checks" }} type="button">Open checks</button>
 					</div>
 				{/if}
 
 				{#if blocking.length > 0}
-					<div class="gate bad">
+					<div class="ui-notice" data-tone="bad">
 						<strong>Approval disabled</strong>
-						<p>{blocking[0].summary}.</p>
+						{blocking[0].summary}.
 						<button class="link" onclick={(): void => { tab = "checks" }} type="button">Read the blocking check</button>
 					</div>
 				{/if}
 
 				{#if actionError}
-					<p class="action-error" role="alert">{actionError}</p>
+					<p class="ui-notice" data-tone="bad" role="alert">{actionError}</p>
 				{/if}
 
 				<div class="buttons">
 					<button
-						class="button approve"
+						class="ui-button ok block"
 						disabled={deciding || !canApprove}
 						onclick={(): Promise<void> => decide("approved")}
 						type="button"
 					>
-						{deciding ? "Saving…" : "Approve"} <kbd>A</kbd>
+						{deciding ? "Saving…" : "Approve"} <kbd class="ui-kbd">A</kbd>
 					</button>
 					<div class="secondary">
-						<button class="button changes" disabled={deciding} onclick={(): Promise<void> => decide("changes")} type="button">
+						<button class="ui-button soft" disabled={deciding} onclick={(): Promise<void> => decide("changes")} type="button">
 							Request changes
 						</button>
-						<button class="button reject" disabled={deciding} onclick={(): Promise<void> => decide("rejected")} type="button">
+						<button class="ui-button danger" disabled={deciding} onclick={(): Promise<void> => decide("rejected")} type="button">
 							Reject
 						</button>
 					</div>
@@ -590,704 +600,442 @@ async function saveDraftNow(): Promise<void> {
 <style>
 .loading {
 	display: grid;
-	gap: 12px;
-	padding-top: 20px;
+	gap: var(--space-3);
 }
 
 .loading div {
 	height: 150px;
-	background: linear-gradient(90deg, var(--card), var(--paper-deep), var(--card));
-	background-size: 200% 100%;
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	animation: shimmer 1.4s infinite;
+	animation: pulse 1.4s ease-in-out infinite;
 }
 
 .missing {
-	max-width: 620px;
-	padding: 40px 0;
-}
-
-.missing .eyebrow {
-	padding-bottom: 10px;
-	font-size: 0.68rem;
-	font-weight: 750;
-	color: var(--accent);
-	text-transform: uppercase;
-	letter-spacing: 0.12em;
+	max-width: 520px;
+	padding-top: var(--space-5);
 }
 
 .missing h1 {
-	font-size: 2.2rem;
+	font-size: var(--text-xl);
 }
 
 .missing p {
-	padding: 10px 0 20px;
-	color: var(--muted);
+	padding: var(--space-2) 0 var(--space-4);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 }
 
 .ship-head {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 20px;
+	gap: var(--space-4);
 	align-items: flex-end;
 	justify-content: space-between;
-	padding-bottom: 18px;
-	border-bottom: 1px solid var(--line);
+	padding-bottom: var(--space-4);
 }
 
 .head-main {
 	min-width: 0;
 }
 
-.eyebrow {
-	padding-bottom: 8px;
-	font-size: 0.68rem;
-	font-weight: 700;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.09em;
+.crumbs {
+	padding-bottom: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--text-3);
 }
 
-.eyebrow a {
-	color: var(--accent);
+.crumbs a {
+	color: var(--text-2);
 }
 
-.eyebrow span {
-	padding: 0 6px;
-	color: var(--line);
+.crumbs a:hover {
+	color: var(--primary);
+}
+
+.crumbs span {
+	padding: 0 var(--space-1);
+	color: var(--border-2);
 }
 
 .title-line {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 10px;
-	align-items: baseline;
+	gap: var(--space-2);
+	align-items: center;
 }
 
 h1 {
-	font-size: clamp(1.8rem, 3.6vw, 2.7rem);
+	font-size: var(--text-2xl);
 	overflow-wrap: anywhere;
 }
 
-.status {
-	padding: 3px 8px;
-	font-size: 0.62rem;
-	font-weight: 750;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	border-radius: 999px;
-}
-
-.status.good {
-	color: var(--teal);
-	background: var(--teal-soft);
-}
-
-.status.warn {
-	color: var(--accent-deep);
-	background: var(--accent-soft);
-}
-
-.status.bad,
-.status.error {
-	color: #7d2a12;
-	background: #fbe5df;
-}
-
-.status.neutral {
-	color: var(--muted);
-	background: var(--paper-deep);
-}
-
 .version {
-	font-size: 0.72rem;
-	color: var(--muted);
+	font-size: var(--text-sm);
+	color: var(--text-3);
 }
 
 .maker {
-	padding-top: 5px;
-	font-size: 0.78rem;
-	color: var(--muted);
+	padding-top: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 }
 
 .maker span {
-	padding-left: 6px;
+	padding-left: var(--space-1);
 }
 
 .head-links {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.button {
-	display: inline-flex;
-	gap: 6px;
-	align-items: center;
-	justify-content: center;
-	padding: 9px 14px;
-	font-size: 0.8rem;
-	font-weight: 750;
-	color: var(--ink);
-	text-decoration: none;
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: 9px;
-}
-
-.button:hover {
-	text-decoration: none;
-	border-color: var(--ink);
-}
-
-.button:disabled {
-	cursor: not-allowed;
-	opacity: 0.55;
-}
-
-.button.primary {
-	color: #fff;
-	background: var(--accent);
-	border-color: var(--accent);
-}
-
-.button.ghost {
-	font-size: 0.74rem;
-}
-
-.button.approve {
-	color: #fff;
-	background: var(--teal);
-	border-color: var(--teal);
-}
-
-.button.approve:hover:not(:disabled) {
-	background: #174f4c;
-}
-
-.button.changes {
-	color: var(--accent-deep);
-	background: var(--accent-soft);
-	border-color: #ecc3b4;
-}
-
-.button.reject {
-	color: #7d2a12;
-	background: #fbe5df;
-	border-color: #e9b9aa;
-}
-
-kbd {
-	padding: 1px 5px;
-	font-family: inherit;
-	font-size: 0.64rem;
-	font-weight: 700;
-	background: rgba(255, 255, 255, 0.16);
-	border: 1px solid rgba(255, 255, 255, 0.28);
-	border-radius: 4px;
-}
-
-.button.ghost kbd,
-.shortcuts kbd {
-	background: var(--paper-deep);
-	border-color: var(--line);
+	gap: var(--space-2);
 }
 
 .shortcuts {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 14px;
-	padding: 10px 13px;
-	margin-top: 12px;
-	font-size: 0.74rem;
-	color: var(--muted);
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: 10px;
+	gap: var(--space-4);
+	padding: var(--space-2) var(--space-3);
+	margin-top: var(--space-3);
+	font-size: var(--text-xs);
+	color: var(--text-2);
+	background: var(--surface-2);
+	border-radius: var(--radius-md);
 }
 
 .layout {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
-	gap: 22px;
+	gap: var(--space-4);
 	align-items: start;
-	padding-top: 20px;
+	padding-top: var(--space-4);
 }
 
 .content {
+	display: flex;
+	flex-direction: column;
 	min-width: 0;
 }
 
-.tabs {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 3px;
-	padding: 4px;
-	margin-bottom: 14px;
-	background: var(--paper-deep);
-	border-radius: 999px;
+.content > .ui-card,
+.content > .journals,
+.content > .ui-notice {
+	margin-top: var(--space-3);
 }
 
-.tabs button {
-	padding: 7px 13px;
-	font-size: 0.76rem;
-	font-weight: 700;
-	color: var(--muted);
-	background: transparent;
-	border: 0;
-	border-radius: 999px;
+.ui-tabs {
+	margin-bottom: var(--space-1);
 }
 
-.tabs button.active {
-	color: var(--ink);
-	background: var(--card);
-	box-shadow: 0 2px 8px rgba(60, 45, 20, 0.08);
-}
-
-.card {
-	padding: 20px;
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	box-shadow: 0 5px 18px rgba(60, 45, 20, 0.04);
-}
-
-.prose h2,
-.check-group h2,
+.overview h2,
+.decision h2,
 .summary h2,
-.decision h2 {
-	font-size: 1.1rem;
+.group h2 {
+	font-size: var(--text-md);
+	font-weight: 700;
 }
 
-.prose > p {
-	padding-top: 10px;
-	font-size: 0.9rem;
-	color: #3b4441;
+.description {
+	padding-top: var(--space-2);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 	white-space: pre-wrap;
 }
 
 .stats {
 	display: grid;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 8px;
-	padding-top: 18px;
+	gap: var(--space-1);
+	padding-top: var(--space-4);
 }
 
 .stats div {
-	padding: 10px;
-	background: var(--paper);
-	border-radius: 10px;
+	padding: var(--space-2) var(--space-3);
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
 }
 
 .stats span {
 	display: block;
-	font-size: 0.62rem;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.07em;
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .stats strong {
-	font-size: 1.02rem;
+	font-size: var(--text-md);
 	font-variant-numeric: tabular-nums;
 }
 
-.prior,
-.timeline {
-	padding-top: 20px;
-	margin-top: 20px;
-	border-top: 1px solid var(--line);
+.section {
+	padding-top: var(--space-4);
+	margin-top: var(--space-4);
+	border-top: 1px solid var(--border);
 }
 
-.prior h3,
-.timeline h3 {
-	padding-bottom: 10px;
-	font-size: 0.78rem;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
+.section h3 {
+	padding-bottom: var(--space-2);
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-3);
 }
 
 .prior-row {
-	padding: 10px 12px;
-	margin-bottom: 8px;
-	background: var(--paper);
-	border-radius: 9px;
+	padding: var(--space-2) var(--space-3);
+	margin-top: var(--space-2);
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
 }
 
 .prior-row p {
-	padding-top: 6px;
-	font-size: 0.82rem;
+	padding-top: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 }
 
 .prior-row small {
-	font-size: 0.7rem;
-	color: var(--muted);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .event {
 	display: flex;
-	gap: 10px;
-	padding: 5px 0;
-	font-size: 0.78rem;
+	gap: var(--space-2);
+	padding: var(--space-1) 0;
+	font-size: var(--text-sm);
 }
 
 .event .dot {
-	width: 7px;
-	height: 7px;
-	margin-top: 6px;
-	background: var(--accent);
+	flex: none;
+	width: 6px;
+	height: 6px;
+	margin-top: 7px;
+	background: var(--primary);
 	border-radius: 50%;
 }
 
 .event small {
 	display: block;
-	font-size: 0.68rem;
-	color: var(--muted);
-}
-
-.blocking {
-	padding: 14px 16px;
-	margin-bottom: 12px;
-	color: #7d2a12;
-	background: #fbe5df;
-	border: 1px solid #e9b9aa;
-	border-radius: 12px;
-}
-
-.blocking p {
-	padding-top: 4px;
-	font-size: 0.82rem;
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .warn-box {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 14px;
+	gap: var(--space-3);
 	align-items: center;
 	justify-content: space-between;
-	padding: 13px 15px;
-	margin-bottom: 12px;
-	color: var(--accent-deep);
-	background: var(--accent-soft);
-	border: 1px solid #ecc3b4;
-	border-radius: 12px;
 }
 
-.warn-box p {
-	padding-top: 3px;
-	font-size: 0.8rem;
+.checks {
+	overflow: hidden;
 }
 
-.check-group {
-	margin-bottom: 12px;
+.group + .group {
+	border-top: 1px solid var(--border);
 }
 
-.check-list {
-	display: grid;
-	gap: 8px;
-	padding-top: 12px;
+.group h2 {
+	padding: var(--space-2) var(--space-4);
+	font-size: var(--text-xs);
+	color: var(--text-3);
+	background: var(--surface-2);
 }
 
 .check {
-	padding: 12px;
-	background: var(--paper);
-	border-left: 3px solid var(--line);
-	border-radius: 8px;
+	padding: var(--space-3) var(--space-4);
+	border-top: 1px solid var(--border);
 }
 
-.check.good {
-	border-left-color: var(--teal);
-}
-
-.check.warn {
-	border-left-color: var(--accent);
-}
-
-.check.bad,
-.check.error {
-	border-left-color: #b23a1d;
+.group h2 + .check {
+	border-top: 0;
 }
 
 .check-head {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
-	align-items: baseline;
+	gap: var(--space-2);
+	align-items: center;
 }
 
 .check-head strong {
-	font-size: 0.84rem;
+	font-size: var(--text-sm);
 }
 
 .check-head code {
-	font-size: 0.66rem;
-	color: var(--muted);
+	color: var(--text-3);
 }
 
 .check p {
-	padding-top: 5px;
-	font-size: 0.8rem;
+	padding-top: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 }
 
-.check small {
+.detail {
 	display: block;
-	padding-top: 3px;
-	font-size: 0.72rem;
-	color: var(--muted);
+	padding-top: var(--space-1);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .ack {
 	display: flex;
-	gap: 7px;
+	gap: var(--space-2);
 	align-items: center;
-	padding-top: 9px;
-	font-size: 0.76rem;
-	font-weight: 650;
-	color: var(--accent-deep);
+	padding-top: var(--space-2);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	color: var(--status-pending);
 }
 
 .ack input {
-	accent-color: var(--accent);
-}
-
-.empty {
-	padding: 32px;
-	text-align: center;
-	color: var(--muted);
-	background: var(--card);
-	border: 1px dashed var(--line);
-	border-radius: var(--radius);
+	accent-color: var(--primary);
 }
 
 .journals {
-	display: grid;
-	gap: 10px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
 }
 
 .journal-head {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 10px;
+	gap: var(--space-2);
 	align-items: baseline;
 	justify-content: space-between;
 }
 
 .journal-head span {
-	font-size: 0.72rem;
-	color: var(--muted);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .journal p {
-	padding-top: 8px;
-	font-size: 0.85rem;
-	color: #3b4441;
+	padding-top: var(--space-2);
+	font-size: var(--text-sm);
+	color: var(--text-2);
 	white-space: pre-wrap;
 }
 
 .journal small {
 	display: block;
-	padding-top: 6px;
-	font-size: 0.7rem;
-	color: var(--muted);
+	padding-top: var(--space-1);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
-.clip {
-	display: inline-block;
-	padding: 2px 7px;
-	margin-top: 6px;
-	font-size: 0.66rem;
-	font-weight: 700;
-	color: var(--teal);
-	background: var(--teal-soft);
-	border-radius: 999px;
+.journal .ui-badge {
+	margin-top: var(--space-2);
 }
 
 .table-wrap {
 	overflow-x: auto;
 }
 
-table {
-	width: 100%;
-	font-size: 0.82rem;
-	border-collapse: collapse;
-}
-
-th,
-td {
-	padding: 9px 10px;
-	text-align: left;
-	border-bottom: 1px solid var(--line);
-}
-
-th {
-	font-size: 0.66rem;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.07em;
-}
-
-.num {
-	text-align: right;
-	font-variant-numeric: tabular-nums;
-}
-
-tfoot td {
-	font-weight: 750;
-	border-bottom: 0;
-}
-
 .rail {
-	display: grid;
-	gap: 14px;
 	position: sticky;
-	top: 14px;
+	top: 96px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding-top: var(--space-4);
 }
 
 .summary-head {
 	display: flex;
-	gap: 10px;
-	align-items: baseline;
+	gap: var(--space-2);
+	align-items: center;
 	justify-content: space-between;
 }
 
 .summary-counts {
 	display: flex;
-	gap: 12px;
-	padding-top: 10px;
-	font-size: 0.76rem;
-	color: var(--muted);
+	gap: var(--space-4);
+	padding-top: var(--space-2);
+	font-size: var(--text-sm);
+	color: var(--text-3);
 }
 
 .summary-counts strong {
-	color: var(--ink);
+	color: var(--text);
 	font-variant-numeric: tabular-nums;
 }
 
 .policy {
-	padding-top: 12px;
-	margin-top: 12px;
-	font-size: 0.74rem;
-	color: var(--muted);
-	border-top: 1px solid var(--line);
+	padding-top: var(--space-2);
+	margin-top: var(--space-3);
+	font-size: var(--text-xs);
+	color: var(--text-3);
+	border-top: 1px solid var(--border);
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
-	gap: 5px;
-	padding-top: 14px;
+	gap: var(--space-1);
+	padding-top: var(--space-3);
 }
 
 .field > span {
-	font-size: 0.66rem;
+	font-size: var(--text-xs);
 	font-weight: 700;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-}
-
-.field input,
-.field textarea {
-	width: 100%;
-	padding: 9px 10px;
-	font-size: 0.82rem;
-	color: var(--ink);
-	resize: vertical;
-	background: #fff;
-	border: 1px solid var(--line);
-	border-radius: 9px;
-	outline: none;
-}
-
-.field input:focus,
-.field textarea:focus {
-	border-color: var(--accent);
-	box-shadow: 0 0 3px var(--accent-soft);
+	color: var(--text-2);
 }
 
 .field small {
-	font-size: 0.68rem;
-	color: var(--muted);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
-.gate {
-	padding: 10px 12px;
-	margin-top: 12px;
-	border-radius: 9px;
-}
-
-.gate p {
-	padding-top: 2px;
-	font-size: 0.74rem;
-}
-
-.gate.warn {
-	color: var(--accent-deep);
-	background: var(--accent-soft);
-}
-
-.gate.bad {
-	color: #7d2a12;
-	background: #fbe5df;
+.decision .ui-notice {
+	margin-top: var(--space-3);
 }
 
 .link {
-	padding: 5px 0 0;
-	font-size: 0.74rem;
-	font-weight: 750;
+	display: block;
+	padding: var(--space-1) 0 0;
+	font-size: var(--text-xs);
+	font-weight: 700;
 	color: inherit;
 	text-decoration: underline;
 	background: none;
 	border: 0;
 }
 
-.action-error {
-	padding: 9px 11px;
-	margin-top: 12px;
-	font-size: 0.78rem;
-	color: #7d2a12;
-	background: #fbe5df;
-	border: 1px solid #e9b9aa;
-	border-radius: 9px;
-}
-
 .buttons {
 	display: grid;
-	gap: 8px;
-	padding-top: 14px;
+	gap: var(--space-2);
+	padding-top: var(--space-4);
 }
 
 .secondary {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 8px;
+	gap: var(--space-2);
 }
 
 .claim {
-	padding-top: 12px;
-	font-size: 0.7rem;
-	color: var(--muted);
+	padding-top: var(--space-3);
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .toast {
 	position: fixed;
-	bottom: 24px;
+	bottom: var(--space-5);
 	left: 50%;
-	padding: 11px 16px;
-	font-size: 0.82rem;
+	padding: var(--space-2) var(--space-4);
+	font-size: var(--text-sm);
 	font-weight: 700;
-	color: var(--card);
-	background: var(--ink);
-	border-radius: 10px;
-	box-shadow: 0 10px 30px rgba(30, 38, 39, 0.25);
+	color: var(--bg);
+	background: var(--text);
+	border-radius: var(--radius-full);
+	box-shadow: var(--shadow-lg);
 	transform: translateX(-50%);
 }
 
-@keyframes shimmer {
-	to {
-		background-position: -200% 0;
+@keyframes pulse {
+	50% {
+		opacity: 0.55;
 	}
 }
 
@@ -1298,10 +1046,11 @@ tfoot td {
 
 	.rail {
 		position: static;
+		padding-top: 0;
 	}
 }
 
-@media (max-width: 680px) {
+@media (max-width: 640px) {
 	.stats {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
@@ -1309,6 +1058,11 @@ tfoot td {
 	.ship-head {
 		flex-direction: column;
 		align-items: flex-start;
+	}
+
+	.check,
+	.group h2 {
+		padding-inline: var(--space-3);
 	}
 }
 </style>

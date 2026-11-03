@@ -51,27 +51,35 @@ export function formatMoney(cents: number | null | undefined): string {
 	return new Intl.NumberFormat(undefined, { currency: "USD", style: "currency" }).format(cents / 100)
 }
 
-// statusTone maps a check or ship status to a badge tone.
-export function statusTone(status: string): string {
+// Tone is the badge palette shared with Ari: green approved, yellow pending, orange changes, red rejected, purple second pass.
+export type Tone = "approved" | "pending" | "changes" | "rejected" | "secondpass" | "neutral"
+
+// statusTone maps a check, ship or delivery status to a badge tone.
+export function statusTone(status: string): Tone {
 	switch (status) {
 		case "pass":
 		case "approved":
 		case "delivered":
 		case "decided":
-			return "good"
-		case "warn":
-		case "changes":
-		case "needs_attention":
+			return "approved"
+		case "ready":
 		case "pending":
-		case "stage2_hold":
-			return "warn"
+		case "claimed":
+		case "in_review":
+		case "checking":
+			return "pending"
+		case "warn":
+		case "needs_attention":
+		case "changes":
+			return "changes"
 		case "fail":
 		case "rejected":
 		case "withdrawn":
 		case "failed":
-			return "bad"
 		case "error":
-			return "error"
+			return "rejected"
+		case "stage2_hold":
+			return "secondpass"
 		default:
 			return "neutral"
 	}

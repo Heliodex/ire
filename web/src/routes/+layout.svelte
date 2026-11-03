@@ -2,9 +2,10 @@
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
 import { onMount } from "svelte"
-import { ApiError } from "../lib/api-error"
 import { fetchMe, logout } from "../lib/api"
+import { ApiError } from "../lib/api-error"
 import { session } from "../lib/session.svelte.js"
+import { theme } from "../lib/theme.svelte.js"
 import type { LayoutProps } from "./$types"
 import "../app.css"
 
@@ -14,6 +15,8 @@ let ready = $state(false)
 let signingOut = $state(false)
 
 onMount(async (): Promise<void> => {
+	theme.init()
+
 	try {
 		session.me = await fetchMe()
 	} catch (error) {
@@ -45,177 +48,194 @@ async function signOut(): Promise<void> {
 	<meta content="Review queue for Half Life hardware ships" name="description">
 </svelte:head>
 
-<div class="page">
-	<header class="site-header">
-		<a class="brand" href="/queue">
-			<span class="brand-mark">HL</span>
-			<span>
-				<strong>Review</strong>
-				<small>Half Life hardware</small>
-			</span>
-		</a>
+<div class="shell">
+	<header>
+		<div class="top">
+			<a class="brand" href={session.me ? "/queue" : "/"}>
+				<span class="mark">HL</span>
+				<span class="brand-copy">
+					<strong>Review</strong>
+					<small>Half Life hardware</small>
+				</span>
+			</a>
+
+			<div class="spacer"></div>
+
+			{#if session.me}
+				<span class="email">{session.me.user.email}</span>
+			{/if}
+
+			<button
+				class="ui-icon-button theme"
+				onclick={(): void => theme.toggle()}
+				title={theme.value === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+				type="button"
+			>
+				<span class="visually-hidden">Toggle theme</span>
+				{#if theme.value === "dark"}
+					<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
+						<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+						<path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" stroke="currentColor" stroke-linecap="round" stroke-width="2"/>
+					</svg>
+				{:else}
+					<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
+						<path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/>
+					</svg>
+				{/if}
+			</button>
+
+			{#if session.me}
+				<button class="ui-button quiet sm" disabled={signingOut} onclick={signOut} type="button">
+					{signingOut ? "Signing out…" : "Sign out"}
+				</button>
+			{/if}
+		</div>
 
 		{#if session.me}
 			<nav aria-label="Sections">
-				<a class:active={page.url.pathname.startsWith("/queue")} href="/queue">Queue</a>
-				<a class:active={page.url.pathname.startsWith("/review")} href="/queue">Review</a>
+				<a class:active={page.url.pathname.startsWith("/queue") || page.url.pathname.startsWith("/review")} href="/queue">
+					Queue
+				</a>
 				<a class:active={page.url.pathname.startsWith("/deliveries")} href="/deliveries">Deliveries</a>
 			</nav>
-			<div class="who">
-				<span>{session.me.user.email}</span>
-				<button class="quiet" disabled={signingOut} onclick={signOut} type="button">
-					{signingOut ? "Signing out…" : "Sign out"}
-				</button>
-			</div>
-		{:else}
-			<span class="proto">Prototype · fixture data</span>
 		{/if}
 	</header>
 
 	<main>
 		{@render children()}
 	</main>
-
-	<footer>
-		<span>Stage 1 review · Ari-compatible edge</span>
-		<span>{session.me ? "Signed in" : "Development sign-in"}</span>
-	</footer>
 </div>
 
 <style>
-.page {
+.shell {
 	display: flex;
 	flex-direction: column;
-	width: min(1240px, calc(100% - 36px));
 	min-height: 100vh;
 }
 
-.site-header {
+header {
+	position: sticky;
+	top: 0;
+	z-index: var(--layer-header);
+	background: var(--surface);
+}
+
+.top,
+nav {
+	width: 100%;
+	max-width: 1240px;
+	margin: 0 auto;
+	padding-inline: var(--space-4);
+}
+
+.top {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 18px;
 	align-items: center;
-	justify-content: space-between;
-	padding: 22px 0 18px;
-	border-bottom: 1px solid var(--line);
+	gap: var(--space-3);
+	padding-block: var(--space-2);
 }
 
 .brand {
-	display: flex;
-	gap: 11px;
+	display: inline-flex;
 	align-items: center;
-	color: var(--ink);
-}
-
-.brand:hover {
+	gap: var(--space-2);
+	color: var(--text);
 	text-decoration: none;
 }
 
-.brand-mark {
+.mark {
 	display: grid;
 	place-items: center;
-	width: 38px;
-	height: 38px;
-	font-size: 0.8rem;
+	width: 30px;
+	height: 30px;
+	font-size: 11px;
 	font-weight: 800;
-	color: var(--card);
-	letter-spacing: 0.02em;
-	background: var(--ink);
-	border-radius: 11px;
+	color: var(--on-primary);
+	background: var(--primary);
+	border-radius: var(--radius-sm);
 }
 
-.brand strong {
+.brand-copy strong {
 	display: block;
-	font-size: 1.12rem;
+	font-size: var(--text-md);
 	font-weight: 800;
-	letter-spacing: -0.02em;
+	line-height: 1.1;
 }
 
-.brand small {
+.brand-copy small {
 	display: block;
-	font-size: 0.68rem;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.spacer {
+	flex: 1;
+}
+
+.email {
+	font-size: var(--text-sm);
+	color: var(--text-2);
 }
 
 nav {
 	display: flex;
-	gap: 6px;
-	padding: 4px;
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: 999px;
+	gap: var(--space-4);
+	overflow-x: auto;
 }
 
 nav a {
-	padding: 7px 14px;
-	font-size: 0.78rem;
-	font-weight: 700;
-	color: var(--muted);
-	border-radius: 999px;
+	padding: 0 0 var(--space-2);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	color: var(--text-2);
+	text-decoration: none;
+	border-bottom: 2px solid transparent;
 }
 
 nav a:hover {
-	color: var(--ink);
-	text-decoration: none;
+	color: var(--text);
 }
 
 nav a.active {
-	color: var(--card);
-	background: var(--ink);
-}
-
-.who {
-	display: flex;
-	gap: 12px;
-	align-items: center;
-	font-size: 0.76rem;
-	color: var(--muted);
-}
-
-.who button {
-	padding: 6px 10px;
-	font-size: 0.74rem;
-	font-weight: 700;
-	color: var(--ink);
-	background: transparent;
-	border: 1px solid var(--line);
-	border-radius: 8px;
-}
-
-.who button:hover {
-	border-color: var(--ink);
-}
-
-.proto {
-	font-size: 0.7rem;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
+	color: var(--text);
+	border-bottom-color: var(--primary);
 }
 
 main {
-	flex: 1;
-	padding: 28px 0 64px;
-}
-
-footer {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 10px 20px;
-	justify-content: space-between;
-	padding: 16px 0 24px;
-	font-size: 0.7rem;
-	color: var(--muted);
-	text-transform: uppercase;
-	letter-spacing: 0.09em;
-	border-top: 1px solid var(--line);
+	flex: 1;
+	flex-direction: column;
+	width: 100%;
+	max-width: 1240px;
+	margin: 0 auto;
+	padding: var(--space-5) var(--space-4) var(--space-7);
 }
 
-@media (max-width: 760px) {
-	.who span {
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+	.top,
+	nav {
+		padding-inline: var(--space-3);
+	}
+
+	.email {
 		display: none;
+	}
+
+	.brand-copy small {
+		display: none;
+	}
+
+	main {
+		padding: var(--space-4) var(--space-3) var(--space-6);
 	}
 }
 </style>

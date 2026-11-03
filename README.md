@@ -11,6 +11,10 @@ A stage 1 review queue for Half Life hardware ships. This is the first vertical 
 - A signed outbox written in the decision transaction, an in-process receiver that verifies `timestamp.delivery_id.body`, retries on a schedule and keeps the exact payload.
 - Three fixture ships extracted from real `.projects.csv` rows: clean, warned and blocked.
 
+## Look
+
+The interface follows Ari's visual language: Hanken Grotesk, Ari's grey surfaces, the red primary, pill badges and compact controls. The header toggle switches light and dark; the choice is stored in `localStorage` and otherwise follows the system preference.
+
 ## Run it
 
 ```sh
