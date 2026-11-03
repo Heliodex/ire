@@ -275,6 +275,17 @@ kbd {
 	filter: brightness(0.98);
 }
 
+.ui-button.changes {
+	color: var(--status-changes);
+	background: color-mix(in srgb, var(--status-changes) 12%, var(--surface));
+	border-color: color-mix(in srgb, var(--status-changes) 35%, transparent);
+	box-shadow: none;
+}
+
+.ui-button.changes:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--status-changes) 18%, var(--surface));
+}
+
 .ui-button.sm {
 	height: var(--control-sm);
 	padding: 0 var(--space-2);

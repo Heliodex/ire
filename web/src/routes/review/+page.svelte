@@ -594,7 +594,7 @@ async function saveDraftNow(): Promise<void> {
 						{deciding ? "Saving…" : "Approve"} <kbd class="ui-kbd">A</kbd>
 					</button>
 					<div class="secondary">
-						<button class="ui-button soft" disabled={deciding} onclick={(): Promise<void> => decide("changes")} type="button">
+						<button class="ui-button changes" disabled={deciding} onclick={(): Promise<void> => decide("changes")} type="button">
 							Request changes
 						</button>
 						<button class="ui-button danger" disabled={deciding} onclick={(): Promise<void> => decide("rejected")} type="button">
