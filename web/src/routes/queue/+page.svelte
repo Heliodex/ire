@@ -610,7 +610,8 @@ h1 {
 	}
 
 	.badges {
-		display: flex;
+		display: grid;
+		grid-template-columns: 96px 64px;
 		gap: var(--space-2);
 		align-items: center;
 		grid-area: badges;
@@ -652,11 +653,11 @@ h1 {
 	}
 
 	.row {
-		grid-template-columns: 64px 124px minmax(0, 1fr);
+		grid-template-columns: 64px 96px 44px minmax(0, 1fr);
 		grid-template-areas:
-			"thumb title title"
-			"thumb badges checks"
-			"facts facts facts";
+			"thumb title title title"
+			"thumb status theme checks"
+			"facts facts facts facts";
 		column-gap: var(--space-2);
 	}
 
@@ -664,6 +665,20 @@ h1 {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-1) var(--space-3);
+	}
+
+	.badges {
+		display: contents;
+	}
+
+	.status {
+		grid-area: status;
+	}
+
+	.theme {
+		grid-area: theme;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.version {
@@ -678,6 +693,7 @@ h1 {
 
 @media (max-width: 370px) {
 	.counts {
+		flex-wrap: wrap;
 		gap: 3px;
 	}
 
