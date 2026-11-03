@@ -11,6 +11,7 @@ import {
 	fetchMe,
 	heartbeat,
 	program,
+	refreshRepositoryEvidence,
 	releaseShip,
 	saveDraft,
 } from "../../lib/api"
@@ -19,7 +20,7 @@ import { ignore, sleep } from "../../lib/async"
 import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
-type Tab = "overview" | "checks" | "journal" | "bom"
+type Tab = "overview" | "checks" | "journal" | "bom" | "evidence"
 
 let bundle = $state<Bundle | null>(null)
 let id = $state("")
@@ -37,6 +38,8 @@ let showShortcuts = $state(false)
 let noteElement = $state<HTMLTextAreaElement | null>(null)
 let claimedId = $state("")
 let idempotencyKey = $state("")
+let refreshingEvidence = $state(false)
+let evidenceError = $state("")
 
 const submission = $derived(bundle?.submission ?? null)
 const secondPass = $derived(submission?.stage === 2 || submission?.status === "stage2_hold")
@@ -198,6 +201,23 @@ function toggleAck(key: string): void {
 
 function acknowledgeAll(): void {
 	acknowledgements = warnings.map(check => check.key)
+}
+
+async function refreshEvidenceNow(): Promise<void> {
+	if (!bundle || refreshingEvidence) return
+
+	refreshingEvidence = true
+	evidenceError = ""
+
+	try {
+		const evidence = await refreshRepositoryEvidence(bundle.submission.id)
+		bundle = { ...bundle, evidence }
+		flash("Evidence refreshed.")
+	} catch (err) {
+		evidenceError = err instanceof Error ? err.message : "Could not refresh the evidence."
+	} finally {
+		refreshingEvidence = false
+	}
 }
 
 async function decide(decision: "approved" | "changes" | "rejected"): Promise<void> {
@@ -371,12 +391,13 @@ async function saveDraftNow(): Promise<void> {
 
 	<div class="layout">
 		<section class="content">
-			<div aria-label="Ship sections" class="ui-tabs" role="tablist">
+			<div aria-label="Ship sections" class="ui-tabs ship-tabs" role="tablist">
 				{#each [
 					{ key: "overview", label: "Overview" },
 					{ key: "checks", label: `Checks (${bundle.checks.length})` },
 					{ key: "journal", label: `Journal (${bundle.journals.length})` },
 					{ key: "bom", label: `BOM (${bundle.bom.length})` },
+					{ key: "evidence", label: "Evidence" },
 				] as item (item.key)}
 					<button
 						aria-selected={tab === item.key}
@@ -579,6 +600,86 @@ async function saveDraftNow(): Promise<void> {
 							</tfoot>
 						</table>
 					</div>
+				{/if}
+			{:else if tab === "evidence"}
+				{#if !bundle.evidence}
+					<div class="ui-card ui-empty">
+						<strong>No repository snapshot</strong>
+						<span
+							>Evidence is fetched for GitHub ships on ingest. Fixtures keep their prescribed
+							checks.</span
+						>
+					</div>
+				{:else}
+					<div class="evidence-meta">
+						<div>
+							<strong>{bundle.evidence.fullName}</strong>
+							<span>
+								{bundle.evidence.files.length}
+								files · {bundle.evidence.commits.length} commits · fetched
+								{formatDateTime(bundle.evidence.fetchedAt)}
+							</span>
+						</div>
+						{#if canSecondPass}
+							<button
+								class="ui-button secondary"
+								disabled={refreshingEvidence}
+								onclick={refreshEvidenceNow}
+								type="button"
+							>
+								{refreshingEvidence ? "Refreshing…" : "Refresh"}
+							</button>
+						{/if}
+					</div>
+
+					{#if evidenceError}
+						<div class="ui-notice" data-tone="bad">{evidenceError}</div>
+					{/if}
+
+					<div class="evidence-grid">
+						<section class="ui-card padded">
+							<h3>Files</h3>
+							{#if bundle.evidence.files.length === 0}
+								<p class="muted">The file tree was not fetched.</p>
+							{:else}
+								<ul class="file-tree">
+									{#each bundle.evidence.files.slice(0, 80) as file (file.path)}
+										<li><span class="file-kind">{file.kind}</span><code>{file.path}</code></li>
+									{/each}
+								</ul>
+								{#if bundle.evidence.files.length > 80}
+									<p class="muted">and {bundle.evidence.files.length - 80} more files</p>
+								{/if}
+							{/if}
+						</section>
+
+						<section class="ui-card padded">
+							<h3>Commits</h3>
+							{#if bundle.evidence.commits.length === 0}
+								<p class="muted">No commits were fetched.</p>
+							{:else}
+								<ul class="commit-list">
+									{#each bundle.evidence.commits.slice(0, 30) as commit (commit.sha)}
+										<li>
+											<strong>{commit.message || "(no message)"}</strong>
+											<span
+												>{commit.author}
+												· {commit.date.slice(0, 10)} ·
+												<code>{commit.sha.slice(0, 7)}</code></span
+											>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</section>
+					</div>
+
+					{#if bundle.evidence.readme}
+						<section class="ui-card padded readme">
+							<h3>README</h3>
+							<pre class="readme-body">{bundle.evidence.readme}</pre>
+						</section>
+					{/if}
 				{/if}
 			{/if}
 		</section>
@@ -845,6 +946,129 @@ h1 {
 
 .first-pass p {
 	padding-top: 2px;
+}
+
+.ship-tabs {
+	flex-wrap: wrap;
+	overflow-x: visible;
+}
+
+.evidence-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--space-2) var(--space-3);
+	margin-top: var(--space-3);
+	background: var(--surface-2);
+	border-radius: var(--radius-md);
+}
+
+.evidence-meta div {
+	display: flex;
+	flex-direction: column;
+	font-size: var(--text-sm);
+}
+
+.evidence-meta span {
+	color: var(--text-3);
+}
+
+.evidence-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: var(--space-3);
+	margin-top: var(--space-3);
+}
+
+.evidence-grid h3,
+.readme h3 {
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-3);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.file-tree,
+.commit-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	max-height: 320px;
+	margin-top: var(--space-2);
+	overflow: auto;
+	list-style: none;
+}
+
+.file-tree li {
+	display: flex;
+	gap: var(--space-2);
+	align-items: baseline;
+	min-width: 0;
+	font-size: var(--text-sm);
+}
+
+.file-tree code {
+	overflow-wrap: anywhere;
+}
+
+.file-kind {
+	flex: 0 0 3.5rem;
+	font-size: var(--text-xs);
+	color: var(--text-3);
+	text-transform: uppercase;
+}
+
+.commit-list li {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: var(--space-1) 0;
+	font-size: var(--text-sm);
+}
+
+.commit-list span {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.readme {
+	margin-top: var(--space-3);
+}
+
+.readme-body {
+	max-height: 420px;
+	margin-top: var(--space-2);
+	overflow: auto;
+	font-size: var(--text-sm);
+	line-height: 1.6;
+}
+
+.readme-body :global(h1),
+.readme-body :global(h2),
+.readme-body :global(h3) {
+	padding: var(--space-2) 0 var(--space-1);
+	font-size: var(--text-base);
+}
+
+.readme-body :global(p),
+.readme-body :global(ul) {
+	padding-bottom: var(--space-2);
+}
+
+.readme-body :global(ul) {
+	padding-left: var(--space-4);
+	list-style: disc;
+}
+
+.readme-body :global(pre) {
+	padding: var(--space-2);
+	margin-bottom: var(--space-2);
+	overflow: auto;
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
 }
 
 .shortcuts {

@@ -476,6 +476,16 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		return contract.ReviewBundle{}, err
 	}
 
+	snapshot, hasEvidence, err := a.loadEvidence(ctx, ship.ID, ship.Version)
+	if err != nil {
+		return contract.ReviewBundle{}, err
+	}
+
+	var evidence *contract.Evidence
+	if hasEvidence {
+		evidence = &snapshot
+	}
+
 	policy := a.policyFor(ctx, ship.ProgramID)
 	claim := a.claimFor(ctx, ship.ID, person)
 
@@ -563,6 +573,7 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		Bom:              bom,
 		Reviews:          reviews,
 		Events:           events,
+		Evidence:         evidence,
 		PriorReviews:     payloadPriorReviews(ctx, a.store, ship.ID, ship.Version),
 		Claim:            claim,
 		Draft:            a.draftFor(ctx, ship.ID, person.ID),

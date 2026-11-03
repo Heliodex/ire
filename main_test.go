@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -203,9 +204,9 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 		case "/repos/example/line-follower/readme":
 			_, _ = io.WriteString(w, strings.Repeat("Build notes and wiring details. ", 12)+`\n![board](https://example.com/board.jpg)\n<img src="https://example.com/schematic.png">`)
 		case "/repos/example/line-follower/git/trees/main":
-			_, _ = io.WriteString(w, `{"tree":[{"path":"README.md","type":"blob"},{"path":"BOM.csv","type":"blob"},{"path":"hardware/board.kicad_pcb","type":"blob"},{"path":"hardware/gerbers.zip","type":"blob"}]}`)
+			_, _ = io.WriteString(w, `{"sha":"head1","tree":[{"path":"README.md","type":"blob"},{"path":"BOM.csv","type":"blob"},{"path":"hardware/board.kicad_pcb","type":"blob"},{"path":"hardware/gerbers.zip","type":"blob"},{"path":"hardware","type":"tree"}]}`)
 		case "/repos/example/line-follower/commits":
-			_, _ = io.WriteString(w, `[{"commit":{"author":{"name":"Maker","date":"2026-11-01T10:00:00Z"},"message":"a"}},{"commit":{"author":{"name":"Maker","date":"2026-11-02T10:00:00Z"},"message":"b"}},{"commit":{"author":{"name":"Maker","date":"2026-11-03T10:00:00Z"},"message":"c"}}]`)
+			_, _ = io.WriteString(w, `[{"sha":"sha1","commit":{"author":{"name":"Maker","date":"2026-11-01T10:00:00Z"},"message":"a"}},{"sha":"sha2","commit":{"author":{"name":"Maker","date":"2026-11-02T10:00:00Z"},"message":"b"}},{"sha":"sha3","commit":{"author":{"name":"Maker","date":"2026-11-03T10:00:00Z"},"message":"c"}}]`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -236,6 +237,18 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 		}
 	}
 
+	if bundle.Evidence == nil {
+		t.Fatal("bundle has no evidence snapshot")
+	}
+
+	if bundle.Evidence.FullName != "example/line-follower" || len(bundle.Evidence.Files) != 4 || len(bundle.Evidence.Commits) != 3 {
+		t.Fatalf("evidence = %+v", bundle.Evidence)
+	}
+
+	if bundle.Evidence.HeadSha == nil || *bundle.Evidence.HeadSha != "head1" {
+		t.Errorf("head sha = %v", bundle.Evidence.HeadSha)
+	}
+
 	missingBody := ingestBody("missing:design")
 	missingBody = bytes.Replace(missingBody, []byte("example/line-follower"), []byte("missing/absent"), 1)
 
@@ -251,6 +264,82 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 	missingBundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+missingCreated.ID, nil, cookie, nil))
 	if missingBundle.Submission.Status != statusNeedsAttention || checkStatuses(missingBundle.Checks)["repo.accessible"] != statusFail {
 		t.Fatalf("missing repo = %+v", missingBundle.Submission)
+	}
+}
+
+// TestEvidenceRefresh covers the organiser-only refetch of a cached repository snapshot.
+func TestEvidenceRefresh(t *testing.T) {
+	var reads atomic.Int32
+
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.URL.Path {
+		case "/repos/example/line-follower":
+			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"example/line-follower","private":false}`)
+		case "/repos/example/line-follower/readme":
+			reads.Add(1)
+
+			_, _ = io.WriteString(w, strings.Repeat("Build notes and wiring details. ", 12)+`\n![board](https://example.com/board.jpg)`)
+		case "/repos/example/line-follower/git/trees/main":
+			_, _ = io.WriteString(w, `{"sha":"head1","tree":[{"path":"README.md","type":"blob"},{"path":"BOM.csv","type":"blob"}]}`)
+		case "/repos/example/line-follower/commits":
+			_, _ = io.WriteString(w, `[{"sha":"sha1","commit":{"author":{"name":"Maker","date":"2026-11-01T10:00:00Z"},"message":"First"}}]`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(fake.Close)
+
+	application := newTestApp(t)
+	application.config.DisableRepoChecks = false
+	application.config.GitHubAPIBase = fake.URL
+
+	body := ingestBody("refresh:design")
+
+	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	}))
+	if created.ID == "" {
+		t.Fatal("ingest did not create a ship")
+	}
+
+	reviewer := login(t, application, "reviewer@example.com")
+	organiser := login(t, application, "organiser@example.com")
+
+	forbidden := do(t, application, http.MethodPost, testBase+"/submissions/"+created.ID+"/evidence/refresh", nil, reviewer, nil)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("reviewer refresh = %d: %s", forbidden.Code, forbidden.Body.String())
+	}
+
+	before := reads.Load()
+
+	refreshed := do(t, application, http.MethodPost, testBase+"/submissions/"+created.ID+"/evidence/refresh", nil, organiser, nil)
+	if refreshed.Code != http.StatusOK {
+		t.Fatalf("refresh = %d: %s", refreshed.Code, refreshed.Body.String())
+	}
+
+	evidence := decode[contract.Evidence](t, refreshed)
+	if evidence.FullName != "example/line-follower" || len(evidence.Files) != 2 {
+		t.Fatalf("evidence = %+v", evidence)
+	}
+
+	if reads.Load() != before+1 {
+		t.Errorf("readme reads = %d, want %d", reads.Load(), before+1)
+	}
+
+	var rows int
+	if err := application.store.QueryRow(t.Context(), `select count(*) from repo_snapshot where submission_id = ?`, created.ID).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+
+	if rows != 1 {
+		t.Errorf("snapshot rows = %d, want 1", rows)
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+created.ID, nil, reviewer, nil))
+	if bundle.Evidence == nil || bundle.Evidence.FetchedAt != evidence.FetchedAt {
+		t.Fatalf("bundle evidence = %+v", bundle.Evidence)
 	}
 }
 

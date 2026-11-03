@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,10 +20,13 @@ import (
 const (
 	githubDefaultAPI = "https://api.github.com"
 
-	repositoryTimeout = 12 * time.Second
-	maxCheckBody      = 8 << 20
-	minReadmeLength   = 200
-	maxCommitPages    = 100
+	repositoryTimeout  = 12 * time.Second
+	maxCheckBody       = 8 << 20
+	minReadmeLength    = 200
+	maxCommitPages     = 100
+	maxSnapshotFiles   = 2000
+	maxSnapshotCommits = 200
+	maxReadmeText      = 200 << 10
 )
 
 var readmeImagePattern = regexp.MustCompile(`!\[[^\]]*\]\((https?://[^)\s]+)\)|<img[^>]+src=["'](https?://[^"']+)["']`)
@@ -38,6 +42,7 @@ type githubRepo struct {
 
 // githubTree is the recursive tree response.
 type githubTree struct {
+	Sha  string `json:"sha"`
 	Tree []struct {
 		Path string `json:"path"`
 		Type string `json:"type"`
@@ -48,6 +53,7 @@ type githubTree struct {
 
 // githubCommit is one commit in the list response.
 type githubCommit struct {
+	Sha    string `json:"sha"`
 	Commit struct {
 		Author struct {
 			Name string `json:"name"`
@@ -64,17 +70,17 @@ type githubClient struct {
 	token string
 }
 
-// repoChecks runs the real repository checks. Only GitHub is supported in this slice; other forges return a warning so the reviewer knows the repo was not fetched.
-func (a *reviewApp) repoChecks(ctx context.Context, repoURL string, now time.Time) []contract.CheckResult {
+// repoChecks runs the real repository checks and returns the snapshot the evidence tab reuses. Only GitHub is supported in this slice; other forges return a warning so the reviewer knows the repo was not fetched.
+func (a *reviewApp) repoChecks(ctx context.Context, repoURL string, now time.Time) ([]contract.CheckResult, *contract.Evidence) {
 	checkedAt := now.Format(timestampFormat)
 
 	if strings.TrimSpace(repoURL) == "" {
-		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", statusFail, severityBlock, "No repository URL", "Half Life sent no repo_url, so the repository cannot be checked.", checkedAt)}
+		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", statusFail, severityBlock, "No repository URL", "Half Life sent no repo_url, so the repository cannot be checked.", checkedAt)}, nil
 	}
 
 	owner, name, ok := parseGitHubRepo(repoURL)
 	if !ok {
-		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", statusWarn, severityWarn, "Only GitHub repositories are checked", "This slice fetches GitHub repositories. Open the link and check the repository by hand.", checkedAt)}
+		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", statusWarn, severityWarn, "Only GitHub repositories are checked", "This slice fetches GitHub repositories. Open the link and check the repository by hand.", checkedAt)}, nil
 	}
 
 	client := githubClient{http: a.client, base: a.config.GitHubAPIBase, token: a.config.GitHubToken}
@@ -85,11 +91,11 @@ func (a *reviewApp) repoChecks(ctx context.Context, repoURL string, now time.Tim
 	meta, status, err := client.repo(ctx, owner, name)
 	if err != nil || status != http.StatusOK {
 		status, summary, detail := repoAccessFailure(status, err)
-		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", status, severityBlock, summary, detail, checkedAt)}
+		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", status, severityBlock, summary, detail, checkedAt)}, nil
 	}
 
 	if meta.Private {
-		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", statusFail, severityBlock, "Repository is private", "Make the repository public so the board and design files can be reviewed.", checkedAt)}
+		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", statusFail, severityBlock, "Repository is private", "Make the repository public so the board and design files can be reviewed.", checkedAt)}, nil
 	}
 
 	checks := []contract.CheckResult{
@@ -114,7 +120,124 @@ func (a *reviewApp) repoChecks(ctx context.Context, repoURL string, now time.Tim
 		checks = append(checks, commitCheck(commits, checkedAt))
 	}
 
-	return checks
+	snapshot := repositoryEvidence(owner, name, meta, readme, readmeStatus, readmeErr, tree, treeStatus, treeErr, commits, commitStatus, commitErr, now)
+
+	return checks, &snapshot
+}
+
+// repositoryEvidence builds the cached snapshot shown in the evidence tab.
+func repositoryEvidence(owner, name string, meta githubRepo, readme []byte, readmeStatus int, readmeErr error, tree githubTree, treeStatus int, treeErr error, commits []githubCommit, commitStatus int, commitErr error, now time.Time) contract.Evidence {
+	fullName := meta.FullName
+	if fullName == "" {
+		fullName = owner + "/" + name
+	}
+
+	evidence := contract.Evidence{
+		Commits:   []contract.EvidenceCommit{},
+		FetchedAt: now.Format(timestampFormat),
+		Files:     []contract.EvidenceFile{},
+		Forge:     "github",
+		FullName:  fullName,
+	}
+
+	if meta.DefaultBranch != "" {
+		evidence.DefaultBranch = &meta.DefaultBranch
+	}
+
+	if treeErr == nil && treeStatus == http.StatusOK {
+		evidence.HeadSha = optionalText(tree.Sha)
+
+		for _, file := range tree.Tree {
+			if file.Type != "blob" || file.Path == "" {
+				continue
+			}
+
+			if len(evidence.Files) >= maxSnapshotFiles {
+				evidence.Truncated = true
+				break
+			}
+
+			evidence.Files = append(evidence.Files, contract.EvidenceFile{Path: file.Path, Kind: fileKind(file.Path)})
+		}
+
+		if tree.Truncated {
+			evidence.Truncated = true
+		}
+	}
+
+	if readmeErr == nil && readmeStatus == http.StatusOK {
+		text := strings.TrimSpace(string(readme))
+		if len(text) > maxReadmeText {
+			text = text[:maxReadmeText]
+			evidence.Truncated = true
+		}
+
+		evidence.Readme = optionalText(text)
+	}
+
+	if commitErr == nil && commitStatus == http.StatusOK {
+		for _, commit := range commits {
+			if len(evidence.Commits) >= maxSnapshotCommits {
+				evidence.Truncated = true
+				break
+			}
+
+			message := commit.Commit.Message
+			if index := strings.IndexByte(message, '\n'); index >= 0 {
+				message = message[:index]
+			}
+
+			evidence.Commits = append(evidence.Commits, contract.EvidenceCommit{
+				Author:  commit.Commit.Author.Name,
+				Date:    commit.Commit.Author.Date,
+				Message: message,
+				Sha:     commit.Sha,
+			})
+		}
+	}
+
+	return evidence
+}
+
+// fileKind labels a path for the file tree without guessing at its contents.
+func fileKind(path string) string {
+	lower := strings.ToLower(path)
+
+	switch {
+	case isBOMFile(lower[strings.LastIndex(lower, "/")+1:]):
+		return "bom"
+	case strings.Contains(lower, "readme"):
+		return "readme"
+	case isDesignFile(lower):
+		return "design"
+	case strings.HasSuffix(lower, ".md"):
+		return "doc"
+	case slices.Contains([]string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}, pathExtension(lower)):
+		return "image"
+	case slices.Contains([]string{".go", ".ts", ".js", ".py", ".c", ".cpp", ".h", ".rs", ".svelte"}, pathExtension(lower)):
+		return "code"
+	default:
+		return "file"
+	}
+}
+
+// optionalText returns a pointer for a value the contract treats as absent.
+func optionalText(value string) *string {
+	if value == "" {
+		return nil
+	}
+
+	return &value
+}
+
+// pathExtension returns the suffix including the dot.
+func pathExtension(path string) string {
+	index := strings.LastIndex(path, ".")
+	if index < 0 {
+		return ""
+	}
+
+	return path[index:]
 }
 
 // parseGitHubRepo extracts owner and repository from a GitHub URL.

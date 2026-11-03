@@ -275,41 +275,39 @@ The auth flow and signed HTTP delivery are implemented and tested against a fake
 
 **Goal:** fetch and cache the evidence reviewers currently open in other tabs, without slowing the first paint.
 
-### Data and fetcher
+The repository half is working: ingest caches the README, file tree and commits, the Evidence tab shows them, and an organiser can refresh the cache. Journal and clip parsing, Markdown rendering and richer tests remain.
 
-- [ ] Add `repo_snapshot` with submission, version, forge, repo, head SHA, tree, README, commits, fetched_at, error and ETag.
-- [ ] Add a job or tick step that fetches the README, tree and commits after the repo checks.
-- [ ] Use the commit window from the programme start or previous approval through the submission time.
-- [ ] Store commit count, authors, co-authors, first/last date and distinct days.
-- [ ] Store file paths and kinds, not file contents, unless a specific check asks for them.
-- [ ] Cap README, tree, commit pages and total payload size.
-- [ ] Store media and clip URLs and metadata; do not proxy or copy project binaries.
-- [ ] Validate evidence URLs as HTTPS; do not fetch private or non-allowlisted hosts.
-- [ ] Make snapshot fetches idempotent per submission/version and refreshable.
-- [ ] Record fetch errors without turning them into a check failure.
-- [ ] Reuse the forge cache and rate-limit handling from the checks work.
+### Working now
 
-### UI
+- [x] `repo_snapshot` stores forge, full name, default branch, head SHA, README, files, commits, fetch time and error per submission version.
+- [x] The snapshot is written in the same transaction as the ingest and its checks.
+- [x] README is capped at 200 KB; the tree at 2,000 blob paths; commits at 200 with a truncated flag.
+- [x] File paths are labelled by kind (`bom`, `readme`, `design`, `doc`, `image`, `code`, `file`) without storing contents.
+- [x] Commit rows keep sha, author, date and the first line of the message.
+- [x] Evidence rides on the review bundle as an optional field, so fixtures and old rows stay valid.
+- [x] An Evidence tab lists the files and commits, shows the README as preformatted text and never renders repository HTML.
+- [x] Organisers can refresh the snapshot with `POST /evidence/refresh`; reviewers get `403`.
+- [x] A refresh replaces the row for the current version and leaves checks and decisions untouched.
+- [x] Empty, error and narrow-screen states are handled; the tab strip wraps instead of cutting off.
+- [x] Fake-forge tests cover snapshot persistence, the refresh role gate, one row per version and bundle delivery.
+- [x] Verified against a real public repository (`C6-H/Starbie`) from the deployed component.
 
-- [ ] Add an Evidence tab or dock for README, file tree, commits, journals and clips.
-- [ ] Render README Markdown sanitised; treat HTML as text, never raw.
-- [ ] Add a file tree browser with paths and file-kind icons.
-- [ ] Add a commit list with author, date and message; mark after-submit commits.
-- [ ] Show journal images and clips from the ingest payload with counts and coverage.
-- [ ] Show the last fetched time and a refresh action for organisers.
-- [ ] Keep the review screen fast: lazy-load evidence, cap lists, no giant images.
-- [ ] Support mobile stacking and the existing tab/keyboard patterns.
+### Remaining
 
-### Tests and docs
-
-- [ ] Fake-forge tests for README, tree, commits and snapshot persistence.
-- [ ] Markdown/HTML sanitisation tests, including script and iframe payloads.
-- [ ] Oversized README/tree and paginated commit tests.
-- [ ] Snapshot idempotency and refresh tests.
-- [ ] Snapshot error and stale-state UI tests.
+- [ ] Move the snapshot fetch to the post-check job so ingest returns before the forge round trip.
+- [ ] Use the commit window from programme start or the previous approval through the submission time.
+- [ ] Store co-authors and merge commits, and mark commits made after submission.
+- [ ] Parse BOM tables for parts, quantities, prices and vendors.
+- [ ] Store journal images and clip URLs from the ingest payload with counts and coverage.
+- [ ] Validate evidence and media URLs as HTTPS; do not proxy project binaries.
+- [ ] Reuse the forge cache and rate-limit handling; add ETag and a short unavailable cache.
+- [ ] Render README Markdown safely through parsed blocks rather than raw HTML.
+- [ ] Add a file-tree depth filter and a commit search for large repositories.
+- [ ] Add an explicit stale notice when the head SHA has moved since the snapshot.
+- [ ] Add oversized README/tree, paginated commit, sanitisation and refresh failure tests.
 - [ ] Document what is stored, what is linked, retention and privacy.
 
-**Done when:** opening a ship shows its README, file tree and commits without leaving Review, the data is cached for the version, and a new version refreshes it.
+**Done when:** opening a ship shows its README, file tree, commits, journals and clips without leaving Review, the data is cached for the version, and a new version refreshes it.
 
 ## Cross-cutting work for the four steps
 

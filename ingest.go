@@ -176,7 +176,7 @@ func (a *reviewApp) allowLegacySignature(ctx context.Context, programID string) 
 
 // ingestShip writes a new version, or reports the existing delivery or open ship. response is the API body; status is the HTTP status.
 //
-//nolint:funlen,maintidx // The transaction statements and evidence mapping belong together.
+//nolint:funlen,maintidx,gocognit // The transaction statements and evidence mapping belong together.
 func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request contract.IngestRequest, deliveryID, rawBody string) (contract.IngestAccepted, int, error) {
 	now := a.nowText()
 
@@ -237,8 +237,12 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 	nowTime := a.now()
 	checks := localChecks(request, nowTime)
 
+	var evidence *contract.Evidence
+
 	if request.RepoURL != nil && !a.config.DisableRepoChecks {
-		checks = mergeChecks(checks, a.repoChecks(ctx, *request.RepoURL, nowTime))
+		remote, snapshot := a.repoChecks(ctx, *request.RepoURL, nowTime)
+		checks = mergeChecks(checks, remote)
+		evidence = snapshot
 	}
 
 	summary := checkCountsFor(checks)
@@ -368,6 +372,27 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, checked_at)
 				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{newID("chk"), id, version, check.Key, check.Label, check.Group, check.Status, check.Severity, check.Summary, stringValue(check.Detail), check.CheckedAt},
+		})
+	}
+
+	if evidence != nil {
+		files, marshalErr := json.Marshal(evidence.Files)
+		if marshalErr != nil {
+			return contract.IngestAccepted{}, 0, marshalErr
+		}
+
+		commits, marshalErr := json.Marshal(evidence.Commits)
+		if marshalErr != nil {
+			return contract.IngestAccepted{}, 0, marshalErr
+		}
+
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha,
+					file_count, truncated, readme_text, files, commits, fetched_at, error)
+				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')`,
+			Args: []any{id, version, evidence.Forge, evidence.FullName, stringValue(evidence.DefaultBranch),
+				stringValue(evidence.HeadSha), len(evidence.Files), boolInt(evidence.Truncated), stringValue(evidence.Readme),
+				string(files), string(commits), evidence.FetchedAt},
 		})
 	}
 

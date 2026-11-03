@@ -690,6 +690,159 @@ func (j *EventsResponse) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type Evidence struct {
+	// Commits corresponds to the JSON schema field "commits".
+	Commits []EvidenceCommit `json:"commits" yaml:"commits" mapstructure:"commits"`
+
+	// DefaultBranch corresponds to the JSON schema field "defaultBranch".
+	DefaultBranch *string `json:"defaultBranch,omitempty,omitzero" yaml:"defaultBranch,omitempty" mapstructure:"defaultBranch,omitempty"`
+
+	// Error corresponds to the JSON schema field "error".
+	Error *string `json:"error,omitempty,omitzero" yaml:"error,omitempty" mapstructure:"error,omitempty"`
+
+	// FetchedAt corresponds to the JSON schema field "fetchedAt".
+	FetchedAt string `json:"fetchedAt" yaml:"fetchedAt" mapstructure:"fetchedAt"`
+
+	// Files corresponds to the JSON schema field "files".
+	Files []EvidenceFile `json:"files" yaml:"files" mapstructure:"files"`
+
+	// Forge corresponds to the JSON schema field "forge".
+	Forge string `json:"forge" yaml:"forge" mapstructure:"forge"`
+
+	// FullName corresponds to the JSON schema field "fullName".
+	FullName string `json:"fullName" yaml:"fullName" mapstructure:"fullName"`
+
+	// HeadSha corresponds to the JSON schema field "headSha".
+	HeadSha *string `json:"headSha,omitempty,omitzero" yaml:"headSha,omitempty" mapstructure:"headSha,omitempty"`
+
+	// Readme corresponds to the JSON schema field "readme".
+	Readme *string `json:"readme,omitempty,omitzero" yaml:"readme,omitempty" mapstructure:"readme,omitempty"`
+
+	// Truncated corresponds to the JSON schema field "truncated".
+	Truncated bool `json:"truncated" yaml:"truncated" mapstructure:"truncated"`
+}
+
+type EvidenceCommit struct {
+	// Author corresponds to the JSON schema field "author".
+	Author string `json:"author" yaml:"author" mapstructure:"author"`
+
+	// Date corresponds to the JSON schema field "date".
+	Date string `json:"date" yaml:"date" mapstructure:"date"`
+
+	// Message corresponds to the JSON schema field "message".
+	Message string `json:"message" yaml:"message" mapstructure:"message"`
+
+	// Sha corresponds to the JSON schema field "sha".
+	Sha string `json:"sha" yaml:"sha" mapstructure:"sha"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EvidenceCommit) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["author"]; raw != nil && !ok {
+		return fmt.Errorf("field author in EvidenceCommit: required")
+	}
+	if _, ok := raw["date"]; raw != nil && !ok {
+		return fmt.Errorf("field date in EvidenceCommit: required")
+	}
+	if _, ok := raw["message"]; raw != nil && !ok {
+		return fmt.Errorf("field message in EvidenceCommit: required")
+	}
+	if _, ok := raw["sha"]; raw != nil && !ok {
+		return fmt.Errorf("field sha in EvidenceCommit: required")
+	}
+	type Plain EvidenceCommit
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Sha)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "sha", 1)
+	}
+	*j = EvidenceCommit(plain)
+	return nil
+}
+
+type EvidenceFile struct {
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind" yaml:"kind" mapstructure:"kind"`
+
+	// Path corresponds to the JSON schema field "path".
+	Path string `json:"path" yaml:"path" mapstructure:"path"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *EvidenceFile) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in EvidenceFile: required")
+	}
+	if _, ok := raw["path"]; raw != nil && !ok {
+		return fmt.Errorf("field path in EvidenceFile: required")
+	}
+	type Plain EvidenceFile
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Kind)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "kind", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Path)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "path", 1)
+	}
+	*j = EvidenceFile(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Evidence) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["commits"]; raw != nil && !ok {
+		return fmt.Errorf("field commits in Evidence: required")
+	}
+	if _, ok := raw["fetchedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field fetchedAt in Evidence: required")
+	}
+	if _, ok := raw["files"]; raw != nil && !ok {
+		return fmt.Errorf("field files in Evidence: required")
+	}
+	if _, ok := raw["forge"]; raw != nil && !ok {
+		return fmt.Errorf("field forge in Evidence: required")
+	}
+	if _, ok := raw["fullName"]; raw != nil && !ok {
+		return fmt.Errorf("field fullName in Evidence: required")
+	}
+	if _, ok := raw["truncated"]; raw != nil && !ok {
+		return fmt.Errorf("field truncated in Evidence: required")
+	}
+	type Plain Evidence
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.FetchedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fetchedAt", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Forge)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "forge", 1)
+	}
+	if utf8.RuneCountInString(string(plain.FullName)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "fullName", 1)
+	}
+	*j = Evidence(plain)
+	return nil
+}
+
 type FakeDeliveriesResponse struct {
 	// Deliveries corresponds to the JSON schema field "deliveries".
 	Deliveries []FakeDelivery `json:"deliveries" yaml:"deliveries" mapstructure:"deliveries"`
@@ -1923,6 +2076,9 @@ type ReviewBundle struct {
 
 	// Events corresponds to the JSON schema field "events".
 	Events []SubmissionEvent `json:"events" yaml:"events" mapstructure:"events"`
+
+	// Evidence corresponds to the JSON schema field "evidence".
+	Evidence *Evidence `json:"evidence,omitempty,omitzero" yaml:"evidence,omitempty" mapstructure:"evidence,omitempty"`
 
 	// Journals corresponds to the JSON schema field "journals".
 	Journals []JournalEntry `json:"journals" yaml:"journals" mapstructure:"journals"`

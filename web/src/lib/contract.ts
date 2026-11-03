@@ -275,6 +275,40 @@ export const draftSchema = pipe(
 	title("DraftState"),
 )
 
+export const evidenceFileSchema = pipe(
+	object({
+		kind: pipe(string(), minLength(1)),
+		path: pipe(string(), minLength(1)),
+	}),
+	title("EvidenceFile"),
+)
+
+export const evidenceCommitSchema = pipe(
+	object({
+		author: string(),
+		date: string(),
+		message: string(),
+		sha: pipe(string(), minLength(1)),
+	}),
+	title("EvidenceCommit"),
+)
+
+export const evidenceSchema = pipe(
+	object({
+		commits: array(evidenceCommitSchema),
+		defaultBranch: optionalString,
+		error: optionalString,
+		fetchedAt: timestamp,
+		files: array(evidenceFileSchema),
+		forge: pipe(string(), minLength(1)),
+		fullName: pipe(string(), minLength(1)),
+		headSha: optionalString,
+		readme: optionalString,
+		truncated: boolean(),
+	}),
+	title("Evidence"),
+)
+
 export const reviewBundleSchema = pipe(
 	object({
 		acknowledgements: array(string()),
@@ -283,6 +317,7 @@ export const reviewBundleSchema = pipe(
 		claim: optional(claimSchema),
 		draft: optional(draftSchema),
 		events: array(eventSchema),
+		evidence: optional(evidenceSchema),
 		journals: array(journalSchema),
 		policy: reviewPolicySchema,
 		priorReviews: array(priorReviewSchema),

@@ -128,6 +128,96 @@
 				"title": "SubmissionEvent"
 			}
 		},
+		"evidence": {
+			"type": "object",
+			"properties": {
+				"commits": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"author": {
+								"type": "string"
+							},
+							"date": {
+								"type": "string"
+							},
+							"message": {
+								"type": "string"
+							},
+							"sha": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"author",
+							"date",
+							"message",
+							"sha"
+						],
+						"title": "EvidenceCommit"
+					}
+				},
+				"defaultBranch": {
+					"type": "string"
+				},
+				"error": {
+					"type": "string"
+				},
+				"fetchedAt": {
+					"type": "string",
+					"minLength": 1
+				},
+				"files": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"kind": {
+								"type": "string",
+								"minLength": 1
+							},
+							"path": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"kind",
+							"path"
+						],
+						"title": "EvidenceFile"
+					}
+				},
+				"forge": {
+					"type": "string",
+					"minLength": 1
+				},
+				"fullName": {
+					"type": "string",
+					"minLength": 1
+				},
+				"headSha": {
+					"type": "string"
+				},
+				"readme": {
+					"type": "string"
+				},
+				"truncated": {
+					"type": "boolean"
+				}
+			},
+			"required": [
+				"commits",
+				"fetchedAt",
+				"files",
+				"forge",
+				"fullName",
+				"truncated"
+			],
+			"title": "Evidence"
+		},
 		"journals": {
 			"type": "array",
 			"items": {

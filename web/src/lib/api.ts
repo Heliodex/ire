@@ -6,6 +6,7 @@ import {
 	decisionResultSchema,
 	draftResponseSchema,
 	errorResponseSchema,
+	evidenceSchema,
 	fakeDeliveriesResponseSchema,
 	meResponseSchema,
 	outboxResponseSchema,
@@ -25,6 +26,7 @@ export type BomLine = Bundle["bom"][number]
 export type Review = Bundle["reviews"][number]
 export type Claim = InferOutput<typeof claimResponseSchema>["claim"]
 export type Decision = InferOutput<typeof decisionResultSchema>
+export type Evidence = InferOutput<typeof evidenceSchema>
 export type OutboxRow = InferOutput<typeof outboxResponseSchema>["deliveries"][number]
 export type FakeDelivery = InferOutput<typeof fakeDeliveriesResponseSchema>["deliveries"][number]
 
@@ -107,6 +109,14 @@ export async function fetchQueue(filter = "all", stage = 1): Promise<Queue> {
 export async function fetchBundle(id: string): Promise<Bundle> {
 	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}`)
 	return parseJSON(response, reviewBundleSchema)
+}
+
+// refreshRepositoryEvidence refetches the cached repository snapshot for an organiser.
+export async function refreshRepositoryEvidence(id: string): Promise<Evidence> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/evidence/refresh`, {
+		method: "POST",
+	})
+	return parseJSON(response, evidenceSchema)
 }
 
 // claimShip takes or refreshes the claim.
