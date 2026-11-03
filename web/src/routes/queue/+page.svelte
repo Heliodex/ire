@@ -1,6 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation"
-import { onMount } from "svelte"
+import { onMount, tick } from "svelte"
 import { claimShip, fetchMe, fetchQueue, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
@@ -17,6 +17,7 @@ let error = $state("")
 let selected = $state(0)
 let search = $state("")
 let filterTabs = $state<HTMLDivElement | null>(null)
+let listElement = $state<HTMLDivElement | null>(null)
 
 // cache keeps each filter's last response for this visit, so switching back is instant while a fresh copy loads behind it.
 const cache = new Map<Filter, Queue>()
@@ -43,12 +44,12 @@ onMount((): (() => void) => {
 	function onKeydown(event: KeyboardEvent): void {
 		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
 
-		if (event.key === "j") {
-			selected = Math.min(selected + 1, visible.length - 1)
+		if (event.key === "ArrowDown") {
 			event.preventDefault()
-		} else if (event.key === "k") {
-			selected = Math.max(selected - 1, 0)
+			void moveSelection(1)
+		} else if (event.key === "ArrowUp") {
 			event.preventDefault()
+			void moveSelection(-1)
 		} else if (event.key === "Enter" && visible[selected]) {
 			void open(visible[selected])
 			event.preventDefault()
@@ -144,6 +145,15 @@ function moveFilter(step: number): void {
 	void choose(filters[next].key)
 }
 
+// moveSelection moves the row cursor and scrolls the new row into view when the list is taller than the viewport.
+async function moveSelection(step: number): Promise<void> {
+	const last = Math.max(visible.length - 1, 0)
+	selected = Math.min(Math.max(selected + step, 0), last)
+
+	await tick()
+	listElement?.querySelector<HTMLElement>('.row[aria-current="true"]')?.scrollIntoView({ block: "nearest" })
+}
+
 async function open(item: QueueItem): Promise<void> {
 	opening = item.id
 	error = ""
@@ -206,7 +216,7 @@ async function open(item: QueueItem): Promise<void> {
 		<h2 id="list-title">Open ships</h2>
 		<span>
 			{visible.length} {visible.length === 1 ? "ship" : "ships"} ·
-			<kbd class="ui-kbd">J</kbd><kbd class="ui-kbd">K</kbd> to move ·
+			<kbd class="ui-kbd">↑</kbd><kbd class="ui-kbd">↓</kbd> to move ·
 			<kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd> filters ·
 			<kbd class="ui-kbd">Enter</kbd> to open
 		</span>
@@ -224,7 +234,7 @@ async function open(item: QueueItem): Promise<void> {
 			<span>{filter === "attention" ? "The checks found nothing blocking." : "Check back after the next ingest."}</span>
 		</div>
 	{:else}
-		<div class="ui-card list" class:refreshing>
+		<div bind:this={listElement} class="ui-card list" class:refreshing>
 			{#each visible as item, index (item.id)}
 				<button
 					aria-current={index === selected}
