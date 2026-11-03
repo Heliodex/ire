@@ -11,11 +11,15 @@ type Filter = "all" | "fast" | "attention" | "mine"
 let queue = $state<Queue>({ counts: { ready: 0, claimed: 0, needsAttention: 0, stage2Hold: 0 }, items: [] })
 let filter = $state<Filter>("all")
 let loading = $state(true)
+let refreshing = $state(false)
 let opening = $state("")
 let error = $state("")
 let selected = $state(0)
 let search = $state("")
 let filterTabs = $state<HTMLDivElement | null>(null)
+
+// cache keeps each filter's last response for this visit, so switching back is instant while a fresh copy loads behind it.
+const cache = new Map<Filter, Queue>()
 
 const filters: { key: Filter; label: string }[] = [
 	{ key: "all", label: "All open" },
@@ -89,6 +93,7 @@ async function load(target = filter): Promise<void> {
 		const next = await fetchQueue(target)
 		if (target !== filter) return
 
+		cache.set(target, next)
 		queue = next
 		selected = Math.min(selected, Math.max(queue.items.length - 1, 0))
 		error = ""
@@ -99,14 +104,34 @@ async function load(target = filter): Promise<void> {
 		}
 		if (target === filter) error = err instanceof Error ? err.message : "Could not load the queue."
 	} finally {
-		if (target === filter) loading = false
+		if (target === filter) {
+			loading = false
+			refreshing = false
+		}
 	}
 }
 
 async function choose(next: Filter): Promise<void> {
+	if (next === filter) {
+		void load(next)
+		return
+	}
+
 	filter = next
-	loading = true
 	selected = 0
+	error = ""
+
+	const cached = cache.get(next)
+	if (cached) {
+		// Show the last copy immediately and let load() replace it without a skeleton.
+		queue = cached
+		refreshing = false
+		void load(next)
+		return
+	}
+
+	// Keep the current rows visible while the first fetch for this filter runs.
+	refreshing = true
 	await load(next)
 }
 
@@ -176,7 +201,7 @@ async function open(item: QueueItem): Promise<void> {
 	<div class="ui-notice" data-tone="bad" role="alert">{error}</div>
 {/if}
 
-<section aria-busy={loading} aria-labelledby="list-title">
+<section aria-busy={loading || refreshing} aria-labelledby="list-title">
 	<div class="list-head">
 		<h2 id="list-title">Open ships</h2>
 		<span>
@@ -199,7 +224,7 @@ async function open(item: QueueItem): Promise<void> {
 			<span>{filter === "attention" ? "The checks found nothing blocking." : "Check back after the next ingest."}</span>
 		</div>
 	{:else}
-		<div class="ui-card list">
+		<div class="ui-card list" class:refreshing>
 			{#each visible as item, index (item.id)}
 				<button
 					aria-current={index === selected}
@@ -337,6 +362,11 @@ h1 {
 
 .list {
 	overflow: hidden;
+	transition: opacity 120ms ease;
+}
+
+.list.refreshing {
+	opacity: 0.55;
 }
 
 .row {
