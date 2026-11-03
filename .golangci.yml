@@ -58,7 +58,7 @@ linters:
         cyclop:
             max-complexity: 50
         funlen:
-            lines: 150
+            lines: 130
             statements: 100
         gocognit:
             min-complexity: 50
