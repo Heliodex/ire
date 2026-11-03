@@ -180,30 +180,27 @@ async function open(item: QueueItem): Promise<void> {
 					onclick={(): Promise<void> => open(item)}
 					type="button"
 				>
-					<div class="row-main">
-						<div class="row-title">
-							<h3>{item.title}</h3>
-							<span class="ui-badge" data-tone={statusTone(item.status)}>{humanStatus(item.status)}</span>
-							{#if item.theme}<span class="theme">{item.theme}</span>{/if}
-						</div>
-						<div class="row-meta">
-							<span>{item.makerName}</span>
-							<span>v{item.version}</span>
-							<span>{formatHours(item.hoursClaimedSeconds)} claimed</span>
-							<span>{timeAgo(item.ingestedAt)}</span>
-							{#if item.claimedBy}
-								<span class="claim">
-									{item.claimedBy === session.me?.user.email ? "Yours" : `Claimed by ${item.claimedBy}`}
-								</span>
-							{/if}
-						</div>
-						<div class="row-checks">
+					<span class="ship-title" title={item.title}>{item.title}</span>
+					<span
+						class="ui-badge status"
+						data-tone={statusTone(item.status)}
+						title={item.claimedBy ? `Claimed by ${item.claimedBy}` : humanStatus(item.status)}
+					>
+						{item.claimedBy === session.me?.user.email ? "Yours" : humanStatus(item.status)}
+					</span>
+					<span class="theme">{item.theme ?? ""}</span>
+					<div class="facts">
+						<span class="maker">{item.makerName}</span>
+						<span class="version">v{item.version}</span>
+						<span class="hours">{formatHours(item.hoursClaimedSeconds)} claimed</span>
+						<span class="age">{timeAgo(item.ingestedAt)}</span>
+						<span class="checks">
 							{#if item.checkSummary.pass > 0}<span class="pass">{item.checkSummary.pass} pass</span>{/if}
 							{#if item.checkSummary.warn > 0}<span class="warn">{item.checkSummary.warn} warn</span>{/if}
 							{#if item.checkSummary.fail > 0}<span class="fail">{item.checkSummary.fail} fail</span>{/if}
 							{#if item.checkSummary.error > 0}<span class="fail">{item.checkSummary.error} error</span>{/if}
 							{#if item.checkSummary.overall === "pass"}<span class="fast">Fast lane</span>{/if}
-						</div>
+						</span>
 					</div>
 					<span class="row-action">
 						{opening === item.id ? "Claiming…" : "Open"}
@@ -301,11 +298,12 @@ h1 {
 }
 
 .row {
-	display: flex;
-	width: 100%;
-	gap: var(--space-4);
+	display: grid;
+	grid-template-columns:
+		minmax(0, 1fr) 96px 64px minmax(110px, 160px) 36px 96px 64px minmax(120px, 160px) 56px;
+	gap: var(--space-3);
 	align-items: center;
-	justify-content: space-between;
+	width: 100%;
 	padding: var(--space-3) var(--space-4);
 	text-align: left;
 	background: transparent;
@@ -330,72 +328,76 @@ h1 {
 	cursor: wait;
 }
 
-.row-main {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: var(--space-1);
-	min-width: 0;
-}
-
-.row-title {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-	align-items: center;
-}
-
-.row-title h3 {
+.ship-title {
+	overflow: hidden;
 	font-size: var(--text-md);
 	font-weight: 700;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.status {
+	justify-self: start;
 }
 
 .theme {
+	overflow: hidden;
 	font-size: var(--text-xs);
 	color: var(--text-3);
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.row-meta {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-3);
+.facts {
+	display: contents;
+}
+
+.maker,
+.hours {
+	overflow: hidden;
 	font-size: var(--text-sm);
 	color: var(--text-2);
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.claim {
-	color: var(--primary);
+.version,
+.age {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+	font-variant-numeric: tabular-nums;
 }
 
-.row-checks {
+.checks {
 	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-3);
-	padding-top: var(--space-1);
+	gap: var(--space-2);
+	align-items: baseline;
+	overflow: hidden;
 	font-size: var(--text-xs);
 	font-weight: 700;
+	white-space: nowrap;
 }
 
-.row-checks .pass {
+.checks .pass {
 	color: var(--status-approved);
 }
 
-.row-checks .warn {
+.checks .warn {
 	color: var(--status-pending);
 }
 
-.row-checks .fail {
+.checks .fail {
 	color: var(--status-rejected);
 }
 
-.row-checks .fast {
+.checks .fast {
 	color: var(--text-3);
 	font-weight: 600;
 }
 
 .row-action {
 	display: inline-flex;
-	flex: none;
+	justify-self: end;
 	gap: var(--space-1);
 	align-items: center;
 	font-size: var(--text-sm);
@@ -435,6 +437,40 @@ h1 {
 	white-space: nowrap;
 }
 
+@media (max-width: 1024px) {
+	.row {
+		grid-template-columns: minmax(0, 1fr) 96px 64px auto;
+		grid-template-areas:
+			"title status theme action"
+			"facts facts facts facts";
+		row-gap: var(--space-1);
+	}
+
+	.ship-title {
+		grid-area: title;
+	}
+
+	.status {
+		grid-area: status;
+	}
+
+	.theme {
+		grid-area: theme;
+	}
+
+	.row-action {
+		grid-area: action;
+	}
+
+	.facts {
+		display: grid;
+		grid-template-columns: minmax(110px, 1fr) 36px 96px 64px minmax(120px, 160px);
+		gap: var(--space-3);
+		grid-area: facts;
+		align-items: baseline;
+	}
+}
+
 @media (max-width: 640px) {
 	.stats {
 		width: 100%;
@@ -450,11 +486,17 @@ h1 {
 	}
 
 	.row {
-		align-items: flex-start;
+		grid-template-columns: auto 1fr auto;
+		grid-template-areas:
+			"title title action"
+			"status theme theme"
+			"facts facts facts";
 	}
 
-	.row-action {
-		padding-top: var(--space-1);
+	.facts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1) var(--space-3);
 	}
 }
 </style>
