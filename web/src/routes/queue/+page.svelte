@@ -269,8 +269,10 @@ async function open(item: QueueItem): Promise<void> {
 					<div class="facts">
 						<span class="maker">{item.makerName}</span>
 						<span class="version">v{item.version}</span>
-						<span class="hours">{formatHours(item.hoursClaimedSeconds)} claimed</span>
-						<span class="age">{timeAgo(item.ingestedAt)}</span>
+						<span class="timing">
+							<span class="hours">{formatHours(item.hoursClaimedSeconds)} claimed</span>
+							<span class="age">{timeAgo(item.ingestedAt)}</span>
+						</span>
 					</div>
 					<span class="checks">
 						<span class="counts">
@@ -474,6 +476,10 @@ h1 {
 	display: contents;
 }
 
+.timing {
+	display: contents;
+}
+
 .maker,
 .hours {
 	overflow: hidden;
@@ -596,12 +602,11 @@ h1 {
 
 @media (max-width: 1024px) {
 	.row {
-		grid-template-columns: 64px minmax(0, 1fr) minmax(200px, 320px);
+		grid-template-columns: 64px minmax(0, 1fr) 170px 150px 56px;
 		grid-template-areas:
-			"thumb title badges"
-			"thumb facts checks"
-			"thumb facts action";
-		column-gap: var(--space-4);
+			"thumb title badges checks action"
+			"thumb facts facts facts facts";
+		column-gap: var(--space-3);
 		row-gap: var(--space-1);
 	}
 
@@ -632,10 +637,17 @@ h1 {
 
 	.facts {
 		display: grid;
-		grid-template-columns: minmax(80px, 1.4fr) 36px minmax(80px, 1fr) minmax(56px, 0.9fr);
+		grid-template-columns: minmax(120px, 260px) 36px minmax(90px, 1fr);
 		gap: var(--space-2);
 		grid-area: facts;
-		align-items: baseline;
+		align-items: center;
+	}
+
+	.timing {
+		display: flex;
+		flex-direction: column;
+		justify-self: end;
+		text-align: right;
 	}
 }
 
@@ -666,6 +678,10 @@ h1 {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-1) var(--space-3);
+	}
+
+	.version {
+		margin-right: auto;
 	}
 }
 </style>
