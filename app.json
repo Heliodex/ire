@@ -11,13 +11,15 @@
 		"build": "cd web && bun install && cd .. && go tool componentize-go -d \"$(go list -m -f '{{.Dir}}' github.com/heliodex/better-deploy/wt/packages)/wit\" -w wt:app/app build",
 		"command": "bun run dev",
 		"proxy": [
-			"/api"
+			"/api",
+			"/auth"
 		],
 		"watch": [
 			"web/src/lib/contract.ts"
 		]
 	},
 	"health": "/healthz",
+	"job_concurrency": 4,
 	"host": "review.localhost",
 	"memory_mb": 128,
 	"name": "review",

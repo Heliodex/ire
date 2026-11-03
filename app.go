@@ -32,6 +32,8 @@ const (
 
 	claimTTL = 30 * time.Minute
 
+	checkStaleAfter = 10 * time.Minute
+
 	outboundTimeout = 15 * time.Second
 
 	minDescriptionLength = 160
@@ -101,6 +103,8 @@ type config struct {
 	SeedFixtures      bool
 	AllowDevAccounts  bool
 	DisableRepoChecks bool
+	EnableJobs        bool
+	Enqueue           func(context.Context, app.JobRequest) (bool, error)
 }
 
 // reviewApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.
@@ -116,6 +120,13 @@ type reviewApp struct {
 func newReviewApp(store *storage.Client, client *http.Client, cfg config) *reviewApp {
 	if client == nil {
 		client = http.DefaultClient
+	}
+
+	if cfg.EnableJobs && cfg.Enqueue == nil {
+		cfg.Enqueue = func(ctx context.Context, request app.JobRequest) (bool, error) {
+			_, created, err := app.EnqueueJob(ctx, client, request)
+			return created, err
+		}
 	}
 
 	a := &reviewApp{store: store, client: client, mux: http.NewServeMux(), config: cfg, clock: time.Now}
@@ -177,6 +188,7 @@ func (a *reviewApp) routes() {
 	a.mux.HandleFunc("GET /api/v1/dev/outbox/received", a.handleFakeDeliveries)
 
 	a.mux.HandleFunc("POST /jobs/tick", a.handleTick)
+	a.mux.HandleFunc("POST /jobs/checks", a.handleJobChecks)
 }
 
 // programFor resolves the path's programme slug, writing a 404 when it does not exist.

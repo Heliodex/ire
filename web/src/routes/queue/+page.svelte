@@ -44,7 +44,28 @@ const visible = $derived(
 
 onMount((): (() => void) => {
 	void boot()
+
 	const timer = setInterval((): void => void load(), 10000)
+
+	// Storage writes publish a compact event, so the queue refetches immediately instead of waiting for the poll.
+	let pending: ReturnType<typeof setTimeout> | null = null
+	let stream: EventSource | null = null
+
+	function onStorageEvent(): void {
+		if (pending) return
+
+		pending = setTimeout((): void => {
+			pending = null
+			void load()
+		}, 250)
+	}
+
+	try {
+		stream = new EventSource("/v1/events?topic=storage")
+		stream.addEventListener("message", onStorageEvent)
+	} catch {
+		// EventSource is optional; the interval remains the fallback.
+	}
 
 	function onKeydown(event: KeyboardEvent): void {
 		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
@@ -71,6 +92,8 @@ onMount((): (() => void) => {
 
 	return (): void => {
 		clearInterval(timer)
+		stream?.close()
+		if (pending) clearTimeout(pending)
 		window.removeEventListener("keydown", onKeydown)
 	}
 })

@@ -57,6 +57,8 @@ func (a *reviewApp) handleTick(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, _ = a.store.Exec(r.Context(), `delete from session where expires_at <= ?`, now)
+	_, _ = a.store.Exec(r.Context(), `update submission set status = 'needs_attention', updated_at = ?
+		where status = 'checking' and ingested_at < ?`, now, a.later(-checkStaleAfter))
 
 	app.WriteJSON(w, http.StatusOK, map[string]int{"delivered": delivered, "retried": retried, "failed": failed})
 }

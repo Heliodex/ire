@@ -7,7 +7,7 @@ import (
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 2
+const schemaVersion = 3
 
 // schemaStatements is the prototype subset of plan/03-data-model.md: programmes, people, sessions, ships, evidence, checks, claims, reviews, drafts, timeline, audit, outbox and settings. Fraud, forms, counters and retention jobs come later.
 //
@@ -50,6 +50,14 @@ func schemaStatements() []storage.Statement {
 			created_at text not null,
 			created_by text,
 			unique (program_id, user_id)
+		)`,
+
+		`create table if not exists login_flow (
+			state text primary key,
+			verifier text not null,
+			nonce text not null,
+			redirect_uri text not null,
+			created_at text not null
 		)`,
 
 		`create table if not exists session (

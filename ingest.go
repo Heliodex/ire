@@ -237,12 +237,19 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 	nowTime := a.now()
 	checks := localChecks(request, nowTime)
 
-	var evidence *contract.Evidence
+	var (
+		evidence     *contract.Evidence
+		queuedChecks bool
+	)
 
 	if request.RepoURL != nil && !a.config.DisableRepoChecks {
-		remote, snapshot := a.repoChecks(ctx, *request.RepoURL, nowTime)
-		checks = mergeChecks(checks, remote)
-		evidence = snapshot
+		if a.config.EnableJobs && a.config.Enqueue != nil {
+			queuedChecks = true
+		} else {
+			remote, snapshot := a.repoChecks(ctx, *request.RepoURL, nowTime)
+			checks = mergeChecks(checks, remote)
+			evidence = snapshot
+		}
 	}
 
 	summary := checkCountsFor(checks)
@@ -253,7 +260,11 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 	}
 
 	status := statusReady
-	if summary.Overall == checkOverallFail {
+
+	switch {
+	case queuedChecks:
+		status = statusChecking
+	case summary.Overall == checkOverallFail:
 		status = statusNeedsAttention
 	}
 
@@ -398,6 +409,10 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 
 	if _, err := a.store.Transaction(ctx, statements...); err != nil {
 		return contract.IngestAccepted{}, 0, err
+	}
+
+	if queuedChecks {
+		a.queueRepositoryChecks(ctx, id, version)
 	}
 
 	return contract.IngestAccepted{ID: id, Status: "accepted", Version: version}, http.StatusCreated, nil

@@ -242,6 +242,11 @@ func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if ship.Status == statusChecking {
+		app.WriteError(w, http.StatusConflict, "checks are still running")
+		return
+	}
+
 	secondPass := ship.Stage == 2 || ship.Status == statusStage2Hold
 	if secondPass && !canReviewSecondPass(person.Role) {
 		app.WriteError(w, http.StatusForbidden, "only organisers can claim a second-pass ship")

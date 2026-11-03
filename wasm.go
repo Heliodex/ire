@@ -30,6 +30,7 @@ func loadConfig() config {
 		SeedFixtures:      seed,
 		AllowDevAccounts:  os.Getenv("REVIEW_DEV_AUTH") != "0",
 		DisableRepoChecks: os.Getenv("REVIEW_DISABLE_REPO_CHECKS") == "1",
+		EnableJobs:        os.Getenv("REVIEW_DISABLE_JOBS") != "1",
 	}
 }
 

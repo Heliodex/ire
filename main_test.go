@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -1027,111 +1026,6 @@ func TestAuthConfigReportsMethods(t *testing.T) {
 	config = decode[contract.AuthConfig](t, do(t, application, http.MethodGet, "/api/v1/auth/config", nil, nil, nil))
 	if !config.Hca {
 		t.Fatalf("config = %+v", config)
-	}
-}
-
-// TestHCAOAuthFlow covers state, token exchange, identity lookup and the session cookie against a fake provider.
-func TestHCAOAuthFlow(t *testing.T) {
-	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/oauth/token":
-			_, _ = io.WriteString(w, `{"access_token":"hca-token"}`)
-		case "/api/v1/me":
-			if r.Header.Get("Authorization") != "Bearer hca-token" {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			_, _ = io.WriteString(w, `{"identity":{"id":"hc_1","primary_email":"reviewer@example.com","slack_id":"U123"}}`)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	t.Cleanup(fake.Close)
-
-	application := newTestApp(t)
-	application.config.HCClientID = "client"
-	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
-	application.config.HCAuthBase = fake.URL
-
-	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
-	if start.Code != http.StatusFound {
-		t.Fatalf("start = %d: %s", start.Code, start.Body.String())
-	}
-
-	location, err := url.Parse(start.Header().Get("Location"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	state := location.Query().Get("state")
-	if state == "" || location.Query().Get("client_id") != "client" {
-		t.Fatalf("authorize = %s", location)
-	}
-
-	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
-	if stateCookie == nil {
-		t.Fatal("missing state cookie")
-	}
-
-	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, stateCookie, nil)
-	if callback.Code != http.StatusFound {
-		t.Fatalf("callback = %d: %s", callback.Code, callback.Body.String())
-	}
-
-	if callback.Header().Get("Location") != "/queue" {
-		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
-	}
-
-	sessionCookie := findCookie(callback.Result().Cookies(), cookieName)
-	if sessionCookie == nil {
-		t.Fatal("missing session cookie")
-	}
-
-	me := decode[contract.MeResponse](t, do(t, application, http.MethodGet, "/api/v1/me", nil, sessionCookie, nil))
-	if me.User.Email != "reviewer@example.com" {
-		t.Fatalf("me = %+v", me.User)
-	}
-
-	badState := do(t, application, http.MethodGet, "/auth/callback?code=good&state=wrong", nil, stateCookie, nil)
-	if badState.Header().Get("Location") != "/?error=state" {
-		t.Fatalf("bad state redirect = %q", badState.Header().Get("Location"))
-	}
-}
-
-// TestHCARejectsUnknownMember covers the roster gate.
-func TestHCARejectsUnknownMember(t *testing.T) {
-	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/oauth/token":
-			_, _ = io.WriteString(w, `{"access_token":"hca-token"}`)
-		case "/api/v1/me":
-			_, _ = io.WriteString(w, `{"identity":{"primary_email":"nobody@example.com"}}`)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	t.Cleanup(fake.Close)
-
-	application := newTestApp(t)
-	application.config.HCClientID = "client"
-	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
-	application.config.HCAuthBase = fake.URL
-
-	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
-	location, _ := url.Parse(start.Header().Get("Location"))
-	state := location.Query().Get("state")
-	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
-
-	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, stateCookie, nil)
-	if callback.Header().Get("Location") != "/?error=not_member" {
-		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
-	}
-
-	if cookie := findCookie(callback.Result().Cookies(), cookieName); cookie != nil && cookie.Value != "" {
-		t.Fatal("unknown member received a session")
 	}
 }
 

@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json/v2"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,44 +11,58 @@ import (
 	"review/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/app"
+	"github.com/heliodex/better-deploy/wt/packages/oauth"
+	"github.com/heliodex/better-deploy/wt/packages/session"
 	"github.com/heliodex/better-deploy/wt/packages/storage"
 )
 
 const (
 	oauthStateCookie = "review_oauth_state"
 	oauthStateTTL    = 10 * time.Minute
-	oauthScopes      = "openid profile email slack_id"
 	oauthTimeout     = 15 * time.Second
 )
 
-// hcaTokens is the token response from Hack Club Auth.
-type hcaTokens struct {
-	AccessToken string `json:"access_token"`
-	Scope       string `json:"scope"`
+// loginFlow is the server-side half of one authorisation attempt: PKCE, nonce and the exact redirect used.
+type loginFlow struct {
+	Verifier    string
+	Nonce       string
+	RedirectURI string
 }
 
-// hcaIdentity is the identity response from Hack Club Auth.
-type hcaIdentity struct {
-	Identity struct {
-		ID           string `json:"id"`
-		PrimaryEmail string `json:"primary_email"`
-		SlackID      string `json:"slack_id"`
-	} `json:"identity"`
-}
-
-// hcaConfigured reports whether the OAuth application is fully configured.
+// hcaConfigured reports whether the OAuth application has the credentials the flow needs.
 func (a *reviewApp) hcaConfigured() bool {
-	return a.config.HCClientID != "" && a.config.HCClientSecret != "" && a.config.HCRedirectURI != ""
+	return strings.TrimSpace(a.config.HCClientID) != "" && strings.TrimSpace(a.config.HCClientSecret) != ""
 }
 
-// hcaBase returns the configured auth base without a trailing slash.
-func (a *reviewApp) hcaBase() string {
+// hcaIssuer returns the OIDC issuer, defaulting to Hack Club Auth.
+func (a *reviewApp) hcaIssuer() string {
 	base := strings.TrimSpace(a.config.HCAuthBase)
 	if base == "" {
 		base = "https://auth.hackclub.com"
 	}
 
 	return strings.TrimRight(base, "/")
+}
+
+// oauthClient builds a client for one flow. The package caches discovery and keys for the request.
+func (a *reviewApp) oauthClient() (*oauth.Client, error) {
+	return oauth.New(oauth.Config{
+		Issuer:       a.hcaIssuer(),
+		ClientID:     strings.TrimSpace(a.config.HCClientID),
+		ClientSecret: strings.TrimSpace(a.config.HCClientSecret),
+		HTTPClient:   a.client,
+		Scopes:       strings.Fields("openid profile email"),
+		Timeout:      oauthTimeout,
+	})
+}
+
+// redirectURI prefers the registered callback and falls back to the browser-facing origin.
+func (a *reviewApp) redirectURI(r *http.Request) string {
+	if value := strings.TrimSpace(a.config.HCRedirectURI); value != "" {
+		return value
+	}
+
+	return app.PublicURL(r) + "/auth/callback"
 }
 
 // handleAuthConfig tells the login screen which sign-in methods exist.
@@ -62,45 +73,59 @@ func (a *reviewApp) handleAuthConfig(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-// handleHCAStart begins the Hack Club Auth code flow.
+// handleHCAStart begins the OpenID Connect code flow with PKCE, nonce and a stored flow.
 func (a *reviewApp) handleHCAStart(w http.ResponseWriter, r *http.Request) {
 	if !a.hcaConfigured() {
 		app.WriteError(w, http.StatusServiceUnavailable, "Hack Club Auth is not configured")
 		return
 	}
 
-	state := newToken()
-
-	//nolint:gosec // Secure follows the request scheme behind the supervisor proxy.
-	http.SetCookie(w, &http.Cookie{
-		Name:     oauthStateCookie,
-		Value:    state,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   requestIsHTTPS(r),
-		MaxAge:   int(oauthStateTTL.Seconds()),
-	})
-
-	authorize, err := url.Parse(a.hcaBase() + "/oauth/authorize")
+	client, err := a.oauthClient()
 	if err != nil {
-		app.WriteError(w, http.StatusInternalServerError, "invalid auth base")
+		app.WriteError(w, http.StatusInternalServerError, "could not start sign-in")
 		return
 	}
 
-	query := authorize.Query()
-	query.Set("client_id", a.config.HCClientID)
-	query.Set("redirect_uri", a.config.HCRedirectURI)
-	query.Set("response_type", "code")
-	query.Set("scope", oauthScopes)
-	query.Set("state", state)
-	authorize.RawQuery = query.Encode()
+	state, err := oauth.NewNonce()
+	if err != nil {
+		app.WriteError(w, http.StatusInternalServerError, "could not start sign-in")
+		return
+	}
 
-	http.Redirect(w, r, authorize.String(), http.StatusFound)
+	verifier, challenge, err := oauth.NewPKCE()
+	if err != nil {
+		app.WriteError(w, http.StatusInternalServerError, "could not start sign-in")
+		return
+	}
+
+	nonce, err := oauth.NewNonce()
+	if err != nil {
+		app.WriteError(w, http.StatusInternalServerError, "could not start sign-in")
+		return
+	}
+
+	redirect := a.redirectURI(r)
+
+	authoriseURL, err := client.AuthorizeURL(r.Context(), redirect, state, nonce, challenge)
+	if err != nil {
+		app.WriteError(w, http.StatusBadGateway, "the identity provider is unavailable")
+		return
+	}
+
+	if err := a.saveLoginFlow(r.Context(), state, loginFlow{Verifier: verifier, Nonce: nonce, RedirectURI: redirect}); err != nil {
+		writeStorage(w, err)
+		return
+	}
+
+	session.Set(w, r, oauthStateCookie, state, oauthStateTTL)
+	//nolint:gosec // The URL comes from the configured issuer discovery document, not from user input.
+	http.Redirect(w, r, authoriseURL, http.StatusFound)
 }
 
-// handleHCACallback verifies the state, exchanges the code and creates a session for a programme member.
+// handleHCACallback verifies state, exchanges the code, verifies the ID token and opens a session for a roster member.
 func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+
 	if !a.hcaConfigured() {
 		app.WriteError(w, http.StatusServiceUnavailable, "Hack Club Auth is not configured")
 		return
@@ -109,12 +134,23 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 	state := strings.TrimSpace(r.URL.Query().Get("state"))
 
 	cookie, cookieErr := r.Cookie(oauthStateCookie)
-	if cookieErr != nil || state == "" || cookie.Value != state {
+	if cookieErr != nil || state == "" || !session.Equal(cookie.Value, state) {
 		a.redirectAuthError(w, r, "state")
 		return
 	}
 
-	a.clearOAuthState(w, r)
+	session.Clear(w, r, oauthStateCookie)
+
+	flow, found, err := a.takeLoginFlow(r.Context(), state)
+	if err != nil {
+		writeStorage(w, err)
+		return
+	}
+
+	if !found {
+		a.redirectAuthError(w, r, "state")
+		return
+	}
 
 	code := strings.TrimSpace(r.URL.Query().Get("code"))
 	if code == "" {
@@ -122,19 +158,33 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, err := a.exchangeHCACode(r.Context(), code)
+	client, err := a.oauthClient()
+	if err != nil {
+		a.redirectAuthError(w, r, "provider")
+		return
+	}
+
+	tokens, err := client.Exchange(r.Context(), code, flow.RedirectURI, flow.Verifier)
 	if err != nil {
 		a.redirectAuthError(w, r, "exchange")
 		return
 	}
 
-	identity, err := a.fetchHCAIdentity(r.Context(), tokens.AccessToken)
+	identity, err := client.VerifyIDToken(r.Context(), tokens.IDToken, flow.Nonce)
 	if err != nil {
-		a.redirectAuthError(w, r, "identity")
+		a.redirectAuthError(w, r, "token")
 		return
 	}
 
-	email := strings.ToLower(strings.TrimSpace(identity.Identity.PrimaryEmail))
+	if userinfo, infoErr := client.Userinfo(r.Context(), tokens.AccessToken); infoErr == nil {
+		if mergeErr := identity.Merge(userinfo); mergeErr != nil {
+			a.logAuthProblem("userinfo", mergeErr)
+		}
+	} else {
+		a.logAuthProblem("userinfo", infoErr)
+	}
+
+	email := strings.ToLower(strings.TrimSpace(identity.Email))
 	if email == "" {
 		a.redirectAuthError(w, r, "identity")
 		return
@@ -151,12 +201,8 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if identity.Identity.SlackID != "" {
-		_, _ = a.store.Exec(r.Context(), `update user set slack_id = ? where id = ?`, identity.Identity.SlackID, person.ID)
-	}
-
-	if person.Name == "" {
-		_, _ = a.store.Exec(r.Context(), `update user set name = ? where id = ?`, email, person.ID)
+	if person.Name == "" && identity.Name != "" {
+		_, _ = a.store.Exec(r.Context(), `update user set name = ? where id = ?`, identity.Name, person.ID)
 	}
 
 	_, _ = a.store.Exec(r.Context(), `update user set last_login_at = ? where id = ?`, a.nowText(), person.ID)
@@ -167,93 +213,53 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.setSessionCookie(w, r, token)
+	reviewSessions.Set(w, r, token)
 	http.Redirect(w, r, "/queue", http.StatusFound)
 }
 
-// exchangeHCACode exchanges an authorization code for an access token.
-func (a *reviewApp) exchangeHCACode(ctx context.Context, code string) (hcaTokens, error) {
-	var tokens hcaTokens
+// saveLoginFlow stores one attempt and drops expired rows.
+func (a *reviewApp) saveLoginFlow(ctx context.Context, state string, flow loginFlow) error {
+	_, err := a.store.Transaction(ctx,
+		storage.TransactionStatement{
+			SQL:  `delete from login_flow where created_at < ?`,
+			Args: []any{a.later(-oauthStateTTL)},
+		},
+		storage.TransactionStatement{
+			SQL:  `insert into login_flow (state, verifier, nonce, redirect_uri, created_at) values (?, ?, ?, ?, ?)`,
+			Args: []any{state, flow.Verifier, flow.Nonce, flow.RedirectURI, a.nowText()},
+		},
+	)
 
-	payload, err := json.Marshal(map[string]string{
-		"client_id":     a.config.HCClientID,
-		"client_secret": a.config.HCClientSecret,
-		"redirect_uri":  a.config.HCRedirectURI,
-		"code":          code,
-		"grant_type":    "authorization_code",
-	})
-	if err != nil {
-		return tokens, err
-	}
-
-	requestCtx, cancel := context.WithTimeout(ctx, oauthTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, a.hcaBase()+"/oauth/token", strings.NewReader(string(payload)))
-	if err != nil {
-		return tokens, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return tokens, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return tokens, fmt.Errorf("hca token exchange: HTTP %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-	if err != nil {
-		return tokens, err
-	}
-
-	if err := json.Unmarshal(body, &tokens); err != nil {
-		return tokens, err
-	}
-
-	if tokens.AccessToken == "" {
-		return tokens, errors.New("hca token exchange: empty access token")
-	}
-
-	return tokens, nil
+	return err
 }
 
-// fetchHCAIdentity loads the signed-in identity.
-func (a *reviewApp) fetchHCAIdentity(ctx context.Context, accessToken string) (hcaIdentity, error) {
-	var identity hcaIdentity
+// takeLoginFlow consumes an attempt so a callback code cannot be replayed.
+func (a *reviewApp) takeLoginFlow(ctx context.Context, state string) (loginFlow, bool, error) {
+	var (
+		flow      loginFlow
+		createdAt string
+	)
 
-	requestCtx, cancel := context.WithTimeout(ctx, oauthTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet, a.hcaBase()+"/api/v1/me", nil)
+	err := a.store.QueryRow(ctx, `select verifier, nonce, redirect_uri, created_at from login_flow where state = ?`, state).
+		Scan(&flow.Verifier, &flow.Nonce, &flow.RedirectURI, &createdAt)
 	if err != nil {
-		return identity, err
+		if errors.Is(err, storage.ErrNoRows) {
+			return loginFlow{}, false, nil
+		}
+
+		return loginFlow{}, false, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return identity, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return identity, fmt.Errorf("hca identity: HTTP %d", resp.StatusCode)
+	if _, err := a.store.Exec(ctx, `delete from login_flow where state = ?`, state); err != nil {
+		return loginFlow{}, false, err
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-	if err != nil {
-		return identity, err
+	created, err := time.Parse(timestampFormat, createdAt)
+	if err != nil || a.now().Sub(created) > oauthStateTTL {
+		return loginFlow{}, false, nil
 	}
 
-	err = json.Unmarshal(body, &identity)
-
-	return identity, err
+	return flow, true, nil
 }
 
 // memberByEmail finds an active programme membership for an email.
@@ -280,21 +286,12 @@ func (a *reviewApp) memberByEmail(ctx context.Context, email string) (reviewer, 
 
 // redirectAuthError sends the browser back to the login screen with a short reason.
 func (a *reviewApp) redirectAuthError(w http.ResponseWriter, r *http.Request, reason string) {
-	a.clearSessionCookie(w, r)
-	a.clearOAuthState(w, r)
+	reviewSessions.Clear(w, r)
+	session.Clear(w, r, oauthStateCookie)
 	http.Redirect(w, r, "/?error="+url.QueryEscape(reason), http.StatusFound)
 }
 
-// clearOAuthState removes the short-lived state cookie.
-func (a *reviewApp) clearOAuthState(w http.ResponseWriter, r *http.Request) {
-	//nolint:gosec // Secure follows the request scheme behind the supervisor proxy.
-	http.SetCookie(w, &http.Cookie{
-		Name:     oauthStateCookie,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   requestIsHTTPS(r),
-		MaxAge:   -1,
-	})
+// logAuthProblem keeps identity-merge failures out of the sign-in decision.
+func (a *reviewApp) logAuthProblem(stage string, err error) {
+	app.Warnf("hca %s: %v", stage, err)
 }

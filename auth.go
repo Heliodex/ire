@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -12,8 +9,12 @@ import (
 	"review/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/app"
+	"github.com/heliodex/better-deploy/wt/packages/session"
 	"github.com/heliodex/better-deploy/wt/packages/storage"
 )
+
+// reviewSessions owns the browser cookie name and lifetime shared by both sign-in methods.
+var reviewSessions = session.New(cookieName, sessionTTL)
 
 // reviewer is the signed-in person and the membership the request acts through.
 type reviewer struct {
@@ -31,13 +32,13 @@ func canReviewSecondPass(role string) bool {
 
 // currentReviewer reads the session cookie and resolves it to an active membership. It writes the 401 itself so handlers only branch on the boolean.
 func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
-	cookie, err := r.Cookie(cookieName)
-	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+	token, ok := reviewSessions.Token(r)
+	if !ok {
 		app.WriteError(w, http.StatusUnauthorized, "sign in to review")
 		return reviewer{}, false
 	}
 
-	sessionID := sessionHash(cookie.Value)
+	sessionID := session.Hash(token)
 
 	row := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), m.role, m.program_id
 		from session s
@@ -65,6 +66,11 @@ func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (rev
 
 // requireReviewer is currentReviewer plus a check that the membership can review this programme.
 func (a *reviewApp) requireReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions && !session.SameOrigin(r) {
+		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
+		return reviewer{}, false
+	}
+
 	person, ok := a.currentReviewer(w, r)
 	if !ok {
 		return reviewer{}, false
@@ -122,6 +128,11 @@ func (a *reviewApp) meResponse(ctx context.Context, person reviewer) contract.Me
 
 // handleDevLogin is the placeholder for Hack Club Auth. It issues a session for a seeded account so the queue can be demonstrated without an OAuth app; REVIEW_DEV_AUTH=0 removes it.
 func (a *reviewApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
+	if !session.SameOrigin(r) {
+		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
+		return
+	}
+
 	if !a.config.AllowDevAccounts {
 		app.WriteError(w, http.StatusNotFound, "development sign-in is disabled")
 		return
@@ -163,81 +174,40 @@ func (a *reviewApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.setSessionCookie(w, r, token)
+	reviewSessions.Set(w, r, token)
 	app.WriteJSON(w, http.StatusOK, a.meResponse(r.Context(), person))
 }
 
 // handleLogout deletes the session row and clears the cookie.
 func (a *reviewApp) handleLogout(w http.ResponseWriter, r *http.Request) {
-	if cookie, err := r.Cookie(cookieName); err == nil && cookie.Value != "" {
-		if _, err := a.store.Exec(r.Context(), `delete from session where id = ?`, sessionHash(cookie.Value)); err != nil {
+	if !session.SameOrigin(r) {
+		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
+		return
+	}
+
+	if token, ok := reviewSessions.Token(r); ok {
+		if _, err := a.store.Exec(r.Context(), `delete from session where id = ?`, session.Hash(token)); err != nil {
 			writeStorage(w, err)
 			return
 		}
 	}
 
-	a.clearSessionCookie(w, r)
+	reviewSessions.Clear(w, r)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // createSession stores a hashed session token and returns the raw cookie value.
 func (a *reviewApp) createSession(ctx context.Context, userID, userAgent string) (string, error) {
-	token := newToken()
-	now := a.nowText()
-
-	_, err := a.store.Exec(ctx, `insert into session (id, user_id, expires_at, created_at, last_seen_at, user_agent)
-		values (?, ?, ?, ?, ?, ?)`,
-		sessionHash(token), userID, a.later(sessionTTL), now, now, userAgent)
-
-	return token, err
-}
-
-// setSessionCookie writes the session cookie with the request's scheme and a fixed lifetime.
-func (a *reviewApp) setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
-	//nolint:gosec // Secure follows the request scheme behind the supervisor proxy.
-	http.SetCookie(w, &http.Cookie{
-		Name:     cookieName,
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   requestIsHTTPS(r),
-		MaxAge:   int(sessionTTL.Seconds()),
-	})
-}
-
-// clearSessionCookie deletes the browser cookie.
-func (a *reviewApp) clearSessionCookie(w http.ResponseWriter, r *http.Request) {
-	//nolint:gosec // Secure follows the request scheme behind the supervisor proxy.
-	http.SetCookie(w, &http.Cookie{
-		Name:     cookieName,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   requestIsHTTPS(r),
-		MaxAge:   -1,
-	})
-}
-
-// newToken returns 32 random bytes as hex. The database stores only its hash.
-func newToken() string {
-	var raw [32]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return newID("tok")
+	token, err := session.NewToken()
+	if err != nil {
+		return "", err
 	}
 
-	return hex.EncodeToString(raw[:])
-}
+	now := a.nowText()
 
-// sessionHash returns the hex SHA-256 of the raw cookie token.
-func sessionHash(token string) string {
-	sum := sha256.Sum256([]byte(token))
+	_, err = a.store.Exec(ctx, `insert into session (id, user_id, expires_at, created_at, last_seen_at, user_agent)
+		values (?, ?, ?, ?, ?, ?)`,
+		session.Hash(token), userID, a.later(sessionTTL), now, now, userAgent)
 
-	return hex.EncodeToString(sum[:])
-}
-
-// requestIsHTTPS reports whether the request reached the app over TLS, including behind the supervisor proxy.
-func requestIsHTTPS(r *http.Request) bool {
-	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	return token, err
 }

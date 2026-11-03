@@ -34,6 +34,11 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if ship.Status == statusChecking {
+		app.WriteError(w, http.StatusConflict, "checks are still running")
+		return
+	}
+
 	if existing, found, err := a.findReview(r.Context(), ship.ID, request.IdempotencyKey); err != nil {
 		writeStorage(w, err)
 
