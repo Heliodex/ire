@@ -552,6 +552,12 @@ h1 {
 	background: var(--status-rejected);
 }
 
+@media (min-width: 761px) {
+	.checks {
+		align-items: flex-end;
+	}
+}
+
 .skeleton {
 	display: grid;
 	gap: 1px;
