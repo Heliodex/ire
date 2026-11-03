@@ -412,23 +412,24 @@ async function saveDraftNow(): Promise<void> {
 							<h2>{group.group}</h2>
 							{#each group.items as check (check.key)}
 								<div class="check">
-									<div class="check-head">
-										<span class="ui-badge" data-tone={statusTone(check.status)}>{check.status}</span>
-										<strong>{check.label}</strong>
-										<code class="ui-mono">{check.key}</code>
-									</div>
-									<p>{check.summary}</p>
-									{#if check.detail}<span class="detail">{check.detail}</span>{/if}
+									<span class="ui-badge check-status" data-tone={statusTone(check.status)}>{check.status}</span>
+									<span class="check-label">{check.label}</span>
+									<code class="check-key ui-mono" title={check.key}>{check.key}</code>
+									<span class="check-summary">{check.summary}</span>
 									{#if isWarning(check)}
-										<label class="ack">
+										<label class="ack" title="Acknowledge this warning">
 											<input
+												aria-label={`Acknowledge ${check.label}`}
 												checked={acknowledgements.includes(check.key)}
 												onchange={(): void => toggleAck(check.key)}
 												type="checkbox"
 											>
-											<span>Acknowledge this warning</span>
+											<span>Ack</span>
 										</label>
+									{:else}
+										<span class="ack-empty"></span>
 									{/if}
+									{#if check.detail}<span class="check-note">{check.detail}</span>{/if}
 								</div>
 							{/each}
 						</div>
@@ -840,7 +841,12 @@ h1 {
 }
 
 .check {
-	padding: var(--space-3) var(--space-4);
+	display: grid;
+	grid-template-columns: 58px 190px 170px minmax(0, 1fr) 64px;
+	column-gap: var(--space-3);
+	row-gap: var(--space-1);
+	align-items: start;
+	padding: var(--space-2) var(--space-4);
 	border-top: 1px solid var(--border);
 }
 
@@ -848,42 +854,44 @@ h1 {
 	border-top: 0;
 }
 
-.check-head {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-	align-items: center;
+.check-status {
+	justify-self: start;
 }
 
-.check-head strong {
+.check-label {
 	font-size: var(--text-sm);
+	font-weight: 700;
 }
 
-.check-head code {
+.check-key {
+	overflow: hidden;
+	padding-top: 2px;
+	font-size: var(--text-xs);
 	color: var(--text-3);
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.check p {
-	padding-top: var(--space-1);
+.check-summary {
 	font-size: var(--text-sm);
 	color: var(--text-2);
 }
 
-.detail {
-	display: block;
-	padding-top: var(--space-1);
+.check-note {
+	grid-column: 1 / -1;
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }
 
 .ack {
 	display: flex;
-	gap: var(--space-2);
+	gap: var(--space-1);
 	align-items: center;
-	padding-top: var(--space-2);
-	font-size: var(--text-sm);
-	font-weight: 600;
+	justify-self: end;
+	font-size: var(--text-xs);
+	font-weight: 700;
 	color: var(--status-pending);
+	cursor: pointer;
 }
 
 .ack input {
@@ -1047,6 +1055,38 @@ h1 {
 	.rail {
 		position: static;
 		padding-top: 0;
+	}
+}
+
+@media (max-width: 760px) {
+	.check {
+		grid-template-columns: 54px minmax(0, 1fr) 56px;
+		grid-template-areas:
+			"status label ack"
+			"key key key"
+			"summary summary summary";
+		row-gap: var(--space-1);
+	}
+
+	.check-status {
+		grid-area: status;
+	}
+
+	.check-label {
+		grid-area: label;
+	}
+
+	.check-key {
+		grid-area: key;
+	}
+
+	.check-summary {
+		grid-area: summary;
+	}
+
+	.ack,
+	.ack-empty {
+		grid-area: ack;
 	}
 }
 

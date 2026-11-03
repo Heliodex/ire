@@ -231,6 +231,11 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 		}
 
 		if err := a.insertFixture(ctx, index, fixtures[index], now); err != nil {
+			// Another instance can seed the same fixture during a deploy. If its row exists now, this insert lost the race and the fixture is already there.
+			if scanErr := a.store.QueryRow(ctx, `select id from submission where id = ?`, fixtureID(index)).Scan(&existing); scanErr == nil {
+				continue
+			}
+
 			return err
 		}
 	}
