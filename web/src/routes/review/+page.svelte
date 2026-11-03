@@ -1092,11 +1092,10 @@ h1 {
 
 @media (max-width: 760px) {
 	.check {
-		grid-template-columns: 54px minmax(0, 1fr) 56px;
+		grid-template-columns: 54px minmax(0, 1fr) minmax(90px, 120px);
 		grid-template-areas:
-			"status label ack"
-			"key key key"
-			"detail detail detail";
+			"status label key"
+			"detail detail ack";
 		row-gap: var(--space-1);
 	}
 
@@ -1119,6 +1118,7 @@ h1 {
 	.ack,
 	.ack-empty {
 		grid-area: ack;
+		justify-self: end;
 	}
 }
 
