@@ -113,9 +113,9 @@ export async function heartbeat(id: string): Promise<void> {
 	await requestVoid(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/heartbeat`, { method: "POST" })
 }
 
-// releaseShip gives the ship back to the queue.
+// releaseShip gives the ship back to the queue. keepalive lets the request finish when the review page unmounts.
 export async function releaseShip(id: string): Promise<void> {
-	await requestVoid(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/claim`, { method: "DELETE" })
+	await requestVoid(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/claim`, { method: "DELETE", keepalive: true })
 }
 
 // saveDraft persists the review form.

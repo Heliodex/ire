@@ -122,7 +122,7 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	app.WriteJSON(w, http.StatusOK, response)
 }
 
-// queueCounts computes the four badges in one aggregate query.
+// queueCounts computes the four badges. The second-pass count is programme-wide; the other three follow the requested stage.
 func (a *reviewApp) queueCounts(ctx context.Context, programID string, stage int, now string) (contract.QueueCounts, error) {
 	var counts contract.QueueCounts
 
@@ -133,7 +133,7 @@ func (a *reviewApp) queueCounts(ctx context.Context, programID string, stage int
 			coalesce(sum(case when s.status = 'stage2_hold' then 1 else 0 end), 0)
 		from submission s
 		left join claim c on c.submission_id = s.id and c.expires_at > ?
-		where s.program_id = ? and s.stage = ?
+		where s.program_id = ? and (s.stage = ? or s.status = 'stage2_hold')
 		  and s.status in ('ready','claimed','in_review','needs_attention','stage2_hold')`, now, programID, stage).
 		Scan(&counts.Ready, &counts.Claimed, &counts.NeedsAttention, &counts.Stage2Hold)
 
@@ -172,6 +172,11 @@ func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 
 	if !isOpen(ship.Status) {
 		app.WriteError(w, http.StatusConflict, "this ship is no longer open")
+		return
+	}
+
+	if ship.Stage != stageOne || ship.Status == statusStage2Hold {
+		app.WriteError(w, http.StatusConflict, "this ship is waiting for the second pass")
 		return
 	}
 
@@ -240,6 +245,10 @@ func (a *reviewApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	now := a.nowText()
 
+	if _, ok := a.loadShipForReview(w, r); !ok {
+		return
+	}
+
 	result, err := a.store.Exec(r.Context(), `update claim set expires_at = ?, heartbeat_at = ? where submission_id = ? and reviewer_id = ?`,
 		a.later(claimTTL), now, id, person.ID)
 	if err != nil {
@@ -271,6 +280,10 @@ func (a *reviewApp) handleRelease(w http.ResponseWriter, r *http.Request) {
 
 	id := r.PathValue("id")
 	now := a.nowText()
+
+	if _, ok := a.loadShipForReview(w, r); !ok {
+		return
+	}
 
 	result, err := a.store.Exec(r.Context(), `delete from claim where submission_id = ? and reviewer_id = ?`, id, person.ID)
 	if err != nil {
@@ -479,6 +492,7 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		Events:           events,
 		PriorReviews:     payloadPriorReviews(ctx, a.store, ship.ID, ship.Version),
 		Claim:            claim,
+		Draft:            a.draftFor(ctx, ship.ID, person.ID),
 		Acknowledgements: a.acknowledgementsFor(ctx, ship.ID, ship.Version, person.ID),
 		Policy:           contractPolicy(policy),
 	}, nil

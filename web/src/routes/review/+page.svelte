@@ -9,6 +9,7 @@ import {
 	fetchBundle,
 	fetchMe,
 	heartbeat,
+	releaseShip,
 	saveDraft,
 	type Bundle,
 	type Check,
@@ -32,6 +33,8 @@ let actionError = $state("")
 let toast = $state("")
 let showShortcuts = $state(false)
 let noteElement = $state<HTMLTextAreaElement | null>(null)
+let claimedId = $state("")
+let idempotencyKey = $state("")
 
 const submission = $derived(bundle?.submission ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
@@ -44,10 +47,17 @@ afterNavigate((): void => {
 	const next = page.url.searchParams.get("id") ?? ""
 	if (next === "" || next === id) return
 
+	const previous = claimedId
 	id = next
 	loading = true
 	error = ""
-	void load()
+	acknowledgements = []
+	idempotencyKey = ""
+
+	if (previous && previous !== next) void releaseShip(previous).catch(() => {})
+
+	claimedId = ""
+	void load(next)
 })
 
 onMount((): (() => void) => {
@@ -59,7 +69,11 @@ onMount((): (() => void) => {
 
 	void boot()
 
-	const beat = setInterval((): void => void heartbeat(id).catch(() => {}), 60000)
+	const beat = setInterval((): void => {
+		// A backgrounded tab does not need to hold the claim awake; the TTL releases it if the reviewer walks away.
+		if (document.visibilityState !== "visible" || claimedId === "") return
+		void heartbeat(claimedId).catch(() => {})
+	}, 60000)
 
 	function onKeydown(event: KeyboardEvent): void {
 		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
@@ -88,6 +102,7 @@ onMount((): (() => void) => {
 	return (): void => {
 		clearInterval(beat)
 		window.removeEventListener("keydown", onKeydown)
+		if (claimedId !== "") void releaseShip(claimedId).catch(() => {})
 	}
 })
 
@@ -102,15 +117,29 @@ async function boot(): Promise<void> {
 	await load()
 }
 
-async function load(): Promise<void> {
+async function load(target = id): Promise<void> {
 	try {
 		note = ""
 		internalNote = ""
-		bundle = await fetchBundle(id)
-		const claim = bundle.claim
-		if (!claim || claim.isMine !== 1) {
-			await claimShip(id)
-			bundle = await fetchBundle(id)
+		actionError = ""
+
+		const fetched = await fetchBundle(target)
+		if (target !== id) return
+
+		let next = fetched
+		if (!fetched.claim || fetched.claim.isMine !== 1) {
+			await claimShip(target)
+			next = await fetchBundle(target)
+			if (target !== id) return
+		}
+
+		bundle = next
+		claimedId = target
+
+		// Restore the server-side draft so a refresh or another device does not lose typed notes.
+		if (next.draft) {
+			note = next.draft.note
+			internalNote = next.draft.internalNote
 		}
 
 		hourInit()
@@ -120,9 +149,9 @@ async function load(): Promise<void> {
 			void goto("/")
 			return
 		}
-		error = err instanceof Error ? err.message : "Could not open this ship."
+		if (target === id) error = err instanceof Error ? err.message : "Could not open this ship."
 	} finally {
-		loading = false
+		if (target === id) loading = false
 	}
 }
 
@@ -191,6 +220,11 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 
 	deciding = true
 	try {
+		// One key per ship and version: if the response is lost, the retry returns the review that was already written instead of creating a second one.
+		const prefix = `${id}:${bundle.submission.version}:`
+		const key = idempotencyKey.startsWith(prefix) ? idempotencyKey : `${prefix}${crypto.randomUUID()}`
+		idempotencyKey = key
+
 		const result = await decideShip(id, {
 			decision,
 			version: bundle.submission.version,
@@ -198,8 +232,9 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 			internalNote: internalNote.trim(),
 			hoursApprovedSeconds: Math.max(0, Math.round(hours * 3600)),
 			acknowledgements,
-			idempotencyKey: `dec_${crypto.randomUUID()}`,
+			idempotencyKey: key,
 		})
+		idempotencyKey = ""
 
 		if (result.held === 1) {
 			flash(`Held for the second pass: ${result.heldReason ?? "policy"}.`)

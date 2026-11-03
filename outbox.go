@@ -198,6 +198,11 @@ func (a *reviewApp) receiveFake(ctx context.Context, row outboxRow, timestamp, s
 		verified = 1
 	}
 
+	// The receiver enforces the same five-minute window as a real Ari handler, so a replay from an old delivery is rejected even with a valid MAC.
+	if seconds, err := strconv.ParseInt(timestamp, 10, 64); err != nil || absInt64(a.now().Unix()-seconds) > signatureWindow {
+		verified = 0
+	}
+
 	if _, err := a.store.Exec(ctx, `insert or ignore into fake_receiver_delivery (id, delivery_id, event, timestamp, body, signature, verified, received_at)
 		values (?, ?, ?, ?, ?, ?, ?, ?)`,
 		newID("rcv"), row.DeliveryID, row.Event, timestamp, row.Payload, signature, verified, a.nowText()); err != nil {

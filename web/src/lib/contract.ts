@@ -248,6 +248,15 @@ export const claimSchema = pipe(
 	title("ClaimState"),
 )
 
+export const draftSchema = pipe(
+	object({
+		note: string(),
+		internalNote: string(),
+		updatedAt: timestamp,
+	}),
+	title("DraftState"),
+)
+
 export const reviewBundleSchema = pipe(
 	object({
 		submission: submissionSchema,
@@ -258,6 +267,7 @@ export const reviewBundleSchema = pipe(
 		events: array(eventSchema),
 		priorReviews: array(priorReviewSchema),
 		claim: optional(claimSchema),
+		draft: optional(draftSchema),
 		acknowledgements: array(string()),
 		policy: reviewPolicySchema,
 	}),

@@ -90,7 +90,26 @@ func (a *reviewApp) handleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.WriteJSON(w, http.StatusOK, response)
+	// Ari's SDK requires the decision key to exist and be null for a ship that is not final, so send a map rather than a struct with omitempty.
+	encoded, err := json.Marshal(response)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(encoded, &payload); err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	if response.Decision == nil {
+		payload["decision"] = nil
+	}
+
+	app.WriteJSON(w, http.StatusOK, payload)
 }
 
 // statusResponse assembles the Ari-compatible status body.
@@ -394,12 +413,45 @@ func (a *reviewApp) handleOutbox(w http.ResponseWriter, r *http.Request) {
 
 		if payload != "" {
 			item.Payload = &payload
+
+			if person.Role == roleReviewer {
+				item.Payload = redactOutboxPayload(payload)
+			}
 		}
 
 		response.Deliveries = append(response.Deliveries, item)
 	}
 
 	app.WriteJSON(w, http.StatusOK, response)
+}
+
+// redactOutboxPayload hides the maker's address from reviewers reading delivery debug output, matching the bundle's redaction. Organisers and admins still see the exact bytes.
+func redactOutboxPayload(payload string) *string {
+	var event map[string]any
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		return &payload
+	}
+
+	maker, ok := event["maker"].(map[string]any)
+	if !ok {
+		return &payload
+	}
+
+	email, ok := maker["email"].(string)
+	if !ok || email == "" {
+		return &payload
+	}
+
+	maker["email"] = redactEmail(email)
+
+	redacted, err := json.Marshal(event)
+	if err != nil {
+		return &payload
+	}
+
+	value := string(redacted)
+
+	return &value
 }
 
 // handleFakeDeliveries lists what the prototype's in-process receiver accepted, with the signature it verified.

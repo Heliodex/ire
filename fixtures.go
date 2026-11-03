@@ -224,12 +224,23 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 	}
 
 	for index := range fixtures {
+		// A partial seed leaves earlier fixtures behind; skip the ids that already exist instead of failing on the primary key.
+		var existing string
+		if err := a.store.QueryRow(ctx, `select id from submission where id = ?`, fixtureID(index)).Scan(&existing); err == nil {
+			continue
+		}
+
 		if err := a.insertFixture(ctx, index, fixtures[index], now); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// fixtureID returns the fixed id for a demo ship, so reseeding can skip one that is already present.
+func fixtureID(index int) string {
+	return fmt.Sprintf("sub_fixture_%d", index+1)
 }
 
 // handleDevReset clears the demo ships and reseeds them. It exists so a rehearsal can start from the same three rows; REVIEW_DEV_AUTH=0 removes it.
@@ -269,7 +280,7 @@ func (a *reviewApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
 // insertFixture writes one demo ship, its snapshot, evidence and prescribed checks.
 func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now time.Time) error {
 	ingested := now.Add(-time.Duration(index+1) * 2 * time.Hour)
-	id := fmt.Sprintf("sub_fixture_%d", index+1)
+	id := fixtureID(index)
 
 	checks := make([]contract.CheckResult, 0, len(f.checks))
 	for _, check := range f.checks {

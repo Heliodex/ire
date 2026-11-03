@@ -348,6 +348,27 @@
 			],
 			"title": "ClaimState"
 		},
+		"draft": {
+			"type": "object",
+			"properties": {
+				"note": {
+					"type": "string"
+				},
+				"internalNote": {
+					"type": "string"
+				},
+				"updatedAt": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"required": [
+				"note",
+				"internalNote",
+				"updatedAt"
+			],
+			"title": "DraftState"
+		},
 		"acknowledgements": {
 			"type": "array",
 			"items": {

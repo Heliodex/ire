@@ -7,7 +7,7 @@ A stage 1 review queue for Half Life hardware ships. This is the first vertical 
 - Ari-compatible ingest at `POST /api/ingest/{program}` with HMAC over the raw body, timestamp support, replay protection and `409 already_queued`.
 - Ari-compatible status at `GET /api/ingest/{program}/status`, withdraw, and the native `reviews?since` / `events?since` recovery feeds.
 - A stage 1 queue with claims, heartbeats, drafts, warning acknowledgements, blocking checks, decisions and idempotency keys.
-- A stage 2 hold policy: an approval with warnings, a held tier, or hours above the claim waits for the second pass and emits no webhook.
+- A stage 2 hold policy for approvals: a warning, a held tier, or hours above the claim waits for the second pass and emits no webhook. Changes and rejections are final and always deliver. The stage 1 endpoints refuse a ship that is already on the second pass.
 - A signed outbox written in the decision transaction, an in-process receiver that verifies `timestamp.delivery_id.body`, retries on a schedule and keeps the exact payload.
 - Three fixture ships extracted from real `.projects.csv` rows: clean, warned and blocked.
 

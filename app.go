@@ -37,6 +37,8 @@ const (
 	minDescriptionLength = 160
 	minJournalText       = 80
 
+	signatureWindow = 300
+
 	secondsPerHour = 3600
 	secondsPerDay  = 24 * secondsPerHour
 	maxHours       = 30 * secondsPerDay

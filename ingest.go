@@ -57,6 +57,12 @@ func (a *reviewApp) handleIngest(w http.ResponseWriter, r *http.Request) {
 
 	response, status, err := a.ingestShip(r.Context(), program, request, deliveryID, string(body))
 	if err != nil {
+		// A concurrent ingest can win the open-ship unique index between our read and the transaction. Report the ship it created instead of a storage 500.
+		if id, version, openErr := a.openShip(r.Context(), program.ID, request.ExternalID); openErr == nil {
+			app.WriteJSON(w, http.StatusConflict, map[string]any{"error": "already_queued", "id": id, "version": version})
+			return
+		}
+
 		writeStorage(w, err)
 
 		return
@@ -138,7 +144,7 @@ func (a *reviewApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request
 
 	if timestamp := strings.TrimSpace(r.Header.Get("X-Ari-Timestamp")); timestamp != "" {
 		seconds, err := strconv.ParseInt(timestamp, 10, 64)
-		if err != nil || absInt64(a.now().Unix()-seconds) > 300 {
+		if err != nil || absInt64(a.now().Unix()-seconds) > signatureWindow {
 			app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "timestamp is invalid or stale")
 			return false
 		}
@@ -158,14 +164,14 @@ func (a *reviewApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request
 	return true
 }
 
-// allowLegacySignature reads the programme setting that accepts the current SDK's body-only signature.
+// allowLegacySignature reads the programme setting that accepts the current SDK's body-only signature. A missing or unreadable setting rejects the request rather than accepting an unverified body.
 func (a *reviewApp) allowLegacySignature(ctx context.Context, programID string) bool {
 	var value string
 	if err := a.store.QueryRow(ctx, `select value from program_setting where program_id = ? and key = 'allow_legacy_signature'`, programID).Scan(&value); err != nil {
-		return true
+		return false
 	}
 
-	return value == "true"
+	return strings.TrimSpace(value) == "true"
 }
 
 // ingestShip writes a new version, or reports the existing delivery or open ship. response is the API body; status is the HTTP status.

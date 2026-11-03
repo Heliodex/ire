@@ -102,13 +102,14 @@ func decode[T any](t *testing.T, recorder *httptest.ResponseRecorder) T {
 func ingestBody(externalID string) []byte {
 	hours := &contract.IngestHours{ClaimedSeconds: 7 * 3600, JournalSeconds: 7 * 3600, HackatimeSeconds: 0}
 	request := contract.IngestRequest{
-		ExternalID:   externalID,
-		Title:        "Line follower",
-		Description:  "A line-following robot with a custom RP2040 board, an array of reflective sensors, a motor driver and a small OLED. The board is routed on two layers, the firmware is a first pass and the BOM prices every part.",
-		RepoURL:      stringPtr("https://github.com/example/line-follower"),
-		ThumbnailURL: stringPtr("https://example.com/cover.jpg"),
-		Track:        stringPtr("hardware"),
-		Maker:        contract.IngestMaker{Email: "maker@example.com", Name: "Maker"},
+		ExternalID:        externalID,
+		Title:             "Line follower",
+		Description:       "A line-following robot with a custom RP2040 board, an array of reflective sensors, a motor driver and a small OLED. The board is routed on two layers, the firmware is a first pass and the BOM prices every part.",
+		RepoURL:           stringPtr("https://github.com/example/line-follower"),
+		ThumbnailURL:      stringPtr("https://example.com/cover.jpg"),
+		Track:             stringPtr("hardware"),
+		Maker:             contract.IngestMaker{Email: "maker@example.com", Name: "Maker"},
+		HackatimeProjects: []string{"line-follower"},
 		Journals: []contract.IngestJournal{
 			{At: "2026-11-02T10:00:00Z", Seconds: new(3 * 3600), Text: "Placed the RP2040, the sensor array and the motor driver. Routed the board and fixed the clearance errors the DRC found near the USB pads.", Media: []contract.IngestRequestJournalsElemMediaElem{{URL: "https://example.com/board.jpg"}}},
 			{At: "2026-11-02T15:00:00Z", Seconds: new(4 * 3600), Text: "Wrote the first firmware pass and sampled the sensor array over serial. The PID loop still needs tuning, but the board boots and the display works."},
@@ -218,6 +219,22 @@ func TestFixturesAppearInQueue(t *testing.T) {
 
 	if len(bundle.Checks) == 0 || checkStatuses(bundle.Checks)["repo.accessible"] != statusPass {
 		t.Errorf("checks = %+v", bundle.Checks)
+	}
+
+	statusRecorder := do(t, application, http.MethodGet, "/api/ingest/half-life/status?external_id=fix-clean:design", nil, nil, map[string]string{
+		"Authorization": "Bearer test-ingest",
+	})
+	if statusRecorder.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", statusRecorder.Code, statusRecorder.Body.String())
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(statusRecorder.Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+
+	if value, ok := raw["decision"]; !ok || value != nil {
+		t.Errorf("decision = %v, want explicit null", value)
 	}
 }
 
@@ -576,6 +593,214 @@ func TestTickIsQuietWhenNothingIsDue(t *testing.T) {
 
 	if result["delivered"] != 0 || result["failed"] != 0 {
 		t.Errorf("tick = %+v", result)
+	}
+}
+
+// TestChangesOnWarnedShipIsFinal covers a non-approval decision: it must not be swallowed by the stage 2 hold.
+func TestChangesOnWarnedShipIsFinal(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	body, _ := json.Marshal(contract.DecisionRequest{
+		Decision:       decisionChanges,
+		Version:        1,
+		NoteToMaker:    "Add the BOM to the repository and replace the generic journal entry.",
+		IdempotencyKey: "changes-warned-1",
+	})
+
+	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", body, cookie, nil)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("changes = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	outcome := decode[contract.DecisionOutcome](t, recorder)
+	if outcome.Held != 0 || outcome.Status != statusDecided || outcome.DeliveryStatus == nil || *outcome.DeliveryStatus != "delivered" {
+		t.Fatalf("outcome = %+v", outcome)
+	}
+
+	outbox := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, cookie, nil))
+	if len(outbox.Deliveries) != 1 || outbox.Deliveries[0].Event != "review.changes" {
+		t.Fatalf("outbox = %+v", outbox.Deliveries)
+	}
+}
+
+// TestHeldShipCannotBeDecidedAtStageOne covers the stage boundary: a second-pass ship accepts no stage 1 claim or decision.
+func TestHeldShipCannotBeDecidedAtStageOne(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	approve, _ := json.Marshal(contract.DecisionRequest{
+		Decision:         decisionApproved,
+		Version:          1,
+		NoteToMaker:      "Nice board.",
+		Acknowledgements: []string{"repo.readme.images", "repo.bom", "evidence.journals"},
+		IdempotencyKey:   "held-once",
+	})
+
+	held := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, cookie, nil)
+	if held.Code != http.StatusOK {
+		t.Fatalf("held approval = %d: %s", held.Code, held.Body.String())
+	}
+
+	again, _ := json.Marshal(contract.DecisionRequest{
+		Decision:       decisionApproved,
+		Version:        1,
+		NoteToMaker:    "Approved again with fewer hours.",
+		IdempotencyKey: "held-twice",
+	})
+
+	redecide := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", again, cookie, nil)
+	if redecide.Code != http.StatusConflict {
+		t.Fatalf("stage 1 redecision = %d: %s", redecide.Code, redecide.Body.String())
+	}
+
+	reclaim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, cookie, nil)
+	if reclaim.Code != http.StatusConflict {
+		t.Fatalf("stage 1 reclaim = %d: %s", reclaim.Code, reclaim.Body.String())
+	}
+}
+
+// TestDraftSurvivesReload covers the server-side draft the review page restores.
+func TestDraftSurvivesReload(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	draft, _ := json.Marshal(contract.DraftRequest{Note: "Check the USB pads.", InternalNote: "Routing looks fine."})
+	if saved := do(t, application, http.MethodPut, testBase+"/submissions/sub_fixture_1/draft", draft, cookie, nil); saved.Code != http.StatusOK {
+		t.Fatalf("draft = %d: %s", saved.Code, saved.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	if bundle.Draft == nil || bundle.Draft.Note != "Check the USB pads." || bundle.Draft.InternalNote != "Routing looks fine." {
+		t.Fatalf("draft = %+v", bundle.Draft)
+	}
+}
+
+// TestOutboxRedactsMakerEmail covers delivery debug output: reviewers see a redacted address, organisers see the bytes that were signed.
+func TestOutboxRedactsMakerEmail(t *testing.T) {
+	application := newTestApp(t)
+	reviewerCookie := login(t, application, "reviewer@example.com")
+	organiserCookie := login(t, application, "organiser@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, reviewerCookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	body, _ := json.Marshal(contract.DecisionRequest{
+		Decision:       decisionApproved,
+		Version:        1,
+		NoteToMaker:    "Clean.",
+		IdempotencyKey: "redact-1",
+	})
+
+	if decision := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, reviewerCookie, nil); decision.Code != http.StatusOK {
+		t.Fatalf("decision = %d: %s", decision.Code, decision.Body.String())
+	}
+
+	reviewerView := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, reviewerCookie, nil))
+	if len(reviewerView.Deliveries) != 1 || reviewerView.Deliveries[0].Payload == nil {
+		t.Fatalf("reviewer outbox = %+v", reviewerView.Deliveries)
+	}
+
+	var reviewerPayload map[string]any
+	if err := json.Unmarshal([]byte(*reviewerView.Deliveries[0].Payload), &reviewerPayload); err != nil {
+		t.Fatal(err)
+	}
+
+	if email := payloadMakerEmail(t, reviewerPayload); email != "c***@example.com" {
+		t.Errorf("reviewer maker email = %v", email)
+	}
+
+	organiserView := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, organiserCookie, nil))
+
+	var organiserPayload map[string]any
+	if err := json.Unmarshal([]byte(*organiserView.Deliveries[0].Payload), &organiserPayload); err != nil {
+		t.Fatal(err)
+	}
+
+	if email := payloadMakerEmail(t, organiserPayload); email != "c6h@example.com" {
+		t.Errorf("organiser maker email = %v", email)
+	}
+}
+
+// payloadMakerEmail reads the maker email from a decoded outbound event, failing the test when the shape is wrong.
+func payloadMakerEmail(t *testing.T, event map[string]any) any {
+	t.Helper()
+
+	maker, ok := event["maker"].(map[string]any)
+	if !ok {
+		t.Fatalf("maker = %v", event["maker"])
+	}
+
+	return maker["email"]
+}
+
+// TestOutboundCarriesHackatimeProjects covers the field Half Life sends and expects mirrored back.
+func TestOutboundCarriesHackatimeProjects(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+	body := ingestBody("hackatime:design")
+
+	ingested := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	})
+	if ingested.Code != http.StatusCreated {
+		t.Fatalf("ingest = %d: %s", ingested.Code, ingested.Body.String())
+	}
+
+	created := decode[contract.IngestAccepted](t, ingested)
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/"+created.ID+"/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	decide, _ := json.Marshal(contract.DecisionRequest{Decision: decisionApproved, Version: 1, NoteToMaker: "Good.", IdempotencyKey: "hackatime-1"})
+	if decision := do(t, application, http.MethodPost, testBase+"/submissions/"+created.ID+"/decision", decide, cookie, nil); decision.Code != http.StatusOK {
+		t.Fatalf("decision = %d: %s", decision.Code, decision.Body.String())
+	}
+
+	received := decode[contract.FakeDeliveriesResponse](t, do(t, application, http.MethodGet, "/api/v1/dev/outbox/received", nil, cookie, nil))
+	if len(received.Deliveries) != 1 {
+		t.Fatalf("received = %d", len(received.Deliveries))
+	}
+
+	var event map[string]any
+	if err := json.Unmarshal([]byte(received.Deliveries[0].Body), &event); err != nil {
+		t.Fatal(err)
+	}
+
+	projects, ok := event["ship"].(map[string]any)["hackatime_projects"].([]any)
+	if !ok || len(projects) != 1 || projects[0] != "line-follower" {
+		t.Errorf("hackatime projects = %v", event["ship"])
+	}
+}
+
+// TestLegacySignatureFailsClosed covers a missing setting: a body-only signature is rejected rather than accepted.
+func TestLegacySignatureFailsClosed(t *testing.T) {
+	application := newTestApp(t)
+
+	if _, err := application.store.Exec(t.Context(), `delete from program_setting where key = 'allow_legacy_signature'`); err != nil {
+		t.Fatal(err)
+	}
+
+	body := ingestBody("legacy:design")
+
+	recorder := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	})
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("legacy signature = %d: %s", recorder.Code, recorder.Body.String())
 	}
 }
 

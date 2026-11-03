@@ -512,6 +512,44 @@ func (j *DraftSaved) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type DraftState struct {
+	// InternalNote corresponds to the JSON schema field "internalNote".
+	InternalNote string `json:"internalNote" yaml:"internalNote" mapstructure:"internalNote"`
+
+	// Note corresponds to the JSON schema field "note".
+	Note string `json:"note" yaml:"note" mapstructure:"note"`
+
+	// UpdatedAt corresponds to the JSON schema field "updatedAt".
+	UpdatedAt string `json:"updatedAt" yaml:"updatedAt" mapstructure:"updatedAt"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DraftState) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["internalNote"]; raw != nil && !ok {
+		return fmt.Errorf("field internalNote in DraftState: required")
+	}
+	if _, ok := raw["note"]; raw != nil && !ok {
+		return fmt.Errorf("field note in DraftState: required")
+	}
+	if _, ok := raw["updatedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field updatedAt in DraftState: required")
+	}
+	type Plain DraftState
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
+	}
+	*j = DraftState(plain)
+	return nil
+}
+
 type ErrorResponse struct {
 	// Code corresponds to the JSON schema field "code".
 	Code string `json:"code" yaml:"code" mapstructure:"code"`
@@ -1788,6 +1826,9 @@ type ReviewBundle struct {
 
 	// Claim corresponds to the JSON schema field "claim".
 	Claim *ClaimState `json:"claim,omitempty,omitzero" yaml:"claim,omitempty" mapstructure:"claim,omitempty"`
+
+	// Draft corresponds to the JSON schema field "draft".
+	Draft *DraftState `json:"draft,omitempty,omitzero" yaml:"draft,omitempty" mapstructure:"draft,omitempty"`
 
 	// Events corresponds to the JSON schema field "events".
 	Events []SubmissionEvent `json:"events" yaml:"events" mapstructure:"events"`

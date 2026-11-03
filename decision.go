@@ -17,7 +17,7 @@ import (
 
 // handleDecision records a stage 1 decision, applies the hold policy, writes the outbox row and returns the next ship to open.
 //
-//nolint:funlen // The decision transaction reads best as one unit; splitting it would hide the ordering.
+//nolint:funlen,maintidx // The decision transaction reads best as one unit; splitting it would hide the ordering.
 func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
@@ -40,6 +40,12 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if found {
 		a.writeDecisionAgain(w, r, ship, existing)
+		return
+	}
+
+	// The stage 1 endpoint must not decide a ship that is already waiting for the second pass, or approve it again and finish it. A stage 2 decision is a separate flow.
+	if ship.Stage != stageOne || ship.Status == statusStage2Hold {
+		app.WriteError(w, http.StatusConflict, "this ship is waiting for the second pass")
 		return
 	}
 
@@ -103,7 +109,11 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	held, reason := holdFor(ship, policy, checks, hours)
+	// Only an approval can be held. Changes and rejections are final outcomes that Half Life must receive; holding them would silently drop the decision.
+	held, reason := false, ""
+	if request.Decision == decisionApproved {
+		held, reason = holdFor(ship, policy, checks, hours)
+	}
 
 	now := a.nowText()
 	reviewID := newID("rev")
@@ -116,7 +126,7 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stageHistory := a.stageHistory(r.Context(), ship.ID, person, request.Decision, now)
-	payload := a.outboundPayload(ship, person, checks, request.Decision, hours, note, strings.TrimSpace(request.InternalNote), now, stageHistory)
+	payload := a.outboundPayload(ship, person, checks, request.Decision, hours, note, strings.TrimSpace(request.InternalNote), now, stageHistory, payloadHackatimeProjects(r.Context(), a.store, ship.ID, ship.Version))
 
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
@@ -401,7 +411,7 @@ type outboundEvent struct {
 }
 
 // outboundPayload builds the final event. A held decision never reaches here because no outbox row is written.
-func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks []contract.CheckResult, decision string, hours int, note, internalNote, now string, history []outboundStage) outboundEvent {
+func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks []contract.CheckResult, decision string, hours int, note, internalNote, now string, history []outboundStage, hackatimeProjects []string) outboundEvent {
 	results := make([]outboundCheck, 0, len(checks))
 	for _, check := range checks {
 		results = append(results, outboundCheck{Key: check.Key, Status: check.Status, Summary: check.Summary})
@@ -427,7 +437,7 @@ func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks 
 			RepoURL:           ship.RepoURL,
 			DemoURL:           ship.DemoURL,
 			ThumbnailURL:      ship.ThumbnailURL,
-			HackatimeProjects: []string{},
+			HackatimeProjects: hackatimeProjects,
 		},
 		Review: outboundReview{
 			ApprovedSeconds: hours,

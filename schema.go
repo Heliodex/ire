@@ -349,59 +349,40 @@ func (a *reviewApp) migrate(ctx context.Context) error {
 	return a.seed(ctx)
 }
 
-// seed creates the Half Life programme, its dev reviewers and, on an empty database, the three fixture ships. It is idempotent.
+// seed creates the Half Life programme, its dev reviewers and, when missing, the three fixture ships. Every write is idempotent, so a partial seed is repaired on the next start.
 func (a *reviewApp) seed(ctx context.Context) error {
 	now := a.nowText()
 
-	programs, err := a.store.Query(ctx, `select id from program where slug = ?`, programSlug)
-	if err != nil {
+	outboundURL := a.config.OutboundURL
+	if outboundURL == "" {
+		outboundURL = "fake://receiver"
+	}
+
+	if _, err := a.store.Exec(ctx, `insert into program (id, slug, name, timezone, active, created_at, updated_at, outbound_url, outbound_enabled, signing_secret_last4, outbound_secret_last4, policy_version)
+		values (?, ?, ?, 'Europe/London', 1, ?, ?, ?, 1, ?, ?, 1)
+		on conflict(id) do nothing`,
+		programID, programSlug, "Half Life", now, now, outboundURL,
+		last4(a.config.IngestSecret), last4(a.config.OutboundSecret)); err != nil {
 		return err
 	}
 
-	hasProgram := programs.Next()
-	_ = programs.Close()
+	if err := a.seedPeople(ctx, now); err != nil {
+		return err
+	}
 
-	if !hasProgram {
-		outboundURL := a.config.OutboundURL
-		if outboundURL == "" {
-			outboundURL = "fake://receiver"
-		}
-
-		if _, err := a.store.Exec(ctx, `insert into program (id, slug, name, timezone, active, created_at, updated_at, outbound_url, outbound_enabled, signing_secret_last4, outbound_secret_last4, policy_version)
-			values (?, ?, ?, 'Europe/London', 1, ?, ?, ?, 1, ?, ?, 1)`,
-			programID, programSlug, "Half Life", now, now, outboundURL,
-			last4(a.config.IngestSecret), last4(a.config.OutboundSecret)); err != nil {
+	settings := map[string]string{
+		"review_policy":          `{"holdOnWarn":true,"holdMinApprovedSeconds":0,"holdTiers":[2,3],"noteRequiredForChanges":true,"fraudMinStage":2}`,
+		"allow_legacy_signature": "true",
+	}
+	for key, value := range settings {
+		if _, err := a.store.Exec(ctx, `insert into program_setting (program_id, key, value, updated_at) values (?, ?, ?, ?)
+			on conflict(program_id, key) do update set value = excluded.value, updated_at = excluded.updated_at`,
+			programID, key, value, now); err != nil {
 			return err
-		}
-
-		if err := a.seedPeople(ctx, now); err != nil {
-			return err
-		}
-
-		settings := map[string]string{
-			"review_policy":          `{"holdOnWarn":true,"holdMinApprovedSeconds":0,"holdTiers":[2,3],"noteRequiredForChanges":true,"fraudMinStage":2}`,
-			"allow_legacy_signature": "true",
-		}
-		for key, value := range settings {
-			if _, err := a.store.Exec(ctx, `insert into program_setting (program_id, key, value, updated_at) values (?, ?, ?, ?)`, programID, key, value, now); err != nil {
-				return err
-			}
 		}
 	}
 
 	if !a.config.SeedFixtures {
-		return nil
-	}
-
-	submissions, err := a.store.Query(ctx, `select id from submission where program_id = ? limit 1`, programID)
-	if err != nil {
-		return err
-	}
-
-	hasSubmissions := submissions.Next()
-	_ = submissions.Close()
-
-	if hasSubmissions {
 		return nil
 	}
 
@@ -419,12 +400,14 @@ func (a *reviewApp) seedPeople(ctx context.Context, now string) error {
 	}
 
 	for _, person := range people {
-		if _, err := a.store.Exec(ctx, `insert into user (id, email, name, created_at) values (?, ?, ?, ?)`,
+		if _, err := a.store.Exec(ctx, `insert into user (id, email, name, created_at) values (?, ?, ?, ?)
+			on conflict do update set name = excluded.name`,
 			person.id, person.email, person.name, now); err != nil {
 			return err
 		}
 
-		if _, err := a.store.Exec(ctx, `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at) values (?, ?, ?, ?, '["hardware"]', '[]', 1, ?)`,
+		if _, err := a.store.Exec(ctx, `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at) values (?, ?, ?, ?, '["hardware"]', '[]', 1, ?)
+			on conflict(program_id, user_id) do update set role = excluded.role, active = 1`,
 			"mem_"+person.id, programID, person.id, person.role, now); err != nil {
 			return err
 		}

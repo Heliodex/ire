@@ -78,7 +78,7 @@ function eventOf(body: string): string {
 		<section class="card">
 			<div class="card-head">
 				<h2>Outbox</h2>
-				<span>{outbox.length} rows</span>
+				<span>{outbox.length} {outbox.length === 1 ? "row" : "rows"}</span>
 			</div>
 			{#if outbox.length === 0}
 				<div class="empty">

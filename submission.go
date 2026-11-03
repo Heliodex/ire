@@ -384,6 +384,34 @@ func jsonCoveredSeconds(value string) int {
 	return total
 }
 
+// draftFor returns the caller's saved draft for a ship, so a refresh restores typed notes.
+func (a *reviewApp) draftFor(ctx context.Context, submissionID, reviewerID string) *contract.DraftState {
+	var note, internalNote, updatedAt string
+
+	err := a.store.QueryRow(ctx, `select note, internal_note, updated_at from draft where submission_id = ? and reviewer_id = ?`,
+		submissionID, reviewerID).Scan(&note, &internalNote, &updatedAt)
+	if err != nil {
+		return nil
+	}
+
+	return &contract.DraftState{Note: note, InternalNote: internalNote, UpdatedAt: updatedAt}
+}
+
+// payloadHackatimeProjects reads the Hackatime project names Half Life sent with the ship so the outbound event mirrors them.
+func payloadHackatimeProjects(ctx context.Context, client *storage.Client, submissionID string, version int) []string {
+	var payload string
+	if err := client.QueryRow(ctx, `select payload from submission_version where submission_id = ? and version = ?`, submissionID, version).Scan(&payload); err != nil {
+		return []string{}
+	}
+
+	var request contract.IngestRequest
+	if err := json.Unmarshal([]byte(payload), &request); err != nil || len(request.HackatimeProjects) == 0 {
+		return []string{}
+	}
+
+	return request.HackatimeProjects
+}
+
 // payloadPriorReviews reads the prior review context sent with a ship.
 func payloadPriorReviews(ctx context.Context, client *storage.Client, submissionID string, version int) []contract.PriorReview {
 	var payload string
