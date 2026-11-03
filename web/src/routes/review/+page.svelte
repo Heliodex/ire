@@ -14,7 +14,7 @@ import {
 	type Bundle,
 	type Check,
 } from "../../lib/api"
-import { formatDateTime, formatHours, formatMoney, formatMoneyParts, humanStatus, statusTone } from "../../lib/format"
+import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
 type Tab = "overview" | "checks" | "journal" | "bom"
@@ -478,38 +478,26 @@ async function saveDraftNow(): Promise<void> {
 						<span>Half Life sent no priced parts with this ship.</span>
 					</div>
 				{:else}
-					{@const total = formatMoneyParts(submission.bomTotalCents)}
 					<div class="ui-card table-wrap">
 						<table class="ui-table">
 							<thead>
-								<tr><th>Part</th><th>Purpose</th><th class="num">Qty</th><th class="num">Unit</th><th>Vendor</th></tr>
+								<tr><th>Part</th><th>Purpose</th><th class="num">Qty</th><th class="num">Unit (US$)</th><th>Vendor</th></tr>
 							</thead>
 							<tbody>
 								{#each bundle.bom as line (line.name)}
-									{@const price = formatMoneyParts(line.unitCostCents)}
 									<tr>
 										<td>{#if line.link}<a href={line.link} rel="noreferrer" target="_blank">{line.name} ↗</a>{:else}{line.name}{/if}</td>
 										<td>{line.purpose ?? "–"}</td>
 										<td class="num">{line.quantity}</td>
-										<td class="num">
-											<span class="money">
-												<span class="currency">{price.symbol}</span>
-												<span class="amount">{price.amount}</span>
-											</span>
-										</td>
+										<td class="num">{formatMoneyAmount(line.unitCostCents)}</td>
 										<td>{line.vendor ?? "–"}</td>
 									</tr>
 								{/each}
 							</tbody>
 							<tfoot>
 								<tr>
-									<td colspan="3">Total</td>
-									<td class="num">
-										<span class="money">
-											<span class="currency">{total.symbol}</span>
-											<span class="amount">{total.amount}</span>
-										</span>
-									</td>
+									<td colspan="3">Total (US$)</td>
+									<td class="num">{formatMoneyAmount(submission.bomTotalCents)}</td>
 									<td></td>
 								</tr>
 							</tfoot>
@@ -981,17 +969,6 @@ h1 {
 
 .table-wrap {
 	overflow-x: auto;
-}
-
-.money {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) 64px;
-	font-variant-numeric: tabular-nums;
-}
-
-.money .currency,
-.money .amount {
-	text-align: right;
 }
 
 .rail {
