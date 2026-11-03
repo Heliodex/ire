@@ -225,6 +225,10 @@ func TestFixturesAppearInQueue(t *testing.T) {
 		t.Errorf("queue check dots = %+v", queue.Items)
 	}
 
+	if len(queue.Items) == 0 || queue.Items[0].ThumbnailURL == nil || *queue.Items[0].ThumbnailURL == "" {
+		t.Errorf("queue thumbnails = %+v", queue.Items)
+	}
+
 	if len(queue.Items) > 1 && queueCheckStatuses(queue.Items[1].Checks)["repo.bom"] != statusFail {
 		t.Errorf("warned queue checks = %+v", queue.Items[1].Checks)
 	}

@@ -349,6 +349,15 @@ async function saveDraftNow(): Promise<void> {
 
 			{#if tab === "overview"}
 				<article class="ui-card padded overview">
+					{#if submission.thumbnailUrl}
+						<img
+							alt={`${submission.title} project image`}
+							class="cover"
+							decoding="async"
+							loading="lazy"
+							src={submission.thumbnailUrl}
+						>
+					{/if}
 					<h2>What the maker built</h2>
 					<p class="description">{submission.description || "No description was sent."}</p>
 
@@ -740,6 +749,15 @@ h1 {
 	font-size: var(--text-sm);
 	color: var(--text-2);
 	white-space: pre-wrap;
+}
+
+.cover {
+	display: block;
+	width: 100%;
+	height: auto;
+	margin-bottom: var(--space-4);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
 }
 
 .stats {

@@ -122,6 +122,7 @@ export const queueItemSchema = pipe(
 		priority: nonNegative,
 		title: pipe(string(), minLength(1)),
 		theme: optionalString,
+		thumbnailUrl: optionalString,
 		week: optional(pipe(number(), integer())),
 		makerName: pipe(string(), minLength(1)),
 		hoursClaimedSeconds: nonNegative,

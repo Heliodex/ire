@@ -40,7 +40,7 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 
 	now := a.nowText()
 	query := `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
-			coalesce(s.theme, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), s.hours_claimed_seconds,
+			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), s.hours_claimed_seconds,
 			coalesce(s.check_summary, ''), s.ingested_at, coalesce(u.email, '')
 		from submission s
 		left join claim c on c.submission_id = s.id and c.expires_at > ?
@@ -81,12 +81,13 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			item                                     contract.QueueItem
-			theme, makerName, summaryJSON, claimedBy string
-			week                                     int
+			item                        contract.QueueItem
+			theme, thumbnail, makerName string
+			summaryJSON, claimedBy      string
+			week                        int
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Version, &item.Status, &item.Stage, &item.Priority,
-			&item.Title, &theme, &week, &makerName, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy); err != nil {
+			&item.Title, &theme, &thumbnail, &week, &makerName, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy); err != nil {
 			writeStorage(w, err)
 
 			return
@@ -94,6 +95,10 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 
 		if theme != "" {
 			item.Theme = &theme
+		}
+
+		if thumbnail != "" {
+			item.ThumbnailURL = &thumbnail
 		}
 
 		if week > 0 {

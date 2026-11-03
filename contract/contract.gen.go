@@ -1720,6 +1720,9 @@ type QueueItem struct {
 	// Theme corresponds to the JSON schema field "theme".
 	Theme *string `json:"theme,omitempty,omitzero" yaml:"theme,omitempty" mapstructure:"theme,omitempty"`
 
+	// ThumbnailURL corresponds to the JSON schema field "thumbnailUrl".
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty,omitzero" yaml:"thumbnailUrl,omitempty" mapstructure:"thumbnailUrl,omitempty"`
+
 	// Title corresponds to the JSON schema field "title".
 	Title string `json:"title" yaml:"title" mapstructure:"title"`
 

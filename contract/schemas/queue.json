@@ -65,6 +65,9 @@
 					"theme": {
 						"type": "string"
 					},
+					"thumbnailUrl": {
+						"type": "string"
+					},
 					"week": {
 						"type": "integer"
 					},

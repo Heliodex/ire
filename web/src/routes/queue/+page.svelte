@@ -244,6 +244,17 @@ async function open(item: QueueItem): Promise<void> {
 					onclick={(): Promise<void> => open(item)}
 					type="button"
 				>
+					<span class="thumb">
+						{#if item.thumbnailUrl}
+							<img alt="" decoding="async" loading="lazy" src={item.thumbnailUrl}>
+						{:else}
+							<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
+								<rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="4"/>
+								<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5"/>
+								<path d="m4 17 4.5-4.5 3 3L15 12l5 5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"/>
+							</svg>
+						{/if}
+					</span>
 					<span class="ship-title" title={item.title}>{item.title}</span>
 					<span
 						class="ui-badge status"
@@ -382,7 +393,7 @@ h1 {
 .row {
 	display: grid;
 	grid-template-columns:
-		minmax(0, 1fr) 96px 64px minmax(110px, 160px) 36px 96px 64px minmax(120px, 160px) 56px;
+		48px minmax(0, 1fr) 96px 64px minmax(110px, 160px) 36px 96px 64px minmax(120px, 160px) 56px;
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
@@ -391,6 +402,29 @@ h1 {
 	background: transparent;
 	border: 0;
 	border-bottom: 1px solid var(--border);
+}
+
+.thumb {
+	display: block;
+	width: 48px;
+	height: 36px;
+	overflow: hidden;
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+}
+
+.thumb img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.thumb svg {
+	display: block;
+	margin: 10px auto;
+	color: var(--text-3);
 }
 
 .row:last-child {
@@ -556,11 +590,16 @@ h1 {
 
 @media (max-width: 1024px) {
 	.row {
-		grid-template-columns: minmax(0, 1fr) 96px 64px auto;
+		grid-template-columns: 48px minmax(0, 1fr) 96px 64px auto;
 		grid-template-areas:
-			"title status theme action"
-			"facts facts facts facts";
+			"thumb title status theme action"
+			"thumb facts facts facts facts";
 		row-gap: var(--space-1);
+	}
+
+	.thumb {
+		grid-area: thumb;
+		align-self: center;
 	}
 
 	.ship-title {
@@ -603,10 +642,10 @@ h1 {
 	}
 
 	.row {
-		grid-template-columns: auto 1fr auto;
+		grid-template-columns: 48px minmax(0, 1fr) auto;
 		grid-template-areas:
-			"title title action"
-			"status theme theme"
+			"thumb title action"
+			"thumb status theme"
 			"facts facts facts";
 	}
 

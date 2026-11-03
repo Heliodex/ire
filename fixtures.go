@@ -20,6 +20,7 @@ type fixture struct {
 	title        string
 	description  string
 	repoURL      string
+	thumbnailURL string
 	theme        string
 	makerEmail   string
 	makerName    string
@@ -120,14 +121,15 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 
 	fixtures := []fixture{
 		{
-			externalID:  "fix-clean:design",
-			title:       "Starbie",
-			description: "A tiny motion-controlled digital pet on a custom star-shaped PCB. The board carries a XIAO ESP32-C3, a 0.96-inch OLED, an MPU6050, a DHT11 and two Cherry MX switches. I drew my own panel art and added an angry expression when the pet's stats run out.",
-			repoURL:     "https://github.com/C6-H/Starbie",
-			theme:       "starbie",
-			makerEmail:  "c6h@example.com",
-			makerName:   "C6-H",
-			tier:        1,
+			externalID:   "fix-clean:design",
+			title:        "Starbie",
+			description:  "A tiny motion-controlled digital pet on a custom star-shaped PCB. The board carries a XIAO ESP32-C3, a 0.96-inch OLED, an MPU6050, a DHT11 and two Cherry MX switches. I drew my own panel art and added an angry expression when the pet's stats run out.",
+			repoURL:      "https://github.com/C6-H/Starbie",
+			thumbnailURL: "/projects/starbie.png",
+			theme:        "starbie",
+			makerEmail:   "c6h@example.com",
+			makerName:    "C6-H",
+			tier:         1,
 			// 6.4 hours, matching the approved row in .projects.csv.
 			hoursClaimed: 23040,
 			hoursJournal: 23040,
@@ -160,6 +162,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			title:        "OpenTrace",
 			description:  "An 8-channel USB logic analyzer built around an RP2350A. The board has USB-C, a 16 Mbit QSPI flash, an eight-channel buffer and a four-layer stackup. It is my first board with a proper ground plane and a differential USB pair.",
 			repoURL:      "https://github.com/Shubhayu-Banerjee/Open-Trace",
+			thumbnailURL: "/projects/opentrace.jpg",
 			theme:        "pcb",
 			makerEmail:   "opentrace@example.com",
 			makerName:    "Shubhayu-Banerjee",
@@ -195,6 +198,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			title:        "Smart Alarm Clock",
 			description:  "An ESP32 alarm clock that shows the weather and wakes you with a buzzer. The board has an ESP32 module, a 1.8-inch SPI display, a DS3231 RTC, a TP4056 charger and four buttons.",
 			repoURL:      "https://github.com/SBdevz/Smart-Alarm-Clock",
+			thumbnailURL: "/projects/smart-alarm-clock.png",
 			theme:        "pcb",
 			makerEmail:   "sbdevz@example.com",
 			makerName:    "SBdevz",
@@ -314,11 +318,12 @@ func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now
 	}
 
 	request := contract.IngestRequest{
-		ExternalID:  f.externalID,
-		Title:       f.title,
-		Description: f.description,
-		RepoURL:     stringPtr(f.repoURL),
-		Track:       stringPtr("hardware"),
+		ExternalID:   f.externalID,
+		Title:        f.title,
+		Description:  f.description,
+		RepoURL:      stringPtr(f.repoURL),
+		ThumbnailURL: stringPtr(f.thumbnailURL),
+		Track:        stringPtr("hardware"),
 		Maker: contract.IngestMaker{
 			Email: f.makerEmail,
 			Name:  f.makerName,
@@ -356,9 +361,9 @@ func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now
 	}
 
 	tx := []storage.TransactionStatement{
-		{SQL: `insert into submission (id, program_id, external_id, version, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, repo_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, ingested_at, created_at, updated_at)
-			values (?, ?, ?, 1, ?, 1, ?, ?, ?, 'hardware', ?, 'design', 1, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
-			Args: []any{id, programID, f.externalID, status, f.priority, f.title, f.description, f.theme, f.makerEmail, f.makerName, f.repoURL, f.tier, 3000, bomTotal, f.hoursClaimed, f.hoursJournal, string(summaryJSON), ingested.Format(timestampFormat), ingested.Format(timestampFormat), ingested.Format(timestampFormat)}},
+		{SQL: `insert into submission (id, program_id, external_id, version, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, repo_url, thumbnail_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, ingested_at, created_at, updated_at)
+			values (?, ?, ?, 1, ?, 1, ?, ?, ?, 'hardware', ?, 'design', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+			Args: []any{id, programID, f.externalID, status, f.priority, f.title, f.description, f.theme, f.makerEmail, f.makerName, f.repoURL, f.thumbnailURL, f.tier, 3000, bomTotal, f.hoursClaimed, f.hoursJournal, string(summaryJSON), ingested.Format(timestampFormat), ingested.Format(timestampFormat), ingested.Format(timestampFormat)}},
 		{SQL: `insert into submission_version (submission_id, version, payload, payload_sha256, received_at, delivery_id)
 			values (?, 1, ?, ?, ?, ?)`,
 			Args: []any{id, string(payload), sha256Hex(payload), ingested.Format(timestampFormat), "seed:" + id}},
