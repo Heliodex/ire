@@ -393,11 +393,11 @@ h1 {
 .row {
 	display: grid;
 	grid-template-columns:
-		48px minmax(0, 1fr) 96px 64px minmax(110px, 160px) 36px 96px 64px minmax(120px, 160px) 56px;
+		64px minmax(0, 1fr) 96px 64px minmax(110px, 160px) 36px 96px 64px minmax(120px, 160px) 56px;
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
-	padding: var(--space-3) var(--space-4);
+	padding: var(--space-1) var(--space-4) var(--space-1) var(--space-1);
 	text-align: left;
 	background: transparent;
 	border: 0;
@@ -406,8 +406,8 @@ h1 {
 
 .thumb {
 	display: block;
-	width: 48px;
-	height: 36px;
+	width: 64px;
+	height: 48px;
 	overflow: hidden;
 	background: var(--surface-2);
 	border: 1px solid var(--border);
@@ -423,7 +423,7 @@ h1 {
 
 .thumb svg {
 	display: block;
-	margin: 10px auto;
+	margin: 16px auto;
 	color: var(--text-3);
 }
 
@@ -590,7 +590,7 @@ h1 {
 
 @media (max-width: 1024px) {
 	.row {
-		grid-template-columns: 48px minmax(0, 1fr) 96px 64px auto;
+		grid-template-columns: 64px minmax(0, 1fr) 96px 64px auto;
 		grid-template-areas:
 			"thumb title status theme action"
 			"thumb facts facts facts facts";
@@ -642,7 +642,7 @@ h1 {
 	}
 
 	.row {
-		grid-template-columns: 48px minmax(0, 1fr) auto;
+		grid-template-columns: 64px minmax(0, 1fr) auto;
 		grid-template-areas:
 			"thumb title action"
 			"thumb status theme"
