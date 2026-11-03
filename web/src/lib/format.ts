@@ -51,6 +51,17 @@ export function formatMoney(cents: number | null | undefined): string {
 	return new Intl.NumberFormat(undefined, { currency: "USD", style: "currency" }).format(cents / 100)
 }
 
+// formatMoneyParts splits the currency symbol from the amount so table columns can align the prefix.
+export function formatMoneyParts(cents: number | null | undefined): { symbol: string; amount: string } {
+	if (cents == null) return { symbol: "", amount: "–" }
+
+	const parts = new Intl.NumberFormat(undefined, { currency: "USD", style: "currency" }).formatToParts(cents / 100)
+	const symbol = parts.filter((part) => part.type === "currency").map((part) => part.value).join("")
+	const amount = parts.filter((part) => part.type !== "currency").map((part) => part.value).join("").trim()
+
+	return { symbol, amount }
+}
+
 // Tone is the badge palette shared with Ari: green approved, yellow pending, orange changes, red rejected, purple second pass.
 export type Tone = "approved" | "pending" | "changes" | "rejected" | "secondpass" | "neutral"
 
