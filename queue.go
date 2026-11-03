@@ -185,8 +185,8 @@ func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 			stage = excluded.stage,
 			expires_at = excluded.expires_at,
 			heartbeat_at = excluded.heartbeat_at
-		where claim.expires_at <= ?`,
-		ship.ID, person.ID, ship.Stage, expires, now, now, now)
+		where claim.expires_at <= ? or claim.reviewer_id = ?`,
+		ship.ID, person.ID, ship.Stage, expires, now, now, now, person.ID)
 	if err != nil {
 		writeStorage(w, err)
 

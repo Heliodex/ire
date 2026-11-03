@@ -451,18 +451,18 @@ const secondsBreakdownSchema = object({
 })
 
 const statusReviewSchema = object({
-	approvedSeconds: nonNegative,
-	approvedMinutes: nonNegative,
-	approvedHours: number(),
-	secondsBreakdown: secondsBreakdownSchema,
-	noteToMaker: string(),
-	auditNote: optionalString,
-	reviewer: optional(object({ email: optionalString, slackId: optionalString })),
+	approved_seconds: nonNegative,
+	approved_minutes: nonNegative,
+	approved_hours: number(),
+	seconds_breakdown: secondsBreakdownSchema,
+	note_to_maker: string(),
+	audit_note: optionalString,
+	reviewer: optional(object({ email: optionalString, slack_id: optionalString })),
 	justification: optional(
 		object({
-			hackatimeProjects: optionalString,
-			technicalFeatures: optionalString,
-			deflationReason: optionalString,
+			hackatime_projects: optionalString,
+			technical_features: optionalString,
+			deflation_reason: optionalString,
 		}),
 	),
 })
@@ -474,7 +474,7 @@ const statusChecksSchema = object({
 			key: pipe(string(), minLength(1)),
 			status: pipe(string(), minLength(1)),
 			summary: pipe(string(), minLength(1)),
-			checkedAt: timestamp,
+			checked_at: timestamp,
 		}),
 	),
 })
@@ -482,17 +482,17 @@ const statusChecksSchema = object({
 export const statusResponseSchema = pipe(
 	object({
 		id: pipe(string(), minLength(1)),
-		externalId: pipe(string(), minLength(1)),
+		external_id: pipe(string(), minLength(1)),
 		version: nonNegative,
 		phase: pipe(string(), minLength(1)),
 		decision: optional(string()),
 		review: optional(statusReviewSchema),
 		stage: nonNegative,
-		stageHistory: stagesSchema,
+		stage_history: stagesSchema,
 		checks: statusChecksSchema,
 		fraud: optional(object({ status: string(), provider: optionalString, score: optional(pipe(number(), integer())) })),
 		timeline: array(object({ kind: pipe(string(), minLength(1)), at: timestamp })),
-		updatedAt: timestamp,
+		updated_at: timestamp,
 	}),
 	title("StatusResponse"),
 )

@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json/v2"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	"review/contract"
 
+	"github.com/heliodex/better-deploy/wt/packages/app"
 	"github.com/heliodex/better-deploy/wt/packages/storage"
 )
 
@@ -129,7 +131,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			// 6.4 hours, matching the approved row in .projects.csv.
 			hoursClaimed: 23040,
 			hoursJournal: 23040,
-			priority:     0,
+			priority:     30,
 			journals: []fixtureJournal{
 				{at: base.Add(2 * time.Hour).Format(timestampFormat), hours: 3, title: "Schematic and layout", text: "Placed the XIAO, the OLED header, the MPU6050 header, the DHT11 and the two switches. Routed the board on two layers and filled the back copper with GND. The DRC was clean after fixing one stray track.", clips: 2, coverS: 9000},
 				{at: base.Add(5 * time.Hour).Format(timestampFormat), hours: 3, title: "Firmware and panel art", text: "Added the angry face for an empty stat, drew the star trail, exported the gerbers and wrote the BOM. The board is 96 by 92 mm and the XIAO's USB port faces the edge.", clips: 1, coverS: 5400},
@@ -164,7 +166,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			tier:         1,
 			hoursClaimed: 37800,
 			hoursJournal: 37800,
-			priority:     10,
+			priority:     20,
 			journals: []fixtureJournal{
 				{at: base.Add(90 * time.Minute).Format(timestampFormat), hours: 5, title: "Schematic and QSPI flash", text: "Wired the RP2350A, the 16 Mbit flash and the USB-C port. I read the RP2350 datasheet for the QSPI pin mapping and checked the boot pins against the reference design.", clips: 1, coverS: 9000},
 				{at: base.Add(4 * time.Hour).Format(timestampFormat), hours: 5, title: "Routing and firmware", text: "Routed the USB pair, the buffers and the probe inputs. The firmware is a first pass that samples one channel and prints over USB serial. I still need to add the trigger logic.", clips: 0, coverS: 0},
@@ -199,7 +201,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			tier:         1,
 			hoursClaimed: 40320,
 			hoursJournal: 40320,
-			priority:     20,
+			priority:     10,
 			journals: []fixtureJournal{
 				{at: base.Add(time.Hour).Format(timestampFormat), hours: 6, title: "Schematic and Wokwi model", text: "Built the ESP32 circuit in Wokwi with the display, the RTC and the buzzer, then moved it to KiCad. The alarm logic is written but the board files still need work.", clips: 0, coverS: 0},
 				{at: base.Add(4 * time.Hour).Format(timestampFormat), hours: 5, title: "Board layout", text: "Started the layout and routed the display and USB-C. The repo is still private while I clean up the README.", clips: 0, coverS: 0},
@@ -228,6 +230,40 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// handleDevReset clears the demo ships and reseeds them. It exists so a rehearsal can start from the same three rows; REVIEW_DEV_AUTH=0 removes it.
+func (a *reviewApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
+	if !a.config.AllowDevAccounts {
+		app.WriteError(w, http.StatusNotFound, "development reset is disabled")
+		return
+	}
+
+	if _, ok := a.currentReviewer(w, r); !ok {
+		return
+	}
+
+	now := a.nowText()
+	tables := []string{"draft", "check_ack", "claim", "review", "outbox", "submission_event", "journal_entry", "bom_line", "check_result", "submission_version", "ingest_delivery", "submission"}
+
+	statements := make([]storage.TransactionStatement, 0, len(tables)+1)
+	for _, table := range tables {
+		statements = append(statements, storage.TransactionStatement{SQL: "delete from " + table})
+	}
+
+	statements = append(statements, storage.TransactionStatement{SQL: `delete from fake_receiver_delivery`})
+
+	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
+		writeStorage(w, err)
+		return
+	}
+
+	if err := a.seedFixtures(r.Context()); err != nil {
+		writeStorage(w, err)
+		return
+	}
+
+	app.WriteJSON(w, http.StatusOK, map[string]string{"seededAt": now})
 }
 
 // insertFixture writes one demo ship, its snapshot, evidence and prescribed checks.
@@ -354,13 +390,6 @@ func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now
 	_, err = a.store.Transaction(ctx, tx...)
 
 	return err
-}
-
-// intPtr returns a pointer to value.
-//
-//nolint:modernize // The helper keeps the fixture literals readable.
-func intPtr(value int) *int {
-	return &value
 }
 
 // stringPtr returns a pointer to value. It keeps the fixture literals readable.

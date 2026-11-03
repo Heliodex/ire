@@ -318,6 +318,15 @@ func TestCleanApprovalDeliversSignedPayload(t *testing.T) {
 		t.Fatalf("outcome = %+v", outcome)
 	}
 
+	replayed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil)
+	if replayed.Code != http.StatusOK {
+		t.Fatalf("final idempotent replay = %d: %s", replayed.Code, replayed.Body.String())
+	}
+
+	if again := decode[contract.DecisionOutcome](t, replayed); again.ID != outcome.ID {
+		t.Errorf("final replay id = %q, want %q", again.ID, outcome.ID)
+	}
+
 	receivedRecorder := do(t, application, http.MethodGet, "/api/v1/dev/outbox/received", nil, cookie, nil)
 	if receivedRecorder.Code != http.StatusOK {
 		t.Fatalf("received = %d: %s", receivedRecorder.Code, receivedRecorder.Body.String())
@@ -448,6 +457,11 @@ func TestClaimConflict(t *testing.T) {
 		t.Fatalf("first claim = %d: %s", claimed.Code, claimed.Body.String())
 	}
 
+	refreshed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, first, nil)
+	if refreshed.Code != http.StatusOK {
+		t.Fatalf("claim refresh = %d: %s", refreshed.Code, refreshed.Body.String())
+	}
+
 	conflict := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, second, nil)
 	if conflict.Code != http.StatusConflict {
 		t.Fatalf("second claim = %d: %s", conflict.Code, conflict.Body.String())
@@ -483,6 +497,42 @@ func TestWithdrawIsIdempotent(t *testing.T) {
 	state := decode[contract.StatusResponse](t, status)
 	if state.Phase != "withdrawn" {
 		t.Errorf("phase = %q", state.Phase)
+	}
+}
+
+// TestResubmissionAfterWithdraw covers a closed ship accepting a new version.
+func TestResubmissionAfterWithdraw(t *testing.T) {
+	application := newTestApp(t)
+	first := ingestBody("resubmit:design")
+
+	created := do(t, application, http.MethodPost, "/api/ingest/half-life", first, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", first),
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("first ingest = %d: %s", created.Code, created.Body.String())
+	}
+
+	withdraw := []byte(`{"external_id":"resubmit:design"}`)
+
+	closed := do(t, application, http.MethodPost, "/api/ingest/half-life/withdraw", withdraw, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", withdraw),
+	})
+	if closed.Code != http.StatusOK {
+		t.Fatalf("withdraw = %d: %s", closed.Code, closed.Body.String())
+	}
+
+	second := bytes.Replace(first, []byte("Line follower"), []byte("Line follower v2"), 1)
+
+	resubmitted := do(t, application, http.MethodPost, "/api/ingest/half-life", second, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", second),
+	})
+	if resubmitted.Code != http.StatusCreated {
+		t.Fatalf("resubmit = %d: %s", resubmitted.Code, resubmitted.Body.String())
+	}
+
+	versioned := decode[contract.IngestAccepted](t, resubmitted)
+	if versioned.Version != 2 {
+		t.Errorf("version = %d, want 2", versioned.Version)
 	}
 }
 
@@ -537,13 +587,6 @@ func checkStatuses(checks []contract.CheckResult) map[string]string {
 	}
 
 	return out
-}
-
-// floatPtr returns a pointer to value.
-//
-//nolint:modernize // The helper keeps the request literals readable.
-func floatPtr(value float64) *float64 {
-	return &value
 }
 
 // warningKeys returns the keys that need acknowledgement.

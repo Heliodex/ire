@@ -150,6 +150,7 @@ func (a *reviewApp) routes() {
 	a.mux.HandleFunc("GET /api/v1/me", a.handleMe)
 	a.mux.HandleFunc("POST /api/v1/dev/login", a.handleDevLogin)
 	a.mux.HandleFunc("POST /api/v1/dev/logout", a.handleDevLogout)
+	a.mux.HandleFunc("POST /api/v1/dev/reset", a.handleDevReset)
 
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/queue", a.handleQueue)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/submissions/{id}", a.handleBundle)

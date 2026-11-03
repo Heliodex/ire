@@ -29,18 +29,8 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !isOpen(ship.Status) {
-		app.WriteError(w, http.StatusConflict, "this ship is no longer open")
-		return
-	}
-
 	var request contract.DecisionRequest
 	if !app.ReadJSON(w, r, maxAPIBody, "decision", &request) {
-		return
-	}
-
-	if request.Version != ship.Version {
-		app.WriteErrorCode(w, http.StatusConflict, "stale_version", "this ship changed since you opened it; reload before deciding")
 		return
 	}
 
@@ -50,6 +40,16 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if found {
 		a.writeDecisionAgain(w, r, ship, existing)
+		return
+	}
+
+	if !isOpen(ship.Status) {
+		app.WriteError(w, http.StatusConflict, "this ship is no longer open")
+		return
+	}
+
+	if request.Version != ship.Version {
+		app.WriteErrorCode(w, http.StatusConflict, "stale_version", "this ship changed since you opened it; reload before deciding")
 		return
 	}
 

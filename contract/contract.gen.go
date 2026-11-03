@@ -2262,8 +2262,8 @@ type StatusResponse struct {
 	// Decision corresponds to the JSON schema field "decision".
 	Decision *string `json:"decision,omitempty,omitzero" yaml:"decision,omitempty" mapstructure:"decision,omitempty"`
 
-	// ExternalID corresponds to the JSON schema field "externalId".
-	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
+	// ExternalID corresponds to the JSON schema field "external_id".
+	ExternalID string `json:"external_id" yaml:"external_id" mapstructure:"external_id"`
 
 	// Fraud corresponds to the JSON schema field "fraud".
 	Fraud *StatusResponseFraud `json:"fraud,omitempty,omitzero" yaml:"fraud,omitempty" mapstructure:"fraud,omitempty"`
@@ -2280,14 +2280,14 @@ type StatusResponse struct {
 	// Stage corresponds to the JSON schema field "stage".
 	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
 
-	// StageHistory corresponds to the JSON schema field "stageHistory".
-	StageHistory []StatusResponseStageHistoryElem `json:"stageHistory" yaml:"stageHistory" mapstructure:"stageHistory"`
+	// StageHistory corresponds to the JSON schema field "stage_history".
+	StageHistory []StatusResponseStageHistoryElem `json:"stage_history" yaml:"stage_history" mapstructure:"stage_history"`
 
 	// Timeline corresponds to the JSON schema field "timeline".
 	Timeline []StatusResponseTimelineElem `json:"timeline" yaml:"timeline" mapstructure:"timeline"`
 
-	// UpdatedAt corresponds to the JSON schema field "updatedAt".
-	UpdatedAt string `json:"updatedAt" yaml:"updatedAt" mapstructure:"updatedAt"`
+	// UpdatedAt corresponds to the JSON schema field "updated_at".
+	UpdatedAt string `json:"updated_at" yaml:"updated_at" mapstructure:"updated_at"`
 
 	// Version corresponds to the JSON schema field "version".
 	Version int `json:"version" yaml:"version" mapstructure:"version"`
@@ -2302,8 +2302,8 @@ type StatusResponseChecks struct {
 }
 
 type StatusResponseChecksResultsElem struct {
-	// CheckedAt corresponds to the JSON schema field "checkedAt".
-	CheckedAt string `json:"checkedAt" yaml:"checkedAt" mapstructure:"checkedAt"`
+	// CheckedAt corresponds to the JSON schema field "checked_at".
+	CheckedAt string `json:"checked_at" yaml:"checked_at" mapstructure:"checked_at"`
 
 	// Key corresponds to the JSON schema field "key".
 	Key string `json:"key" yaml:"key" mapstructure:"key"`
@@ -2321,8 +2321,8 @@ func (j *StatusResponseChecksResultsElem) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
-	if _, ok := raw["checkedAt"]; raw != nil && !ok {
-		return fmt.Errorf("field checkedAt in StatusResponseChecksResultsElem: required")
+	if _, ok := raw["checked_at"]; raw != nil && !ok {
+		return fmt.Errorf("field checked_at in StatusResponseChecksResultsElem: required")
 	}
 	if _, ok := raw["key"]; raw != nil && !ok {
 		return fmt.Errorf("field key in StatusResponseChecksResultsElem: required")
@@ -2339,7 +2339,7 @@ func (j *StatusResponseChecksResultsElem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 	if utf8.RuneCountInString(string(plain.CheckedAt)) < 1 {
-		return fmt.Errorf("field %s length: must be >= %d", "checkedAt", 1)
+		return fmt.Errorf("field %s length: must be >= %d", "checked_at", 1)
 	}
 	if utf8.RuneCountInString(string(plain.Key)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
@@ -2408,48 +2408,48 @@ func (j *StatusResponseFraud) UnmarshalJSON(value []byte) error {
 }
 
 type StatusResponseReview struct {
-	// ApprovedHours corresponds to the JSON schema field "approvedHours".
-	ApprovedHours float64 `json:"approvedHours" yaml:"approvedHours" mapstructure:"approvedHours"`
+	// ApprovedHours corresponds to the JSON schema field "approved_hours".
+	ApprovedHours float64 `json:"approved_hours" yaml:"approved_hours" mapstructure:"approved_hours"`
 
-	// ApprovedMinutes corresponds to the JSON schema field "approvedMinutes".
-	ApprovedMinutes int `json:"approvedMinutes" yaml:"approvedMinutes" mapstructure:"approvedMinutes"`
+	// ApprovedMinutes corresponds to the JSON schema field "approved_minutes".
+	ApprovedMinutes int `json:"approved_minutes" yaml:"approved_minutes" mapstructure:"approved_minutes"`
 
-	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
-	ApprovedSeconds int `json:"approvedSeconds" yaml:"approvedSeconds" mapstructure:"approvedSeconds"`
+	// ApprovedSeconds corresponds to the JSON schema field "approved_seconds".
+	ApprovedSeconds int `json:"approved_seconds" yaml:"approved_seconds" mapstructure:"approved_seconds"`
 
-	// AuditNote corresponds to the JSON schema field "auditNote".
-	AuditNote *string `json:"auditNote,omitempty,omitzero" yaml:"auditNote,omitempty" mapstructure:"auditNote,omitempty"`
+	// AuditNote corresponds to the JSON schema field "audit_note".
+	AuditNote *string `json:"audit_note,omitempty,omitzero" yaml:"audit_note,omitempty" mapstructure:"audit_note,omitempty"`
 
 	// Justification corresponds to the JSON schema field "justification".
 	Justification *StatusResponseReviewJustification `json:"justification,omitempty,omitzero" yaml:"justification,omitempty" mapstructure:"justification,omitempty"`
 
-	// NoteToMaker corresponds to the JSON schema field "noteToMaker".
-	NoteToMaker string `json:"noteToMaker" yaml:"noteToMaker" mapstructure:"noteToMaker"`
+	// NoteToMaker corresponds to the JSON schema field "note_to_maker".
+	NoteToMaker string `json:"note_to_maker" yaml:"note_to_maker" mapstructure:"note_to_maker"`
 
 	// Reviewer corresponds to the JSON schema field "reviewer".
 	Reviewer *StatusResponseReviewReviewer `json:"reviewer,omitempty,omitzero" yaml:"reviewer,omitempty" mapstructure:"reviewer,omitempty"`
 
-	// SecondsBreakdown corresponds to the JSON schema field "secondsBreakdown".
-	SecondsBreakdown StatusResponseReviewSecondsBreakdown `json:"secondsBreakdown" yaml:"secondsBreakdown" mapstructure:"secondsBreakdown"`
+	// SecondsBreakdown corresponds to the JSON schema field "seconds_breakdown".
+	SecondsBreakdown StatusResponseReviewSecondsBreakdown `json:"seconds_breakdown" yaml:"seconds_breakdown" mapstructure:"seconds_breakdown"`
 }
 
 type StatusResponseReviewJustification struct {
-	// DeflationReason corresponds to the JSON schema field "deflationReason".
-	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
+	// DeflationReason corresponds to the JSON schema field "deflation_reason".
+	DeflationReason *string `json:"deflation_reason,omitempty,omitzero" yaml:"deflation_reason,omitempty" mapstructure:"deflation_reason,omitempty"`
 
-	// HackatimeProjects corresponds to the JSON schema field "hackatimeProjects".
-	HackatimeProjects *string `json:"hackatimeProjects,omitempty,omitzero" yaml:"hackatimeProjects,omitempty" mapstructure:"hackatimeProjects,omitempty"`
+	// HackatimeProjects corresponds to the JSON schema field "hackatime_projects".
+	HackatimeProjects *string `json:"hackatime_projects,omitempty,omitzero" yaml:"hackatime_projects,omitempty" mapstructure:"hackatime_projects,omitempty"`
 
-	// TechnicalFeatures corresponds to the JSON schema field "technicalFeatures".
-	TechnicalFeatures *string `json:"technicalFeatures,omitempty,omitzero" yaml:"technicalFeatures,omitempty" mapstructure:"technicalFeatures,omitempty"`
+	// TechnicalFeatures corresponds to the JSON schema field "technical_features".
+	TechnicalFeatures *string `json:"technical_features,omitempty,omitzero" yaml:"technical_features,omitempty" mapstructure:"technical_features,omitempty"`
 }
 
 type StatusResponseReviewReviewer struct {
 	// Email corresponds to the JSON schema field "email".
 	Email *string `json:"email,omitempty,omitzero" yaml:"email,omitempty" mapstructure:"email,omitempty"`
 
-	// SlackID corresponds to the JSON schema field "slackId".
-	SlackID *string `json:"slackId,omitempty,omitzero" yaml:"slackId,omitempty" mapstructure:"slackId,omitempty"`
+	// SlackID corresponds to the JSON schema field "slack_id".
+	SlackID *string `json:"slack_id,omitempty,omitzero" yaml:"slack_id,omitempty" mapstructure:"slack_id,omitempty"`
 }
 
 type StatusResponseReviewSecondsBreakdown struct {
@@ -2511,20 +2511,20 @@ func (j *StatusResponseReview) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
-	if _, ok := raw["approvedHours"]; raw != nil && !ok {
-		return fmt.Errorf("field approvedHours in StatusResponseReview: required")
+	if _, ok := raw["approved_hours"]; raw != nil && !ok {
+		return fmt.Errorf("field approved_hours in StatusResponseReview: required")
 	}
-	if _, ok := raw["approvedMinutes"]; raw != nil && !ok {
-		return fmt.Errorf("field approvedMinutes in StatusResponseReview: required")
+	if _, ok := raw["approved_minutes"]; raw != nil && !ok {
+		return fmt.Errorf("field approved_minutes in StatusResponseReview: required")
 	}
-	if _, ok := raw["approvedSeconds"]; raw != nil && !ok {
-		return fmt.Errorf("field approvedSeconds in StatusResponseReview: required")
+	if _, ok := raw["approved_seconds"]; raw != nil && !ok {
+		return fmt.Errorf("field approved_seconds in StatusResponseReview: required")
 	}
-	if _, ok := raw["noteToMaker"]; raw != nil && !ok {
-		return fmt.Errorf("field noteToMaker in StatusResponseReview: required")
+	if _, ok := raw["note_to_maker"]; raw != nil && !ok {
+		return fmt.Errorf("field note_to_maker in StatusResponseReview: required")
 	}
-	if _, ok := raw["secondsBreakdown"]; raw != nil && !ok {
-		return fmt.Errorf("field secondsBreakdown in StatusResponseReview: required")
+	if _, ok := raw["seconds_breakdown"]; raw != nil && !ok {
+		return fmt.Errorf("field seconds_breakdown in StatusResponseReview: required")
 	}
 	type Plain StatusResponseReview
 	var plain Plain
@@ -2532,10 +2532,10 @@ func (j *StatusResponseReview) UnmarshalJSON(value []byte) error {
 		return err
 	}
 	if 0 > plain.ApprovedMinutes {
-		return fmt.Errorf("field %s: must be >= %v", "approvedMinutes", 0)
+		return fmt.Errorf("field %s: must be >= %v", "approved_minutes", 0)
 	}
 	if 0 > plain.ApprovedSeconds {
-		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
+		return fmt.Errorf("field %s: must be >= %v", "approved_seconds", 0)
 	}
 	*j = StatusResponseReview(plain)
 	return nil
@@ -2632,8 +2632,8 @@ func (j *StatusResponse) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["checks"]; raw != nil && !ok {
 		return fmt.Errorf("field checks in StatusResponse: required")
 	}
-	if _, ok := raw["externalId"]; raw != nil && !ok {
-		return fmt.Errorf("field externalId in StatusResponse: required")
+	if _, ok := raw["external_id"]; raw != nil && !ok {
+		return fmt.Errorf("field external_id in StatusResponse: required")
 	}
 	if _, ok := raw["id"]; raw != nil && !ok {
 		return fmt.Errorf("field id in StatusResponse: required")
@@ -2644,14 +2644,14 @@ func (j *StatusResponse) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["stage"]; raw != nil && !ok {
 		return fmt.Errorf("field stage in StatusResponse: required")
 	}
-	if _, ok := raw["stageHistory"]; raw != nil && !ok {
-		return fmt.Errorf("field stageHistory in StatusResponse: required")
+	if _, ok := raw["stage_history"]; raw != nil && !ok {
+		return fmt.Errorf("field stage_history in StatusResponse: required")
 	}
 	if _, ok := raw["timeline"]; raw != nil && !ok {
 		return fmt.Errorf("field timeline in StatusResponse: required")
 	}
-	if _, ok := raw["updatedAt"]; raw != nil && !ok {
-		return fmt.Errorf("field updatedAt in StatusResponse: required")
+	if _, ok := raw["updated_at"]; raw != nil && !ok {
+		return fmt.Errorf("field updated_at in StatusResponse: required")
 	}
 	if _, ok := raw["version"]; raw != nil && !ok {
 		return fmt.Errorf("field version in StatusResponse: required")
@@ -2662,7 +2662,7 @@ func (j *StatusResponse) UnmarshalJSON(value []byte) error {
 		return err
 	}
 	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
-		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
+		return fmt.Errorf("field %s length: must be >= %d", "external_id", 1)
 	}
 	if utf8.RuneCountInString(string(plain.ID)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
@@ -2674,7 +2674,7 @@ func (j *StatusResponse) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
-		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
+		return fmt.Errorf("field %s length: must be >= %d", "updated_at", 1)
 	}
 	if 0 > plain.Version {
 		return fmt.Errorf("field %s: must be >= %v", "version", 0)

@@ -5,7 +5,7 @@
 			"type": "string",
 			"minLength": 1
 		},
-		"externalId": {
+		"external_id": {
 			"type": "string",
 			"minLength": 1
 		},
@@ -23,18 +23,18 @@
 		"review": {
 			"type": "object",
 			"properties": {
-				"approvedSeconds": {
+				"approved_seconds": {
 					"type": "integer",
 					"minimum": 0
 				},
-				"approvedMinutes": {
+				"approved_minutes": {
 					"type": "integer",
 					"minimum": 0
 				},
-				"approvedHours": {
+				"approved_hours": {
 					"type": "number"
 				},
-				"secondsBreakdown": {
+				"seconds_breakdown": {
 					"type": "object",
 					"properties": {
 						"hackatime": {
@@ -61,10 +61,10 @@
 						"program"
 					]
 				},
-				"noteToMaker": {
+				"note_to_maker": {
 					"type": "string"
 				},
-				"auditNote": {
+				"audit_note": {
 					"type": "string"
 				},
 				"reviewer": {
@@ -73,7 +73,7 @@
 						"email": {
 							"type": "string"
 						},
-						"slackId": {
+						"slack_id": {
 							"type": "string"
 						}
 					},
@@ -82,13 +82,13 @@
 				"justification": {
 					"type": "object",
 					"properties": {
-						"hackatimeProjects": {
+						"hackatime_projects": {
 							"type": "string"
 						},
-						"technicalFeatures": {
+						"technical_features": {
 							"type": "string"
 						},
-						"deflationReason": {
+						"deflation_reason": {
 							"type": "string"
 						}
 					},
@@ -96,18 +96,18 @@
 				}
 			},
 			"required": [
-				"approvedSeconds",
-				"approvedMinutes",
-				"approvedHours",
-				"secondsBreakdown",
-				"noteToMaker"
+				"approved_seconds",
+				"approved_minutes",
+				"approved_hours",
+				"seconds_breakdown",
+				"note_to_maker"
 			]
 		},
 		"stage": {
 			"type": "integer",
 			"minimum": 0
 		},
-		"stageHistory": {
+		"stage_history": {
 			"type": "array",
 			"items": {
 				"type": "object",
@@ -159,7 +159,7 @@
 								"type": "string",
 								"minLength": 1
 							},
-							"checkedAt": {
+							"checked_at": {
 								"type": "string",
 								"minLength": 1
 							}
@@ -168,7 +168,7 @@
 							"key",
 							"status",
 							"summary",
-							"checkedAt"
+							"checked_at"
 						]
 					}
 				}
@@ -215,21 +215,21 @@
 				]
 			}
 		},
-		"updatedAt": {
+		"updated_at": {
 			"type": "string",
 			"minLength": 1
 		}
 	},
 	"required": [
 		"id",
-		"externalId",
+		"external_id",
 		"version",
 		"phase",
 		"stage",
-		"stageHistory",
+		"stage_history",
 		"checks",
 		"timeline",
-		"updatedAt"
+		"updated_at"
 	],
 	"title": "StatusResponse",
 	"$schema": "http://json-schema.org/draft-07/schema#",

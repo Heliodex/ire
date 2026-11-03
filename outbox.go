@@ -198,7 +198,7 @@ func (a *reviewApp) receiveFake(ctx context.Context, row outboxRow, timestamp, s
 		verified = 1
 	}
 
-	if _, err := a.store.Exec(ctx, `insert into fake_receiver_delivery (id, delivery_id, event, timestamp, body, signature, verified, received_at)
+	if _, err := a.store.Exec(ctx, `insert or ignore into fake_receiver_delivery (id, delivery_id, event, timestamp, body, signature, verified, received_at)
 		values (?, ?, ?, ?, ?, ?, ?, ?)`,
 		newID("rcv"), row.DeliveryID, row.Event, timestamp, row.Payload, signature, verified, a.nowText()); err != nil {
 		return http.StatusInternalServerError, false, err

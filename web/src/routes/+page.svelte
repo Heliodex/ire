@@ -1,171 +1,120 @@
 <script lang="ts">
+import { goto } from "$app/navigation"
 import { onMount } from "svelte"
-import { createNote, fetchNotes, type Note } from "../lib/api"
 import { ApiError } from "../lib/api-error"
-import { maxNote } from "../lib/contract"
-import { ValidationError } from "../lib/validation-error"
+import { login } from "../lib/api"
+import { session } from "../lib/session.svelte.js"
 
-let notes = $state<Note[]>([])
-let text = $state("")
-let loading = $state(true)
-let sending = $state(false)
+let email = $state("reviewer@example.com")
+let busy = $state(false)
 let error = $state("")
-let fieldErrors = $state<{ [_: string]: string }>({})
 
-const timeFormat = new Intl.DateTimeFormat(undefined, {
-	dateStyle: "medium",
-	timeStyle: "short",
+const accounts = [
+	{ email: "reviewer@example.com", label: "Rae · reviewer", note: "Stage 1 queue" },
+	{ email: "organiser@example.com", label: "Oli · organiser", note: "Second-pass policy" },
+	{ email: "admin@example.com", label: "Ada · admin", note: "Full programme" },
+]
+
+onMount((): void => {
+	if (session.me) void goto("/queue")
 })
-
-function formatTime(value: string): string {
-	const date = new Date(value)
-	return Number.isNaN(date.getTime()) ? value : timeFormat.format(date)
-}
-
-async function loadNotes(): Promise<void> {
-	try {
-		notes = await fetchNotes(50)
-		error = ""
-	} catch (err) {
-		error = err instanceof Error ? err.message : "Could not reach the notes API."
-	} finally {
-		loading = false
-	}
-}
-
-onMount((): (() => void) => {
-	void loadNotes()
-	const timer = setInterval((): void => void loadNotes(), 20000)
-	return (): void => clearInterval(timer)
-})
-
-function clearFieldError(field: string): void {
-	if (!(field in fieldErrors)) return
-
-	const next = { ...fieldErrors }
-	delete next[field]
-	fieldErrors = next
-}
 
 async function submit(event: SubmitEvent): Promise<void> {
 	event.preventDefault()
-	sending = true
+	await signIn(email)
+}
+
+async function signIn(address: string): Promise<void> {
+	busy = true
 	error = ""
-	fieldErrors = {}
 	try {
-		const entry = await createNote(text)
-		notes = [entry, ...notes]
-		text = ""
+		session.me = await login(address)
+		void goto("/queue")
 	} catch (err) {
-		if (err instanceof ValidationError) {
-			fieldErrors = err.fields
-			if (Object.keys(err.fields).length === 0) error = err.message
-		} else if (err instanceof ApiError && err.field !== "") fieldErrors = { [err.field]: err.message }
-		else error = err instanceof Error ? err.message : "Could not save the note."
+		error = err instanceof ApiError || err instanceof Error ? err.message : "Could not sign in."
 	} finally {
-		sending = false
+		busy = false
 	}
 }
 </script>
 
 <svelte:head>
-	<title>Notes</title>
+	<title>Sign in · Half Life Review</title>
 </svelte:head>
 
-<section class="hero">
-	<div>
-		<p class="eyebrow">A tiny notes app</p>
-		<h1>Leave a <em>note</em>.</h1>
+<section class="login">
+	<div class="intro">
+		<p class="eyebrow">Half Life hardware review</p>
+		<h1>Read the board.<br><em>Make the call.</em></h1>
 		<p class="lede">
-			A static SvelteKit page with a living Go + SQLite API behind it. Write a note and see it appear below.
+			A familiar queue for the reviewers who came from Ari: claim a ship, read the checks and the evidence, decide
+			once, and move to the next board. Stage 2 and fraud stay out of the first pass.
 		</p>
+
+		<div class="points">
+			<div>
+				<span>01</span>
+				<p>Fixture ships stand in for the live queue until checks are ported.</p>
+			</div>
+			<div>
+				<span>02</span>
+				<p>Warnings need one acknowledgement. A blocking check disables approve.</p>
+			</div>
+			<div>
+				<span>03</span>
+				<p>Every decision writes a signed outbox row before it is delivered.</p>
+			</div>
+		</div>
+	</div>
+
+	<div class="panel">
+		<div class="panel-head">
+			<h2>Sign in</h2>
+			<span class="badge">Development only</span>
+		</div>
+		<p class="hint">
+			This prototype uses seeded accounts instead of Hack Club Auth, so the queue can be reviewed before the OAuth
+			app exists.
+		</p>
+
+		<form onsubmit={submit}>
+			<label>
+				<span>Email</span>
+				<input autocomplete="email" bind:value={email} required type="email">
+			</label>
+			<button class="primary" disabled={busy} type="submit">
+				{busy ? "Signing in…" : "Enter the queue"}
+			</button>
+		</form>
+
+		{#if error}
+			<p class="error" role="alert">{error}</p>
+		{/if}
+
+		<div class="accounts">
+			<span>Or pick a seeded account</span>
+			{#each accounts as account (account.email)}
+				<button class="account" disabled={busy} onclick={(): Promise<void> => signIn(account.email)} type="button">
+					<strong>{account.label}</strong>
+					<small>{account.note}</small>
+				</button>
+			{/each}
+		</div>
 	</div>
 </section>
 
-<div class="feed">
-	<section aria-labelledby="composer-title" class="composer">
-		<div class="section-head">
-			<h2 id="composer-title">New note</h2>
-			<span>Keep it short.</span>
-		</div>
-		<form novalidate onsubmit={submit}>
-			<label class="note-field">
-				<span>Note</span>
-				<textarea
-					aria-describedby={fieldErrors.text ? "text-error" : undefined}
-					aria-invalid={fieldErrors.text ? "true" : undefined}
-					maxlength={maxNote}
-					oninput={(): void => clearFieldError("text")}
-					placeholder="What are you thinking?"
-					required
-					rows="3"
-					bind:value={text}
-				></textarea>
-				{#if fieldErrors.text}
-					<small class="field-error" id="text-error">{fieldErrors.text}</small>
-				{/if}
-			</label>
-			<div class="composer-foot">
-				<span>{text.length} / {maxNote}</span>
-				<button disabled={sending} type="submit">
-					{sending ? "Saving…" : "Save note"}
-				</button>
-			</div>
-		</form>
-	</section>
-
-	{#if error}
-		<div class="error" role="alert">{error}</div>
-	{/if}
-
-	<section aria-busy={loading} aria-labelledby="notes-title" aria-live="polite" class="wall">
-		<div class="wall-head">
-			<h2 id="notes-title">Notes</h2>
-			<span>{notes.length} {notes.length === 1 ? "note" : "notes"}</span>
-		</div>
-
-		{#if loading}
-			<div aria-label="Loading notes" class="skeleton" role="status">
-				<div></div>
-				<div></div>
-			</div>
-		{:else if notes.length === 0}
-			<div class="empty">
-				<p>No notes yet.</p>
-				<span>Write the first one above.</span>
-			</div>
-		{:else}
-			<div class="messages">
-				{#each notes as note (note.id)}
-					<article class="message">
-						<p>{note.text}</p>
-						<time datetime={note.createdAt}>{formatTime(note.createdAt)}</time>
-					</article>
-				{/each}
-			</div>
-		{/if}
-	</section>
-</div>
-
 <style>
-.feed {
-	display: flex;
-	flex-direction: column;
-	gap: 22px;
-}
-
-.hero {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 28px;
-	align-items: flex-end;
-	justify-content: space-between;
-	padding-bottom: 30px;
+.login {
+	display: grid;
+	grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+	gap: 48px;
+	align-items: start;
+	padding: 44px 0 20px;
 }
 
 .eyebrow {
-	padding-bottom: 10px;
-	font-size: 0.72rem;
+	padding-bottom: 16px;
+	font-size: 0.68rem;
 	font-weight: 750;
 	color: var(--accent);
 	text-transform: uppercase;
@@ -173,8 +122,8 @@ async function submit(event: SubmitEvent): Promise<void> {
 }
 
 h1 {
-	max-width: 720px;
-	font-size: clamp(2.2rem, 6vw, 4rem);
+	max-width: 640px;
+	font-size: clamp(2.4rem, 5.4vw, 4.1rem);
 }
 
 h1 em {
@@ -183,96 +132,116 @@ h1 em {
 }
 
 .lede {
-	max-width: 620px;
-	padding-top: 14px;
-	font-size: 1.02rem;
+	max-width: 590px;
+	padding-top: 18px;
+	font-size: 1rem;
 	color: var(--muted);
 }
 
-.composer {
-	padding: 22px;
+.points {
+	display: grid;
+	gap: 14px;
+	max-width: 560px;
+	padding-top: 38px;
+}
+
+.points div {
+	display: grid;
+	grid-template-columns: 38px 1fr;
+	gap: 14px;
+	align-items: start;
+	padding-top: 12px;
+	border-top: 1px solid var(--line);
+}
+
+.points span {
+	font-size: 0.7rem;
+	font-weight: 800;
+	color: var(--accent);
+	letter-spacing: 0.08em;
+}
+
+.points p {
+	font-size: 0.84rem;
+	color: var(--muted);
+}
+
+.panel {
+	padding: 24px;
 	background: var(--card);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 }
 
-.section-head {
+.panel-head {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 16px;
+	gap: 12px;
 	align-items: baseline;
 	justify-content: space-between;
-	padding-bottom: 14px;
+	padding-bottom: 10px;
 }
 
-.section-head h2 {
-	font-size: 1.12rem;
+.panel-head h2 {
+	font-size: 1.3rem;
 }
 
-.section-head span {
+.badge {
+	padding: 4px 9px;
+	font-size: 0.64rem;
+	font-weight: 750;
+	color: var(--accent-deep);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	background: var(--accent-soft);
+	border-radius: 999px;
+}
+
+.hint {
+	padding-bottom: 20px;
 	font-size: 0.78rem;
 	color: var(--muted);
 }
 
-.note-field {
+form {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+label {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
 }
 
-.note-field > span {
-	font-size: 0.68rem;
-	font-weight: 650;
+label span {
+	font-size: 0.66rem;
+	font-weight: 700;
 	color: var(--muted);
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
 }
 
-textarea {
+input {
 	width: 100%;
 	padding: 10px 12px;
 	color: var(--ink);
-	resize: vertical;
-	outline: none;
 	background: #fff;
 	border: 1px solid var(--line);
-	border-radius: 11px;
+	border-radius: 10px;
+	outline: none;
 }
 
-textarea:focus {
+input:focus {
 	border-color: var(--accent);
 	box-shadow: 0 0 3px var(--accent-soft);
 }
 
-textarea[aria-invalid="true"] {
-	background: #fff8f4;
-	border-color: var(--accent);
-}
-
-.field-error {
-	font-size: 0.72rem;
-	font-weight: 550;
-	color: var(--accent-deep);
-}
-
-.composer-foot {
-	display: flex;
-	gap: 16px;
-	align-items: center;
-	justify-content: space-between;
-	padding-top: 12px;
-}
-
-.composer-foot > span {
-	font-size: 0.74rem;
-	font-variant-numeric: tabular-nums;
-	color: var(--muted);
-}
-
-.composer-foot button {
-	padding: 10px 16px;
-	font-size: 0.84rem;
+.primary {
+	padding: 11px 16px;
+	font-size: 0.86rem;
 	font-weight: 750;
 	color: #fff;
 	background: var(--accent);
@@ -280,109 +249,73 @@ textarea[aria-invalid="true"] {
 	border-radius: 10px;
 }
 
-.composer-foot button:hover {
+.primary:hover {
 	background: var(--accent-deep);
 }
 
-.composer-foot button:disabled {
+.primary:disabled {
 	cursor: wait;
-	opacity: 0.7;
+	opacity: 0.65;
 }
 
 .error {
-	padding: 11px 14px;
-	font-size: 0.88rem;
+	padding: 10px 12px;
+	margin-top: 12px;
+	font-size: 0.82rem;
 	color: #7d2a12;
 	background: #fbe5df;
 	border: 1px solid #e9b9aa;
-	border-radius: 12px;
+	border-radius: 10px;
 }
 
-.wall-head {
+.accounts {
 	display: flex;
-	gap: 16px;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 20px;
+	margin-top: 20px;
+	border-top: 1px solid var(--line);
+}
+
+.accounts > span {
+	padding-bottom: 2px;
+	font-size: 0.66rem;
+	font-weight: 700;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+}
+
+.account {
+	display: flex;
+	gap: 10px;
 	align-items: baseline;
 	justify-content: space-between;
-	padding-bottom: 12px;
-}
-
-.wall-head h2 {
-	font-size: 1.2rem;
-}
-
-.wall-head span {
-	font-size: 0.78rem;
-	color: var(--muted);
-}
-
-.messages {
-	display: grid;
-	gap: 12px;
-}
-
-.message {
-	padding: 18px 19px;
-	background: var(--card);
+	padding: 9px 11px;
+	text-align: left;
+	background: var(--paper);
 	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	box-shadow: 0 4px 14px rgba(60, 45, 20, 0.035);
+	border-radius: 9px;
 }
 
-.message > p {
-	font-size: 0.95rem;
-	color: #364043;
-	overflow-wrap: anywhere;
-	white-space: pre-wrap;
+.account:hover {
+	border-color: var(--ink);
 }
 
-.message time {
-	display: block;
-	padding-top: 8px;
-	font-size: 0.72rem;
+.account strong {
+	font-size: 0.8rem;
+}
+
+.account small {
+	font-size: 0.7rem;
 	color: var(--muted);
 }
 
-.skeleton {
-	display: grid;
-	gap: 12px;
-}
-
-.skeleton div {
-	height: 96px;
-	background: linear-gradient(90deg, var(--card), var(--paper-deep), var(--card));
-	background-size: 200% 100%;
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	animation: shimmer 1.4s infinite;
-}
-
-.empty {
-	padding: 38px;
-	text-align: center;
-	background: var(--card);
-	border: 1px dashed var(--line);
-	border-radius: var(--radius);
-}
-
-.empty p {
-	font-weight: 700;
-}
-
-.empty span {
-	font-size: 0.86rem;
-	color: var(--muted);
-}
-
-@keyframes shimmer {
-	to {
-		background-position: -200% 0;
-	}
-}
-
-@media (max-width: 700px) {
-	.hero {
-		flex-direction: column;
-		align-items: flex-start;
+@media (max-width: 900px) {
+	.login {
+		grid-template-columns: 1fr;
+		gap: 30px;
+		padding-top: 24px;
 	}
 }
 </style>
