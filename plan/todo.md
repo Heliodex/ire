@@ -121,6 +121,20 @@ wt build --dir .
 - [x] Audit log and submission timeline entries for decisions, claims, releases, holds and deliveries.
 - [x] Consolidated outbound event with stage history, maker, ship, review, checks and approved hours.
 
+### Stage 2
+
+- [x] Organiser-only second-pass queue with the held count and a `stage=2` filter.
+- [x] Organiser claim, heartbeat and release for a `stage2_hold` ship.
+- [x] Reviewers get `403` on second-pass claim and decision, and the UI keeps it read-only.
+- [x] Second-pass confirm, reject and request-changes actions as a final decision.
+- [x] Stage 1 held review kept at stage 1; the final review is stage 2 and supersedes it.
+- [x] Held hours and the stage 1 note are reused when the organiser confirms without changing them.
+- [x] Own-decision prevention: the organiser who held the ship cannot confirm it.
+- [x] Exactly one final outbound event, with stage 1 and stage 2 in the stage history.
+- [x] Second-pass banner, hold reason and first-pass note on the review screen.
+- [x] Programme-wide counts stay visible while browsing the second-pass list.
+- [x] Tests for the full hold → confirm loop, role boundaries, idempotent replay and own-decision refusal.
+
 ### Checks and evidence in the slice
 
 - [x] Payload-only local checks: repo URL, description length, images, BOM, journal detail, claimed hours.
@@ -158,56 +172,21 @@ wt build --dir .
 
 **Goal:** a warned or held approval can be finished by an organiser instead of dead-ending in `stage2_hold`.
 
-### Contract and data
+The core loop is working: a stage 1 hold, an organiser second-pass queue, claim, confirm/reject/changes, own-decision prevention and one final event. The remaining items are polish and the less common actions.
 
-- [ ] Decide the stage 2 API shape: reuse `POST …/decision` with the ship stage inferred, or add `POST …/stage2/decision` and a stage field. Prefer an explicit stage 2 route so the role gate is obvious.
-- [ ] Add stage 2 queue response items and counts to the contract, or reuse `queue?stage=2` with a stage 2 filter.
-- [ ] Extend the bundle with the stage 1 held review, hold reason, stage history and stage 2 permissions.
-- [ ] Keep `review` rows for both stages: stage 1 held (`is_final = 0`) and stage 2 final (`is_final = 1`).
-- [ ] Add `supersedes_review_id` linking the stage 2 review to the held stage 1 review.
-- [ ] Ensure the `review_final_idx` unique index allows exactly one final review.
-- [ ] Add a stage 2 capability to the `me` response or derive it from role and programme membership.
+### Remaining
 
-### Backend
+- [ ] Show the stage 1 acknowledgements on the stage 2 screen, not just the checks themselves.
+- [ ] Add send-back: invalidate the held review, return the ship to stage 1 `ready`, record the reason and event.
+- [ ] Add override with a required reason when the organiser changes the first-pass hours or decision.
+- [ ] Add a dedicated stage history panel on the review screen; today the timeline and the second-pass banner carry it.
+- [ ] Add an explicit fraud stage guard test when the provider exists; there is no fraud path to guard yet.
+- [ ] Add a stage 2 stale-version test; the version guard exists but is only covered on stage 1.
+- [ ] Add a second-pass empty state and keyboard coverage to the browser smoke script.
+- [ ] Update `plan/07-delivery.md` with the implemented second-pass flow and its remaining gaps.
+- [ ] Decide whether stage 2 should allow a reviewer to send a ship back to stage 1 without a full decision.
 
-- [ ] Allow an organiser/admin to claim a `stage2_hold` ship, with a stage 2 claim and TTL.
-- [ ] Reject stage 2 claims by reviewers and stage 1 claims by reviewers on held ships.
-- [ ] Add a `stage2` claim/release/heartbeat path that keeps the same expiry and conflict rules.
-- [ ] Allow stage 2 approve, reject and changes as a final decision.
-- [ ] Do not require the organiser to re-acknowledge stage 1 warnings; show the stage 1 acknowledgements instead.
-- [ ] Copy or reference the stage 1 note and approved hours on the stage 2 screen.
-- [ ] Allow the organiser to adjust approved hours at stage 2.
-- [ ] Add own-decision prevention: the organiser who made the stage 1 decision cannot confirm it at stage 2.
-- [ ] Add optional send-back: invalidate the held review, return the ship to stage 1 `ready`, record the reason and event.
-- [ ] Update the submission to `decided`, `stage = 2`, final hours and `decided_at`.
-- [ ] Write exactly one final outbound event with both stage history entries and no hold.
-- [ ] Deduplicate the final event by the stage 2 review id.
-- [ ] Record audit entries for stage 2 claim, decision, override and send-back.
-- [ ] Gate fraud at stage 2 only in the code path, even while the provider is missing.
-
-### UI
-
-- [ ] Add a `Second pass` entry to the header or queue filter with the held count.
-- [ ] Build a stage 2 list or reuse the queue with a second-pass filter and organizer-only visibility.
-- [ ] Show a stage 2 banner with the hold reason, stage 1 reviewer, stage 1 note, approved checks and hours.
-- [ ] Add stage 2 actions: confirm, override with reason, reject and send back.
-- [ ] Keep reviewers out of stage 2 actions; show a read-only view or hide the entry.
-- [ ] Support the same claim/heartbeat/auto-advance and keyboard shortcuts.
-- [ ] Add a stage history panel that shows both stages.
-- [ ] Add responsive checks and empty states for the second-pass queue.
-
-### Tests and docs
-
-- [ ] Stage 1 warning approval → hold → organiser claim → stage 2 approve → one delivered final event.
-- [ ] Stage 2 status and stage history reflect both stages.
-- [ ] Reviewer receives `403` on stage 2 claim and decision.
-- [ ] Organiser cannot confirm their own stage 1 decision.
-- [ ] Send-back returns the ship to stage 1 and invalidates the held review.
-- [ ] Stage 2 idempotency and stale-version tests.
-- [ ] Fraud stage guard test.
-- [ ] Update README demo, seed accounts and the plan delivery notes.
-
-**Done when:** a warned ship can be held at stage 1, claimed by an organiser, confirmed or sent back at stage 2, and Half Life receives exactly one final event per final decision.
+**Done when:** a warned ship can be held at stage 1, claimed by an organiser, confirmed, overridden or sent back at stage 2, and Half Life receives exactly one final event per final decision.
 
 ## Next 2 – Real repo checks
 
