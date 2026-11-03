@@ -391,7 +391,7 @@ h1 {
 .row {
 	display: grid;
 	grid-template-columns:
-		64px minmax(0, 1fr) 96px 64px minmax(110px, 160px) 36px 96px 64px minmax(140px, 190px);
+		64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 96px 64px minmax(140px, 190px);
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
@@ -562,6 +562,48 @@ h1 {
 	}
 }
 
+@media (min-width: 1025px) {
+	.ship-title {
+		grid-column: 2;
+		grid-row: 1;
+	}
+
+	.maker {
+		grid-column: 3;
+		grid-row: 1;
+	}
+
+	.status {
+		grid-column: 4;
+		grid-row: 1;
+	}
+
+	.theme {
+		grid-column: 5;
+		grid-row: 1;
+	}
+
+	.version {
+		grid-column: 6;
+		grid-row: 1;
+	}
+
+	.hours {
+		grid-column: 7;
+		grid-row: 1;
+	}
+
+	.age {
+		grid-column: 8;
+		grid-row: 1;
+	}
+
+	.checks {
+		grid-column: 9;
+		grid-row: 1;
+	}
+}
+
 .skeleton {
 	display: grid;
 	gap: 1px;
@@ -623,7 +665,7 @@ h1 {
 
 	.facts {
 		display: grid;
-		grid-template-columns: minmax(120px, 1fr) auto auto;
+		grid-template-columns: minmax(120px, 1fr) 36px 150px;
 		gap: var(--space-2);
 		grid-area: facts;
 		align-items: center;
@@ -662,9 +704,10 @@ h1 {
 	}
 
 	.facts {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-1) var(--space-3);
+		display: grid;
+		grid-template-columns: minmax(90px, 1fr) 36px 110px;
+		gap: var(--space-2);
+		align-items: start;
 	}
 
 	.badges {
@@ -679,10 +722,6 @@ h1 {
 		grid-area: theme;
 		overflow: hidden;
 		text-overflow: ellipsis;
-	}
-
-	.version {
-		margin-right: auto;
 	}
 
 	.timing {
