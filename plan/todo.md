@@ -209,16 +209,21 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] Integration tests against a fake GitHub server, including a missing repository.
 - [x] Verified against a real public repository (`C6-H/Starbie`) from the Wasm component.
 - [x] Check details, groups, warning/blocking gates and the dot strip still work with real results.
+- [x] Ingest marks the ship `checking` and enqueues `POST /jobs/checks` through the supervisor's durable queue.
+- [x] One idempotent job per submission version, with a five-attempt retry policy.
+- [x] The worker replaces repository check rows, stores the evidence snapshot and moves the ship to `ready` or `needs_attention`.
+- [x] A queue failure falls back to running the checks inline; a stale `checking` ship moves to `needs_attention` after ten minutes.
+- [x] The job handler skips a version that was decided, withdrawn or replaced.
+- [x] `job_concurrency` is four; `REVIEW_DISABLE_JOBS=1` keeps the inline path.
+- [x] Tests cover the queued path, idempotent rerun and the inline fallback.
 
 ### Remaining
 
 - [ ] Add `check_run` with submission, version, status, attempts, started/finished, error and runner version.
 - [ ] Add `source` to check results (`fixture`, `forge`, `payload`, `manual`).
 - [ ] Add `checking` and a running summary to queue, status and bundle contracts.
-- [ ] Move checks out of the ingest request into a bounded `/jobs/tick` runner.
-- [ ] Ingest writes `checking`, records a run and returns immediately.
-- [ ] Retry transient failures, cap attempts and surface a terminal error without turning it into a pass.
-- [ ] Make reruns idempotent per submission/version and keep old results readable.
+- [ ] Add a `check_run` row with attempts, timings and the last error; the job queue currently carries that history.
+- [ ] Surface a terminal job failure in the queue instead of relying on the ten-minute stale sweep.
 - [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
 - [ ] Parse BOM tables for parts, quantities, prices and vendors instead of only finding the file.
 - [ ] Use the commit window from programme start or the previous approval, not the latest page of commits.
@@ -240,12 +245,17 @@ The auth flow and signed HTTP delivery are implemented and tested against a fake
 ### Working now
 
 - [x] `GET /api/v1/auth/config` publishes which methods are enabled.
+- [x] `packages/oauth` handles OIDC discovery, PKCE, token exchange, RS256 ID-token verification and userinfo.
+- [x] OAuth state, verifier and nonce live in a short-lived `login_flow` row and are consumed once.
+- [x] `packages/session` owns the session and OAuth-state cookies, hashed tokens and same-origin checks.
 - [x] `GET /auth/login` creates a short-lived state cookie and redirects to Hack Club Auth.
 - [x] `GET /auth/callback` verifies state, exchanges the code and fetches `/api/v1/me`.
 - [x] Identity is mapped to an existing active membership by email; unknown accounts are refused, never auto-created.
 - [x] Roles come from the membership, not from OAuth claims or client input.
 - [x] Session creation is shared by HCA and development login; logout is `/api/v1/logout`.
-- [x] Hack Club Auth scopes are `openid profile email slack_id`; the provider's legal name is not used.
+- [x] Hack Club Auth scopes are `openid profile email`; the provider's legal name is not used.
+- [x] Browser mutations reject a cross-site `Origin` through `session.SameOrigin`.
+- [x] The redirect URI falls back to the public origin when `HC_REDIRECT_URI` is unset.
 - [x] Development accounts and login are gated by `REVIEW_DEV_AUTH`; seeding dev accounts is skipped when it is off.
 - [x] The login screen shows `Continue with Hack Club` when HCA is configured and keeps dev accounts for local use.
 - [x] Stage 2 actions are limited to organiser/admin roles.
@@ -259,8 +269,8 @@ The auth flow and signed HTTP delivery are implemented and tested against a fake
 - [ ] Point `REVIEW_OUTBOUND_URL` at the staging Half Life receiver and set its signing secret.
 - [ ] Add roster sync or an admin invite flow; today members must already exist in the database.
 - [ ] Store the stable Hack Club identity id so an email change cannot break the binding; add the schema column and migration.
-- [ ] Add CSRF tokens for state-changing browser routes; the OAuth state protects only the callback.
 - [ ] Add session rotation and explicit revocation for compromised accounts.
+- [ ] Store the Hack Club `slack_id` claim again; the shared OAuth identity does not expose it.
 - [ ] Test expired state, provider timeout, duplicate identity binding, inactive membership and session fixation.
 - [ ] Test outbound retry on 5xx/timeout and permanent failure on 4xx.
 - [ ] Send one approved, one changes and one rejected event to staging; verify Half Life applies each.
@@ -280,7 +290,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 ### Working now
 
 - [x] `repo_snapshot` stores forge, full name, default branch, head SHA, README, files, commits, fetch time and error per submission version.
-- [x] The snapshot is written in the same transaction as the ingest and its checks.
+- [x] The snapshot is written by the check job after the repository fetch; the inline fallback writes it in the ingest path.
 - [x] README is capped at 200 KB; the tree at 2,000 blob paths; commits at 200 with a truncated flag.
 - [x] File paths are labelled by kind (`bom`, `readme`, `design`, `doc`, `image`, `code`, `file`) without storing contents.
 - [x] Commit rows keep sha, author, date and the first line of the message.
@@ -294,7 +304,6 @@ The repository half is working: ingest caches the README, file tree and commits,
 
 ### Remaining
 
-- [ ] Move the snapshot fetch to the post-check job so ingest returns before the forge round trip.
 - [ ] Use the commit window from programme start or the previous approval through the submission time.
 - [ ] Store co-authors and merge commits, and mark commits made after submission.
 - [ ] Parse BOM tables for parts, quantities, prices and vendors.
@@ -312,9 +321,9 @@ The repository half is working: ingest caches the README, file tree and commits,
 ## Cross-cutting work for the four steps
 
 - [ ] Add pagination and stable cursors to queue, reviews and events.
-- [ ] Add SSE or a lightweight change feed instead of the 10-second queue poll.
+- [x] Subscribe the queue to the supervisor storage event stream, keeping the 10-second poll as a fallback.
+- [x] Enforce same-origin checks on state-changing browser routes.
 - [ ] Add request rate limits and body limits to browser and machine routes.
-- [ ] Add a proper CSRF strategy for browser mutations.
 - [ ] Add audit-browser and review-history UI.
 - [ ] Add admin roster and role management, including stage 2 organisers.
 - [ ] Add metrics for queue depth, time to first review, hold rate, check duration and delivery failures.

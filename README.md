@@ -1,6 +1,6 @@
 # Half Life Review
 
-A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working second pass, real GitHub repository checks and a signed outbox. Reviewer auth supports Hack Club Auth when configured, with development accounts as a fallback, and GitHub evidence is cached per ship.
+A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working second pass, queued GitHub repository checks and a signed outbox. Reviewer auth uses Hack Club Auth over OpenID Connect when configured, with development accounts as a fallback, and GitHub evidence is cached per ship.
 
 ## What works
 
@@ -9,11 +9,12 @@ A review service for Half Life hardware ships. This is the working vertical slic
 - A stage 1 queue with claims, heartbeats, drafts, warning acknowledgements, blocking checks, decisions and idempotency keys.
 - A stage 2 hold policy for approvals: a warning, a held tier, or hours above the claim waits for the second pass and emits no webhook. Changes and rejections are final and always deliver. The stage 1 endpoints refuse a ship that is already on the second pass.
 - A second-pass queue for organisers, with claim, confirm, reject and changes actions, stage history and one final outbound event. Reviewers can read a held ship but cannot decide it.
-- Real GitHub checks for new ingests: repository access, README and image count, BOM file, design files and commit history. Fixtures keep their prescribed results.
-- Hack Club Auth sign-in for roster members when `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` are set. Development sign-in remains for local use.
+- Real GitHub checks for new ingests, queued as a durable supervisor job so ingest returns immediately: repository access, README and image count, BOM file, design files and commit history. Fixtures keep their prescribed results.
+- Hack Club Auth sign-in for roster members over OpenID Connect discovery, PKCE, nonce and a verified RS256 ID token. Development sign-in remains for local use.
 - A cached repository snapshot per ship: README, capped file tree, commit list and head SHA, shown in the Evidence tab. Organisers can refresh it without re-running the checks.
 - Signed HTTP outbound delivery to a real receiver; the in-process receiver is only the default development target.
 - A signed outbox written in the decision transaction, an in-process receiver that verifies `timestamp.delivery_id.body`, retries on a schedule and keeps the exact payload.
+- The queue refreshes from the supervisor storage event stream, with polling as a fallback.
 - Three fixture ships extracted from real `.projects.csv` rows: clean, warned and blocked.
 
 ## Look
@@ -61,20 +62,21 @@ Reset the demo at any time with `POST /api/v1/dev/reset` while signed in. It del
 | `REVIEW_GITHUB_TOKEN` | empty | GitHub token for the repository checks; raises the API rate limit |
 | `REVIEW_GITHUB_API` | `https://api.github.com` | GitHub API base, useful for a fake server in tests |
 | `REVIEW_DISABLE_REPO_CHECKS` | `0` | `1` skips network checks and keeps the payload-only checks |
+| `REVIEW_DISABLE_JOBS` | `0` | `1` runs repository checks inline instead of enqueuing a job |
 | `HC_CLIENT_ID` | empty | Hack Club Auth OAuth client id |
 | `HC_CLIENT_SECRET` | empty | Hack Club Auth OAuth client secret |
-| `HC_REDIRECT_URI` | empty | Registered callback, for example `https://review.example/auth/callback` |
+| `HC_REDIRECT_URI` | empty | Registered callback; when empty it is derived from the public origin |
 | `HC_AUTH_BASE` | `https://auth.hackclub.com` | Auth provider base, useful for a fake provider in tests |
 
 Set real secrets with `wt secrets set review REVIEW_INGEST_SECRET`, `REVIEW_OUTBOUND_SECRET`, `REVIEW_GITHUB_TOKEN`, `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` before deploying. **The development login is not Hack Club Auth.** It exists for local use and must be disabled with `REVIEW_DEV_AUTH=0` before a real programme uses it.
 
-Hack Club Auth uses `openid profile email slack_id`, state validation and the existing programme roster. A verified account without an active membership is refused; the service does not auto-create users from OAuth.
+Hack Club Auth uses `openid profile email`, OIDC discovery, PKCE, nonce and RS256 ID-token verification against the provider JWKS, plus the existing programme roster. A verified account without an active membership is refused; the service does not auto-create users from OAuth. OAuth state, verifier and nonce live in a short-lived `login_flow` row, and browser mutations require a same-origin request.
 
 ### Repository checks and evidence
 
-New ingests run the checks synchronously inside the ingest request, with a 12-second timeout per GitHub request. A private or missing repo is a blocking failure; a short README, missing BOM, missing design files or no commits are warnings; a GitHub outage is an error that holds the ship for attention. Only `github.com` repositories are fetched in this slice; other forges keep the payload checks and show a warning. Fixtures skip the network and keep their prescribed rows.
+New ingests write the payload checks, mark the ship `checking` and enqueue `POST /jobs/checks` with an idempotency key per submission version. The supervisor worker calls the component through its loopback port and retries failures; if enqueueing fails, ingest runs the checks inline so the ship never waits in `checking`. A stale `checking` ship is moved to `needs_attention` by the tick after ten minutes. Each GitHub request has a 12-second timeout. A private or missing repo is a blocking failure; a short README, missing BOM, missing design files or no commits are warnings; a GitHub outage is an error that holds the ship for attention. Only `github.com` repositories are fetched in this slice; other forges keep the payload checks and show a warning. Fixtures skip the network and keep their prescribed rows.
 
-The same fetch stores a snapshot in `repo_snapshot`: the README (capped at 200 KB), the first 2,000 blob paths with a kind, the first 200 commits with author and date, and the head SHA. The Evidence tab shows it as text and lists, never as rendered HTML, so a repository cannot inject markup into Review. A refresh replaces the row for the current version and does not change checks or decisions.
+The check job stores a snapshot in `repo_snapshot`: the README (capped at 200 KB), the first 2,000 blob paths with a kind, the first 200 commits with author and date, and the head SHA. The Evidence tab shows it as text and lists, never as rendered HTML, so a repository cannot inject markup into Review. A refresh replaces the row for the current version and does not change checks or decisions.
 
 ## API
 
@@ -100,6 +102,7 @@ The same fetch stores a snapshot in `repo_snapshot`: the README (capped at 200 K
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/decision` | Session |
 | `GET` | `/api/v1/programs/{program}/outbox` | Session |
 | `POST` | `/jobs/tick` | Supervisor schedule |
+| `POST` | `/jobs/checks` | Supervisor durable job |
 
 An ingest body follows Ari's documented shape, with `meta.bom`, `meta.hours` and `meta.prior_reviews` added. Sign the exact bytes:
 
@@ -127,12 +130,12 @@ The contract in [`web/src/lib/contract.ts`](./web/src/lib/contract.ts) is the so
 
 ### What is deliberately fake
 
-- **Checks** are real for public GitHub repositories on new ingests. Fixture ships carry prescribed results. GitLab, a job runner, Hackatime, Lapse, demo probes, identity and duplicate checks are not ported yet.
-- **Auth** uses Hack Club Auth when configured. Development accounts remain for local work, and there is no roster admin UI yet.
+- **Checks** are real for public GitHub repositories on new ingests and run as a durable job. Fixture ships carry prescribed results. GitLab, Hackatime, Lapse, demo probes, identity and duplicate checks are not ported yet.
+- **Auth** uses Hack Club Auth over OIDC when configured. Development accounts remain for local work; the platform identity provider is not used because it is a separate password store, and there is no roster admin UI yet.
 - **Stage 2** now has a queue and a final decision, but override, send-back and fraud are later. Fraud has a configured minimum stage of 2 and no implementation.
 - **Delivery receiver** defaults to the in-process `fake://receiver`. Point `REVIEW_OUTBOUND_URL` at a real endpoint to use HTTP; the sender signs the exact bytes and retries on 5xx.
 - **Evidence** for GitHub ships now includes the README, file tree and commits fetched at ingest. Journals and clips still come only from the ingest payload, and the README is shown as plain text rather than rendered Markdown.
 
 ## Where the plan goes next
 
-The next work is tracked in [`plan/todo.md`](./plan/todo.md): check job orchestration, the remaining check groups, the staging webhook cutover, and the remaining evidence work. The contract and schema here are the small stable core those phases extend.
+The next work is tracked in [`plan/todo.md`](./plan/todo.md): the remaining check groups, GitLab, the staging webhook cutover, and the remaining evidence work. The contract and schema here are the small stable core those phases extend.
