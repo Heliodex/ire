@@ -89,11 +89,14 @@ const (
 
 // config is the process-level configuration that never belongs in SQLite: the shared secrets and the delivery mode.
 type config struct {
-	IngestSecret     string
-	OutboundSecret   string
-	OutboundURL      string
-	SeedFixtures     bool
-	AllowDevAccounts bool
+	IngestSecret      string
+	OutboundSecret    string
+	OutboundURL       string
+	GitHubToken       string
+	GitHubAPIBase     string
+	SeedFixtures      bool
+	AllowDevAccounts  bool
+	DisableRepoChecks bool
 }
 
 // reviewApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.

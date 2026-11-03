@@ -234,7 +234,13 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 		return contract.IngestAccepted{}, 0, err
 	}
 
-	checks := localChecks(request, a.now())
+	nowTime := a.now()
+	checks := localChecks(request, nowTime)
+
+	if request.RepoURL != nil && !a.config.DisableRepoChecks {
+		checks = mergeChecks(checks, a.repoChecks(ctx, *request.RepoURL, nowTime))
+	}
+
 	summary := checkCountsFor(checks)
 
 	summaryJSON, err := json.Marshal(summary)

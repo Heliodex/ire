@@ -18,11 +18,14 @@ func loadConfig() config {
 	seed := os.Getenv("REVIEW_SEED_FIXTURES") != "0"
 
 	return config{
-		IngestSecret:     envOr("REVIEW_INGEST_SECRET", "dev-ingest-secret"),
-		OutboundSecret:   envOr("REVIEW_OUTBOUND_SECRET", "dev-outbound-secret"),
-		OutboundURL:      envOr("REVIEW_OUTBOUND_URL", "fake://receiver"),
-		SeedFixtures:     seed,
-		AllowDevAccounts: os.Getenv("REVIEW_DEV_AUTH") != "0",
+		IngestSecret:      envOr("REVIEW_INGEST_SECRET", "dev-ingest-secret"),
+		OutboundSecret:    envOr("REVIEW_OUTBOUND_SECRET", "dev-outbound-secret"),
+		OutboundURL:       envOr("REVIEW_OUTBOUND_URL", "fake://receiver"),
+		GitHubToken:       envOr("REVIEW_GITHUB_TOKEN", ""),
+		GitHubAPIBase:     envOr("REVIEW_GITHUB_API", githubDefaultAPI),
+		SeedFixtures:      seed,
+		AllowDevAccounts:  os.Getenv("REVIEW_DEV_AUTH") != "0",
+		DisableRepoChecks: os.Getenv("REVIEW_DISABLE_REPO_CHECKS") == "1",
 	}
 }
 

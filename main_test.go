@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/v2"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,11 +31,12 @@ func newTestApp(t *testing.T) *reviewApp {
 	t.Cleanup(server.Close)
 
 	cfg := config{
-		IngestSecret:     "test-ingest",
-		OutboundSecret:   "test-outbound",
-		OutboundURL:      "fake://receiver",
-		SeedFixtures:     true,
-		AllowDevAccounts: true,
+		IngestSecret:      "test-ingest",
+		OutboundSecret:    "test-outbound",
+		OutboundURL:       "fake://receiver",
+		SeedFixtures:      true,
+		AllowDevAccounts:  true,
+		DisableRepoChecks: true,
 	}
 
 	application := newReviewApp(server.NewClient(server.Client()), server.Client(), cfg)
@@ -185,6 +188,68 @@ func TestIngestIsSignedAndIdempotent(t *testing.T) {
 
 	if already["error"] != "already_queued" || already["id"] != created.ID {
 		t.Fatalf("conflict body = %+v", already)
+	}
+}
+
+// TestIngestRunsGitHubChecks covers the real repository checks against a fake GitHub API.
+func TestIngestRunsGitHubChecks(t *testing.T) {
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.URL.Path {
+		case "/repos/example/line-follower":
+			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"example/line-follower","private":false}`)
+		case "/repos/example/line-follower/readme":
+			_, _ = io.WriteString(w, strings.Repeat("Build notes and wiring details. ", 12)+`\n![board](https://example.com/board.jpg)\n<img src="https://example.com/schematic.png">`)
+		case "/repos/example/line-follower/git/trees/main":
+			_, _ = io.WriteString(w, `{"tree":[{"path":"README.md","type":"blob"},{"path":"BOM.csv","type":"blob"},{"path":"hardware/board.kicad_pcb","type":"blob"},{"path":"hardware/gerbers.zip","type":"blob"}]}`)
+		case "/repos/example/line-follower/commits":
+			_, _ = io.WriteString(w, `[{"commit":{"author":{"name":"Maker","date":"2026-11-01T10:00:00Z"},"message":"a"}},{"commit":{"author":{"name":"Maker","date":"2026-11-02T10:00:00Z"},"message":"b"}},{"commit":{"author":{"name":"Maker","date":"2026-11-03T10:00:00Z"},"message":"c"}}]`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(fake.Close)
+
+	application := newTestApp(t)
+	application.config.DisableRepoChecks = false
+	application.config.GitHubAPIBase = fake.URL
+
+	body := ingestBody("checks:design")
+
+	recorder := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	})
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("ingest = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	created := decode[contract.IngestAccepted](t, recorder)
+	cookie := login(t, application, "reviewer@example.com")
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+created.ID, nil, cookie, nil))
+	statuses := checkStatuses(bundle.Checks)
+
+	for _, key := range []string{"repo.accessible", "repo.readme", "repo.readme.images", "repo.bom", "repo.design_files", "repo.commits"} {
+		if statuses[key] != statusPass {
+			t.Errorf("%s = %q, want pass; checks = %+v", key, statuses[key], bundle.Checks)
+		}
+	}
+
+	missingBody := ingestBody("missing:design")
+	missingBody = bytes.Replace(missingBody, []byte("example/line-follower"), []byte("missing/absent"), 1)
+
+	missing := do(t, application, http.MethodPost, "/api/ingest/half-life", missingBody, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", missingBody),
+	})
+	if missing.Code != http.StatusCreated {
+		t.Fatalf("missing ingest = %d: %s", missing.Code, missing.Body.String())
+	}
+
+	missingCreated := decode[contract.IngestAccepted](t, missing)
+
+	missingBundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+missingCreated.ID, nil, cookie, nil))
+	if missingBundle.Submission.Status != statusNeedsAttention || checkStatuses(missingBundle.Checks)["repo.accessible"] != statusFail {
+		t.Fatalf("missing repo = %+v", missingBundle.Submission)
 	}
 }
 
