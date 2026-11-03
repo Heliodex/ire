@@ -294,12 +294,6 @@ async function open(item: QueueItem): Promise<void> {
 							</span>
 						{/if}
 					</span>
-					<span class="row-action">
-						{opening === item.id ? "Claiming…" : "Open"}
-						<svg aria-hidden="true" fill="none" height="14" viewBox="0 0 16 16" width="14">
-							<path d="M3 8h9M8.5 3.5 13 8l-4.5 4.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/>
-						</svg>
-					</span>
 				</button>
 			{/each}
 		</div>
@@ -397,7 +391,7 @@ h1 {
 .row {
 	display: grid;
 	grid-template-columns:
-		64px minmax(0, 1fr) 96px 64px minmax(110px, 160px) 36px 96px 64px minmax(120px, 160px) 56px;
+		64px minmax(0, 1fr) 96px 64px minmax(110px, 160px) 36px 96px 64px minmax(140px, 190px);
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
@@ -558,20 +552,6 @@ h1 {
 	background: var(--status-rejected);
 }
 
-.row-action {
-	display: inline-flex;
-	justify-self: end;
-	gap: var(--space-1);
-	align-items: center;
-	font-size: var(--text-sm);
-	font-weight: 700;
-	color: var(--text-3);
-}
-
-.row:hover .row-action {
-	color: var(--primary);
-}
-
 .skeleton {
 	display: grid;
 	gap: 1px;
@@ -602,10 +582,10 @@ h1 {
 
 @media (max-width: 1024px) {
 	.row {
-		grid-template-columns: 64px minmax(0, 1fr) 170px 150px 56px;
+		grid-template-columns: 64px minmax(0, 1fr) 170px 160px;
 		grid-template-areas:
-			"thumb title badges checks action"
-			"thumb facts facts facts facts";
+			"thumb title badges checks"
+			"thumb facts facts facts";
 		column-gap: var(--space-3);
 		row-gap: var(--space-1);
 	}
@@ -628,11 +608,6 @@ h1 {
 
 	.checks {
 		grid-area: checks;
-	}
-
-	.row-action {
-		grid-area: action;
-		justify-self: end;
 	}
 
 	.facts {
@@ -666,11 +641,11 @@ h1 {
 	}
 
 	.row {
-		grid-template-columns: 64px auto minmax(0, 1fr) auto;
+		grid-template-columns: 64px auto minmax(0, 1fr);
 		grid-template-areas:
-			"thumb title title action"
-			"thumb badges checks checks"
-			"facts facts facts facts";
+			"thumb title title"
+			"thumb badges checks"
+			"facts facts facts";
 	}
 
 	.facts {
