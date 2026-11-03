@@ -1,7 +1,7 @@
 <script lang="ts">
+import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
-import { onMount } from "svelte"
 import { fetchMe, logout } from "../lib/api"
 import { ApiError } from "../lib/api-error"
 import { session } from "../lib/session.svelte.js"
@@ -19,9 +19,9 @@ onMount(async (): Promise<void> => {
 
 	try {
 		session.me = await fetchMe()
-	} catch (error) {
+	} catch (err) {
 		session.me = null
-		if (!(error instanceof ApiError)) console.error(error)
+		if (!(err instanceof ApiError)) console.error(err)
 	} finally {
 		ready = true
 	}
@@ -74,12 +74,22 @@ async function signOut(): Promise<void> {
 				<span class="visually-hidden">Toggle theme</span>
 				{#if theme.value === "dark"}
 					<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
-						<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
-						<path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" stroke="currentColor" stroke-linecap="round" stroke-width="2"/>
+						<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" />
+						<path
+							d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-width="2"
+						/>
 					</svg>
 				{:else}
 					<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
-						<path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" stroke="currentColor" stroke-linejoin="round" stroke-width="2"/>
+						<path
+							d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"
+							stroke="currentColor"
+							stroke-linejoin="round"
+							stroke-width="2"
+						/>
 					</svg>
 				{/if}
 			</button>
@@ -93,10 +103,13 @@ async function signOut(): Promise<void> {
 
 		{#if session.me}
 			<nav aria-label="Sections">
-				<a class:active={page.url.pathname.startsWith("/queue") || page.url.pathname.startsWith("/review")} href="/queue">
+				<a
+					href="/queue"
+					class:active={page.url.pathname.startsWith("/queue") || page.url.pathname.startsWith("/review")}
+				>
 					Queue
 				</a>
-				<a class:active={page.url.pathname.startsWith("/deliveries")} href="/deliveries">Deliveries</a>
+				<a href="/deliveries" class:active={page.url.pathname.startsWith("/deliveries")}>Deliveries</a>
 			</nav>
 		{/if}
 	</header>
@@ -124,21 +137,21 @@ header {
 nav {
 	width: 100%;
 	max-width: 1240px;
-	margin: 0 auto;
 	padding-inline: var(--space-4);
+	margin: 0 auto;
 }
 
 .top {
 	display: flex;
-	align-items: center;
 	gap: var(--space-3);
+	align-items: center;
 	padding-block: var(--space-2);
 }
 
 .brand {
 	display: inline-flex;
-	align-items: center;
 	gap: var(--space-2);
+	align-items: center;
 	color: var(--text);
 	text-decoration: none;
 }
@@ -207,8 +220,8 @@ main {
 	flex-direction: column;
 	width: 100%;
 	max-width: 1240px;
-	margin: 0 auto;
 	padding: var(--space-5) var(--space-4) var(--space-7);
+	margin: 0 auto;
 }
 
 .visually-hidden {
@@ -216,8 +229,8 @@ main {
 	width: 1px;
 	height: 1px;
 	overflow: hidden;
-	clip: rect(0 0 0 0);
 	white-space: nowrap;
+	clip: rect(0 0 0 0);
 }
 
 @media (max-width: 640px) {

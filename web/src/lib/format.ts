@@ -47,17 +47,21 @@ export function timeAgo(value: string, now = Date.now()): string {
 
 // formatMoney renders integer cents as dollars.
 export function formatMoney(cents: number | null | undefined): string {
-	if (cents == null) return "–"
+	if (cents === null || cents === undefined) return "–"
 	return new Intl.NumberFormat(undefined, { currency: "USD", style: "currency" }).format(cents / 100)
 }
 
 // formatMoneyAmount formats the number without the currency symbol, for tables whose header names the currency.
 export function formatMoneyAmount(cents: number | null | undefined): string {
-	if (cents == null) return "–"
+	if (cents === null || cents === undefined) return "–"
 
 	const parts = new Intl.NumberFormat(undefined, { currency: "USD", style: "currency" }).formatToParts(cents / 100)
 
-	return parts.filter((part) => part.type !== "currency").map((part) => part.value).join("").trim()
+	return parts
+		.filter(part => part.type !== "currency")
+		.map(part => part.value)
+		.join("")
+		.trim()
 }
 
 // Tone is the badge palette shared with Ari: green approved, yellow pending, orange changes, red rejected, purple second pass.

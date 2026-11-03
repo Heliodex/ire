@@ -5,14 +5,15 @@
 		<meta content="width=device-width, initial-scale=1" name="viewport">
 		<meta content="scale" name="text-scale">
 		<script>
-			// Apply the saved or system theme before paint so the first frame does not flash.
-			try {
-				const stored = localStorage.getItem("review-theme")
-				const dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches
-				document.documentElement.classList.toggle("dark", dark)
-			} catch {
-				// Storage can be blocked; the light theme is the fallback.
-			}
+		"use strict"
+		// Apply the saved or system theme before paint so the first frame does not flash.
+		try {
+			const stored = localStorage.getItem("review-theme")
+			const dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches
+			document.documentElement.classList.toggle("dark", dark)
+		} catch {
+			// Storage can be blocked; the light theme is the fallback.
+		}
 		</script>
 		%sveltekit.head%
 	</head>

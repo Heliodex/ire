@@ -1,7 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap");
 
 :root {
-	color-scheme: light;
 	--bg: #dededf;
 	--surface: #f4f4f6;
 	--surface-2: #ececef;
@@ -64,10 +63,10 @@
 	--layer-header: 15;
 	--layer-dialog: 40;
 	--layer-toast: 60;
+	color-scheme: light;
 }
 
 .dark {
-	color-scheme: dark;
 	--bg: #121217;
 	--surface: #18181f;
 	--surface-2: #23232e;
@@ -100,6 +99,7 @@
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
 	--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 38px rgba(0, 0, 0, 0.5);
 	--shadow-lg: 0 28px 70px rgba(0, 0, 0, 0.6);
+	color-scheme: dark;
 }
 
 *,
@@ -116,12 +116,12 @@ body {
 	margin: 0;
 	font-family: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
 	font-size: var(--text-md);
+	-webkit-font-smoothing: antialiased;
 	line-height: 1.5;
 	color: var(--text);
-	background: var(--bg);
-	-webkit-font-smoothing: antialiased;
-	text-rendering: optimizeLegibility;
 	letter-spacing: -0.01em;
+	background: var(--bg);
+	text-rendering: optimizeLegibility;
 }
 
 a {
@@ -183,23 +183,27 @@ kbd {
 
 .ui-button {
 	display: inline-flex;
+	gap: var(--space-2);
 	align-items: center;
 	justify-content: center;
-	gap: var(--space-2);
 	height: var(--control-md);
 	padding: 0 var(--space-3);
-	border: 1px solid transparent;
-	border-radius: var(--radius-full);
 	font-size: var(--text-sm);
 	font-weight: 700;
 	line-height: 1;
+	color: var(--text);
 	letter-spacing: -0.01em;
 	white-space: nowrap;
-	color: var(--text);
 	text-decoration: none;
 	background: var(--surface);
+	border: 1px solid transparent;
+	border-radius: var(--radius-full);
 	box-shadow: var(--shadow-sm);
-	transition: background 0.15s, border-color 0.15s, filter 0.15s, transform 0.12s;
+	transition:
+		background 0.15s,
+		border-color 0.15s,
+		filter 0.15s,
+		transform 0.12s;
 }
 
 .ui-button:hover:not(:disabled) {
@@ -211,8 +215,8 @@ kbd {
 }
 
 .ui-button:disabled {
-	opacity: 0.5;
 	cursor: default;
+	opacity: 0.5;
 	transform: none;
 }
 
@@ -232,14 +236,14 @@ kbd {
 }
 
 .ui-button.quiet {
+	color: var(--text-2);
 	background: transparent;
 	box-shadow: none;
-	color: var(--text-2);
 }
 
 .ui-button.quiet:hover:not(:disabled) {
-	background: var(--surface-2);
 	color: var(--text);
+	background: var(--surface-2);
 }
 
 .ui-button.ok {
@@ -316,16 +320,16 @@ kbd {
 
 .ui-badge {
 	display: inline-flex;
-	align-items: center;
 	gap: var(--space-1);
+	align-items: center;
 	padding: 3px var(--space-2) 4px;
-	border-radius: var(--radius-full);
 	font-size: var(--text-xs);
 	font-weight: 700;
 	line-height: 1;
-	white-space: nowrap;
 	color: var(--status-neutral);
+	white-space: nowrap;
 	background: color-mix(in srgb, var(--status-neutral) 15%, var(--surface));
+	border-radius: var(--radius-full);
 }
 
 .ui-badge[data-tone="approved"] {
@@ -356,8 +360,8 @@ kbd {
 .ui-badge .dot {
 	width: 7px;
 	height: 7px;
-	border-radius: 50%;
 	background: currentColor;
+	border-radius: 50%;
 }
 
 .ui-input {
@@ -365,17 +369,17 @@ kbd {
 	height: var(--control-md);
 	padding: 0 var(--space-3);
 	color: var(--text);
+	outline: none;
 	background: var(--surface);
 	border: 1px solid var(--border-2);
 	border-radius: var(--radius-sm);
-	outline: none;
 }
 
 textarea.ui-input {
 	height: auto;
 	padding: var(--space-2) var(--space-3);
-	resize: vertical;
 	line-height: 1.5;
+	resize: vertical;
 }
 
 .ui-input::placeholder {
@@ -390,27 +394,27 @@ textarea.ui-input {
 	display: flex;
 	gap: var(--space-1);
 	overflow-x: auto;
-	border-bottom: 1px solid var(--border);
 	overflow-y: hidden;
 	scrollbar-width: none;
+	border-bottom: 1px solid var(--border);
 }
 
 .ui-tab {
 	display: inline-flex;
-	align-items: center;
-	gap: var(--space-2);
 	flex: none;
-	margin-bottom: -1px;
+	gap: var(--space-2);
+	align-items: center;
 	padding: var(--space-2) var(--space-3);
+	margin-bottom: -1px;
+	font-size: var(--text-sm);
+	font-weight: 600;
+	color: var(--text-2);
+	white-space: nowrap;
+	text-decoration: none;
+	background: none;
 	border: 0;
 	border-bottom: 2px solid transparent;
 	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-	background: none;
-	color: var(--text-2);
-	font-size: var(--text-sm);
-	font-weight: 600;
-	white-space: nowrap;
-	text-decoration: none;
 }
 
 .ui-tab:hover {
@@ -426,23 +430,23 @@ textarea.ui-input {
 	display: inline-flex;
 	gap: 2px;
 	padding: 3px;
-	border-radius: var(--radius-full);
 	background: var(--surface-3);
+	border-radius: var(--radius-full);
 }
 
 .ui-seg button {
 	display: inline-flex;
-	align-items: center;
 	gap: var(--space-1);
+	align-items: center;
 	height: calc(var(--control-sm) - 6px);
 	padding: 0 var(--space-3);
-	border: 0;
-	border-radius: var(--radius-full);
 	font-size: var(--text-sm);
 	font-weight: 700;
-	white-space: nowrap;
 	color: var(--text-2);
+	white-space: nowrap;
 	background: transparent;
+	border: 0;
+	border-radius: var(--radius-full);
 }
 
 .ui-seg button:hover {
@@ -457,10 +461,10 @@ textarea.ui-input {
 
 .ui-notice {
 	padding: var(--space-3);
-	border-radius: var(--radius-md);
 	font-size: var(--text-sm);
-	background: var(--surface-2);
 	color: var(--text-2);
+	background: var(--surface-2);
+	border-radius: var(--radius-md);
 }
 
 .ui-notice strong {
@@ -472,6 +476,13 @@ textarea.ui-input {
 .ui-notice[data-tone="warn"] {
 	color: var(--status-pending);
 	background: color-mix(in srgb, var(--status-pending) 12%, var(--surface));
+}
+
+.ui-empty strong {
+	display: block;
+	padding-bottom: var(--space-1);
+	font-size: var(--text-lg);
+	color: var(--text);
 }
 
 .ui-notice[data-tone="warn"] strong {
@@ -513,15 +524,8 @@ textarea.ui-input {
 
 .ui-empty {
 	padding: var(--space-7) var(--space-4);
-	text-align: center;
 	color: var(--text-3);
-}
-
-.ui-empty strong {
-	display: block;
-	padding-bottom: var(--space-1);
-	font-size: var(--text-lg);
-	color: var(--text);
+	text-align: center;
 }
 
 .ui-empty span {
@@ -558,8 +562,8 @@ textarea.ui-input {
 }
 
 .ui-table .num {
-	text-align: right;
 	font-variant-numeric: tabular-nums;
+	text-align: right;
 }
 
 .ui-mono {
@@ -570,4 +574,3 @@ textarea.ui-input {
 .ui-muted {
 	color: var(--text-2);
 }
-

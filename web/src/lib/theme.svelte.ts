@@ -21,9 +21,6 @@ function applyTheme(next: Theme): void {
 
 // theme is the shared light/dark state. It follows the system preference until the reader picks one.
 export const theme = {
-	get value(): Theme {
-		return current
-	},
 	init(): void {
 		if (typeof document === "undefined") return
 
@@ -31,5 +28,8 @@ export const theme = {
 	},
 	toggle(): void {
 		applyTheme(current === "dark" ? "light" : "dark")
+	},
+	get value(): Theme {
+		return current
 	},
 }

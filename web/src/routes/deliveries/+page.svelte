@@ -1,7 +1,7 @@
 <script lang="ts">
-import { goto } from "$app/navigation"
 import { onMount } from "svelte"
-import { fetchMe, fetchOutbox, fetchReceived, type FakeDelivery, type OutboxRow } from "../../lib/api"
+import { goto } from "$app/navigation"
+import { type FakeDelivery, fetchMe, fetchOutbox, fetchReceived, type OutboxRow } from "../../lib/api"
 import { formatDateTime, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -57,12 +57,13 @@ function eventOf(body: string): string {
 		<h1>Deliveries</h1>
 		<p>
 			Every final decision is written to the outbox before it is sent. The receiver verifies the same
-			<code class="ui-mono">timestamp.delivery_id.body</code> signature Half Life's Ari handler checks.
+			<code class="ui-mono">timestamp.delivery_id.body</code>
+			signature Half Life's Ari handler checks.
 		</p>
 	</div>
 	<div class="counts">
-		<span><strong>{outbox.filter((row) => row.status === "delivered").length}</strong> delivered</span>
-		<span><strong>{outbox.filter((row) => row.status !== "delivered").length}</strong> pending</span>
+		<span><strong>{outbox.filter(row => row.status === "delivered").length}</strong> delivered</span>
+		<span><strong>{outbox.filter(row => row.status !== "delivered").length}</strong> pending</span>
 	</div>
 </section>
 
@@ -94,7 +95,9 @@ function eventOf(body: string): string {
 							<div class="row-title">
 								<strong>{row.event}</strong>
 								<span class="ui-badge" data-tone={statusTone(row.status)}>{row.status}</span>
-								{#if row.attempts > 0}<span class="muted">attempt {row.attempts}</span>{/if}
+								{#if row.attempts > 0}
+									<span class="muted">attempt {row.attempts}</span>
+								{/if}
 							</div>
 							<small>{formatDateTime(row.createdAt)}</small>
 						</button>
@@ -130,9 +133,18 @@ function eventOf(body: string): string {
 						</button>
 						{#if open === delivery.id}
 							<dl>
-								<div><dt>Delivery</dt><dd class="ui-mono">{delivery.deliveryId}</dd></div>
-								<div><dt>Timestamp</dt><dd class="ui-mono">{delivery.timestamp}</dd></div>
-								<div><dt>Signature</dt><dd class="ui-mono">{delivery.signature}</dd></div>
+								<div>
+									<dt>Delivery</dt>
+									<dd class="ui-mono">{delivery.deliveryId}</dd>
+								</div>
+								<div>
+									<dt>Timestamp</dt>
+									<dd class="ui-mono">{delivery.timestamp}</dd>
+								</div>
+								<div>
+									<dt>Signature</dt>
+									<dd class="ui-mono">{delivery.signature}</dd>
+								</div>
 							</dl>
 							<pre>{delivery.body}</pre>
 						{/if}
@@ -172,8 +184,8 @@ h1 {
 }
 
 .counts strong {
-	color: var(--text);
 	font-variant-numeric: tabular-nums;
+	color: var(--text);
 }
 
 .grid {
@@ -216,10 +228,10 @@ h1 {
 
 .row-head {
 	display: flex;
-	width: 100%;
 	gap: var(--space-3);
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
 	padding: var(--space-3) var(--space-4);
 	text-align: left;
 	background: transparent;
@@ -255,11 +267,11 @@ pre {
 	max-height: 340px;
 	padding: var(--space-3);
 	margin: 0 var(--space-3) var(--space-3);
-	font-size: var(--text-xs);
 	overflow: auto;
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
+	font-size: var(--text-xs);
 	color: var(--text-2);
+	overflow-wrap: anywhere;
+	white-space: pre-wrap;
 	background: var(--surface-2);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-sm);
