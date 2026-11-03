@@ -63,15 +63,11 @@ The reasoning behind each is in [decisions.md](./decisions.md).
 6. [06-integration.md](./06-integration.md) – ingest, status, outbound events, Ari compatibility, cutover.
 7. [07-delivery.md](./07-delivery.md) – phases, testing, deployment, risks, open questions.
 8. [decisions.md](./decisions.md) – the architectural decisions and their consequences.
+9. [todo.md](./todo.md) – what is built, what is stubbed, and the next four implementation steps.
 
 ## Current repository state
 
-This repository is a fresh `wt new` scaffold: a notes app with one Go API route pair, one SvelteKit page, a Valibot contract and a SQLite migration. The plan assumes that scaffold is replaced, not extended. The existing shape is useful only as the reference for:
-
-- `app.json` build and dev wiring;
-- `contract/generate.go` (added by this plan) and the Valibot-to-JSON-Schema-to-Go pipeline;
-- `storage.NewTestServer` handler tests;
-- the static SvelteKit layout.
+The vertical slice is built. The notes scaffold is gone: the app now has signed ingest, the queue, claims, drafts, stage 1 decisions, stage 2 holds, the signed outbox, fixtures and the Ari-styled responsive UI. [`todo.md`](./todo.md) records what is done, what is deliberately fake and the next four steps. The plan below remains the design source.
 
 ## The first thing to build
 
