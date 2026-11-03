@@ -17,7 +17,9 @@ A stage 1 review queue for Half Life hardware ships. This is the first vertical 
 wt dev --dir . --port 8080
 ```
 
-Open `http://review.localhost:8080` and sign in with one of the seeded accounts:
+Open the `dev: vite at …` URL that it prints (the frontend is served by Vite in development; the API is on `review.localhost:8080`). For a production build, run `wt build --dir .` and `wt deploy --dir .`; the supervisor then serves both the static site and the API on `review.localhost`.
+
+Sign in with one of the seeded accounts:
 
 | Email | Role |
 | --- | --- |
