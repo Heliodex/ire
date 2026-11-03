@@ -1,6 +1,6 @@
 # Half Life Review
 
-A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working second pass and a signed outbox. Checks, reviewer auth and evidence fetching are still deliberately faked so the review loop can be demonstrated now.
+A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working second pass, real GitHub repository checks and a signed outbox. Reviewer auth and evidence fetching are still deliberately faked so the review loop can be demonstrated now.
 
 ## What works
 
@@ -9,6 +9,7 @@ A review service for Half Life hardware ships. This is the working vertical slic
 - A stage 1 queue with claims, heartbeats, drafts, warning acknowledgements, blocking checks, decisions and idempotency keys.
 - A stage 2 hold policy for approvals: a warning, a held tier, or hours above the claim waits for the second pass and emits no webhook. Changes and rejections are final and always deliver. The stage 1 endpoints refuse a ship that is already on the second pass.
 - A second-pass queue for organisers, with claim, confirm, reject and changes actions, stage history and one final outbound event. Reviewers can read a held ship but cannot decide it.
+- Real GitHub checks for new ingests: repository access, README and image count, BOM file, design files and commit history. Fixtures keep their prescribed results.
 - A signed outbox written in the decision transaction, an in-process receiver that verifies `timestamp.delivery_id.body`, retries on a schedule and keeps the exact payload.
 - Three fixture ships extracted from real `.projects.csv` rows: clean, warned and blocked.
 
@@ -54,8 +55,15 @@ Reset the demo at any time with `POST /api/v1/dev/reset` while signed in. It del
 | `REVIEW_OUTBOUND_URL` | `fake://receiver` | `fake://receiver` keeps deliveries in-process; an `https://` URL posts them |
 | `REVIEW_SEED_FIXTURES` | `1` | `0` starts with an empty queue |
 | `REVIEW_DEV_AUTH` | `1` | `0` disables the development sign-in endpoint |
+| `REVIEW_GITHUB_TOKEN` | empty | GitHub token for the repository checks; raises the API rate limit |
+| `REVIEW_GITHUB_API` | `https://api.github.com` | GitHub API base, useful for a fake server in tests |
+| `REVIEW_DISABLE_REPO_CHECKS` | `0` | `1` skips network checks and keeps the payload-only checks |
 
-Set real secrets with `wt secrets set review REVIEW_INGEST_SECRET` and `REVIEW_OUTBOUND_SECRET` before deploying. **The development login is not Hack Club Auth.** It exists so the queue can be reviewed before HCA credentials arrive, and must be replaced before a real programme uses it.
+Set real secrets with `wt secrets set review REVIEW_INGEST_SECRET`, `REVIEW_OUTBOUND_SECRET` and optionally `REVIEW_GITHUB_TOKEN` before deploying. **The development login is not Hack Club Auth.** It exists so the queue can be reviewed before HCA credentials arrive, and must be replaced before a real programme uses it.
+
+### Repository checks
+
+New ingests run the checks synchronously inside the ingest request, with a 12-second timeout per GitHub request. A private or missing repo is a blocking failure; a short README, missing BOM, missing design files or no commits are warnings; a GitHub outage is an error that holds the ship for attention. Only `github.com` repositories are fetched in this slice; other forges keep the payload checks and show a warning. Fixtures skip the network and keep their prescribed rows.
 
 ## API
 
@@ -103,7 +111,7 @@ The contract in [`web/src/lib/contract.ts`](./web/src/lib/contract.ts) is the so
 
 ### What is deliberately fake
 
-- **Checks** are local and payload-only (`localChecks`). The fixture ships carry prescribed results that show what the ported repo checks will report. No network fetch, forge token or Hackatime call happens yet.
+- **Checks** are real for public GitHub repositories on new ingests. Fixture ships carry prescribed results. GitLab, a job runner, Hackatime, Lapse, demo probes, identity and duplicate checks are not ported yet.
 - **Auth** is the dev account table, not HCA.
 - **Stage 2** now has a queue and a final decision, but override, send-back and fraud are later. Fraud has a configured minimum stage of 2 and no implementation.
 - **Delivery receiver** is the in-process `fake://receiver`, which verifies the same HMAC the real handler will. Point `REVIEW_OUTBOUND_URL` at a real endpoint to exercise HTTP delivery.
@@ -111,4 +119,4 @@ The contract in [`web/src/lib/contract.ts`](./web/src/lib/contract.ts) is the so
 
 ## Where the plan goes next
 
-The next work is tracked in [`plan/todo.md`](./plan/todo.md): real repo checks, Hack Club Auth with a staging webhook, and the evidence snapshot. The contract and schema here are the small stable core those phases extend.
+The next work is tracked in [`plan/todo.md`](./plan/todo.md): check job orchestration and the remaining check groups, Hack Club Auth with a staging webhook, and the evidence snapshot. The contract and schema here are the small stable core those phases extend.

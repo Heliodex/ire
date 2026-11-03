@@ -192,70 +192,44 @@ The core loop is working: a stage 1 hold, an organiser second-pass queue, claim,
 
 **Goal:** replace fixture-prescribed and payload-only results with real forge checks for new ingests, while keeping fixtures offline.
 
-### Data and contract
+The first check pass is working. New GitHub ingests fetch the repository in the request, replace the payload approximations, and produce real results. Fixtures keep their prescribed rows. The job runner, caching and the remaining check groups are next.
+
+### Working now
+
+- [x] GitHub repository URL parsing; only `github.com` is fetched, so a maker-supplied host cannot be probed.
+- [x] Repository metadata, default branch, private/missing detection and rate-limit errors.
+- [x] README fetch, minimum-length warning and image count from Markdown and HTML sources.
+- [x] BOM file detection by common names (`bom.csv`, `bom.md`, `bill-of-materials`).
+- [x] Design-file detection for KiCad, Eagle, gerber, drill, STEP, STL and archives.
+- [x] Commit count, distinct days and author names from the forge.
+- [x] Real checks replace payload checks by key, so fixtures and new ingests share one UI.
+- [x] Summary and `ready` / `needs_attention` transition; a blocking failure holds the ship.
+- [x] Bounded requests with a 12-second timeout, response-size cap and optional GitHub token.
+- [x] `REVIEW_GITHUB_TOKEN`, `REVIEW_GITHUB_API` and `REVIEW_DISABLE_REPO_CHECKS`.
+- [x] Integration tests against a fake GitHub server, including a missing repository.
+- [x] Verified against a real public repository (`C6-H/Starbie`) from the Wasm component.
+- [x] Check details, groups, warning/blocking gates and the dot strip still work with real results.
+
+### Remaining
 
 - [ ] Add `check_run` with submission, version, status, attempts, started/finished, error and runner version.
-- [ ] Add a `source` column or field to check results (`fixture`, `forge`, `payload`, `manual`).
-- [ ] Add `checking` to queue responses, counts and the status contract, or keep it hidden with a clear refresh path.
-- [ ] Add a `checks running` state to the review bundle and queue.
-- [ ] Add `data` JSON to the API for check details (file path, table row, commit range).
-- [ ] Define the check key, label, group and severity catalogue in one place shared by the runner and UI.
-- [ ] Add configuration for a GitHub token and, later, GitLab tokens.
+- [ ] Add `source` to check results (`fixture`, `forge`, `payload`, `manual`).
+- [ ] Add `checking` and a running summary to queue, status and bundle contracts.
+- [ ] Move checks out of the ingest request into a bounded `/jobs/tick` runner.
+- [ ] Ingest writes `checking`, records a run and returns immediately.
+- [ ] Retry transient failures, cap attempts and surface a terminal error without turning it into a pass.
+- [ ] Make reruns idempotent per submission/version and keep old results readable.
+- [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
+- [ ] Parse BOM tables for parts, quantities, prices and vendors instead of only finding the file.
+- [ ] Use the commit window from programme start or the previous approval, not the latest page of commits.
+- [ ] Add GitLab behind the same forge interface.
+- [ ] Port the remaining groups: Hackatime, clips, demo probe, identity, duplicate and theme requirements.
+- [ ] Show a checking state, a rerun action and a "checks outdated" notice in the UI.
+- [ ] Add tests for rate limit, timeout, malformed JSON, oversized tree, BOM parsing, commit windows and the job runner.
+- [ ] Add a fixture parity suite and a sample run over real `.projects.csv` rows (not committed).
+- [ ] Document every check key, severity, blocking rule and the porting map.
 
-### Checks to port, in order
-
-- [ ] `repo.accessible`: parse the forge URL, fetch repo metadata, detect private, missing and rate-limited.
-- [ ] `repo.readme`: presence, length, description, build steps and image count.
-- [ ] `repo.readme.images`: Markdown and HTML image sources, deduplicated, ignoring tiny tracking images.
-- [ ] `repo.bom`: find BOM/CSV/table files, parse headers and rows, require a minimum row count.
-- [ ] `repo.design_files`: KiCad, Eagle, gerber, drill, schematic and board file kinds.
-- [ ] `repo.commits`: commit count, first/last date, distinct days, authors and co-authors in the window.
-- [ ] `repo.license` or `repo.tree` if the policy needs it.
-- [ ] `evidence.journals`: keep the existing payload validation.
-- [ ] `evidence.hours`: keep the claimed/journal breakdown and add Hackatime when available.
-- [ ] `evidence.clips`: coverage from ingested clip seconds, warning only.
-- [ ] `demo.probe`: optional hardware demo probe with SSRF guards, retries and bot-wall handling.
-- [ ] `identity`: show the ingest verification state; do not collect documents.
-- [ ] `duplicate`: same repo, evidence or description across open/approved ships, warning only.
-- [ ] Theme policy from Half Life's `THEME_REPO_REQUIREMENTS`: required files per theme.
-
-### Forge client and runner
-
-- [ ] Define a forge interface for metadata, tree, README, commits and file contents.
-- [ ] Implement GitHub first; add GitLab behind the same interface later.
-- [ ] Use a token from `wt secrets`; keep requests bounded and time-limited.
-- [ ] Cache by forge, repo and head SHA, with ETag where available.
-- [ ] Restrict fetches to known forge hosts; never fetch an arbitrary maker-supplied URL.
-- [ ] Cap tree size, README size, file count and commit pages.
-- [ ] Run checks in a bounded batch from `/jobs/tick`, not in the ingest request.
-- [ ] Ingest writes `checking`, enqueues or records a run, and returns immediately.
-- [ ] Runner marks each check pass/warn/fail/error/skip with data and duration.
-- [ ] Compute the summary, transition to `ready` or `needs_attention`, and record events.
-- [ ] Record retries and terminal errors; never turn a network error into a pass.
-- [ ] Make runs idempotent per submission/version and keep old results readable.
-- [ ] Skip real network checks for fixture ships; mark their source as `fixture`.
-- [ ] Re-run checks for a new version and keep the old version's results.
-
-### UI
-
-- [ ] Show a checking state with a short poll while checks run.
-- [ ] Show real check details, file paths and table lines.
-- [ ] Show a check error distinctly from a fail.
-- [ ] Show a rerun/refresh affordance for organisers.
-- [ ] Keep the warning/blocking gates and the dot strip driven by real results.
-- [ ] Add a "checks outdated" notice when a version changes.
-
-### Tests and docs
-
-- [ ] Unit tests for BOM table parsing, README images, file kind detection and commit window maths.
-- [ ] Integration tests against a fake forge over `httptest`.
-- [ ] Private repo, 404, rate limit, timeout, malformed JSON and oversized tree cases.
-- [ ] Queue transition tests: checking → ready/needs_attention.
-- [ ] Retry/idempotency tests for the runner.
-- [ ] Fixture parity suite and a sample run over real `.projects.csv` rows (not committed).
-- [ ] Document check keys, severities, blocking rules, token setup and the porting map.
-
-**Done when:** a real PCB repo with a BOM, README and design files reaches `ready`, a private or missing repo reaches `needs_attention`, a timeout is `error` rather than `0`, and the queue state matches the check policy.
+**Done when:** checks run as a job, a real PCB repo with a BOM, README and design files reaches `ready`, a private or missing repo reaches `needs_attention`, a timeout is `error` rather than `0`, and the queue state matches the check policy.
 
 ## Next 3 – Hack Club Auth and staging webhook
 
