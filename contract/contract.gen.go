@@ -1577,6 +1577,59 @@ func (j *PriorReview) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type QueueCheck struct {
+	// Key corresponds to the JSON schema field "key".
+	Key string `json:"key" yaml:"key" mapstructure:"key"`
+
+	// Label corresponds to the JSON schema field "label".
+	Label string `json:"label" yaml:"label" mapstructure:"label"`
+
+	// Severity corresponds to the JSON schema field "severity".
+	Severity string `json:"severity" yaml:"severity" mapstructure:"severity"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *QueueCheck) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["key"]; raw != nil && !ok {
+		return fmt.Errorf("field key in QueueCheck: required")
+	}
+	if _, ok := raw["label"]; raw != nil && !ok {
+		return fmt.Errorf("field label in QueueCheck: required")
+	}
+	if _, ok := raw["severity"]; raw != nil && !ok {
+		return fmt.Errorf("field severity in QueueCheck: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in QueueCheck: required")
+	}
+	type Plain QueueCheck
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Severity)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "severity", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	*j = QueueCheck(plain)
+	return nil
+}
+
 type QueueCounts struct {
 	// Claimed corresponds to the JSON schema field "claimed".
 	Claimed int `json:"claimed" yaml:"claimed" mapstructure:"claimed"`
@@ -1634,6 +1687,9 @@ type QueueItem struct {
 	// CheckSummary corresponds to the JSON schema field "checkSummary".
 	CheckSummary CheckSummary `json:"checkSummary" yaml:"checkSummary" mapstructure:"checkSummary"`
 
+	// Checks corresponds to the JSON schema field "checks".
+	Checks []QueueCheck `json:"checks" yaml:"checks" mapstructure:"checks"`
+
 	// ClaimedBy corresponds to the JSON schema field "claimedBy".
 	ClaimedBy *string `json:"claimedBy,omitempty,omitzero" yaml:"claimedBy,omitempty" mapstructure:"claimedBy,omitempty"`
 
@@ -1682,6 +1738,9 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["checkSummary"]; raw != nil && !ok {
 		return fmt.Errorf("field checkSummary in QueueItem: required")
+	}
+	if _, ok := raw["checks"]; raw != nil && !ok {
+		return fmt.Errorf("field checks in QueueItem: required")
 	}
 	if _, ok := raw["externalId"]; raw != nil && !ok {
 		return fmt.Errorf("field externalId in QueueItem: required")

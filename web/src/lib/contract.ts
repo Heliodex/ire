@@ -102,6 +102,16 @@ export const queueCountsSchema = pipe(
 	title("QueueCounts"),
 )
 
+export const queueCheckSchema = pipe(
+	object({
+		key: pipe(string(), minLength(1)),
+		label: pipe(string(), minLength(1)),
+		status: pipe(string(), minLength(1)),
+		severity: pipe(string(), minLength(1)),
+	}),
+	title("QueueCheck"),
+)
+
 export const queueItemSchema = pipe(
 	object({
 		id: pipe(string(), minLength(1)),
@@ -116,6 +126,7 @@ export const queueItemSchema = pipe(
 		makerName: pipe(string(), minLength(1)),
 		hoursClaimedSeconds: nonNegative,
 		checkSummary: checkSummarySchema,
+		checks: array(queueCheckSchema),
 		ingestedAt: timestamp,
 		claimedBy: optionalString,
 	}),

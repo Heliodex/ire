@@ -114,12 +114,66 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		response.Items = append(response.Items, item)
 	}
 
+	checks, err := a.queueChecks(r.Context(), response.Items)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	for i := range response.Items {
+		response.Items[i].Checks = checks[response.Items[i].ID]
+	}
+
 	counts, err := a.queueCounts(r.Context(), person.ProgramID, stage, now)
 	if err == nil {
 		response.Counts = counts
 	}
 
 	app.WriteJSON(w, http.StatusOK, response)
+}
+
+// queueChecks returns the latest result per check key for every queued ship, in group order, so the queue can draw one dot per check.
+func (a *reviewApp) queueChecks(ctx context.Context, items []contract.QueueItem) (map[string][]contract.QueueCheck, error) {
+	out := make(map[string][]contract.QueueCheck, len(items))
+	if len(items) == 0 {
+		return out, nil
+	}
+
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(items)), ",")
+	args := make([]any, len(items))
+
+	for i := range items {
+		args[i] = items[i].ID
+		out[items[i].ID] = []contract.QueueCheck{}
+	}
+
+	rows, err := a.store.Query(ctx, `select c.submission_id, c.check_key, c.label, c.status, c.severity
+		from check_result c
+		join submission s on s.id = c.submission_id
+		where c.submission_id in (`+placeholders+`) and c.version = s.version
+		  and c.checked_at = (select max(c2.checked_at) from check_result c2
+			where c2.submission_id = c.submission_id and c2.version = c.version and c2.check_key = c.check_key)
+		order by c.submission_id, c.group_key, c.check_key`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			submissionID string
+			check        contract.QueueCheck
+		)
+
+		if err := rows.Scan(&submissionID, &check.Key, &check.Label, &check.Status, &check.Severity); err != nil {
+			return nil, err
+		}
+
+		out[submissionID] = append(out[submissionID], check)
+	}
+
+	return out, rows.Err()
 }
 
 // queueCounts computes the four badges. The second-pass count is programme-wide; the other three follow the requested stage.

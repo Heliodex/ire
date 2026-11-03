@@ -79,6 +79,37 @@
 					"checkSummary": {
 						"$ref": "check-summary.json"
 					},
+					"checks": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"key": {
+									"type": "string",
+									"minLength": 1
+								},
+								"label": {
+									"type": "string",
+									"minLength": 1
+								},
+								"status": {
+									"type": "string",
+									"minLength": 1
+								},
+								"severity": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"required": [
+								"key",
+								"label",
+								"status",
+								"severity"
+							],
+							"title": "QueueCheck"
+						}
+					},
 					"ingestedAt": {
 						"type": "string",
 						"minLength": 1
@@ -98,6 +129,7 @@
 					"makerName",
 					"hoursClaimedSeconds",
 					"checkSummary",
+					"checks",
 					"ingestedAt"
 				],
 				"title": "QueueItem"

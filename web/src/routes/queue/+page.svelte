@@ -15,6 +15,7 @@ let opening = $state("")
 let error = $state("")
 let selected = $state(0)
 let search = $state("")
+let filterTabs = $state<HTMLDivElement | null>(null)
 
 const filters: { key: Filter; label: string }[] = [
 	{ key: "all", label: "All open" },
@@ -47,6 +48,12 @@ onMount((): (() => void) => {
 		} else if (event.key === "Enter" && visible[selected]) {
 			void open(visible[selected])
 			event.preventDefault()
+		} else if (event.key === "ArrowRight") {
+			moveFilter(1)
+			event.preventDefault()
+		} else if (event.key === "ArrowLeft") {
+			moveFilter(-1)
+			event.preventDefault()
 		}
 	}
 
@@ -68,9 +75,21 @@ async function boot(): Promise<void> {
 	await load()
 }
 
-async function load(): Promise<void> {
+// checkTone maps a check result to a dot tone. A failure with warning severity stays orange, matching the review screen.
+function checkTone(check: QueueItem["checks"][number]): string {
+	if (check.status === "pass") return "approved"
+	if (check.status === "warn") return "pending"
+	if (check.status === "fail" && check.severity === "warn") return "changes"
+	if (check.status === "fail" || check.status === "error") return "rejected"
+	return "neutral"
+}
+
+async function load(target = filter): Promise<void> {
 	try {
-		queue = await fetchQueue(filter)
+		const next = await fetchQueue(target)
+		if (target !== filter) return
+
+		queue = next
 		selected = Math.min(selected, Math.max(queue.items.length - 1, 0))
 		error = ""
 	} catch (err) {
@@ -78,9 +97,9 @@ async function load(): Promise<void> {
 			void goto("/")
 			return
 		}
-		error = err instanceof Error ? err.message : "Could not load the queue."
+		if (target === filter) error = err instanceof Error ? err.message : "Could not load the queue."
 	} finally {
-		loading = false
+		if (target === filter) loading = false
 	}
 }
 
@@ -88,7 +107,16 @@ async function choose(next: Filter): Promise<void> {
 	filter = next
 	loading = true
 	selected = 0
-	await load()
+	await load(next)
+}
+
+// moveFilter selects the next filter and keeps keyboard focus on it, wrapping at the ends.
+function moveFilter(step: number): void {
+	const index = filters.findIndex((option) => option.key === filter)
+	const next = (index + step + filters.length) % filters.length
+
+	filterTabs?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus()
+	void choose(filters[next].key)
 }
 
 async function open(item: QueueItem): Promise<void> {
@@ -125,7 +153,7 @@ async function open(item: QueueItem): Promise<void> {
 </section>
 
 <div class="toolbar">
-	<div aria-label="Filters" class="ui-seg" role="tablist">
+	<div aria-label="Filters" bind:this={filterTabs} class="ui-seg" role="tablist">
 		{#each filters as option (option.key)}
 			<button
 				aria-selected={filter === option.key}
@@ -154,6 +182,7 @@ async function open(item: QueueItem): Promise<void> {
 		<span>
 			{visible.length} {visible.length === 1 ? "ship" : "ships"} ·
 			<kbd class="ui-kbd">J</kbd><kbd class="ui-kbd">K</kbd> to move ·
+			<kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd> filters ·
 			<kbd class="ui-kbd">Enter</kbd> to open
 		</span>
 	</div>
@@ -195,11 +224,24 @@ async function open(item: QueueItem): Promise<void> {
 						<span class="hours">{formatHours(item.hoursClaimedSeconds)} claimed</span>
 						<span class="age">{timeAgo(item.ingestedAt)}</span>
 						<span class="checks">
-							{#if item.checkSummary.pass > 0}<span class="pass">{item.checkSummary.pass} pass</span>{/if}
-							{#if item.checkSummary.warn > 0}<span class="warn">{item.checkSummary.warn} warn</span>{/if}
-							{#if item.checkSummary.fail > 0}<span class="fail">{item.checkSummary.fail} fail</span>{/if}
-							{#if item.checkSummary.error > 0}<span class="fail">{item.checkSummary.error} error</span>{/if}
-							{#if item.checkSummary.overall === "pass"}<span class="fast">Fast lane</span>{/if}
+							<span class="counts">
+								{#if item.checkSummary.pass > 0}<span class="pass">{item.checkSummary.pass} pass</span>{/if}
+								{#if item.checkSummary.warn > 0}<span class="warn">{item.checkSummary.warn} warn</span>{/if}
+								{#if item.checkSummary.fail > 0}<span class="fail">{item.checkSummary.fail} fail</span>{/if}
+								{#if item.checkSummary.error > 0}<span class="fail">{item.checkSummary.error} error</span>{/if}
+								{#if item.checkSummary.overall === "pass"}<span class="fast">Fast lane</span>{/if}
+							</span>
+							{#if item.checks.length > 0}
+								<span
+									aria-label={item.checks.map((check) => `${check.label}: ${check.status}`).join(", ")}
+									class="dots"
+									role="img"
+								>
+									{#each item.checks as check (check.key)}
+										<span class="dot" data-tone={checkTone(check)} title={`${check.label}: ${check.status}`}></span>
+									{/each}
+								</span>
+							{/if}
 						</span>
 					</div>
 					<span class="row-action">
@@ -370,11 +412,17 @@ h1 {
 
 .checks {
 	display: flex;
-	gap: var(--space-2);
-	align-items: baseline;
-	overflow: hidden;
+	flex-direction: column;
+	gap: var(--space-1);
+	min-width: 0;
 	font-size: var(--text-xs);
 	font-weight: 700;
+}
+
+.counts {
+	display: flex;
+	gap: var(--space-2);
+	overflow: hidden;
 	white-space: nowrap;
 }
 
@@ -393,6 +441,35 @@ h1 {
 .checks .fast {
 	color: var(--text-3);
 	font-weight: 600;
+}
+
+.dots {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.dot {
+	width: 7px;
+	height: 7px;
+	background: var(--border-2);
+	border-radius: 50%;
+}
+
+.dot[data-tone="approved"] {
+	background: var(--status-approved);
+}
+
+.dot[data-tone="pending"] {
+	background: var(--status-pending);
+}
+
+.dot[data-tone="changes"] {
+	background: var(--status-changes);
+}
+
+.dot[data-tone="rejected"] {
+	background: var(--status-rejected);
 }
 
 .row-action {

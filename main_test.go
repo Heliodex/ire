@@ -221,6 +221,14 @@ func TestFixturesAppearInQueue(t *testing.T) {
 		t.Errorf("checks = %+v", bundle.Checks)
 	}
 
+	if len(queue.Items) == 0 || len(queue.Items[0].Checks) != 7 {
+		t.Errorf("queue check dots = %+v", queue.Items)
+	}
+
+	if len(queue.Items) > 1 && queueCheckStatuses(queue.Items[1].Checks)["repo.bom"] != statusFail {
+		t.Errorf("warned queue checks = %+v", queue.Items[1].Checks)
+	}
+
 	statusRecorder := do(t, application, http.MethodGet, "/api/ingest/half-life/status?external_id=fix-clean:design", nil, nil, map[string]string{
 		"Authorization": "Bearer test-ingest",
 	})
@@ -806,6 +814,16 @@ func TestLegacySignatureFailsClosed(t *testing.T) {
 
 // checkStatuses indexes checks by key.
 func checkStatuses(checks []contract.CheckResult) map[string]string {
+	out := make(map[string]string, len(checks))
+	for _, check := range checks {
+		out[check.Key] = check.Status
+	}
+
+	return out
+}
+
+// queueCheckStatuses indexes the compact queue checks by key.
+func queueCheckStatuses(checks []contract.QueueCheck) map[string]string {
 	out := make(map[string]string, len(checks))
 	for _, check := range checks {
 		out[check.Key] = check.Status
