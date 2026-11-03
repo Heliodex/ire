@@ -65,7 +65,7 @@ linters:
         dogsled:
             max-blank-identifiers: 3
         gocyclo:
-            min-complexity: 50
+            min-complexity: 40
         depguard:
             rules:
                 main:
