@@ -647,11 +647,12 @@ h1 {
 	}
 
 	.row {
-		grid-template-columns: 64px auto minmax(0, 1fr);
+		grid-template-columns: 64px 124px minmax(0, 1fr);
 		grid-template-areas:
 			"thumb title title"
 			"thumb badges checks"
 			"facts facts facts";
+		column-gap: var(--space-2);
 	}
 
 	.facts {
@@ -662,6 +663,16 @@ h1 {
 
 	.version {
 		margin-right: auto;
+	}
+}
+
+@media (max-width: 370px) {
+	.counts {
+		gap: 3px;
+	}
+
+	.checks .fast {
+		display: none;
 	}
 }
 </style>
