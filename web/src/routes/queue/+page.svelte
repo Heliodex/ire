@@ -490,6 +490,10 @@ h1 {
 	font-variant-numeric: tabular-nums;
 }
 
+.version {
+	text-align: right;
+}
+
 .checks {
 	display: flex;
 	flex-direction: column;
@@ -618,7 +622,7 @@ h1 {
 
 	.facts {
 		display: grid;
-		grid-template-columns: minmax(120px, 260px) 36px minmax(90px, 1fr);
+		grid-template-columns: minmax(120px, 1fr) auto auto;
 		gap: var(--space-2);
 		grid-area: facts;
 		align-items: center;
@@ -626,7 +630,8 @@ h1 {
 
 	.timing {
 		display: flex;
-		flex-direction: column;
+		gap: var(--space-3);
+		align-items: baseline;
 		justify-self: end;
 		text-align: right;
 	}
@@ -663,6 +668,11 @@ h1 {
 
 	.version {
 		margin-right: auto;
+	}
+
+	.timing {
+		flex-direction: column;
+		gap: 0;
 	}
 }
 
