@@ -1,0 +1,264 @@
+package main
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/heliodex/better-deploy/wt/packages/app"
+	"github.com/heliodex/better-deploy/wt/packages/storage"
+)
+
+const (
+	programID   = "prg_halflife"
+	programSlug = "half-life"
+	programName = "Half Life"
+
+	timestampFormat = app.TimestampFormat
+
+	maxNote = 4000
+
+	maxIngestBody = 1 << 20
+	maxAPIBody    = 64 << 10
+
+	defaultLimit = 50
+	maxLimit     = 100
+
+	claimTTL = 30 * time.Minute
+
+	outboundTimeout = 15 * time.Second
+
+	minDescriptionLength = 160
+	minJournalText       = 80
+
+	secondsPerHour = 3600
+	secondsPerDay  = 24 * secondsPerHour
+	maxHours       = 30 * secondsPerDay
+
+	sessionTTL = 7 * 24 * time.Hour
+
+	statusChecking       = "checking"
+	statusNeedsAttention = "needs_attention"
+	statusReady          = "ready"
+	statusClaimed        = "claimed"
+	statusInReview       = "in_review"
+	statusStage2Hold     = "stage2_hold"
+	statusDecided        = "decided"
+	statusWithdrawn      = "withdrawn"
+
+	stageOne = 1
+
+	decisionApproved = "approved"
+	decisionChanges  = "changes"
+	decisionRejected = "rejected"
+
+	statusPass  = "pass"
+	statusWarn  = "warn"
+	statusFail  = "fail"
+	statusError = "error"
+	statusSkip  = "skip"
+
+	severityInfo  = "info"
+	severityWarn  = "warn"
+	severityBlock = "block"
+
+	checkOverallPass = "pass"
+	checkOverallWarn = "warn"
+	checkOverallFail = "fail"
+
+	queueFilterAll       = "all"
+	queueFilterFast      = "fast"
+	queueFilterAttention = "attention"
+	queueFilterMine      = "mine"
+
+	roleReviewer  = "reviewer"
+	roleOrganizer = "organizer"
+	roleAdmin     = "admin"
+	roleAuditor   = "auditor"
+
+	cookieName = "review_session"
+)
+
+// config is the process-level configuration that never belongs in SQLite: the shared secrets and the delivery mode.
+type config struct {
+	IngestSecret     string
+	OutboundSecret   string
+	OutboundURL      string
+	SeedFixtures     bool
+	AllowDevAccounts bool
+}
+
+// reviewApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.
+type reviewApp struct {
+	store  *storage.Client
+	client *http.Client
+	mux    *http.ServeMux
+	config config
+	clock  func() time.Time
+}
+
+// newReviewApp builds the routes around one store and outbound client.
+func newReviewApp(store *storage.Client, client *http.Client, cfg config) *reviewApp {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	a := &reviewApp{store: store, client: client, mux: http.NewServeMux(), config: cfg, clock: time.Now}
+	a.routes()
+
+	return a
+}
+
+// handler exposes the routes to the wasm wiring or a test.
+func (a *reviewApp) handler() http.Handler {
+	return a.mux
+}
+
+// now returns the app's clock in UTC.
+func (a *reviewApp) now() time.Time {
+	return a.clock().UTC()
+}
+
+// nowText formats the current time with the contract's fixed-width layout.
+func (a *reviewApp) nowText() string {
+	return a.now().Format(timestampFormat)
+}
+
+// later returns the current time plus d, formatted for storage.
+func (a *reviewApp) later(d time.Duration) string {
+	return a.now().Add(d).Format(timestampFormat)
+}
+
+// routes registers the Ari-compatible edge, the native API and the supervised tick endpoint.
+func (a *reviewApp) routes() {
+	a.mux.HandleFunc("POST /api/ingest/{program}", a.handleIngest)
+	a.mux.HandleFunc("POST /api/ingest/{program}/withdraw", a.handleWithdraw)
+	a.mux.HandleFunc("GET /api/ingest/{program}/status", a.handleStatus)
+
+	a.mux.HandleFunc("POST /api/v1/ingest/{program}", a.handleIngest)
+	a.mux.HandleFunc("POST /api/v1/withdraw/{program}", a.handleWithdraw)
+	a.mux.HandleFunc("GET /api/v1/status/{program}", a.handleStatus)
+	a.mux.HandleFunc("GET /api/v1/reviews/{program}", a.handleReviews)
+	a.mux.HandleFunc("GET /api/v1/events/{program}", a.handleEvents)
+
+	a.mux.HandleFunc("GET /api/v1/me", a.handleMe)
+	a.mux.HandleFunc("POST /api/v1/dev/login", a.handleDevLogin)
+	a.mux.HandleFunc("POST /api/v1/dev/logout", a.handleDevLogout)
+
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/queue", a.handleQueue)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/submissions/{id}", a.handleBundle)
+	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/claim", a.handleClaim)
+	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/heartbeat", a.handleHeartbeat)
+	a.mux.HandleFunc("DELETE /api/v1/programs/{program}/submissions/{id}/claim", a.handleRelease)
+	a.mux.HandleFunc("PUT /api/v1/programs/{program}/submissions/{id}/draft", a.handleDraft)
+	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/decision", a.handleDecision)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/outbox", a.handleOutbox)
+	a.mux.HandleFunc("GET /api/v1/dev/outbox/received", a.handleFakeDeliveries)
+
+	a.mux.HandleFunc("POST /jobs/tick", a.handleTick)
+}
+
+// programFor resolves the path's programme slug, writing a 404 when it does not exist.
+func (a *reviewApp) programFor(w http.ResponseWriter, r *http.Request) (programRow, bool) {
+	slug := r.PathValue("program")
+
+	var row programRow
+
+	row.Slug = slug
+
+	if err := a.store.QueryRow(r.Context(), `select id, slug, name, outbound_url, coalesce(policy_version, 1) from program where slug = ? and active = 1`, slug).
+		Scan(&row.ID, &row.Slug, &row.Name, &row.OutboundURL, &row.PolicyVersion); err != nil {
+		if errors.Is(err, storage.ErrNoRows) {
+			app.WriteError(w, http.StatusNotFound, "unknown program")
+			return programRow{}, false
+		}
+
+		app.WriteError(w, http.StatusInternalServerError, err.Error())
+
+		return programRow{}, false
+	}
+
+	return row, true
+}
+
+// programByID loads a programme by its opaque id.
+func (a *reviewApp) programByID(ctx context.Context, id string) (programRow, error) {
+	var row programRow
+
+	row.ID = id
+
+	err := a.store.QueryRow(ctx, `select id, slug, name, outbound_url, coalesce(policy_version, 1) from program where id = ?`, id).
+		Scan(&row.ID, &row.Slug, &row.Name, &row.OutboundURL, &row.PolicyVersion)
+	if err != nil {
+		return programRow{}, err
+	}
+
+	return row, nil
+}
+
+// newID returns a short prefixed identifier, for example evt_9f2c....
+func newID(prefix string) string {
+	var raw [12]byte
+	if _, err := rand.Read(raw[:]); err != nil {
+		return prefix + "_" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	}
+
+	return prefix + "_" + hex.EncodeToString(raw[:])
+}
+
+// sha256Hex returns the lowercase hex digest of data.
+func sha256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+
+	return hex.EncodeToString(sum[:])
+}
+
+// parseLimit reads a bounded limit query parameter.
+func parseLimit(r *http.Request) int {
+	value := r.URL.Query().Get("limit")
+	if value == "" {
+		return defaultLimit
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 1 {
+		return defaultLimit
+	}
+
+	return min(parsed, maxLimit)
+}
+
+// parseSince reads the optional since cursor as an RFC 3339 timestamp.
+func parseSince(r *http.Request) (string, bool) {
+	value := strings.TrimSpace(r.URL.Query().Get("since"))
+	if value == "" {
+		return "", true
+	}
+
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return "", false
+	}
+
+	return parsed.UTC().Format(timestampFormat), true
+}
+
+// writeStorage writes a storage failure as a 500 without leaking SQL.
+func writeStorage(w http.ResponseWriter, err error) {
+	app.WriteError(w, http.StatusInternalServerError, err.Error())
+}
+
+// programRow is the subset of a programme the prototype reads.
+type programRow struct {
+	ID            string
+	Slug          string
+	Name          string
+	OutboundURL   string
+	PolicyVersion int
+}

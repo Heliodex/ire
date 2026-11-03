@@ -1,0 +1,65 @@
+{
+	"type": "object",
+	"properties": {
+		"deliveries": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"submissionId": {
+						"type": "string"
+					},
+					"event": {
+						"type": "string",
+						"minLength": 1
+					},
+					"status": {
+						"type": "string",
+						"minLength": 1
+					},
+					"attempts": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"lastHttpStatus": {
+						"type": "integer"
+					},
+					"lastError": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"deliveredAt": {
+						"type": "string"
+					},
+					"deliveryId": {
+						"type": "string"
+					},
+					"payload": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"event",
+					"status",
+					"attempts",
+					"createdAt"
+				],
+				"title": "OutboxRow"
+			}
+		}
+	},
+	"required": [
+		"deliveries"
+	],
+	"title": "OutboxResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/outbox.json"
+}

@@ -1,0 +1,17 @@
+{
+	"type": "object",
+	"properties": {
+		"email": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 320,
+			"pattern": "\\S"
+		}
+	},
+	"required": [
+		"email"
+	],
+	"title": "LoginRequest",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/login.json"
+}

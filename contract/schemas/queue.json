@@ -1,0 +1,114 @@
+{
+	"type": "object",
+	"properties": {
+		"counts": {
+			"type": "object",
+			"properties": {
+				"ready": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"claimed": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"needsAttention": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"stage2Hold": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"required": [
+				"ready",
+				"claimed",
+				"needsAttention",
+				"stage2Hold"
+			],
+			"title": "QueueCounts"
+		},
+		"items": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"externalId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"version": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"status": {
+						"type": "string",
+						"minLength": 1
+					},
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"priority": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"title": {
+						"type": "string",
+						"minLength": 1
+					},
+					"theme": {
+						"type": "string"
+					},
+					"week": {
+						"type": "integer"
+					},
+					"makerName": {
+						"type": "string",
+						"minLength": 1
+					},
+					"hoursClaimedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"checkSummary": {
+						"$ref": "check-summary.json"
+					},
+					"ingestedAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"claimedBy": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"externalId",
+					"version",
+					"status",
+					"stage",
+					"priority",
+					"title",
+					"makerName",
+					"hoursClaimedSeconds",
+					"checkSummary",
+					"ingestedAt"
+				],
+				"title": "QueueItem"
+			}
+		}
+	},
+	"required": [
+		"counts",
+		"items"
+	],
+	"title": "QueueResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/queue.json"
+}

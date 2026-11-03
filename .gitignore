@@ -3,12 +3,11 @@ web/build/
 web/.svelte-kit/
 web/node_modules/
 web/.wt-dev.vite.config.ts
-web/bun.lock
-contract/*.gen.go
-contract/schemas/
+.projects.csv
 main.wasm
 main.cwasm
 artefact.json
 
 .wt-build.json
 .wt-contract-*.ts
+/review.tar.gz

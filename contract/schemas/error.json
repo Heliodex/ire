@@ -1,0 +1,23 @@
+{
+	"type": "object",
+	"properties": {
+		"code": {
+			"type": "string",
+			"minLength": 1
+		},
+		"error": {
+			"type": "string",
+			"minLength": 1
+		},
+		"field": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"code",
+		"error"
+	],
+	"title": "ErrorResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/error.json"
+}

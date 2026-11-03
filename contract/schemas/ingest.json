@@ -1,0 +1,268 @@
+{
+	"type": "object",
+	"properties": {
+		"external_id": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 200
+		},
+		"ingest_version": {
+			"type": "integer"
+		},
+		"title": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 200
+		},
+		"description": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 20000
+		},
+		"repo_url": {
+			"type": "string"
+		},
+		"demo_url": {
+			"type": "string"
+		},
+		"thumbnail_url": {
+			"type": "string"
+		},
+		"track": {
+			"type": "string"
+		},
+		"evidence": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"hackatime_projects": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"journals": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"at": {
+						"type": "string",
+						"minLength": 1
+					},
+					"minutes": {
+						"type": "integer"
+					},
+					"seconds": {
+						"type": "integer"
+					},
+					"text": {
+						"type": "string",
+						"minLength": 1
+					},
+					"markdown": {
+						"type": "string"
+					},
+					"media": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"type": {
+									"type": "string"
+								},
+								"url": {
+									"type": "string",
+									"minLength": 1
+								},
+								"alt": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"url"
+							]
+						}
+					},
+					"timelapses": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"provider": {
+									"type": "string"
+								},
+								"externalId": {
+									"type": "string"
+								},
+								"url": {
+									"type": "string"
+								},
+								"thumbnailUrl": {
+									"type": "string"
+								},
+								"coveredSeconds": {
+									"type": "integer"
+								}
+							},
+							"required": []
+						}
+					}
+				},
+				"required": [
+					"at",
+					"text"
+				],
+				"title": "IngestJournal"
+			}
+		},
+		"maker": {
+			"type": "object",
+			"properties": {
+				"email": {
+					"type": "string",
+					"minLength": 1
+				},
+				"name": {
+					"type": "string",
+					"minLength": 1
+				},
+				"slack_id": {
+					"type": "string"
+				},
+				"hackatime_id": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"email",
+				"name"
+			],
+			"title": "IngestMaker"
+		},
+		"meta": {
+			"type": "object",
+			"properties": {
+				"program": {
+					"type": "string"
+				},
+				"phase": {
+					"type": "string"
+				},
+				"theme": {
+					"type": "string"
+				},
+				"week": {
+					"type": "integer"
+				},
+				"requested_tier": {
+					"type": "integer"
+				},
+				"priority": {
+					"type": "integer"
+				},
+				"grant_cap_cents": {
+					"type": "integer"
+				},
+				"submission_notes": {
+					"type": "string"
+				},
+				"bom": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1
+							},
+							"qty": {
+								"type": "integer"
+							},
+							"unit_usd": {
+								"type": "number"
+							},
+							"vendor": {
+								"type": "string"
+							},
+							"link": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"name"
+						],
+						"title": "IngestBomLine"
+					}
+				},
+				"hours": {
+					"type": "object",
+					"properties": {
+						"claimed_seconds": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"journal_seconds": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"hackatime_seconds": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"timelapse_seconds": {
+							"type": "integer"
+						}
+					},
+					"required": [
+						"claimed_seconds",
+						"journal_seconds",
+						"hackatime_seconds"
+					],
+					"title": "IngestHours"
+				},
+				"prior_reviews": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"result": {
+								"type": "string",
+								"minLength": 1
+							},
+							"feedback": {
+								"type": "string"
+							},
+							"reviewer": {
+								"type": "string"
+							},
+							"at": {
+								"type": "string"
+							},
+							"invalidated": {
+								"type": "integer"
+							}
+						},
+						"required": [
+							"result"
+						],
+						"title": "IngestPriorReview"
+					}
+				}
+			},
+			"required": [],
+			"title": "IngestMeta"
+		}
+	},
+	"required": [
+		"external_id",
+		"title",
+		"description",
+		"maker"
+	],
+	"title": "IngestRequest",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/ingest.json"
+}

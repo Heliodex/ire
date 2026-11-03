@@ -1,0 +1,38 @@
+{
+	"type": "object",
+	"properties": {
+		"claim": {
+			"type": "object",
+			"properties": {
+				"reviewerEmail": {
+					"type": "string",
+					"minLength": 1
+				},
+				"reviewerName": {
+					"type": "string"
+				},
+				"expiresAt": {
+					"type": "string",
+					"minLength": 1
+				},
+				"isMine": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 1
+				}
+			},
+			"required": [
+				"reviewerEmail",
+				"expiresAt",
+				"isMine"
+			],
+			"title": "ClaimState"
+		}
+	},
+	"required": [
+		"claim"
+	],
+	"title": "ClaimResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/claim.json"
+}

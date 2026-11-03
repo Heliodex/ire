@@ -1,0 +1,237 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string",
+			"minLength": 1
+		},
+		"externalId": {
+			"type": "string",
+			"minLength": 1
+		},
+		"version": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"phase": {
+			"type": "string",
+			"minLength": 1
+		},
+		"decision": {
+			"type": "string"
+		},
+		"review": {
+			"type": "object",
+			"properties": {
+				"approvedSeconds": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"approvedMinutes": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"approvedHours": {
+					"type": "number"
+				},
+				"secondsBreakdown": {
+					"type": "object",
+					"properties": {
+						"hackatime": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"journals": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"lapse": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"program": {
+							"type": "integer",
+							"minimum": 0
+						}
+					},
+					"required": [
+						"hackatime",
+						"journals",
+						"lapse",
+						"program"
+					]
+				},
+				"noteToMaker": {
+					"type": "string"
+				},
+				"auditNote": {
+					"type": "string"
+				},
+				"reviewer": {
+					"type": "object",
+					"properties": {
+						"email": {
+							"type": "string"
+						},
+						"slackId": {
+							"type": "string"
+						}
+					},
+					"required": []
+				},
+				"justification": {
+					"type": "object",
+					"properties": {
+						"hackatimeProjects": {
+							"type": "string"
+						},
+						"technicalFeatures": {
+							"type": "string"
+						},
+						"deflationReason": {
+							"type": "string"
+						}
+					},
+					"required": []
+				}
+			},
+			"required": [
+				"approvedSeconds",
+				"approvedMinutes",
+				"approvedHours",
+				"secondsBreakdown",
+				"noteToMaker"
+			]
+		},
+		"stage": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"stageHistory": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"decision": {
+						"type": "string",
+						"minLength": 1
+					},
+					"reviewer": {
+						"type": "string"
+					},
+					"at": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"stage",
+					"decision",
+					"at"
+				]
+			}
+		},
+		"checks": {
+			"type": "object",
+			"properties": {
+				"overall": {
+					"type": "string",
+					"minLength": 1
+				},
+				"results": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"key": {
+								"type": "string",
+								"minLength": 1
+							},
+							"status": {
+								"type": "string",
+								"minLength": 1
+							},
+							"summary": {
+								"type": "string",
+								"minLength": 1
+							},
+							"checkedAt": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"key",
+							"status",
+							"summary",
+							"checkedAt"
+						]
+					}
+				}
+			},
+			"required": [
+				"overall",
+				"results"
+			]
+		},
+		"fraud": {
+			"type": "object",
+			"properties": {
+				"status": {
+					"type": "string"
+				},
+				"provider": {
+					"type": "string"
+				},
+				"score": {
+					"type": "integer"
+				}
+			},
+			"required": [
+				"status"
+			]
+		},
+		"timeline": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"kind": {
+						"type": "string",
+						"minLength": 1
+					},
+					"at": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"kind",
+					"at"
+				]
+			}
+		},
+		"updatedAt": {
+			"type": "string",
+			"minLength": 1
+		}
+	},
+	"required": [
+		"id",
+		"externalId",
+		"version",
+		"phase",
+		"stage",
+		"stageHistory",
+		"checks",
+		"timeline",
+		"updatedAt"
+	],
+	"title": "StatusResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/status.json"
+}

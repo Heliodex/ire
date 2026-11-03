@@ -1,0 +1,38 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string",
+			"minLength": 1
+		},
+		"status": {
+			"type": "string",
+			"minLength": 1
+		},
+		"held": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 1
+		},
+		"heldReason": {
+			"type": "string"
+		},
+		"outboxId": {
+			"type": "string"
+		},
+		"deliveryStatus": {
+			"type": "string"
+		},
+		"nextId": {
+			"type": "string"
+		}
+	},
+	"required": [
+		"id",
+		"status",
+		"held"
+	],
+	"title": "DecisionOutcome",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/decision-outcome.json"
+}

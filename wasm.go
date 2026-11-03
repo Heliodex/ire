@@ -5,13 +5,37 @@ package main
 import (
 	"context"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/heliodex/better-deploy/wt/packages/app"
 	"github.com/heliodex/better-deploy/wt/packages/storage"
 	wasihttp "github.com/heliodex/better-deploy/wt/packages/wasihttp"
 )
 
-// init is the only wasm-specific wiring: storage, the app routes and the wasi:http export.
+// loadConfig reads the prototype's configuration. Missing secrets fall back to documented development values; production must set both.
+func loadConfig() config {
+	seed := os.Getenv("REVIEW_SEED_FIXTURES") != "0"
+
+	return config{
+		IngestSecret:     envOr("REVIEW_INGEST_SECRET", "dev-ingest-secret"),
+		OutboundSecret:   envOr("REVIEW_OUTBOUND_SECRET", "dev-outbound-secret"),
+		OutboundURL:      envOr("REVIEW_OUTBOUND_URL", "fake://receiver"),
+		SeedFixtures:     seed,
+		AllowDevAccounts: os.Getenv("REVIEW_DEV_AUTH") != "0",
+	}
+}
+
+// envOr returns the environment value or fallback when it is empty.
+func envOr(key, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value
+	}
+
+	return fallback
+}
+
+// init is the only wasm-specific wiring: storage, the review routes, the outbound client and the wasi:http export.
 func init() {
 	store, storeErr := storage.New(wasihttp.NewClient())
 
@@ -21,7 +45,7 @@ func init() {
 	)
 
 	if storeErr == nil {
-		application := newNotesApp(store)
+		application := newReviewApp(store, wasihttp.NewClient(), loadConfig())
 		handler = application.handler()
 		migrate = application.migrate
 	}

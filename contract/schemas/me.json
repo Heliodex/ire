@@ -1,0 +1,63 @@
+{
+	"type": "object",
+	"properties": {
+		"user": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"email": {
+					"type": "string",
+					"minLength": 1
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"id",
+				"email"
+			]
+		},
+		"programs": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"programId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"programSlug": {
+						"type": "string",
+						"minLength": 1
+					},
+					"programName": {
+						"type": "string",
+						"minLength": 1
+					},
+					"role": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"programId",
+					"programSlug",
+					"programName",
+					"role"
+				],
+				"title": "Membership"
+			}
+		}
+	},
+	"required": [
+		"user",
+		"programs"
+	],
+	"title": "MeResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/me.json"
+}

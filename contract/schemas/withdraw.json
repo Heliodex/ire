@@ -1,0 +1,15 @@
+{
+	"type": "object",
+	"properties": {
+		"external_id": {
+			"type": "string",
+			"minLength": 1
+		}
+	},
+	"required": [
+		"external_id"
+	],
+	"title": "WithdrawRequest",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/withdraw.json"
+}

@@ -1,0 +1,46 @@
+{
+	"type": "object",
+	"properties": {
+		"decision": {
+			"type": "string",
+			"pattern": "^(approved|changes|rejected)$"
+		},
+		"version": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"noteToMaker": {
+			"type": "string",
+			"maxLength": 4000
+		},
+		"internalNote": {
+			"type": "string",
+			"maxLength": 4000
+		},
+		"hoursApprovedSeconds": {
+			"type": "integer"
+		},
+		"acknowledgements": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"idempotencyKey": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 120
+		}
+	},
+	"required": [
+		"decision",
+		"version",
+		"noteToMaker",
+		"internalNote",
+		"acknowledgements",
+		"idempotencyKey"
+	],
+	"title": "DecisionRequest",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/decision.json"
+}
