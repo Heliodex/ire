@@ -14,6 +14,7 @@
 - Put function declarations above their usage in the same file, never below
 - If multiple function parameters have the same type, group them like `func foo(a, b int)` instead of `func foo(a int, b int)`
 - If multiple struct fields have the same type, group them like `type Foo struct { a, b int }` instead of `type Foo struct { a int; b int }`
+- Keep functions and files short, split them along clear lines if they get too large
 
 ## JS
 
@@ -39,6 +40,7 @@
 - Use `void` before function calls that return promises to be discarded, or before IIFEs rather than semicolons
 - Declare only 1 variable per declaration statement, avoid `const x = 1, y = 2, z = 3`
 - When making large functions that return objects with many functions, consider if this would be more natural as a class with methods instead
+- Keep functions and files short, split them along clear lines if they get too large
 
 None of this should conflict with the formatting or linting rules of Biome or oxlint.
 
@@ -60,6 +62,7 @@ None of this should conflict with the formatting or linting rules of Biome or ox
 	- If needing negative margins for funky tricks, OK
 - Use canonical Tailwind classes like `w-36` instead of `w-[9rem]`
 - In the rare case where something is more concise in standard CSS than in Tailwind, write it in standard CSS
+- Keep files short, split them along clear lines if they get too large
 
 ## Markdown
 
