@@ -194,7 +194,7 @@ func (a *reviewApp) loadBom(ctx context.Context, submissionID string) ([]contrac
 func (a *reviewApp) loadReviews(ctx context.Context, submissionID string) ([]contract.Review, error) {
 	rows, err := a.store.Query(ctx, `select id, stage, decision, note_to_maker, coalesce(internal_note, ''), coalesce(hours_approved_seconds, 0),
 			reviewer_email, coalesce(reviewer_name, ''), held, created_at
-		from review where submission_id = ? order by created_at desc`, submissionID)
+		from review where submission_id = ? order by created_at desc, stage desc, id desc`, submissionID)
 	if err != nil {
 		return nil, err
 	}

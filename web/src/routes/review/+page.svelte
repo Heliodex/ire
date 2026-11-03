@@ -9,6 +9,7 @@ import {
 	fetchBundle,
 	fetchMe,
 	heartbeat,
+	program,
 	releaseShip,
 	saveDraft,
 	type Bundle,
@@ -37,10 +38,15 @@ let claimedId = $state("")
 let idempotencyKey = $state("")
 
 const submission = $derived(bundle?.submission ?? null)
+const secondPass = $derived(submission?.stage === 2 || submission?.status === "stage2_hold")
+const role = $derived(session.me?.programs.find((item) => item.programSlug === program)?.role ?? "")
+const canSecondPass = $derived(role === "organizer" || role === "admin")
+const canDecide = $derived(!secondPass || canSecondPass)
+const heldReview = $derived(bundle?.reviews.find((review) => review.held === 1) ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
 const missingAcks = $derived(warnings.filter((check) => !acknowledgements.includes(check.key)))
-const canApprove = $derived(blocking.length === 0 && missingAcks.length === 0)
+const canApprove = $derived(blocking.length === 0 && (secondPass || missingAcks.length === 0))
 const groups = $derived(groupChecks(bundle?.checks ?? []))
 
 afterNavigate((): void => {
@@ -127,7 +133,8 @@ async function load(target = id): Promise<void> {
 		if (target !== id) return
 
 		let next = fetched
-		if (!fetched.claim || fetched.claim.isMine !== 1) {
+		const canClaim = fetched.submission.stage !== 2 || canSecondPass
+		if (canClaim && (!fetched.claim || fetched.claim.isMine !== 1)) {
 			await claimShip(target)
 			next = await fetchBundle(target)
 			if (target !== id) return
@@ -203,12 +210,17 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 
 	actionError = ""
 
+	if (!canDecide) {
+		actionError = "Only organisers can decide the second pass."
+		return
+	}
+
 	if (decision === "approved") {
 		if (blocking.length > 0) {
 			actionError = "Approval is blocked. Read the blocking check, then ask for changes or reject."
 			return
 		}
-		if (missingAcks.length > 0) {
+		if (!secondPass && missingAcks.length > 0) {
 			actionError = `Acknowledge ${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} before approving.`
 			return
 		}
@@ -330,6 +342,19 @@ async function saveDraftNow(): Promise<void> {
 			<span><kbd class="ui-kbd">R</kbd> reject</span>
 			<span><kbd class="ui-kbd">Esc</kbd> back to queue</span>
 		</div>
+	{/if}
+
+	{#if secondPass}
+		<div class="second-pass">
+			<span class="ui-badge" data-tone="secondpass">Second pass</span>
+			<span>{submission.heldReason ?? "Held for a second review."}</span>
+		</div>
+		{#if heldReview && heldReview.noteToMaker}
+			<div class="first-pass">
+				<strong>First pass · {heldReview.reviewerEmail}</strong>
+				<p>{heldReview.noteToMaker}</p>
+			</div>
+		{/if}
 	{/if}
 
 	<div class="layout">
@@ -542,7 +567,7 @@ async function saveDraftNow(): Promise<void> {
 				</label>
 
 				<label class="field">
-					<span>Note to maker {missingAcks.length > 0 || blocking.length > 0 ? "" : "(optional)"}</span>
+					<span>Note to maker {!secondPass && (missingAcks.length > 0 || blocking.length > 0) ? "" : "(optional)"}</span>
 					<textarea
 						bind:this={noteElement}
 						bind:value={note}
@@ -564,7 +589,7 @@ async function saveDraftNow(): Promise<void> {
 					></textarea>
 				</label>
 
-				{#if missingAcks.length > 0}
+				{#if !secondPass && missingAcks.length > 0}
 					<div class="ui-notice" data-tone="warn">
 						<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
 						Acknowledge them in Checks to unlock approve.
@@ -587,17 +612,17 @@ async function saveDraftNow(): Promise<void> {
 				<div class="buttons">
 					<button
 						class="ui-button ok block"
-						disabled={deciding || !canApprove}
+						disabled={deciding || !canApprove || !canDecide}
 						onclick={(): Promise<void> => decide("approved")}
 						type="button"
 					>
-						{deciding ? "Saving…" : "Approve"} <kbd class="ui-kbd">A</kbd>
+						{deciding ? "Saving…" : secondPass ? "Confirm approval" : "Approve"} <kbd class="ui-kbd">A</kbd>
 					</button>
 					<div class="secondary">
-						<button class="ui-button changes" disabled={deciding} onclick={(): Promise<void> => decide("changes")} type="button">
+						<button class="ui-button changes" disabled={deciding || !canDecide} onclick={(): Promise<void> => decide("changes")} type="button">
 							Request changes
 						</button>
-						<button class="ui-button danger" disabled={deciding} onclick={(): Promise<void> => decide("rejected")} type="button">
+						<button class="ui-button danger" disabled={deciding || !canDecide} onclick={(): Promise<void> => decide("rejected")} type="button">
 							Reject
 						</button>
 					</div>
@@ -704,6 +729,37 @@ h1 {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-2);
+}
+
+.second-pass {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+	padding: var(--space-2) var(--space-3);
+	margin-top: var(--space-3);
+	font-size: var(--text-sm);
+	color: var(--status-secondpass);
+	background: color-mix(in srgb, var(--status-secondpass) 10%, var(--surface));
+	border-radius: var(--radius-md);
+}
+
+.first-pass {
+	padding: var(--space-2) var(--space-3);
+	margin-top: var(--space-2);
+	font-size: var(--text-sm);
+	color: var(--text-2);
+	background: var(--surface-2);
+	border-radius: var(--radius-md);
+}
+
+.first-pass strong {
+	display: block;
+	color: var(--text);
+}
+
+.first-pass p {
+	padding-top: 2px;
 }
 
 .shortcuts {

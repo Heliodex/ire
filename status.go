@@ -162,13 +162,16 @@ func (a *reviewApp) statusResponse(ctx context.Context, ship submissionRow) (con
 		})
 	}
 
-	if len(reviews) > 0 {
-		final := reviews[0]
-		if final.Held == 0 {
-			decision := final.Decision
-			response.Decision = &decision
-			response.Review = a.statusReview(ship, final)
+	for _, review := range reviews {
+		if review.Held != 0 {
+			continue
 		}
+
+		decision := review.Decision
+		response.Decision = &decision
+		response.Review = a.statusReview(ship, review)
+
+		break
 	}
 
 	for _, event := range events {

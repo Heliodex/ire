@@ -33,6 +33,11 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		stage = parsed
 	}
 
+	if stage == 2 && !canReviewSecondPass(person.Role) {
+		app.WriteError(w, http.StatusForbidden, "only organisers can view the second pass")
+		return
+	}
+
 	filter := strings.TrimSpace(r.URL.Query().Get("filter"))
 	if filter == "" {
 		filter = queueFilterAll
@@ -130,8 +135,12 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		response.Items[i].Checks = checks[response.Items[i].ID]
 	}
 
-	counts, err := a.queueCounts(r.Context(), person.ProgramID, stage, now)
+	counts, err := a.queueCounts(r.Context(), person.ProgramID)
 	if err == nil {
+		if !canReviewSecondPass(person.Role) {
+			counts.Stage2Hold = 0
+		}
+
 		response.Counts = counts
 	}
 
@@ -181,8 +190,8 @@ func (a *reviewApp) queueChecks(ctx context.Context, items []contract.QueueItem)
 	return out, rows.Err()
 }
 
-// queueCounts computes the four badges. The second-pass count is programme-wide; the other three follow the requested stage.
-func (a *reviewApp) queueCounts(ctx context.Context, programID string, stage int, now string) (contract.QueueCounts, error) {
+// queueCounts computes the four programme-wide badges, independent of the stage being viewed.
+func (a *reviewApp) queueCounts(ctx context.Context, programID string) (contract.QueueCounts, error) {
 	var counts contract.QueueCounts
 
 	err := a.store.QueryRow(ctx, `select
@@ -191,9 +200,8 @@ func (a *reviewApp) queueCounts(ctx context.Context, programID string, stage int
 			coalesce(sum(case when s.status = 'needs_attention' then 1 else 0 end), 0),
 			coalesce(sum(case when s.status = 'stage2_hold' then 1 else 0 end), 0)
 		from submission s
-		left join claim c on c.submission_id = s.id and c.expires_at > ?
-		where s.program_id = ? and (s.stage = ? or s.status = 'stage2_hold')
-		  and s.status in ('ready','claimed','in_review','needs_attention','stage2_hold')`, now, programID, stage).
+		where s.program_id = ?
+		  and s.status in ('ready','claimed','in_review','needs_attention','stage2_hold')`, programID).
 		Scan(&counts.Ready, &counts.Claimed, &counts.NeedsAttention, &counts.Stage2Hold)
 
 	return counts, err
@@ -234,8 +242,14 @@ func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ship.Stage != stageOne || ship.Status == statusStage2Hold {
-		app.WriteError(w, http.StatusConflict, "this ship is waiting for the second pass")
+	secondPass := ship.Stage == 2 || ship.Status == statusStage2Hold
+	if secondPass && !canReviewSecondPass(person.Role) {
+		app.WriteError(w, http.StatusForbidden, "only organisers can claim a second-pass ship")
+		return
+	}
+
+	if !secondPass && ship.Stage != stageOne {
+		app.WriteError(w, http.StatusConflict, "this ship is not on the first pass")
 		return
 	}
 

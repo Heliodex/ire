@@ -24,6 +24,11 @@ type reviewer struct {
 	ProgramID string
 }
 
+// canReviewSecondPass reports whether the role may act on a held second-pass ship. Fraud and final approval are organiser work, never a stage 1 reviewer's.
+func canReviewSecondPass(role string) bool {
+	return role == roleOrganizer || role == roleAdmin
+}
+
 // currentReviewer reads the session cookie and resolves it to an active membership. It writes the 401 itself so handlers only branch on the boolean.
 func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
 	cookie, err := r.Cookie(cookieName)

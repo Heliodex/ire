@@ -670,13 +670,189 @@ func TestHeldShipCannotBeDecidedAtStageOne(t *testing.T) {
 	})
 
 	redecide := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", again, cookie, nil)
-	if redecide.Code != http.StatusConflict {
+	if redecide.Code != http.StatusForbidden {
 		t.Fatalf("stage 1 redecision = %d: %s", redecide.Code, redecide.Body.String())
 	}
 
 	reclaim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, cookie, nil)
-	if reclaim.Code != http.StatusConflict {
+	if reclaim.Code != http.StatusForbidden {
 		t.Fatalf("stage 1 reclaim = %d: %s", reclaim.Code, reclaim.Body.String())
+	}
+}
+
+// TestStageTwoConfirmsHeldApproval covers the full second-pass loop: reviewer holds, organiser claims and confirms, one final event.
+func TestStageTwoConfirmsHeldApproval(t *testing.T) {
+	application := newTestApp(t)
+	reviewer := login(t, application, "reviewer@example.com")
+	organiser := login(t, application, "organiser@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
+		t.Fatalf("first-pass claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, reviewer, nil))
+
+	warnings := warningKeys(bundle.Checks)
+	if len(warnings) == 0 {
+		t.Fatal("fixture has no warnings")
+	}
+
+	approve, _ := json.Marshal(contract.DecisionRequest{
+		Decision:         decisionApproved,
+		Version:          1,
+		NoteToMaker:      "First pass approves the hours.",
+		Acknowledgements: warnings,
+		IdempotencyKey:   "stage1-hold",
+	})
+
+	held := decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, reviewer, nil))
+	if held.Held != 1 || held.Status != statusStage2Hold {
+		t.Fatalf("held outcome = %+v", held)
+	}
+
+	queueRecorder := do(t, application, http.MethodGet, testBase+"/queue?stage=2&filter=all", nil, organiser, nil)
+	if queueRecorder.Code != http.StatusOK {
+		t.Fatalf("second-pass queue = %d: %s", queueRecorder.Code, queueRecorder.Body.String())
+	}
+
+	queue := decode[contract.QueueResponse](t, queueRecorder)
+	if len(queue.Items) != 1 || queue.Items[0].Status != statusStage2Hold {
+		t.Fatalf("second-pass queue = %+v", queue.Items)
+	}
+
+	reviewerQueue := do(t, application, http.MethodGet, testBase+"/queue?stage=2&filter=all", nil, reviewer, nil)
+	if reviewerQueue.Code != http.StatusForbidden {
+		t.Fatalf("reviewer second-pass queue = %d: %s", reviewerQueue.Code, reviewerQueue.Body.String())
+	}
+
+	reviewerClaim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, reviewer, nil)
+	if reviewerClaim.Code != http.StatusForbidden {
+		t.Fatalf("reviewer second-pass claim = %d: %s", reviewerClaim.Code, reviewerClaim.Body.String())
+	}
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
+		t.Fatalf("second-pass claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	confirm, _ := json.Marshal(contract.DecisionRequest{
+		Decision:       decisionApproved,
+		Version:        1,
+		NoteToMaker:    "Second pass confirms the approval.",
+		InternalNote:   "Checked the held warnings.",
+		IdempotencyKey: "stage2-1",
+	})
+
+	confirmed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
+	if confirmed.Code != http.StatusOK {
+		t.Fatalf("second-pass decision = %d: %s", confirmed.Code, confirmed.Body.String())
+	}
+
+	outcome := decode[contract.DecisionOutcome](t, confirmed)
+	if outcome.Held != 0 || outcome.Status != statusDecided || outcome.DeliveryStatus == nil || *outcome.DeliveryStatus != "delivered" {
+		t.Fatalf("second-pass outcome = %+v", outcome)
+	}
+
+	replayed := decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil))
+	if replayed.ID != outcome.ID {
+		t.Errorf("replay id = %q, want %q", replayed.ID, outcome.ID)
+	}
+
+	outbox := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, organiser, nil))
+	if len(outbox.Deliveries) != 1 {
+		t.Fatalf("outbox = %+v", outbox.Deliveries)
+	}
+
+	received := decode[contract.FakeDeliveriesResponse](t, do(t, application, http.MethodGet, "/api/v1/dev/outbox/received", nil, organiser, nil))
+	if len(received.Deliveries) != 1 {
+		t.Fatalf("received %d deliveries", len(received.Deliveries))
+	}
+
+	var event struct {
+		Event        string `json:"event"`
+		Stage        int    `json:"stage"`
+		StageHistory []struct {
+			Stage    int    `json:"stage"`
+			Decision string `json:"decision"`
+		} `json:"stage_history"`
+		Review struct {
+			ApprovedSeconds int    `json:"approved_seconds"`
+			NoteToMaker     string `json:"note_to_maker"`
+		} `json:"review"`
+	}
+	if err := json.Unmarshal([]byte(received.Deliveries[0].Body), &event); err != nil {
+		t.Fatal(err)
+	}
+
+	if event.Event != "review.approved" || event.Stage != 2 || len(event.StageHistory) != 2 {
+		t.Fatalf("event = %+v", event)
+	}
+
+	if event.StageHistory[0].Stage != 1 || event.StageHistory[1].Stage != 2 {
+		t.Errorf("stage history = %+v", event.StageHistory)
+	}
+
+	if event.Review.ApprovedSeconds != bundle.Submission.HoursClaimedSeconds {
+		t.Errorf("approved seconds = %d, want %d", event.Review.ApprovedSeconds, bundle.Submission.HoursClaimedSeconds)
+	}
+
+	status := decode[contract.StatusResponse](t, do(t, application, http.MethodGet, "/api/ingest/half-life/status?external_id=fix-warned:design", nil, nil, map[string]string{
+		"Authorization": "Bearer test-ingest",
+	}))
+	if status.Phase != "reviewed" || status.Decision == nil || *status.Decision != decisionApproved || status.Stage != 2 {
+		t.Fatalf("status = %+v", status)
+	}
+
+	if len(status.StageHistory) != 2 {
+		t.Errorf("status stage history = %+v", status.StageHistory)
+	}
+}
+
+// TestStageTwoRejectsOwnDecision covers the separation of duties: the organiser who held the ship cannot confirm it.
+func TestStageTwoRejectsOwnDecision(t *testing.T) {
+	application := newTestApp(t)
+	organiser := login(t, application, "organiser@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
+		t.Fatalf("first-pass claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, organiser, nil))
+	approve, _ := json.Marshal(contract.DecisionRequest{
+		Decision:         decisionApproved,
+		Version:          1,
+		NoteToMaker:      "Held by the organiser.",
+		Acknowledgements: warningKeys(bundle.Checks),
+		IdempotencyKey:   "own-hold",
+	})
+
+	held := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, organiser, nil)
+	if held.Code != http.StatusOK {
+		t.Fatalf("held decision = %d: %s", held.Code, held.Body.String())
+	}
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
+		t.Fatalf("second-pass claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	confirm, _ := json.Marshal(contract.DecisionRequest{
+		Decision:       decisionApproved,
+		Version:        1,
+		NoteToMaker:    "Confirm my own decision.",
+		IdempotencyKey: "own-confirm",
+	})
+
+	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
+	if rejected.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("own decision = %d: %s", rejected.Code, rejected.Body.String())
+	}
+
+	var body contract.ErrorResponse
+	if err := json.Unmarshal(rejected.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+
+	if body.Code != "own_decision" {
+		t.Errorf("error code = %q", body.Code)
 	}
 }
 

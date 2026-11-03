@@ -1,7 +1,7 @@
 <script lang="ts">
 import { goto } from "$app/navigation"
 import { onMount, tick } from "svelte"
-import { claimShip, fetchMe, fetchQueue, type Queue, type QueueItem } from "../../lib/api"
+import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
@@ -10,6 +10,7 @@ type Filter = "all" | "fast" | "attention" | "mine"
 
 let queue = $state<Queue>({ counts: { ready: 0, claimed: 0, needsAttention: 0, stage2Hold: 0 }, items: [] })
 let filter = $state<Filter>("all")
+let stage = $state(1)
 let loading = $state(true)
 let refreshing = $state(false)
 let opening = $state("")
@@ -19,8 +20,11 @@ let search = $state("")
 let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
 
-// cache keeps each filter's last response for this visit, so switching back is instant while a fresh copy loads behind it.
-const cache = new Map<Filter, Queue>()
+// cache keeps each filter and stage response for this visit, so switching back is instant while a fresh copy loads behind it.
+const cache = new Map<string, Queue>()
+
+const role = $derived(session.me?.programs.find((item) => item.programSlug === program)?.role ?? "")
+const canSecondPass = $derived(role === "organizer" || role === "admin")
 
 const filters: { key: Filter; label: string }[] = [
 	{ key: "all", label: "All open" },
@@ -89,12 +93,14 @@ function checkTone(check: QueueItem["checks"][number]): string {
 	return "neutral"
 }
 
-async function load(target = filter): Promise<void> {
-	try {
-		const next = await fetchQueue(target)
-		if (target !== filter) return
+async function load(target = filter, targetStage = stage): Promise<void> {
+	const key = `${targetStage}:${target}`
 
-		cache.set(target, next)
+	try {
+		const next = await fetchQueue(target, targetStage)
+		if (target !== filter || targetStage !== stage) return
+
+		cache.set(key, next)
 		queue = next
 		selected = Math.min(selected, Math.max(queue.items.length - 1, 0))
 		error = ""
@@ -103,9 +109,9 @@ async function load(target = filter): Promise<void> {
 			void goto("/")
 			return
 		}
-		if (target === filter) error = err instanceof Error ? err.message : "Could not load the queue."
+		if (target === filter && targetStage === stage) error = err instanceof Error ? err.message : "Could not load the queue."
 	} finally {
-		if (target === filter) {
+		if (target === filter && targetStage === stage) {
 			loading = false
 			refreshing = false
 		}
@@ -113,8 +119,10 @@ async function load(target = filter): Promise<void> {
 }
 
 async function choose(next: Filter): Promise<void> {
+	stage = 1
+
 	if (next === filter) {
-		void load(next)
+		void load(next, stage)
 		return
 	}
 
@@ -122,18 +130,38 @@ async function choose(next: Filter): Promise<void> {
 	selected = 0
 	error = ""
 
-	const cached = cache.get(next)
+	const cached = cache.get(`1:${next}`)
 	if (cached) {
 		// Show the last copy immediately and let load() replace it without a skeleton.
 		queue = cached
 		refreshing = false
-		void load(next)
+		void load(next, stage)
 		return
 	}
 
 	// Keep the current rows visible while the first fetch for this filter runs.
 	refreshing = true
-	await load(next)
+	await load(next, stage)
+}
+
+async function chooseSecondPass(): Promise<void> {
+	if (!canSecondPass) return
+
+	const cached = cache.get("2:all")
+	stage = 2
+	filter = "all"
+	selected = 0
+	error = ""
+
+	if (cached) {
+		queue = cached
+		refreshing = false
+		void load(filter, stage)
+		return
+	}
+
+	refreshing = true
+	await load(filter, stage)
 }
 
 // moveFilter selects the next filter and keeps keyboard focus on it, wrapping at the ends.
@@ -188,11 +216,11 @@ async function open(item: QueueItem): Promise<void> {
 </section>
 
 <div class="toolbar">
-	<div aria-label="Filters" bind:this={filterTabs} class="ui-seg" role="tablist">
+	<div aria-label="Filters and stages" bind:this={filterTabs} class="ui-seg filters" role="tablist">
 		{#each filters as option (option.key)}
 			<button
-				aria-selected={filter === option.key}
-				class:active={filter === option.key}
+				aria-selected={stage === 1 && filter === option.key}
+				class:active={stage === 1 && filter === option.key}
 				onclick={(): Promise<void> => choose(option.key)}
 				role="tab"
 				type="button"
@@ -200,6 +228,17 @@ async function open(item: QueueItem): Promise<void> {
 				{option.label}
 			</button>
 		{/each}
+		{#if canSecondPass}
+			<button
+				aria-selected={stage === 2}
+				class:active={stage === 2}
+				onclick={chooseSecondPass}
+				role="tab"
+				type="button"
+			>
+				Second pass {queue.counts.stage2Hold}
+			</button>
+		{/if}
 	</div>
 	<label class="search">
 		<span class="visually-hidden">Search the queue</span>
@@ -213,7 +252,7 @@ async function open(item: QueueItem): Promise<void> {
 
 <section aria-busy={loading || refreshing} aria-labelledby="list-title">
 	<div class="list-head">
-		<h2 id="list-title">Open ships</h2>
+		<h2 id="list-title">{stage === 2 ? "Second pass" : "Open ships"}</h2>
 		<span>
 			{visible.length} {visible.length === 1 ? "ship" : "ships"} ·
 			<kbd class="ui-kbd">↑</kbd><kbd class="ui-kbd">↓</kbd> to move ·
@@ -230,8 +269,8 @@ async function open(item: QueueItem): Promise<void> {
 		</div>
 	{:else if visible.length === 0}
 		<div class="ui-card ui-empty">
-			<strong>{search ? "No ships match that search." : "Nothing in this filter."}</strong>
-			<span>{filter === "attention" ? "The checks found nothing blocking." : "Check back after the next ingest."}</span>
+			<strong>{search ? "No ships match that search." : stage === 2 ? "No held ships." : "Nothing in this filter."}</strong>
+			<span>{stage === 2 ? "Nothing is waiting for a second pass." : filter === "attention" ? "The checks found nothing blocking." : "Check back after the next ingest."}</span>
 		</div>
 	{:else}
 		<div bind:this={listElement} class="ui-card list" class:refreshing>
@@ -358,6 +397,11 @@ h1 {
 
 .search {
 	flex: 0 1 260px;
+}
+
+.filters {
+	flex-wrap: wrap;
+	border-radius: var(--radius-lg);
 }
 
 .list-head {

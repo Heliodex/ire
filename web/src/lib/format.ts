@@ -106,7 +106,7 @@ export function humanStatus(status: string): string {
 		case "in_review":
 			return "In review"
 		case "stage2_hold":
-			return "Held for second pass"
+			return "Second pass"
 		case "decided":
 			return "Decided"
 		case "withdrawn":

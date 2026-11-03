@@ -17,7 +17,7 @@ import (
 
 // handleDecision records a stage 1 decision, applies the hold policy, writes the outbox row and returns the next ship to open.
 //
-//nolint:funlen,maintidx // The decision transaction reads best as one unit; splitting it would hide the ordering.
+//nolint:funlen,maintidx,gocognit,gocyclo // The decision transaction reads best as one unit; splitting it would hide the ordering.
 func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
@@ -43,9 +43,15 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The stage 1 endpoint must not decide a ship that is already waiting for the second pass, or approve it again and finish it. A stage 2 decision is a separate flow.
-	if ship.Stage != stageOne || ship.Status == statusStage2Hold {
-		app.WriteError(w, http.StatusConflict, "this ship is waiting for the second pass")
+	// A held ship is finished by an organiser at stage 2. A stage 1 ship is decided by a reviewer at stage 1.
+	secondPass := ship.Stage == 2 || ship.Status == statusStage2Hold
+	if secondPass && !canReviewSecondPass(person.Role) {
+		app.WriteError(w, http.StatusForbidden, "only organisers can decide the second pass")
+		return
+	}
+
+	if !secondPass && ship.Stage != stageOne {
+		app.WriteError(w, http.StatusConflict, "this ship is not on the first pass")
 		return
 	}
 
@@ -72,11 +78,13 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.Decision == decisionApproved {
-		if missing := missingAcknowledgements(checks, request.Acknowledgements); len(missing) > 0 {
-			app.WriteErrorField(w, http.StatusUnprocessableEntity, "acknowledgement_required", "acknowledgements",
-				"acknowledge the warnings before approving: "+strings.Join(missing, ", "))
+		if !secondPass {
+			if missing := missingAcknowledgements(checks, request.Acknowledgements); len(missing) > 0 {
+				app.WriteErrorField(w, http.StatusUnprocessableEntity, "acknowledgement_required", "acknowledgements",
+					"acknowledge the warnings before approving: "+strings.Join(missing, ", "))
 
-			return
+				return
+			}
 		}
 
 		if blocked := blockedChecks(checks); len(blocked) > 0 {
@@ -100,6 +108,37 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hours := ship.HoursClaimed
+	supersedes := ""
+
+	if secondPass {
+		held, found, heldErr := a.heldReview(r.Context(), ship.ID)
+		if heldErr != nil {
+			writeStorage(w, heldErr)
+
+			return
+		}
+
+		if !found {
+			app.WriteError(w, http.StatusConflict, "no first-pass review to confirm")
+			return
+		}
+
+		if held.ReviewerID == person.ID {
+			app.WriteErrorCode(w, http.StatusUnprocessableEntity, "own_decision", "another organiser must confirm your first-pass decision")
+			return
+		}
+
+		if held.Hours > 0 {
+			hours = held.Hours
+		}
+
+		if request.Decision == decisionApproved && note == "" {
+			note = held.NoteToMaker
+		}
+
+		supersedes = held.ID
+	}
+
 	if request.HoursApprovedSeconds != nil {
 		hours = *request.HoursApprovedSeconds
 	}
@@ -111,7 +150,7 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 
 	// Only an approval can be held. Changes and rejections are final outcomes that Half Life must receive; holding them would silently drop the decision.
 	held, reason := false, ""
-	if request.Decision == decisionApproved {
+	if request.Decision == decisionApproved && !secondPass {
 		held, reason = holdFor(ship, policy, checks, hours)
 	}
 
@@ -119,13 +158,14 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	reviewID := newID("rev")
 	status := statusDecided
 	stage := ship.Stage
+	submissionStage := stage
 
 	if held {
 		status = statusStage2Hold
-		stage = 2
+		submissionStage = 2
 	}
 
-	stageHistory := a.stageHistory(r.Context(), ship.ID, person, request.Decision, now)
+	stageHistory := a.stageHistory(r.Context(), ship.ID, person, request.Decision, now, stage)
 	payload := a.outboundPayload(ship, person, checks, request.Decision, hours, note, strings.TrimSpace(request.InternalNote), now, stageHistory, payloadHackatimeProjects(r.Context(), a.store, ship.ID, ship.Version))
 
 	payloadJSON, err := json.Marshal(payload)
@@ -139,14 +179,14 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	statements := []storage.TransactionStatement{
 		{SQL: `insert into review (id, submission_id, version, stage, reviewer_id, reviewer_email, reviewer_name, reviewer_role,
 				decision, note_to_maker, internal_note, hours_approved_seconds, acknowledgements, policy_version, held, held_reason,
-				is_final, idempotency_key, created_at)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				supersedes_review_id, is_final, idempotency_key, created_at)
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{reviewID, ship.ID, ship.Version, stage, person.ID, person.Email, person.Name, person.Role,
 				request.Decision, note, strings.TrimSpace(request.InternalNote), hours, marshalStrings(request.Acknowledgements),
-				a.policyVersion(r.Context(), ship.ProgramID), boolInt(held), nullString(reason), boolInt(!held), request.IdempotencyKey, now}},
+				a.policyVersion(r.Context(), ship.ProgramID), boolInt(held), nullString(reason), nullString(supersedes), boolInt(!held), request.IdempotencyKey, now}},
 		{SQL: `update submission set status = ?, stage = ?, hours_approved_seconds = ?, held_reason = ?,
 				decided_at = ?, updated_at = ? where id = ?`,
-			Args: []any{status, stage, hours, nullString(reason), nullString(now), now, ship.ID}},
+			Args: []any{status, submissionStage, hours, nullString(reason), nullString(now), now, ship.ID}},
 		{SQL: `delete from draft where submission_id = ?`, Args: []any{ship.ID}},
 		{SQL: `delete from claim where submission_id = ?`, Args: []any{ship.ID}},
 		{SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at) values (?, ?, ?, ?, ?, ?, ?)`,
@@ -158,12 +198,14 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 				marshalMap(map[string]any{"status": status, "decision": request.Decision, "held": held, "hours": hours}), now}},
 	}
 
-	for _, key := range request.Acknowledgements {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert or ignore into check_ack (id, submission_id, version, check_key, reviewer_id, reason, created_at)
-				values (?, ?, ?, ?, ?, '', ?)`,
-			Args: []any{newID("ack"), ship.ID, ship.Version, key, person.ID, now},
-		})
+	if !secondPass {
+		for _, key := range request.Acknowledgements {
+			statements = append(statements, storage.TransactionStatement{
+				SQL: `insert or ignore into check_ack (id, submission_id, version, check_key, reviewer_id, reason, created_at)
+					values (?, ?, ?, ?, ?, '', ?)`,
+				Args: []any{newID("ack"), ship.ID, ship.Version, key, person.ID, now},
+			})
+		}
 	}
 
 	outboxID := ""
@@ -193,7 +235,12 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		deliveryStatus = a.deliverOutboxByID(r.Context(), outboxID)
 	}
 
-	nextID := a.nextQueueID(r.Context(), ship.ProgramID, ship.ID)
+	nextStage := ship.Stage
+	if held {
+		nextStage = stageOne
+	}
+
+	nextID := a.nextQueueID(r.Context(), ship.ProgramID, ship.ID, nextStage)
 
 	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
 		ID:             reviewID,
@@ -209,7 +256,13 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 // writeDecisionAgain returns the row an idempotent retry already wrote.
 func (a *reviewApp) writeDecisionAgain(w http.ResponseWriter, r *http.Request, ship submissionRow, review reviewRow) {
 	outboxID, status := a.outboxForReview(r.Context(), review.ID)
-	nextID := a.nextQueueID(r.Context(), ship.ProgramID, ship.ID)
+
+	nextStage := ship.Stage
+	if review.Held == 1 {
+		nextStage = stageOne
+	}
+
+	nextID := a.nextQueueID(r.Context(), ship.ProgramID, ship.ID, nextStage)
 
 	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
 		ID:             review.ID,
@@ -232,6 +285,32 @@ type reviewRow struct {
 	NoteToMaker  string
 	ReviewerName string
 	CreatedAt    string
+}
+
+// heldReview is the stage 1 review waiting for a second pass.
+type heldReview struct {
+	ID          string
+	ReviewerID  string
+	Hours       int
+	NoteToMaker string
+}
+
+// heldReview reads the latest held, non-invalidated first-pass review for a ship.
+func (a *reviewApp) heldReview(ctx context.Context, submissionID string) (heldReview, bool, error) {
+	var row heldReview
+
+	err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), coalesce(hours_approved_seconds, 0), note_to_maker
+		from review where submission_id = ? and held = 1 and invalidated_at is null
+		order by created_at desc limit 1`, submissionID).Scan(&row.ID, &row.ReviewerID, &row.Hours, &row.NoteToMaker)
+	if err != nil {
+		if errors.Is(err, storage.ErrNoRows) {
+			return heldReview{}, false, nil
+		}
+
+		return heldReview{}, false, err
+	}
+
+	return row, true, nil
 }
 
 // findReview returns the review a submission already has for this idempotency key.
@@ -287,13 +366,23 @@ func holdFor(ship submissionRow, policy reviewPolicy, checks []contract.CheckRes
 	return false, ""
 }
 
-// nextQueueID finds the next open ship for auto-advance.
-func (a *reviewApp) nextQueueID(ctx context.Context, programID, currentID string) string {
-	var id string
+// nextQueueID finds the next open ship for auto-advance in the current stage.
+func (a *reviewApp) nextQueueID(ctx context.Context, programID, currentID string, stage int) string {
+	var (
+		id  string
+		err error
+	)
 
-	err := a.store.QueryRow(ctx, `select id from submission
-		where program_id = ? and id != ? and stage = 1 and status in ('ready','needs_attention')
-		order by priority desc, ingested_at asc limit 1`, programID, currentID).Scan(&id)
+	if stage == 2 {
+		err = a.store.QueryRow(ctx, `select id from submission
+			where program_id = ? and id != ? and stage = 2 and status = 'stage2_hold'
+			order by priority desc, ingested_at asc limit 1`, programID, currentID).Scan(&id)
+	} else {
+		err = a.store.QueryRow(ctx, `select id from submission
+			where program_id = ? and id != ? and stage = 1 and status in ('ready','needs_attention')
+			order by priority desc, ingested_at asc limit 1`, programID, currentID).Scan(&id)
+	}
+
 	if err != nil {
 		return ""
 	}
@@ -459,7 +548,7 @@ func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks 
 }
 
 // stageHistory builds the stage list including the decision being made.
-func (a *reviewApp) stageHistory(ctx context.Context, submissionID string, person reviewer, decision, now string) []outboundStage {
+func (a *reviewApp) stageHistory(ctx context.Context, submissionID string, person reviewer, decision, now string, stage int) []outboundStage {
 	out := []outboundStage{}
 
 	reviews, err := a.loadReviews(ctx, submissionID)
@@ -469,7 +558,7 @@ func (a *reviewApp) stageHistory(ctx context.Context, submissionID string, perso
 		}
 	}
 
-	return append(out, outboundStage{Stage: stageOne, Decision: decision, Reviewer: person.Email, At: now})
+	return append(out, outboundStage{Stage: stage, Decision: decision, Reviewer: person.Email, At: now})
 }
 
 // policyVersion reads the programme's current policy version for the review snapshot.
