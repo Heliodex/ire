@@ -751,13 +751,15 @@ h1 {
 	white-space: pre-wrap;
 }
 
+.overview {
+	overflow: hidden;
+}
+
 .cover {
 	display: block;
-	width: 100%;
+	width: calc(100% + 2 * var(--space-4));
 	height: auto;
-	margin-bottom: var(--space-4);
-	border: 1px solid var(--border);
-	border-radius: var(--radius-md);
+	margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
 }
 
 .stats {
