@@ -535,8 +535,10 @@ async function saveDraftNow(): Promise<void> {
 
 				<label class="field">
 					<span>Approved hours</span>
-					<input bind:value={hours} class="ui-input" max="720" min="0" step="0.25" type="number">
-					<small>{formatHours(Math.round(hours * 3600))} of {formatHours(submission.hoursClaimedSeconds)} claimed</small>
+					<span class="hours-row">
+						<input bind:value={hours} class="ui-input" max="720" min="0" step="0.25" type="number">
+						<span class="hours-hint">/ {formatHours(submission.hoursClaimedSeconds)} claimed</span>
+					</span>
 				</label>
 
 				<label class="field">
@@ -1021,9 +1023,29 @@ h1 {
 	color: var(--text-2);
 }
 
-.field small {
+.hours-row {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+}
+
+.field .hours-row {
+	font-size: var(--text-sm);
+	font-weight: 400;
+	color: var(--text-3);
+}
+
+.hours-row input {
+	flex: 1;
+	width: auto;
+	min-width: 0;
+}
+
+.hours-hint {
+	flex: none;
 	font-size: var(--text-xs);
 	color: var(--text-3);
+	white-space: nowrap;
 }
 
 .decision .ui-notice {
