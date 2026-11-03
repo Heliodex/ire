@@ -1,5 +1,5 @@
 <script lang="ts">
-import { goto } from "$app/navigation"
+import { afterNavigate, goto } from "$app/navigation"
 import { page } from "$app/state"
 import { onMount } from "svelte"
 import { ApiError } from "../../lib/api-error"
@@ -39,6 +39,16 @@ const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
 const missingAcks = $derived(warnings.filter((check) => !acknowledgements.includes(check.key)))
 const canApprove = $derived(blocking.length === 0 && missingAcks.length === 0)
 const groups = $derived(groupChecks(bundle?.checks ?? []))
+
+afterNavigate((): void => {
+	const next = page.url.searchParams.get("id") ?? ""
+	if (next === "" || next === id) return
+
+	id = next
+	loading = true
+	error = ""
+	void load()
+})
 
 onMount((): (() => void) => {
 	id = page.url.searchParams.get("id") ?? ""
@@ -94,6 +104,8 @@ async function boot(): Promise<void> {
 
 async function load(): Promise<void> {
 	try {
+		note = ""
+		internalNote = ""
 		bundle = await fetchBundle(id)
 		const claim = bundle.claim
 		if (!claim || claim.isMine !== 1) {
@@ -190,10 +202,10 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		})
 
 		if (result.held === 1) {
-			toast = `Held for the second pass: ${result.heldReason ?? "policy"}.`
+			flash(`Held for the second pass: ${result.heldReason ?? "policy"}.`)
 		} else {
 			const verb = decision === "approved" ? "Approved" : decision === "changes" ? "Changes requested" : "Rejected"
-			toast = `${verb} and sent${result.deliveryStatus ? ` (${result.deliveryStatus})` : ""}.`
+			flash(`${verb} and sent${result.deliveryStatus ? ` (${result.deliveryStatus})` : ""}.`)
 		}
 
 		await new Promise((resolve) => setTimeout(resolve, 300))
@@ -209,6 +221,13 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 	} finally {
 		deciding = false
 	}
+}
+
+function flash(message: string): void {
+	toast = message
+	setTimeout((): void => {
+		if (toast === message) toast = ""
+	}, 3500)
 }
 
 async function saveDraftNow(): Promise<void> {
