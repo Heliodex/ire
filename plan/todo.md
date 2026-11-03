@@ -235,35 +235,39 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 
 **Goal:** real reviewer identity and a real signed delivery to a staging Half Life receiver, ready for a pilot.
 
-### Hack Club Auth
+The auth flow and signed HTTP delivery are implemented and tested against a fake provider and a local receiver. Registering the real OAuth app, pointing at the staging receiver and the cutover rehearsal remain.
 
-- [ ] Register the OAuth application; record client id, secret and redirect URLs per environment.
-- [ ] Add the auth secrets through `wt secrets`, never the repository.
-- [ ] Add `/auth/login` with state and PKCE; set a short-lived state cookie.
-- [ ] Add `/auth/callback`; verify state, exchange the code and fetch the identity.
-- [ ] Map the HCA identity to `user` and `membership`; do not auto-create arbitrary programme members.
-- [ ] Add an allowlist or roster mapping for the Half Life programme.
-- [ ] Assign reviewer, organiser, admin and auditor roles from membership, not from client input.
-- [ ] Reject unknown, inactive or unverified members with a clear message.
-- [ ] Create, rotate and expire sessions; set `Secure`, `HttpOnly` and `SameSite`.
-- [ ] Disable development login in production; keep it explicitly enabled only for local dev.
-- [ ] Add CSRF protection for state-changing browser routes.
-- [ ] Enforce the stage 2 organiser/admin role.
-- [ ] Tests for bad state, expired code, unknown user, inactive membership, role mapping and session fixation.
-- [ ] Remove the seeded accounts from any production path.
+### Working now
 
-### Staging webhook
+- [x] `GET /api/v1/auth/config` publishes which methods are enabled.
+- [x] `GET /auth/login` creates a short-lived state cookie and redirects to Hack Club Auth.
+- [x] `GET /auth/callback` verifies state, exchanges the code and fetches `/api/v1/me`.
+- [x] Identity is mapped to an existing active membership by email; unknown accounts are refused, never auto-created.
+- [x] Roles come from the membership, not from OAuth claims or client input.
+- [x] Session creation is shared by HCA and development login; logout is `/api/v1/logout`.
+- [x] Hack Club Auth scopes are `openid profile email slack_id`; the provider's legal name is not used.
+- [x] Development accounts and login are gated by `REVIEW_DEV_AUTH`; seeding dev accounts is skipped when it is off.
+- [x] The login screen shows `Continue with Hack Club` when HCA is configured and keeps dev accounts for local use.
+- [x] Stage 2 actions are limited to organiser/admin roles.
+- [x] Tests cover the auth config, a full fake-provider flow, bad state and an unknown member.
+- [x] Signed HTTP outbound delivery is tested against a local receiver that verifies `timestamp.delivery_id.body`.
+- [x] `REVIEW_OUTBOUND_URL` can point at a real HTTPS receiver; retries and delivery rows already exist.
 
-- [ ] Stand up or choose the staging Half Life receiver and its signing secret.
-- [ ] Point `REVIEW_OUTBOUND_URL` at the staging receiver; verify the exact body and HMAC.
-- [ ] Confirm the receiver enforces the timestamp window, delivery id and replay rules.
-- [ ] Send one approved, one changes and one rejected event; verify Half Life applies each.
-- [ ] Verify a held stage 2 approval emits nothing until the organiser confirms.
-- [ ] Test retry on 5xx/timeout and permanent failure on 4xx.
-- [ ] Expose delivery status and the last error in the UI; link to the outbox payload.
-- [ ] Add a shadow mode or a dry-run receiver for the first pilot days.
-- [ ] Document the cutover, rollback and replay path (`reviews?since`, `events?since`).
-- [ ] Rotate the ingest and outbound secrets and document the procedure.
+### Remaining
+
+- [ ] Register the real Hack Club Auth application and set `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` through `wt secrets`.
+- [ ] Point `REVIEW_OUTBOUND_URL` at the staging Half Life receiver and set its signing secret.
+- [ ] Add roster sync or an admin invite flow; today members must already exist in the database.
+- [ ] Store the stable Hack Club identity id so an email change cannot break the binding; add the schema column and migration.
+- [ ] Add CSRF tokens for state-changing browser routes; the OAuth state protects only the callback.
+- [ ] Add session rotation and explicit revocation for compromised accounts.
+- [ ] Test expired state, provider timeout, duplicate identity binding, inactive membership and session fixation.
+- [ ] Test outbound retry on 5xx/timeout and permanent failure on 4xx.
+- [ ] Send one approved, one changes and one rejected event to staging; verify Half Life applies each.
+- [ ] Add a shadow or dry-run mode for the first pilot days.
+- [ ] Write the cutover, rollback and replay runbook (`reviews?since`, `events?since`).
+- [ ] Disable development accounts on the production database and document the cleanup.
+- [ ] Remove any seeded dev users from a production copy before the pilot.
 
 **Done when:** a real HCA reviewer can sign in and complete a clean approval, and the staging Half Life receiver verifies and applies the signed final event.
 

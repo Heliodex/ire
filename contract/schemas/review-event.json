@@ -1,15 +1,7 @@
 {
 	"type": "object",
 	"properties": {
-		"event": {
-			"type": "string",
-			"minLength": 1
-		},
-		"id": {
-			"type": "string",
-			"minLength": 1
-		},
-		"external_id": {
+		"createdAt": {
 			"type": "string",
 			"minLength": 1
 		},
@@ -17,54 +9,64 @@
 			"type": "string",
 			"minLength": 1
 		},
-		"stage": {
-			"type": "integer",
-			"minimum": 0
+		"event": {
+			"type": "string",
+			"minLength": 1
 		},
-		"stage_history": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"stage": {
-						"type": "integer",
-						"minimum": 0
-					},
-					"decision": {
-						"type": "string"
-					},
-					"reviewer": {
-						"type": "string"
-					},
-					"at": {
-						"type": "string",
-						"minLength": 1
-					}
-				},
-				"required": [
-					"stage",
-					"decision",
-					"at"
-				]
-			}
+		"external_id": {
+			"type": "string",
+			"minLength": 1
 		},
-		"createdAt": {
+		"id": {
 			"type": "string",
 			"minLength": 1
 		},
 		"review": {
 			"type": "object",
 			"properties": {
-				"approved_seconds": {
-					"type": "integer",
-					"minimum": 0
+				"approved_hours": {
+					"type": "number"
 				},
 				"approved_minutes": {
 					"type": "integer",
 					"minimum": 0
 				},
-				"approved_hours": {
-					"type": "number"
+				"approved_seconds": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"audit_note": {
+					"type": "string"
+				},
+				"justification": {
+					"type": "object",
+					"properties": {
+						"deflation_reason": {
+							"type": "string"
+						},
+						"hackatime_projects": {
+							"type": "string"
+						},
+						"technical_features": {
+							"type": "string"
+						}
+					},
+					"required": []
+				},
+				"note_to_maker": {
+					"type": "string"
+				},
+				"reviewer": {
+					"type": "object",
+					"properties": {
+						"email": {
+							"type": "string"
+						},
+						"slack_id": {
+							"type": "string"
+						}
+					},
+					"required": []
 				},
 				"seconds_breakdown": {
 					"type": "object",
@@ -92,58 +94,56 @@
 						"lapse",
 						"program"
 					]
-				},
-				"note_to_maker": {
-					"type": "string"
-				},
-				"audit_note": {
-					"type": "string"
-				},
-				"reviewer": {
-					"type": "object",
-					"properties": {
-						"email": {
-							"type": "string"
-						},
-						"slack_id": {
-							"type": "string"
-						}
-					},
-					"required": []
-				},
-				"justification": {
-					"type": "object",
-					"properties": {
-						"hackatime_projects": {
-							"type": "string"
-						},
-						"technical_features": {
-							"type": "string"
-						},
-						"deflation_reason": {
-							"type": "string"
-						}
-					},
-					"required": []
 				}
 			},
 			"required": [
-				"approved_seconds",
-				"approved_minutes",
 				"approved_hours",
-				"seconds_breakdown",
-				"note_to_maker"
+				"approved_minutes",
+				"approved_seconds",
+				"note_to_maker",
+				"seconds_breakdown"
 			]
+		},
+		"stage": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"stage_history": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"at": {
+						"type": "string",
+						"minLength": 1
+					},
+					"decision": {
+						"type": "string"
+					},
+					"reviewer": {
+						"type": "string"
+					},
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					}
+				},
+				"required": [
+					"at",
+					"decision",
+					"stage"
+				]
+			}
 		}
 	},
 	"required": [
-		"event",
-		"id",
-		"external_id",
-		"decision",
-		"stage",
 		"createdAt",
-		"review"
+		"decision",
+		"event",
+		"external_id",
+		"id",
+		"review",
+		"stage"
 	],
 	"title": "ReviewEvent",
 	"$schema": "http://json-schema.org/draft-07/schema#",

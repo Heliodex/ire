@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -919,6 +920,193 @@ func TestStageTwoRejectsOwnDecision(t *testing.T) {
 	if body.Code != "own_decision" {
 		t.Errorf("error code = %q", body.Code)
 	}
+}
+
+// TestAuthConfigReportsMethods covers the unauthenticated method discovery used by the login screen.
+func TestAuthConfigReportsMethods(t *testing.T) {
+	application := newTestApp(t)
+
+	config := decode[contract.AuthConfig](t, do(t, application, http.MethodGet, "/api/v1/auth/config", nil, nil, nil))
+	if !config.Dev || config.Hca {
+		t.Fatalf("config = %+v", config)
+	}
+
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+
+	config = decode[contract.AuthConfig](t, do(t, application, http.MethodGet, "/api/v1/auth/config", nil, nil, nil))
+	if !config.Hca {
+		t.Fatalf("config = %+v", config)
+	}
+}
+
+// TestHCAOAuthFlow covers state, token exchange, identity lookup and the session cookie against a fake provider.
+func TestHCAOAuthFlow(t *testing.T) {
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/oauth/token":
+			_, _ = io.WriteString(w, `{"access_token":"hca-token"}`)
+		case "/api/v1/me":
+			if r.Header.Get("Authorization") != "Bearer hca-token" {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			_, _ = io.WriteString(w, `{"identity":{"id":"hc_1","primary_email":"reviewer@example.com","slack_id":"U123"}}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(fake.Close)
+
+	application := newTestApp(t)
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCAuthBase = fake.URL
+
+	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+	if start.Code != http.StatusFound {
+		t.Fatalf("start = %d: %s", start.Code, start.Body.String())
+	}
+
+	location, err := url.Parse(start.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state := location.Query().Get("state")
+	if state == "" || location.Query().Get("client_id") != "client" {
+		t.Fatalf("authorize = %s", location)
+	}
+
+	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+	if stateCookie == nil {
+		t.Fatal("missing state cookie")
+	}
+
+	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, stateCookie, nil)
+	if callback.Code != http.StatusFound {
+		t.Fatalf("callback = %d: %s", callback.Code, callback.Body.String())
+	}
+
+	if callback.Header().Get("Location") != "/queue" {
+		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
+	}
+
+	sessionCookie := findCookie(callback.Result().Cookies(), cookieName)
+	if sessionCookie == nil {
+		t.Fatal("missing session cookie")
+	}
+
+	me := decode[contract.MeResponse](t, do(t, application, http.MethodGet, "/api/v1/me", nil, sessionCookie, nil))
+	if me.User.Email != "reviewer@example.com" {
+		t.Fatalf("me = %+v", me.User)
+	}
+
+	badState := do(t, application, http.MethodGet, "/auth/callback?code=good&state=wrong", nil, stateCookie, nil)
+	if badState.Header().Get("Location") != "/?error=state" {
+		t.Fatalf("bad state redirect = %q", badState.Header().Get("Location"))
+	}
+}
+
+// TestHCARejectsUnknownMember covers the roster gate.
+func TestHCARejectsUnknownMember(t *testing.T) {
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/oauth/token":
+			_, _ = io.WriteString(w, `{"access_token":"hca-token"}`)
+		case "/api/v1/me":
+			_, _ = io.WriteString(w, `{"identity":{"primary_email":"nobody@example.com"}}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(fake.Close)
+
+	application := newTestApp(t)
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCAuthBase = fake.URL
+
+	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+	location, _ := url.Parse(start.Header().Get("Location"))
+	state := location.Query().Get("state")
+	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
+	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, stateCookie, nil)
+	if callback.Header().Get("Location") != "/?error=not_member" {
+		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
+	}
+
+	if cookie := findCookie(callback.Result().Cookies(), cookieName); cookie != nil && cookie.Value != "" {
+		t.Fatal("unknown member received a session")
+	}
+}
+
+// TestHTTPOutboundDelivery covers a real receiver checking the signature.
+func TestHTTPOutboundDelivery(t *testing.T) {
+	var (
+		received  string
+		forwarded bool
+	)
+
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		timestamp := r.Header.Get("X-Ari-Timestamp")
+		delivery := r.Header.Get("X-Ari-Delivery-Id")
+		signature := r.Header.Get("X-Ari-Signature")
+
+		if hmacHex("test-outbound", []byte(timestamp+"."+delivery+"."+string(body))) != signature {
+			http.Error(w, "bad signature", http.StatusUnauthorized)
+			return
+		}
+
+		received = string(body)
+		forwarded = true
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(receiver.Close)
+
+	application := newTestApp(t)
+	if _, err := application.store.Exec(t.Context(), `update program set outbound_url = ? where id = ?`, receiver.URL, programID); err != nil {
+		t.Fatal(err)
+	}
+
+	cookie := login(t, application, "reviewer@example.com")
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	body, _ := json.Marshal(contract.DecisionRequest{
+		Decision:       decisionApproved,
+		Version:        1,
+		NoteToMaker:    "Sent over HTTP.",
+		IdempotencyKey: "http-delivery",
+	})
+
+	outcome := decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil))
+	if outcome.DeliveryStatus == nil || *outcome.DeliveryStatus != "delivered" || !forwarded {
+		t.Fatalf("outcome = %+v forwarded=%v", outcome, forwarded)
+	}
+
+	if !strings.Contains(received, `"event":"review.approved"`) {
+		t.Fatalf("received = %s", received)
+	}
+}
+
+// findCookie returns a named cookie from a response.
+func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
+	for _, cookie := range cookies {
+		if cookie.Name == name {
+			return cookie
+		}
+	}
+
+	return nil
 }
 
 // TestDraftSurvivesReload covers the server-side draft the review page restores.

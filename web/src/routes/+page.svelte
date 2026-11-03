@@ -1,13 +1,16 @@
 <script lang="ts">
-import { goto } from "$app/navigation"
 import { onMount } from "svelte"
-import { login } from "../lib/api"
+import { goto } from "$app/navigation"
+import { page } from "$app/state"
+import { type AuthConfig, fetchAuthConfig, login } from "../lib/api"
 import { ApiError } from "../lib/api-error"
 import { session } from "../lib/session.svelte.js"
 
 let email = $state("reviewer@example.com")
 let busy = $state(false)
 let error = $state("")
+let authError = $state("")
+let authConfig = $state<AuthConfig | null>(null)
 
 const accounts = [
 	{ email: "reviewer@example.com", label: "Rae", note: "Reviewer" },
@@ -16,8 +19,43 @@ const accounts = [
 ]
 
 onMount((): void => {
-	if (session.me) void goto("/queue")
+	if (session.me) {
+		void goto("/queue")
+		return
+	}
+
+	const reason = page.url.searchParams.get("error") ?? ""
+	if (reason !== "") authError = authMessage(reason)
+
+	void loadAuthConfig()
 })
+
+// loadAuthConfig falls back to development sign-in when method discovery fails.
+async function loadAuthConfig(): Promise<void> {
+	try {
+		authConfig = await fetchAuthConfig()
+	} catch {
+		authConfig = { dev: true, hca: false }
+	}
+}
+
+// authMessage turns the short callback error into a sentence.
+function authMessage(reason: string): string {
+	switch (reason) {
+		case "state":
+			return "The sign-in attempt expired. Try again."
+		case "code":
+			return "Hack Club did not return a sign-in code."
+		case "exchange":
+			return "Could not complete sign-in with Hack Club."
+		case "identity":
+			return "Hack Club did not return an email address."
+		case "not_member":
+			return "That Hack Club account is not on the Half Life roster."
+		default:
+			return "Sign-in failed. Try again."
+	}
+}
 
 async function submit(event: SubmitEvent): Promise<void> {
 	event.preventDefault()
@@ -47,33 +85,48 @@ async function signIn(address: string): Promise<void> {
 		<div class="intro">
 			<span class="mark">HL</span>
 			<h1>Half Life Review</h1>
-			<p>Stage 1 queue for hardware ships. Development sign-in.</p>
+			<p>Stage 1 queue for hardware ships.</p>
 		</div>
 
-		<form onsubmit={submit}>
-			<label class="field">
-				<span>Email</span>
-				<input autocomplete="email" bind:value={email} class="ui-input" required type="email">
-			</label>
-			<button class="ui-button primary block" disabled={busy} type="submit">
-				{busy ? "Signing in…" : "Sign in"}
-			</button>
-		</form>
-
-		{#if error}
-			<p class="error" role="alert">{error}</p>
+		{#if authConfig?.hca}
+			<a class="ui-button primary block" data-sveltekit-reload href="/auth/login">Continue with Hack Club</a>
 		{/if}
 
-		<p class="divider">Or a seeded account</p>
+		{#if authConfig?.dev !== false}
+			{#if authConfig?.hca}
+				<p class="divider">Or use a seeded account</p>
+			{/if}
 
-		<div class="accounts">
-			{#each accounts as account (account.email)}
-				<button class="account" disabled={busy} onclick={(): Promise<void> => signIn(account.email)} type="button">
-					<span class="account-name">{account.label}</span>
-					<span class="account-note">{account.note}</span>
+			<form onsubmit={submit}>
+				<label class="field">
+					<span>Email</span>
+					<input autocomplete="email" class="ui-input" required type="email" bind:value={email}>
+				</label>
+				<button class="ui-button primary block" disabled={busy} type="submit">
+					{busy ? "Signing in…" : "Sign in"}
 				</button>
-			{/each}
-		</div>
+			</form>
+
+			<div class="accounts">
+				{#each accounts as account (account.email)}
+					<button
+						class="account"
+						disabled={busy}
+						onclick={(): Promise<void> => signIn(account.email)}
+						type="button"
+					>
+						<span class="account-name">{account.label}</span>
+						<span class="account-note">{account.note}</span>
+					</button>
+				{/each}
+			</div>
+		{:else if !authConfig?.hca}
+			<p class="hint">Sign-in is not configured on this deployment.</p>
+		{/if}
+
+		{#if authError || error}
+			<p class="error" role="alert">{authError || error}</p>
+		{/if}
 	</div>
 </section>
 
@@ -150,8 +203,8 @@ form {
 
 .divider {
 	display: flex;
-	align-items: center;
 	gap: var(--space-2);
+	align-items: center;
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }
@@ -172,9 +225,9 @@ form {
 
 .account {
 	display: flex;
+	gap: var(--space-2);
 	align-items: baseline;
 	justify-content: space-between;
-	gap: var(--space-2);
 	padding: var(--space-2) var(--space-3);
 	text-align: left;
 	background: transparent;

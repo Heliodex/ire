@@ -152,21 +152,48 @@ func (a *reviewApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := a.createSession(r.Context(), person.ID, r.UserAgent())
+	if err != nil {
+		writeStorage(w, err)
+		return
+	}
+
+	if _, err := a.store.Exec(r.Context(), `update user set last_login_at = ? where id = ?`, a.nowText(), person.ID); err != nil {
+		writeStorage(w, err)
+		return
+	}
+
+	a.setSessionCookie(w, r, token)
+	app.WriteJSON(w, http.StatusOK, a.meResponse(r.Context(), person))
+}
+
+// handleLogout deletes the session row and clears the cookie.
+func (a *reviewApp) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if cookie, err := r.Cookie(cookieName); err == nil && cookie.Value != "" {
+		if _, err := a.store.Exec(r.Context(), `delete from session where id = ?`, sessionHash(cookie.Value)); err != nil {
+			writeStorage(w, err)
+			return
+		}
+	}
+
+	a.clearSessionCookie(w, r)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// createSession stores a hashed session token and returns the raw cookie value.
+func (a *reviewApp) createSession(ctx context.Context, userID, userAgent string) (string, error) {
 	token := newToken()
-
 	now := a.nowText()
-	if _, err := a.store.Exec(r.Context(), `insert into session (id, user_id, expires_at, created_at, last_seen_at, user_agent)
+
+	_, err := a.store.Exec(ctx, `insert into session (id, user_id, expires_at, created_at, last_seen_at, user_agent)
 		values (?, ?, ?, ?, ?, ?)`,
-		sessionHash(token), person.ID, a.later(sessionTTL), now, now, r.UserAgent()); err != nil {
-		writeStorage(w, err)
-		return
-	}
+		sessionHash(token), userID, a.later(sessionTTL), now, now, userAgent)
 
-	if _, err := a.store.Exec(r.Context(), `update user set last_login_at = ? where id = ?`, now, person.ID); err != nil {
-		writeStorage(w, err)
-		return
-	}
+	return token, err
+}
 
+// setSessionCookie writes the session cookie with the request's scheme and a fixed lifetime.
+func (a *reviewApp) setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
 	//nolint:gosec // Secure follows the request scheme behind the supervisor proxy.
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
@@ -177,19 +204,10 @@ func (a *reviewApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 		Secure:   requestIsHTTPS(r),
 		MaxAge:   int(sessionTTL.Seconds()),
 	})
-
-	app.WriteJSON(w, http.StatusOK, a.meResponse(r.Context(), person))
 }
 
-// handleDevLogout deletes the session row and clears the cookie.
-func (a *reviewApp) handleDevLogout(w http.ResponseWriter, r *http.Request) {
-	if cookie, err := r.Cookie(cookieName); err == nil && cookie.Value != "" {
-		if _, err := a.store.Exec(r.Context(), `delete from session where id = ?`, sessionHash(cookie.Value)); err != nil {
-			writeStorage(w, err)
-			return
-		}
-	}
-
+// clearSessionCookie deletes the browser cookie.
+func (a *reviewApp) clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	//nolint:gosec // Secure follows the request scheme behind the supervisor proxy.
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
@@ -200,8 +218,6 @@ func (a *reviewApp) handleDevLogout(w http.ResponseWriter, r *http.Request) {
 		Secure:   requestIsHTTPS(r),
 		MaxAge:   -1,
 	})
-
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // newToken returns 32 random bytes as hex. The database stores only its hash.

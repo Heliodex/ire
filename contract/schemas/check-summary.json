@@ -1,6 +1,14 @@
 {
 	"type": "object",
 	"properties": {
+		"error": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"fail": {
+			"type": "integer",
+			"minimum": 0
+		},
 		"overall": {
 			"type": "string",
 			"minLength": 1
@@ -9,30 +17,22 @@
 			"type": "integer",
 			"minimum": 0
 		},
-		"warn": {
-			"type": "integer",
-			"minimum": 0
-		},
-		"fail": {
-			"type": "integer",
-			"minimum": 0
-		},
-		"error": {
-			"type": "integer",
-			"minimum": 0
-		},
 		"running": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"warn": {
 			"type": "integer",
 			"minimum": 0
 		}
 	},
 	"required": [
+		"error",
+		"fail",
 		"overall",
 		"pass",
-		"warn",
-		"fail",
-		"error",
-		"running"
+		"running",
+		"warn"
 	],
 	"title": "CheckSummary",
 	"$schema": "http://json-schema.org/draft-07/schema#",

@@ -6,7 +6,7 @@
 			"items": {
 				"type": "object",
 				"properties": {
-					"id": {
+					"body": {
 						"type": "string",
 						"minLength": 1
 					},
@@ -18,11 +18,11 @@
 						"type": "string",
 						"minLength": 1
 					},
-					"timestamp": {
+					"id": {
 						"type": "string",
 						"minLength": 1
 					},
-					"body": {
+					"receivedAt": {
 						"type": "string",
 						"minLength": 1
 					},
@@ -30,25 +30,25 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"timestamp": {
+						"type": "string",
+						"minLength": 1
+					},
 					"verified": {
 						"type": "integer",
 						"minimum": 0,
 						"maximum": 1
-					},
-					"receivedAt": {
-						"type": "string",
-						"minLength": 1
 					}
 				},
 				"required": [
-					"id",
+					"body",
 					"deliveryId",
 					"event",
-					"timestamp",
-					"body",
+					"id",
+					"receivedAt",
 					"signature",
-					"verified",
-					"receivedAt"
+					"timestamp",
+					"verified"
 				],
 				"title": "FakeDelivery"
 			}

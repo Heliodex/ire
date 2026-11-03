@@ -6,31 +6,31 @@
 			"items": {
 				"type": "object",
 				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"submissionId": {
-						"type": "string"
-					},
-					"kind": {
-						"type": "string"
-					},
 					"actorEmail": {
-						"type": "string"
-					},
-					"data": {
 						"type": "string"
 					},
 					"createdAt": {
 						"type": "string",
 						"minLength": 1
+					},
+					"data": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"kind": {
+						"type": "string"
+					},
+					"submissionId": {
+						"type": "string"
 					}
 				},
 				"required": [
+					"createdAt",
 					"id",
-					"submissionId",
 					"kind",
-					"createdAt"
+					"submissionId"
 				]
 			}
 		}

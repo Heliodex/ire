@@ -94,6 +94,10 @@ type config struct {
 	OutboundURL       string
 	GitHubToken       string
 	GitHubAPIBase     string
+	HCClientID        string
+	HCClientSecret    string
+	HCRedirectURI     string
+	HCAuthBase        string
 	SeedFixtures      bool
 	AllowDevAccounts  bool
 	DisableRepoChecks bool
@@ -154,7 +158,11 @@ func (a *reviewApp) routes() {
 
 	a.mux.HandleFunc("GET /api/v1/me", a.handleMe)
 	a.mux.HandleFunc("POST /api/v1/dev/login", a.handleDevLogin)
-	a.mux.HandleFunc("POST /api/v1/dev/logout", a.handleDevLogout)
+	a.mux.HandleFunc("POST /api/v1/dev/logout", a.handleLogout)
+	a.mux.HandleFunc("POST /api/v1/logout", a.handleLogout)
+	a.mux.HandleFunc("GET /api/v1/auth/config", a.handleAuthConfig)
+	a.mux.HandleFunc("GET /auth/login", a.handleHCAStart)
+	a.mux.HandleFunc("GET /auth/callback", a.handleHCACallback)
 	a.mux.HandleFunc("POST /api/v1/dev/reset", a.handleDevReset)
 
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/queue", a.handleQueue)

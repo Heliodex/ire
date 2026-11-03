@@ -4,13 +4,6 @@
 		"claim": {
 			"type": "object",
 			"properties": {
-				"reviewerEmail": {
-					"type": "string",
-					"minLength": 1
-				},
-				"reviewerName": {
-					"type": "string"
-				},
 				"expiresAt": {
 					"type": "string",
 					"minLength": 1
@@ -19,12 +12,19 @@
 					"type": "integer",
 					"minimum": 0,
 					"maximum": 1
+				},
+				"reviewerEmail": {
+					"type": "string",
+					"minLength": 1
+				},
+				"reviewerName": {
+					"type": "string"
 				}
 			},
 			"required": [
-				"reviewerEmail",
 				"expiresAt",
-				"isMine"
+				"isMine",
+				"reviewerEmail"
 			],
 			"title": "ClaimState"
 		}

@@ -1,44 +1,44 @@
 {
 	"type": "object",
 	"properties": {
-		"decision": {
-			"type": "string",
-			"pattern": "^(approved|changes|rejected)$"
-		},
-		"version": {
-			"type": "integer",
-			"minimum": 0
-		},
-		"noteToMaker": {
-			"type": "string",
-			"maxLength": 4000
-		},
-		"internalNote": {
-			"type": "string",
-			"maxLength": 4000
-		},
-		"hoursApprovedSeconds": {
-			"type": "integer"
-		},
 		"acknowledgements": {
 			"type": "array",
 			"items": {
 				"type": "string"
 			}
 		},
+		"decision": {
+			"type": "string",
+			"pattern": "^(approved|changes|rejected)$"
+		},
+		"hoursApprovedSeconds": {
+			"type": "integer"
+		},
 		"idempotencyKey": {
 			"type": "string",
 			"minLength": 1,
 			"maxLength": 120
+		},
+		"internalNote": {
+			"type": "string",
+			"maxLength": 4000
+		},
+		"noteToMaker": {
+			"type": "string",
+			"maxLength": 4000
+		},
+		"version": {
+			"type": "integer",
+			"minimum": 0
 		}
 	},
 	"required": [
-		"decision",
-		"version",
-		"noteToMaker",
-		"internalNote",
 		"acknowledgements",
-		"idempotencyKey"
+		"decision",
+		"idempotencyKey",
+		"internalNote",
+		"noteToMaker",
+		"version"
 	],
 	"title": "DecisionRequest",
 	"$schema": "http://json-schema.org/draft-07/schema#",

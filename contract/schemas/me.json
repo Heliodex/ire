@@ -1,26 +1,6 @@
 {
 	"type": "object",
 	"properties": {
-		"user": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "string",
-					"minLength": 1
-				},
-				"email": {
-					"type": "string",
-					"minLength": 1
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"id",
-				"email"
-			]
-		},
 		"programs": {
 			"type": "array",
 			"items": {
@@ -30,11 +10,11 @@
 						"type": "string",
 						"minLength": 1
 					},
-					"programSlug": {
+					"programName": {
 						"type": "string",
 						"minLength": 1
 					},
-					"programName": {
+					"programSlug": {
 						"type": "string",
 						"minLength": 1
 					},
@@ -45,17 +25,37 @@
 				},
 				"required": [
 					"programId",
-					"programSlug",
 					"programName",
+					"programSlug",
 					"role"
 				],
 				"title": "Membership"
 			}
+		},
+		"user": {
+			"type": "object",
+			"properties": {
+				"email": {
+					"type": "string",
+					"minLength": 1
+				},
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"email",
+				"id"
+			]
 		}
 	},
 	"required": [
-		"user",
-		"programs"
+		"programs",
+		"user"
 	],
 	"title": "MeResponse",
 	"$schema": "http://json-schema.org/draft-07/schema#",

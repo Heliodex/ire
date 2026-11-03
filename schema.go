@@ -366,8 +366,10 @@ func (a *reviewApp) seed(ctx context.Context) error {
 		return err
 	}
 
-	if err := a.seedPeople(ctx, now); err != nil {
-		return err
+	if a.config.AllowDevAccounts {
+		if err := a.seedPeople(ctx, now); err != nil {
+			return err
+		}
 	}
 
 	settings := map[string]string{

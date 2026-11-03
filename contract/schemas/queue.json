@@ -4,15 +4,15 @@
 		"counts": {
 			"type": "object",
 			"properties": {
-				"ready": {
-					"type": "integer",
-					"minimum": 0
-				},
 				"claimed": {
 					"type": "integer",
 					"minimum": 0
 				},
 				"needsAttention": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"ready": {
 					"type": "integer",
 					"minimum": 0
 				},
@@ -22,9 +22,9 @@
 				}
 			},
 			"required": [
-				"ready",
 				"claimed",
 				"needsAttention",
+				"ready",
 				"stage2Hold"
 			],
 			"title": "QueueCounts"
@@ -34,51 +34,6 @@
 			"items": {
 				"type": "object",
 				"properties": {
-					"id": {
-						"type": "string",
-						"minLength": 1
-					},
-					"externalId": {
-						"type": "string",
-						"minLength": 1
-					},
-					"version": {
-						"type": "integer",
-						"minimum": 0
-					},
-					"status": {
-						"type": "string",
-						"minLength": 1
-					},
-					"stage": {
-						"type": "integer",
-						"minimum": 0
-					},
-					"priority": {
-						"type": "integer",
-						"minimum": 0
-					},
-					"title": {
-						"type": "string",
-						"minLength": 1
-					},
-					"theme": {
-						"type": "string"
-					},
-					"thumbnailUrl": {
-						"type": "string"
-					},
-					"week": {
-						"type": "integer"
-					},
-					"makerName": {
-						"type": "string",
-						"minLength": 1
-					},
-					"hoursClaimedSeconds": {
-						"type": "integer",
-						"minimum": 0
-					},
 					"checkSummary": {
 						"$ref": "check-summary.json"
 					},
@@ -95,11 +50,11 @@
 									"type": "string",
 									"minLength": 1
 								},
-								"status": {
+								"severity": {
 									"type": "string",
 									"minLength": 1
 								},
-								"severity": {
+								"status": {
 									"type": "string",
 									"minLength": 1
 								}
@@ -107,33 +62,78 @@
 							"required": [
 								"key",
 								"label",
-								"status",
-								"severity"
+								"severity",
+								"status"
 							],
 							"title": "QueueCheck"
 						}
+					},
+					"claimedBy": {
+						"type": "string"
+					},
+					"externalId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"hoursClaimedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
 					},
 					"ingestedAt": {
 						"type": "string",
 						"minLength": 1
 					},
-					"claimedBy": {
+					"makerName": {
+						"type": "string",
+						"minLength": 1
+					},
+					"priority": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"status": {
+						"type": "string",
+						"minLength": 1
+					},
+					"theme": {
 						"type": "string"
+					},
+					"thumbnailUrl": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string",
+						"minLength": 1
+					},
+					"version": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"week": {
+						"type": "integer"
 					}
 				},
 				"required": [
-					"id",
-					"externalId",
-					"version",
-					"status",
-					"stage",
-					"priority",
-					"title",
-					"makerName",
-					"hoursClaimedSeconds",
 					"checkSummary",
 					"checks",
-					"ingestedAt"
+					"externalId",
+					"hoursClaimedSeconds",
+					"id",
+					"ingestedAt",
+					"makerName",
+					"priority",
+					"stage",
+					"status",
+					"title",
+					"version"
 				],
 				"title": "QueueItem"
 			}

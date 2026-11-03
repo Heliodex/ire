@@ -6,30 +6,9 @@
 			"items": {
 				"type": "object",
 				"properties": {
-					"id": {
-						"type": "string",
-						"minLength": 1
-					},
-					"submissionId": {
-						"type": "string"
-					},
-					"event": {
-						"type": "string",
-						"minLength": 1
-					},
-					"status": {
-						"type": "string",
-						"minLength": 1
-					},
 					"attempts": {
 						"type": "integer",
 						"minimum": 0
-					},
-					"lastHttpStatus": {
-						"type": "integer"
-					},
-					"lastError": {
-						"type": "string"
 					},
 					"createdAt": {
 						"type": "string",
@@ -41,16 +20,37 @@
 					"deliveryId": {
 						"type": "string"
 					},
+					"event": {
+						"type": "string",
+						"minLength": 1
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"lastError": {
+						"type": "string"
+					},
+					"lastHttpStatus": {
+						"type": "integer"
+					},
 					"payload": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string",
+						"minLength": 1
+					},
+					"submissionId": {
 						"type": "string"
 					}
 				},
 				"required": [
-					"id",
-					"event",
-					"status",
 					"attempts",
-					"createdAt"
+					"createdAt",
+					"event",
+					"id",
+					"status"
 				],
 				"title": "OutboxRow"
 			}

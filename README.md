@@ -1,6 +1,6 @@
 # Half Life Review
 
-A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working second pass, real GitHub repository checks and a signed outbox. Reviewer auth and evidence fetching are still deliberately faked so the review loop can be demonstrated now.
+A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working second pass, real GitHub repository checks and a signed outbox. Reviewer auth supports Hack Club Auth when configured, with development accounts as a fallback; evidence fetching is still deliberately faked so the review loop can be demonstrated now.
 
 ## What works
 
@@ -10,6 +10,8 @@ A review service for Half Life hardware ships. This is the working vertical slic
 - A stage 2 hold policy for approvals: a warning, a held tier, or hours above the claim waits for the second pass and emits no webhook. Changes and rejections are final and always deliver. The stage 1 endpoints refuse a ship that is already on the second pass.
 - A second-pass queue for organisers, with claim, confirm, reject and changes actions, stage history and one final outbound event. Reviewers can read a held ship but cannot decide it.
 - Real GitHub checks for new ingests: repository access, README and image count, BOM file, design files and commit history. Fixtures keep their prescribed results.
+- Hack Club Auth sign-in for roster members when `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` are set. Development sign-in remains for local use.
+- Signed HTTP outbound delivery to a real receiver; the in-process receiver is only the default development target.
 - A signed outbox written in the decision transaction, an in-process receiver that verifies `timestamp.delivery_id.body`, retries on a schedule and keeps the exact payload.
 - Three fixture ships extracted from real `.projects.csv` rows: clean, warned and blocked.
 
@@ -58,8 +60,14 @@ Reset the demo at any time with `POST /api/v1/dev/reset` while signed in. It del
 | `REVIEW_GITHUB_TOKEN` | empty | GitHub token for the repository checks; raises the API rate limit |
 | `REVIEW_GITHUB_API` | `https://api.github.com` | GitHub API base, useful for a fake server in tests |
 | `REVIEW_DISABLE_REPO_CHECKS` | `0` | `1` skips network checks and keeps the payload-only checks |
+| `HC_CLIENT_ID` | empty | Hack Club Auth OAuth client id |
+| `HC_CLIENT_SECRET` | empty | Hack Club Auth OAuth client secret |
+| `HC_REDIRECT_URI` | empty | Registered callback, for example `https://review.example/auth/callback` |
+| `HC_AUTH_BASE` | `https://auth.hackclub.com` | Auth provider base, useful for a fake provider in tests |
 
-Set real secrets with `wt secrets set review REVIEW_INGEST_SECRET`, `REVIEW_OUTBOUND_SECRET` and optionally `REVIEW_GITHUB_TOKEN` before deploying. **The development login is not Hack Club Auth.** It exists so the queue can be reviewed before HCA credentials arrive, and must be replaced before a real programme uses it.
+Set real secrets with `wt secrets set review REVIEW_INGEST_SECRET`, `REVIEW_OUTBOUND_SECRET`, `REVIEW_GITHUB_TOKEN`, `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` before deploying. **The development login is not Hack Club Auth.** It exists for local use and must be disabled with `REVIEW_DEV_AUTH=0` before a real programme uses it.
+
+Hack Club Auth uses `openid profile email slack_id`, state validation and the existing programme roster. A verified account without an active membership is refused; the service does not auto-create users from OAuth.
 
 ### Repository checks
 
@@ -74,6 +82,10 @@ New ingests run the checks synchronously inside the ingest request, with a 12-se
 | `GET` | `/api/ingest/{program}/status?external_id=...` | Bearer ingest secret |
 | `GET` | `/api/v1/reviews/{program}?since=...` | Bearer ingest secret |
 | `GET` | `/api/v1/events/{program}?since=...` | Bearer ingest secret |
+| `GET` | `/api/v1/auth/config` | Public method discovery |
+| `GET` | `/auth/login` | Hack Club Auth start |
+| `GET` | `/auth/callback` | Hack Club Auth callback |
+| `POST` | `/api/v1/logout` | Session |
 | `POST` | `/api/v1/dev/login` | Development only |
 | `GET` | `/api/v1/programs/{program}/queue?stage=1\|2` | Session; stage 2 needs organiser/admin |
 | `GET` | `/api/v1/programs/{program}/submissions/{id}` | Session |
@@ -112,11 +124,11 @@ The contract in [`web/src/lib/contract.ts`](./web/src/lib/contract.ts) is the so
 ### What is deliberately fake
 
 - **Checks** are real for public GitHub repositories on new ingests. Fixture ships carry prescribed results. GitLab, a job runner, Hackatime, Lapse, demo probes, identity and duplicate checks are not ported yet.
-- **Auth** is the dev account table, not HCA.
+- **Auth** uses Hack Club Auth when configured. Development accounts remain for local work, and there is no roster admin UI yet.
 - **Stage 2** now has a queue and a final decision, but override, send-back and fraud are later. Fraud has a configured minimum stage of 2 and no implementation.
-- **Delivery receiver** is the in-process `fake://receiver`, which verifies the same HMAC the real handler will. Point `REVIEW_OUTBOUND_URL` at a real endpoint to exercise HTTP delivery.
+- **Delivery receiver** defaults to the in-process `fake://receiver`. Point `REVIEW_OUTBOUND_URL` at a real endpoint to use HTTP; the sender signs the exact bytes and retries on 5xx.
 - **Evidence** is what Half Life sends in the ingest payload; Review does not fetch journals, commits or clips itself yet.
 
 ## Where the plan goes next
 
-The next work is tracked in [`plan/todo.md`](./plan/todo.md): check job orchestration and the remaining check groups, Hack Club Auth with a staging webhook, and the evidence snapshot. The contract and schema here are the small stable core those phases extend.
+The next work is tracked in [`plan/todo.md`](./plan/todo.md): check job orchestration and the remaining check groups, the staging webhook cutover, and the evidence snapshot. The contract and schema here are the small stable core those phases extend.

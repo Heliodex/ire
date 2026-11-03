@@ -1,6 +1,7 @@
 import { type BaseIssue, type GenericSchema, type InferOutput, safeParse } from "valibot"
 import { ApiError } from "./api-error"
 import {
+	authConfigSchema,
 	claimResponseSchema,
 	decisionResultSchema,
 	draftResponseSchema,
@@ -13,6 +14,7 @@ import {
 } from "./contract"
 import { ValidationError } from "./validation-error"
 
+export type AuthConfig = InferOutput<typeof authConfigSchema>
 export type Me = InferOutput<typeof meResponseSchema>
 export type Queue = InferOutput<typeof queueResponseSchema>
 export type QueueItem = Queue["items"][number]
@@ -66,6 +68,12 @@ async function requestVoid(path: string, init: RequestInit): Promise<void> {
 	throw new ApiError(`The review API returned ${response.status}`, "http_error")
 }
 
+// fetchAuthConfig returns which sign-in methods are enabled.
+export async function fetchAuthConfig(): Promise<AuthConfig> {
+	const response = await fetch("/api/v1/auth/config")
+	return parseJSON(response, authConfigSchema)
+}
+
 // fetchMe returns the signed-in reviewer, throwing ApiError 401 when there is no session.
 export async function fetchMe(): Promise<Me> {
 	const response = await fetch("/api/v1/me")
@@ -84,12 +92,14 @@ export async function login(email: string): Promise<Me> {
 
 // logout deletes the session cookie.
 export async function logout(): Promise<void> {
-	await requestVoid("/api/v1/dev/logout", { method: "POST" })
+	await requestVoid("/api/v1/logout", { method: "POST" })
 }
 
 // fetchQueue returns the stage 1 work list.
 export async function fetchQueue(filter = "all", stage = 1): Promise<Queue> {
-	const response = await fetch(`/api/v1/programs/${program}/queue?stage=${stage}&filter=${encodeURIComponent(filter)}`)
+	const response = await fetch(
+		`/api/v1/programs/${program}/queue?stage=${stage}&filter=${encodeURIComponent(filter)}`,
+	)
 	return parseJSON(response, queueResponseSchema)
 }
 
@@ -115,7 +125,10 @@ export async function heartbeat(id: string): Promise<void> {
 
 // releaseShip gives the ship back to the queue. keepalive lets the request finish when the review page unmounts.
 export async function releaseShip(id: string): Promise<void> {
-	await requestVoid(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/claim`, { method: "DELETE", keepalive: true })
+	await requestVoid(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/claim`, {
+		keepalive: true,
+		method: "DELETE",
+	})
 }
 
 // saveDraft persists the review form.
@@ -125,11 +138,11 @@ export async function saveDraft(
 ): Promise<string> {
 	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/draft`, {
 		body: JSON.stringify({
-			note: draft.note,
-			internalNote: draft.internalNote,
-			values: draft.values ?? "{}",
-			checklist: draft.checklist ?? "[]",
 			adjustments: draft.adjustments ?? "{}",
+			checklist: draft.checklist ?? "[]",
+			internalNote: draft.internalNote,
+			note: draft.note,
+			values: draft.values ?? "{}",
 		}),
 		headers: { "content-type": "application/json" },
 		method: "PUT",

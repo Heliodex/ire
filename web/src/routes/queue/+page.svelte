@@ -1,6 +1,7 @@
 <script lang="ts">
-import { goto } from "$app/navigation"
 import { onMount, tick } from "svelte"
+import { SvelteMap } from "svelte/reactivity"
+import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
@@ -8,7 +9,7 @@ import { session } from "../../lib/session.svelte.js"
 
 type Filter = "all" | "fast" | "attention" | "mine"
 
-let queue = $state<Queue>({ counts: { ready: 0, claimed: 0, needsAttention: 0, stage2Hold: 0 }, items: [] })
+let queue = $state<Queue>({ counts: { claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 }, items: [] })
 let filter = $state<Filter>("all")
 let stage = $state(1)
 let loading = $state(true)
@@ -21,9 +22,9 @@ let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
 
 // cache keeps each filter and stage response for this visit, so switching back is instant while a fresh copy loads behind it.
-const cache = new Map<string, Queue>()
+const cache = new SvelteMap<string, Queue>()
 
-const role = $derived(session.me?.programs.find((item) => item.programSlug === program)?.role ?? "")
+const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
 
 const filters: { key: Filter; label: string }[] = [
@@ -34,7 +35,7 @@ const filters: { key: Filter; label: string }[] = [
 ]
 
 const visible = $derived(
-	queue.items.filter((item) => {
+	queue.items.filter(item => {
 		if (search.trim() === "") return true
 		const needle = search.trim().toLowerCase()
 		return item.title.toLowerCase().includes(needle) || item.makerName.toLowerCase().includes(needle)
@@ -109,7 +110,8 @@ async function load(target = filter, targetStage = stage): Promise<void> {
 			void goto("/")
 			return
 		}
-		if (target === filter && targetStage === stage) error = err instanceof Error ? err.message : "Could not load the queue."
+		if (target === filter && targetStage === stage)
+			error = err instanceof Error ? err.message : "Could not load the queue."
 	} finally {
 		if (target === filter && targetStage === stage) {
 			loading = false
@@ -166,7 +168,7 @@ async function chooseSecondPass(): Promise<void> {
 
 // moveFilter selects the next filter and keeps keyboard focus on it, wrapping at the ends.
 function moveFilter(step: number): void {
-	const index = filters.findIndex((option) => option.key === filter)
+	const index = filters.findIndex(option => option.key === filter)
 	const next = (index + step + filters.length) % filters.length
 
 	filterTabs?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus()
@@ -216,14 +218,14 @@ async function open(item: QueueItem): Promise<void> {
 </section>
 
 <div class="toolbar">
-	<div aria-label="Filters and stages" bind:this={filterTabs} class="ui-seg filters" role="tablist">
+	<div aria-label="Filters and stages" class="ui-seg filters" role="tablist" bind:this={filterTabs}>
 		{#each filters as option (option.key)}
 			<button
 				aria-selected={stage === 1 && filter === option.key}
-				class:active={stage === 1 && filter === option.key}
 				onclick={(): Promise<void> => choose(option.key)}
 				role="tab"
 				type="button"
+				class:active={stage === 1 && filter === option.key}
 			>
 				{option.label}
 			</button>
@@ -231,10 +233,10 @@ async function open(item: QueueItem): Promise<void> {
 		{#if canSecondPass}
 			<button
 				aria-selected={stage === 2}
-				class:active={stage === 2}
 				onclick={chooseSecondPass}
 				role="tab"
 				type="button"
+				class:active={stage === 2}
 			>
 				Second pass {queue.counts.stage2Hold}
 			</button>
@@ -242,7 +244,7 @@ async function open(item: QueueItem): Promise<void> {
 	</div>
 	<label class="search">
 		<span class="visually-hidden">Search the queue</span>
-		<input bind:value={search} class="ui-input" placeholder="Search project or maker…" type="search">
+		<input class="ui-input" placeholder="Search project or maker…" type="search" bind:value={search}>
 	</label>
 </div>
 
@@ -255,9 +257,12 @@ async function open(item: QueueItem): Promise<void> {
 		<h2 id="list-title">{stage === 2 ? "Second pass" : "Open ships"}</h2>
 		<span>
 			{visible.length} {visible.length === 1 ? "ship" : "ships"} ·
-			<kbd class="ui-kbd">↑</kbd><kbd class="ui-kbd">↓</kbd> to move ·
-			<kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd> filters ·
-			<kbd class="ui-kbd">Enter</kbd> to open
+			<kbd class="ui-kbd">↑</kbd><kbd class="ui-kbd">↓</kbd>
+			to move ·
+			<kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd>
+			filters ·
+			<kbd class="ui-kbd">Enter</kbd>
+			to open
 		</span>
 	</div>
 
@@ -269,28 +274,54 @@ async function open(item: QueueItem): Promise<void> {
 		</div>
 	{:else if visible.length === 0}
 		<div class="ui-card ui-empty">
-			<strong>{search ? "No ships match that search." : stage === 2 ? "No held ships." : "Nothing in this filter."}</strong>
-			<span>{stage === 2 ? "Nothing is waiting for a second pass." : filter === "attention" ? "The checks found nothing blocking." : "Check back after the next ingest."}</span>
+			<strong
+				>{search
+					? "No ships match that search."
+					: stage === 2
+						? "No held ships."
+						: "Nothing in this filter."}</strong
+			>
+			<span
+				>{stage === 2
+					? "Nothing is waiting for a second pass."
+					: filter === "attention"
+						? "The checks found nothing blocking."
+						: "Check back after the next ingest."}</span
+			>
 		</div>
 	{:else}
-		<div bind:this={listElement} class="ui-card list" class:refreshing>
+		<div class="ui-card list" bind:this={listElement} class:refreshing>
 			{#each visible as item, index (item.id)}
 				<button
 					aria-current={index === selected}
 					class="row"
-					class:selected={index === selected}
 					disabled={opening !== ""}
 					onclick={(): Promise<void> => open(item)}
 					type="button"
+					class:selected={index === selected}
 				>
 					<span class="thumb">
 						{#if item.thumbnailUrl}
 							<img alt="" decoding="async" loading="lazy" src={item.thumbnailUrl}>
 						{:else}
 							<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
-								<rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="4"/>
-								<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5"/>
-								<path d="m4 17 4.5-4.5 3 3L15 12l5 5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"/>
+								<rect
+									height="16"
+									rx="2"
+									stroke="currentColor"
+									stroke-width="1.6"
+									width="18"
+									x="3"
+									y="4"
+								/>
+								<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
+								<path
+									d="m4 17 4.5-4.5 3 3L15 12l5 5"
+									stroke="currentColor"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="1.6"
+								/>
 							</svg>
 						{/if}
 					</span>
@@ -315,20 +346,34 @@ async function open(item: QueueItem): Promise<void> {
 					</div>
 					<span class="checks">
 						<span class="counts">
-							{#if item.checkSummary.pass > 0}<span class="pass">{item.checkSummary.pass} pass</span>{/if}
-							{#if item.checkSummary.warn > 0}<span class="warn">{item.checkSummary.warn} warn</span>{/if}
-							{#if item.checkSummary.fail > 0}<span class="fail">{item.checkSummary.fail} fail</span>{/if}
-							{#if item.checkSummary.error > 0}<span class="fail">{item.checkSummary.error} error</span>{/if}
-							{#if item.checkSummary.overall === "pass"}<span class="fast">Fast lane</span>{/if}
+							{#if item.checkSummary.pass > 0}
+								<span class="pass">{item.checkSummary.pass} pass</span>
+							{/if}
+							{#if item.checkSummary.warn > 0}
+								<span class="warn">{item.checkSummary.warn} warn</span>
+							{/if}
+							{#if item.checkSummary.fail > 0}
+								<span class="fail">{item.checkSummary.fail} fail</span>
+							{/if}
+							{#if item.checkSummary.error > 0}
+								<span class="fail">{item.checkSummary.error} error</span>
+							{/if}
+							{#if item.checkSummary.overall === "pass"}
+								<span class="fast">Fast lane</span>
+							{/if}
 						</span>
 						{#if item.checks.length > 0}
 							<span
-								aria-label={item.checks.map((check) => `${check.label}: ${check.status}`).join(", ")}
+								aria-label={item.checks.map(check => `${check.label}: ${check.status}`).join(", ")}
 								class="dots"
 								role="img"
 							>
 								{#each item.checks as check (check.key)}
-									<span class="dot" data-tone={checkTone(check)} title={`${check.label}: ${check.status}`}></span>
+									<span
+										class="dot"
+										data-tone={checkTone(check)}
+										title={`${check.label}: ${check.status}`}
+									></span>
 								{/each}
 							</span>
 						{/if}
@@ -434,8 +479,7 @@ h1 {
 
 .row {
 	display: grid;
-	grid-template-columns:
-		64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 96px 64px minmax(140px, 190px);
+	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 96px 64px minmax(140px, 190px);
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
@@ -488,9 +532,9 @@ h1 {
 
 .ship-title {
 	overflow: hidden;
+	text-overflow: ellipsis;
 	font-size: var(--text-md);
 	font-weight: 700;
-	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
@@ -504,9 +548,9 @@ h1 {
 
 .theme {
 	overflow: hidden;
+	text-overflow: ellipsis;
 	font-size: var(--text-xs);
 	color: var(--text-3);
-	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
@@ -521,17 +565,17 @@ h1 {
 .maker,
 .hours {
 	overflow: hidden;
+	text-overflow: ellipsis;
 	font-size: var(--text-sm);
 	color: var(--text-2);
-	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
 .version,
 .age {
 	font-size: var(--text-xs);
-	color: var(--text-3);
 	font-variant-numeric: tabular-nums;
+	color: var(--text-3);
 }
 
 .version {
@@ -567,8 +611,8 @@ h1 {
 }
 
 .checks .fast {
-	color: var(--text-3);
 	font-weight: 600;
+	color: var(--text-3);
 }
 
 .dots {
@@ -608,43 +652,43 @@ h1 {
 
 @media (min-width: 1025px) {
 	.ship-title {
-		grid-column: 2;
 		grid-row: 1;
+		grid-column: 2;
 	}
 
 	.maker {
-		grid-column: 3;
 		grid-row: 1;
+		grid-column: 3;
 	}
 
 	.status {
-		grid-column: 4;
 		grid-row: 1;
+		grid-column: 4;
 	}
 
 	.theme {
-		grid-column: 5;
 		grid-row: 1;
+		grid-column: 5;
 	}
 
 	.version {
-		grid-column: 6;
 		grid-row: 1;
+		grid-column: 6;
 	}
 
 	.hours {
-		grid-column: 7;
 		grid-row: 1;
+		grid-column: 7;
 	}
 
 	.age {
-		grid-column: 8;
 		grid-row: 1;
+		grid-column: 8;
 	}
 
 	.checks {
-		grid-column: 9;
 		grid-row: 1;
+		grid-column: 9;
 	}
 }
 
@@ -672,18 +716,18 @@ h1 {
 	width: 1px;
 	height: 1px;
 	overflow: hidden;
-	clip: rect(0 0 0 0);
 	white-space: nowrap;
+	clip: rect(0 0 0 0);
 }
 
 @media (max-width: 1024px) {
 	.row {
-		grid-template-columns: 64px minmax(0, 1fr) 170px 160px;
 		grid-template-areas:
 			"thumb title badges checks"
 			"thumb facts facts facts";
-		column-gap: var(--space-3);
+		grid-template-columns: 64px minmax(0, 1fr) 170px 160px;
 		row-gap: var(--space-1);
+		column-gap: var(--space-3);
 	}
 
 	.thumb {
@@ -697,10 +741,10 @@ h1 {
 
 	.badges {
 		display: grid;
+		grid-area: badges;
 		grid-template-columns: 96px 64px;
 		gap: var(--space-2);
 		align-items: center;
-		grid-area: badges;
 	}
 
 	.checks {
@@ -709,9 +753,9 @@ h1 {
 
 	.facts {
 		display: grid;
+		grid-area: facts;
 		grid-template-columns: minmax(120px, 1fr) 36px 150px;
 		gap: var(--space-2);
-		grid-area: facts;
 		align-items: center;
 	}
 
@@ -739,11 +783,11 @@ h1 {
 	}
 
 	.row {
-		grid-template-columns: 64px 96px 44px minmax(0, 1fr);
 		grid-template-areas:
 			"thumb title title title"
 			"thumb status theme checks"
 			"facts facts facts facts";
+		grid-template-columns: 64px 96px 44px minmax(0, 1fr);
 		column-gap: var(--space-2);
 	}
 

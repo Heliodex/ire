@@ -1,5 +1,6 @@
 import {
 	array,
+	boolean,
 	integer,
 	maxLength,
 	maxValue,
@@ -23,35 +24,32 @@ const nonNegative = pipe(number(), integer(), minValue(0))
 const optionalString = optional(string())
 const timestamp = pipe(string(), minLength(1))
 
-const decisionValues = pipe(
-	string(),
-	regex(/^(approved|changes|rejected)$/, "Choose approved, changes or rejected."),
-)
+const decisionValues = pipe(string(), regex(/^(approved|changes|rejected)$/, "Choose approved, changes or rejected."))
 
 // ─── Shared ─────────────────────────────────────────────────────────────────
 
 export const checkSummarySchema = pipe(
 	object({
+		error: nonNegative,
+		fail: nonNegative,
 		overall: pipe(string(), minLength(1)),
 		pass: nonNegative,
-		warn: nonNegative,
-		fail: nonNegative,
-		error: nonNegative,
 		running: nonNegative,
+		warn: nonNegative,
 	}),
 	title("CheckSummary"),
 )
 
 export const checkResultSchema = pipe(
 	object({
+		checkedAt: timestamp,
+		detail: optionalString,
+		group: pipe(string(), minLength(1)),
 		key: pipe(string(), minLength(1)),
 		label: pipe(string(), minLength(1)),
-		group: pipe(string(), minLength(1)),
-		status: pipe(string(), minLength(1)),
 		severity: pipe(string(), minLength(1)),
+		status: pipe(string(), minLength(1)),
 		summary: pipe(string(), minLength(1)),
-		detail: optionalString,
-		checkedAt: timestamp,
 	}),
 	title("CheckResult"),
 )
@@ -63,6 +61,14 @@ export const errorResponseSchema = pipe(
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
 
+export const authConfigSchema = pipe(
+	object({
+		dev: boolean(),
+		hca: boolean(),
+	}),
+	title("AuthConfig"),
+)
+
 export const loginRequestSchema = pipe(
 	object({ email: pipe(string(), minLength(1), maxLength(320), nonBlank) }),
 	title("LoginRequest"),
@@ -71,8 +77,8 @@ export const loginRequestSchema = pipe(
 export const membershipSchema = pipe(
 	object({
 		programId: pipe(string(), minLength(1)),
-		programSlug: pipe(string(), minLength(1)),
 		programName: pipe(string(), minLength(1)),
+		programSlug: pipe(string(), minLength(1)),
 		role: pipe(string(), minLength(1)),
 	}),
 	title("Membership"),
@@ -80,12 +86,12 @@ export const membershipSchema = pipe(
 
 export const meResponseSchema = pipe(
 	object({
+		programs: array(membershipSchema),
 		user: object({
-			id: pipe(string(), minLength(1)),
 			email: pipe(string(), minLength(1)),
+			id: pipe(string(), minLength(1)),
 			name: optionalString,
 		}),
-		programs: array(membershipSchema),
 	}),
 	title("MeResponse"),
 )
@@ -94,9 +100,9 @@ export const meResponseSchema = pipe(
 
 export const queueCountsSchema = pipe(
 	object({
-		ready: nonNegative,
 		claimed: nonNegative,
 		needsAttention: nonNegative,
+		ready: nonNegative,
 		stage2Hold: nonNegative,
 	}),
 	title("QueueCounts"),
@@ -106,30 +112,30 @@ export const queueCheckSchema = pipe(
 	object({
 		key: pipe(string(), minLength(1)),
 		label: pipe(string(), minLength(1)),
-		status: pipe(string(), minLength(1)),
 		severity: pipe(string(), minLength(1)),
+		status: pipe(string(), minLength(1)),
 	}),
 	title("QueueCheck"),
 )
 
 export const queueItemSchema = pipe(
 	object({
-		id: pipe(string(), minLength(1)),
-		externalId: pipe(string(), minLength(1)),
-		version: nonNegative,
-		status: pipe(string(), minLength(1)),
-		stage: nonNegative,
-		priority: nonNegative,
-		title: pipe(string(), minLength(1)),
-		theme: optionalString,
-		thumbnailUrl: optionalString,
-		week: optional(pipe(number(), integer())),
-		makerName: pipe(string(), minLength(1)),
-		hoursClaimedSeconds: nonNegative,
 		checkSummary: checkSummarySchema,
 		checks: array(queueCheckSchema),
-		ingestedAt: timestamp,
 		claimedBy: optionalString,
+		externalId: pipe(string(), minLength(1)),
+		hoursClaimedSeconds: nonNegative,
+		id: pipe(string(), minLength(1)),
+		ingestedAt: timestamp,
+		makerName: pipe(string(), minLength(1)),
+		priority: nonNegative,
+		stage: nonNegative,
+		status: pipe(string(), minLength(1)),
+		theme: optionalString,
+		thumbnailUrl: optionalString,
+		title: pipe(string(), minLength(1)),
+		version: nonNegative,
+		week: optional(pipe(number(), integer())),
 	}),
 	title("QueueItem"),
 )
@@ -143,127 +149,127 @@ export const queueResponseSchema = pipe(
 
 export const submissionSchema = pipe(
 	object({
-		id: pipe(string(), minLength(1)),
-		externalId: pipe(string(), minLength(1)),
-		version: nonNegative,
-		status: pipe(string(), minLength(1)),
-		stage: nonNegative,
-		title: pipe(string(), minLength(1)),
+		bomTotalCents: optional(pipe(number(), integer())),
+		decidedAt: optionalString,
+		demoUrl: optionalString,
 		description: optionalString,
-		track: pipe(string(), minLength(1)),
-		theme: optionalString,
-		phase: optionalString,
-		week: optional(pipe(number(), integer())),
+		externalId: pipe(string(), minLength(1)),
+		grantCapCents: optional(pipe(number(), integer())),
+		heldReason: optionalString,
+		hoursApprovedSeconds: optional(pipe(number(), integer())),
+		hoursClaimedSeconds: nonNegative,
+		hoursHackatimeSeconds: nonNegative,
+		hoursJournalSeconds: nonNegative,
+		id: pipe(string(), minLength(1)),
+		ingestedAt: timestamp,
 		makerEmail: pipe(string(), minLength(1)),
 		makerName: optionalString,
+		phase: optionalString,
 		repoUrl: optionalString,
-		demoUrl: optionalString,
-		thumbnailUrl: optionalString,
 		requestedTier: optional(pipe(number(), integer())),
-		grantCapCents: optional(pipe(number(), integer())),
-		bomTotalCents: optional(pipe(number(), integer())),
-		hoursClaimedSeconds: nonNegative,
-		hoursJournalSeconds: nonNegative,
-		hoursHackatimeSeconds: nonNegative,
-		hoursApprovedSeconds: optional(pipe(number(), integer())),
-		heldReason: optionalString,
-		ingestedAt: timestamp,
-		decidedAt: optionalString,
+		stage: nonNegative,
+		status: pipe(string(), minLength(1)),
+		theme: optionalString,
+		thumbnailUrl: optionalString,
+		title: pipe(string(), minLength(1)),
+		track: pipe(string(), minLength(1)),
 		updatedAt: timestamp,
+		version: nonNegative,
+		week: optional(pipe(number(), integer())),
 	}),
 	title("Submission"),
 )
 
 export const journalSchema = pipe(
 	object({
-		id: pipe(string(), minLength(1)),
 		at: timestamp,
-		seconds: nonNegative,
-		title: optionalString,
-		text: optionalString,
-		markdown: optionalString,
-		mediaCount: nonNegative,
 		clipCount: nonNegative,
 		coveredSeconds: nonNegative,
+		id: pipe(string(), minLength(1)),
+		markdown: optionalString,
+		mediaCount: nonNegative,
+		seconds: nonNegative,
+		text: optionalString,
+		title: optionalString,
 	}),
 	title("JournalEntry"),
 )
 
 export const bomLineSchema = pipe(
 	object({
+		link: optionalString,
 		name: pipe(string(), minLength(1)),
 		purpose: optionalString,
 		quantity: nonNegative,
 		unitCostCents: nonNegative,
 		vendor: optionalString,
-		link: optionalString,
 	}),
 	title("BomLine"),
 )
 
 export const reviewSchema = pipe(
 	object({
-		id: pipe(string(), minLength(1)),
-		stage: nonNegative,
+		createdAt: timestamp,
 		decision: pipe(string(), minLength(1)),
-		noteToMaker: string(),
-		internalNote: optionalString,
+		held: nonNegative,
 		hoursApprovedSeconds: optional(pipe(number(), integer())),
+		id: pipe(string(), minLength(1)),
+		internalNote: optionalString,
+		noteToMaker: string(),
 		reviewerEmail: pipe(string(), minLength(1)),
 		reviewerName: optionalString,
-		held: nonNegative,
-		createdAt: timestamp,
+		stage: nonNegative,
 	}),
 	title("Review"),
 )
 
 export const eventSchema = pipe(
 	object({
+		actorEmail: optionalString,
+		createdAt: timestamp,
+		data: optionalString,
 		id: pipe(string(), minLength(1)),
 		kind: pipe(string(), minLength(1)),
-		actorEmail: optionalString,
-		data: optionalString,
-		createdAt: timestamp,
 	}),
 	title("SubmissionEvent"),
 )
 
 export const priorReviewSchema = pipe(
 	object({
-		result: pipe(string(), minLength(1)),
-		feedback: optionalString,
-		reviewer: optionalString,
 		at: optionalString,
+		feedback: optionalString,
 		invalidated: optional(pipe(number(), integer())),
+		result: pipe(string(), minLength(1)),
+		reviewer: optionalString,
 	}),
 	title("PriorReview"),
 )
 
 export const reviewPolicySchema = pipe(
 	object({
-		holdOnWarn: pipe(number(), integer(), minValue(0), maxValue(1)),
+		fraudMinStage: nonNegative,
 		holdMinApprovedSeconds: nonNegative,
+		holdOnWarn: pipe(number(), integer(), minValue(0), maxValue(1)),
 		holdTiers: array(pipe(number(), integer())),
 		noteRequiredForChanges: pipe(number(), integer(), minValue(0), maxValue(1)),
-		fraudMinStage: nonNegative,
 	}),
 	title("ReviewPolicy"),
 )
 
 export const claimSchema = pipe(
 	object({
-		reviewerEmail: pipe(string(), minLength(1)),
-		reviewerName: optionalString,
 		expiresAt: timestamp,
 		isMine: pipe(number(), integer(), minValue(0), maxValue(1)),
+		reviewerEmail: pipe(string(), minLength(1)),
+		reviewerName: optionalString,
 	}),
 	title("ClaimState"),
 )
 
 export const draftSchema = pipe(
 	object({
-		note: string(),
 		internalNote: string(),
+		note: string(),
 		updatedAt: timestamp,
 	}),
 	title("DraftState"),
@@ -271,17 +277,17 @@ export const draftSchema = pipe(
 
 export const reviewBundleSchema = pipe(
 	object({
-		submission: submissionSchema,
-		checks: array(checkResultSchema),
-		journals: array(journalSchema),
+		acknowledgements: array(string()),
 		bom: array(bomLineSchema),
-		reviews: array(reviewSchema),
-		events: array(eventSchema),
-		priorReviews: array(priorReviewSchema),
+		checks: array(checkResultSchema),
 		claim: optional(claimSchema),
 		draft: optional(draftSchema),
-		acknowledgements: array(string()),
+		events: array(eventSchema),
+		journals: array(journalSchema),
 		policy: reviewPolicySchema,
+		priorReviews: array(priorReviewSchema),
+		reviews: array(reviewSchema),
+		submission: submissionSchema,
 	}),
 	title("ReviewBundle"),
 )
@@ -292,11 +298,11 @@ export const claimResponseSchema = pipe(object({ claim: claimSchema }), title("C
 
 export const draftRequestSchema = pipe(
 	object({
-		note: pipe(string(), maxLength(maxNote)),
-		internalNote: pipe(string(), maxLength(maxNote)),
-		values: string(),
-		checklist: string(),
 		adjustments: string(),
+		checklist: string(),
+		internalNote: pipe(string(), maxLength(maxNote)),
+		note: pipe(string(), maxLength(maxNote)),
+		values: string(),
 	}),
 	title("DraftRequest"),
 )
@@ -308,26 +314,26 @@ export const draftResponseSchema = pipe(
 
 export const decisionRequestSchema = pipe(
 	object({
-		decision: decisionValues,
-		version: nonNegative,
-		noteToMaker: pipe(string(), maxLength(maxNote)),
-		internalNote: pipe(string(), maxLength(maxNote)),
-		hoursApprovedSeconds: optional(pipe(number(), integer())),
 		acknowledgements: array(string()),
+		decision: decisionValues,
+		hoursApprovedSeconds: optional(pipe(number(), integer())),
 		idempotencyKey: pipe(string(), minLength(1), maxLength(120)),
+		internalNote: pipe(string(), maxLength(maxNote)),
+		noteToMaker: pipe(string(), maxLength(maxNote)),
+		version: nonNegative,
 	}),
 	title("DecisionRequest"),
 )
 
 export const decisionResultSchema = pipe(
 	object({
-		id: pipe(string(), minLength(1)),
-		status: pipe(string(), minLength(1)),
+		deliveryStatus: optionalString,
 		held: pipe(number(), integer(), minValue(0), maxValue(1)),
 		heldReason: optionalString,
-		outboxId: optionalString,
-		deliveryStatus: optionalString,
+		id: pipe(string(), minLength(1)),
 		nextId: optionalString,
+		outboxId: optionalString,
+		status: pipe(string(), minLength(1)),
 	}),
 	title("DecisionOutcome"),
 )
@@ -337,19 +343,21 @@ export const decisionResultSchema = pipe(
 export const ingestJournalSchema = pipe(
 	object({
 		at: pipe(string(), minLength(1)),
+		markdown: optionalString,
+		media: optional(
+			array(object({ alt: optionalString, type: optionalString, url: pipe(string(), minLength(1)) })),
+		),
 		minutes: optional(pipe(number(), integer())),
 		seconds: optional(pipe(number(), integer())),
 		text: pipe(string(), minLength(1)),
-		markdown: optionalString,
-		media: optional(array(object({ type: optionalString, url: pipe(string(), minLength(1)), alt: optionalString }))),
 		timelapses: optional(
 			array(
 				object({
-					provider: optionalString,
-					externalId: optionalString,
-					url: optionalString,
-					thumbnailUrl: optionalString,
 					coveredSeconds: optional(pipe(number(), integer())),
+					externalId: optionalString,
+					provider: optionalString,
+					thumbnailUrl: optionalString,
+					url: optionalString,
 				}),
 			),
 		),
@@ -359,11 +367,11 @@ export const ingestJournalSchema = pipe(
 
 export const ingestBomLineSchema = pipe(
 	object({
+		link: optionalString,
 		name: pipe(string(), minLength(1)),
 		qty: optional(pipe(number(), integer())),
 		unit_usd: optional(number()),
 		vendor: optionalString,
-		link: optionalString,
 	}),
 	title("IngestBomLine"),
 )
@@ -371,8 +379,8 @@ export const ingestBomLineSchema = pipe(
 export const ingestHoursSchema = pipe(
 	object({
 		claimed_seconds: nonNegative,
-		journal_seconds: nonNegative,
 		hackatime_seconds: nonNegative,
+		journal_seconds: nonNegative,
 		timelapse_seconds: optional(pipe(number(), integer())),
 	}),
 	title("IngestHours"),
@@ -380,28 +388,28 @@ export const ingestHoursSchema = pipe(
 
 export const ingestPriorReviewSchema = pipe(
 	object({
-		result: pipe(string(), minLength(1)),
-		feedback: optionalString,
-		reviewer: optionalString,
 		at: optionalString,
+		feedback: optionalString,
 		invalidated: optional(pipe(number(), integer())),
+		result: pipe(string(), minLength(1)),
+		reviewer: optionalString,
 	}),
 	title("IngestPriorReview"),
 )
 
 export const ingestMetaSchema = pipe(
 	object({
-		program: optionalString,
+		bom: optional(array(ingestBomLineSchema)),
+		grant_cap_cents: optional(pipe(number(), integer())),
+		hours: optional(ingestHoursSchema),
 		phase: optionalString,
+		prior_reviews: optional(array(ingestPriorReviewSchema)),
+		priority: optional(pipe(number(), integer())),
+		program: optionalString,
+		requested_tier: optional(pipe(number(), integer())),
+		submission_notes: optionalString,
 		theme: optionalString,
 		week: optional(pipe(number(), integer())),
-		requested_tier: optional(pipe(number(), integer())),
-		priority: optional(pipe(number(), integer())),
-		grant_cap_cents: optional(pipe(number(), integer())),
-		submission_notes: optionalString,
-		bom: optional(array(ingestBomLineSchema)),
-		hours: optional(ingestHoursSchema),
-		prior_reviews: optional(array(ingestPriorReviewSchema)),
 	}),
 	title("IngestMeta"),
 )
@@ -409,28 +417,28 @@ export const ingestMetaSchema = pipe(
 export const ingestMakerSchema = pipe(
 	object({
 		email: pipe(string(), minLength(1)),
+		hackatime_id: optionalString,
 		name: pipe(string(), minLength(1)),
 		slack_id: optionalString,
-		hackatime_id: optionalString,
 	}),
 	title("IngestMaker"),
 )
 
 export const ingestRequestSchema = pipe(
 	object({
-		external_id: pipe(string(), minLength(1), maxLength(200)),
-		ingest_version: optional(pipe(number(), integer())),
-		title: pipe(string(), minLength(1), maxLength(200)),
-		description: pipe(string(), minLength(1), maxLength(20000)),
-		repo_url: optionalString,
 		demo_url: optional(string()),
-		thumbnail_url: optional(string()),
-		track: optionalString,
+		description: pipe(string(), minLength(1), maxLength(20000)),
 		evidence: optional(array(string())),
+		external_id: pipe(string(), minLength(1), maxLength(200)),
 		hackatime_projects: optional(array(string())),
+		ingest_version: optional(pipe(number(), integer())),
 		journals: optional(array(ingestJournalSchema)),
 		maker: ingestMakerSchema,
 		meta: optional(ingestMetaSchema),
+		repo_url: optionalString,
+		thumbnail_url: optional(string()),
+		title: pipe(string(), minLength(1), maxLength(200)),
+		track: optionalString,
 	}),
 	title("IngestRequest"),
 )
@@ -458,10 +466,10 @@ export const withdrawResponseSchema = pipe(
 
 const stagesSchema = array(
 	object({
-		stage: nonNegative,
+		at: timestamp,
 		decision: pipe(string(), minLength(1)),
 		reviewer: optionalString,
-		at: timestamp,
+		stage: nonNegative,
 	}),
 )
 
@@ -473,48 +481,50 @@ const secondsBreakdownSchema = object({
 })
 
 const statusReviewSchema = object({
-	approved_seconds: nonNegative,
-	approved_minutes: nonNegative,
 	approved_hours: number(),
-	seconds_breakdown: secondsBreakdownSchema,
-	note_to_maker: string(),
+	approved_minutes: nonNegative,
+	approved_seconds: nonNegative,
 	audit_note: optionalString,
-	reviewer: optional(object({ email: optionalString, slack_id: optionalString })),
 	justification: optional(
 		object({
+			deflation_reason: optionalString,
 			hackatime_projects: optionalString,
 			technical_features: optionalString,
-			deflation_reason: optionalString,
 		}),
 	),
+	note_to_maker: string(),
+	reviewer: optional(object({ email: optionalString, slack_id: optionalString })),
+	seconds_breakdown: secondsBreakdownSchema,
 })
 
 const statusChecksSchema = object({
 	overall: pipe(string(), minLength(1)),
 	results: array(
 		object({
+			checked_at: timestamp,
 			key: pipe(string(), minLength(1)),
 			status: pipe(string(), minLength(1)),
 			summary: pipe(string(), minLength(1)),
-			checked_at: timestamp,
 		}),
 	),
 })
 
 export const statusResponseSchema = pipe(
 	object({
-		id: pipe(string(), minLength(1)),
-		external_id: pipe(string(), minLength(1)),
-		version: nonNegative,
-		phase: pipe(string(), minLength(1)),
+		checks: statusChecksSchema,
 		decision: optional(string()),
+		external_id: pipe(string(), minLength(1)),
+		fraud: optional(
+			object({ provider: optionalString, score: optional(pipe(number(), integer())), status: string() }),
+		),
+		id: pipe(string(), minLength(1)),
+		phase: pipe(string(), minLength(1)),
 		review: optional(statusReviewSchema),
 		stage: nonNegative,
 		stage_history: stagesSchema,
-		checks: statusChecksSchema,
-		fraud: optional(object({ status: string(), provider: optionalString, score: optional(pipe(number(), integer())) })),
-		timeline: array(object({ kind: pipe(string(), minLength(1)), at: timestamp })),
+		timeline: array(object({ at: timestamp, kind: pipe(string(), minLength(1)) })),
 		updated_at: timestamp,
+		version: nonNegative,
 	}),
 	title("StatusResponse"),
 )
@@ -523,42 +533,53 @@ export const statusResponseSchema = pipe(
 
 export const reviewEventSchema = pipe(
 	object({
-		event: pipe(string(), minLength(1)),
-		id: pipe(string(), minLength(1)),
-		external_id: pipe(string(), minLength(1)),
-		decision: pipe(string(), minLength(1)),
-		stage: nonNegative,
-		stage_history: optional(
-			array(object({ stage: nonNegative, decision: string(), reviewer: optionalString, at: timestamp })),
-		),
 		createdAt: timestamp,
+		decision: pipe(string(), minLength(1)),
+		event: pipe(string(), minLength(1)),
+		external_id: pipe(string(), minLength(1)),
+		id: pipe(string(), minLength(1)),
 		review: object({
-			approved_seconds: nonNegative,
-			approved_minutes: nonNegative,
 			approved_hours: number(),
-			seconds_breakdown: secondsBreakdownSchema,
-			note_to_maker: string(),
+			approved_minutes: nonNegative,
+			approved_seconds: nonNegative,
 			audit_note: optionalString,
-			reviewer: optional(object({ email: optionalString, slack_id: optionalString })),
 			justification: optional(
 				object({
+					deflation_reason: optionalString,
 					hackatime_projects: optionalString,
 					technical_features: optionalString,
-					deflation_reason: optionalString,
 				}),
 			),
+			note_to_maker: string(),
+			reviewer: optional(object({ email: optionalString, slack_id: optionalString })),
+			seconds_breakdown: secondsBreakdownSchema,
 		}),
+		stage: nonNegative,
+		stage_history: optional(
+			array(object({ at: timestamp, decision: string(), reviewer: optionalString, stage: nonNegative })),
+		),
 	}),
 	title("ReviewEvent"),
 )
 
 export const reviewsResponseSchema = pipe(
-	object({ reviews: array(reviewEventSchema), cursor: optionalString }),
+	object({ cursor: optionalString, reviews: array(reviewEventSchema) }),
 	title("ReviewsResponse"),
 )
 
 export const eventsResponseSchema = pipe(
-	object({ events: array(object({ id: string(), submissionId: string(), kind: string(), actorEmail: optionalString, data: optionalString, createdAt: timestamp })) }),
+	object({
+		events: array(
+			object({
+				actorEmail: optionalString,
+				createdAt: timestamp,
+				data: optionalString,
+				id: string(),
+				kind: string(),
+				submissionId: string(),
+			}),
+		),
+	}),
 	title("EventsResponse"),
 )
 
@@ -566,36 +587,33 @@ export const eventsResponseSchema = pipe(
 
 export const outboxRowSchema = pipe(
 	object({
-		id: pipe(string(), minLength(1)),
-		submissionId: optionalString,
-		event: pipe(string(), minLength(1)),
-		status: pipe(string(), minLength(1)),
 		attempts: nonNegative,
-		lastHttpStatus: optional(pipe(number(), integer())),
-		lastError: optionalString,
 		createdAt: timestamp,
 		deliveredAt: optionalString,
 		deliveryId: optionalString,
+		event: pipe(string(), minLength(1)),
+		id: pipe(string(), minLength(1)),
+		lastError: optionalString,
+		lastHttpStatus: optional(pipe(number(), integer())),
 		payload: optionalString,
+		status: pipe(string(), minLength(1)),
+		submissionId: optionalString,
 	}),
 	title("OutboxRow"),
 )
 
-export const outboxResponseSchema = pipe(
-	object({ deliveries: array(outboxRowSchema) }),
-	title("OutboxResponse"),
-)
+export const outboxResponseSchema = pipe(object({ deliveries: array(outboxRowSchema) }), title("OutboxResponse"))
 
 export const fakeDeliverySchema = pipe(
 	object({
-		id: pipe(string(), minLength(1)),
+		body: pipe(string(), minLength(1)),
 		deliveryId: pipe(string(), minLength(1)),
 		event: pipe(string(), minLength(1)),
-		timestamp: pipe(string(), minLength(1)),
-		body: pipe(string(), minLength(1)),
-		signature: pipe(string(), minLength(1)),
-		verified: pipe(number(), integer(), minValue(0), maxValue(1)),
+		id: pipe(string(), minLength(1)),
 		receivedAt: timestamp,
+		signature: pipe(string(), minLength(1)),
+		timestamp: pipe(string(), minLength(1)),
+		verified: pipe(number(), integer(), minValue(0), maxValue(1)),
 	}),
 	title("FakeDelivery"),
 )
@@ -618,6 +636,7 @@ export const responseSchemas = Object.freeze([
 	checkResultSchema,
 	checkSummarySchema,
 	claimResponseSchema,
+	authConfigSchema,
 	decisionResultSchema,
 	draftResponseSchema,
 	errorResponseSchema,

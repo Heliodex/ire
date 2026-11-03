@@ -7,6 +7,35 @@ import "fmt"
 import "regexp"
 import "unicode/utf8"
 
+type AuthConfig struct {
+	// Dev corresponds to the JSON schema field "dev".
+	Dev bool `json:"dev" yaml:"dev" mapstructure:"dev"`
+
+	// Hca corresponds to the JSON schema field "hca".
+	Hca bool `json:"hca" yaml:"hca" mapstructure:"hca"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AuthConfig) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["dev"]; raw != nil && !ok {
+		return fmt.Errorf("field dev in AuthConfig: required")
+	}
+	if _, ok := raw["hca"]; raw != nil && !ok {
+		return fmt.Errorf("field hca in AuthConfig: required")
+	}
+	type Plain AuthConfig
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = AuthConfig(plain)
+	return nil
+}
+
 type BomLine struct {
 	// Link corresponds to the JSON schema field "link".
 	Link *string `json:"link,omitempty,omitzero" yaml:"link,omitempty" mapstructure:"link,omitempty"`

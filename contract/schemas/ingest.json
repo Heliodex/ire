@@ -1,35 +1,13 @@
 {
 	"type": "object",
 	"properties": {
-		"external_id": {
-			"type": "string",
-			"minLength": 1,
-			"maxLength": 200
-		},
-		"ingest_version": {
-			"type": "integer"
-		},
-		"title": {
-			"type": "string",
-			"minLength": 1,
-			"maxLength": 200
+		"demo_url": {
+			"type": "string"
 		},
 		"description": {
 			"type": "string",
 			"minLength": 1,
 			"maxLength": 20000
-		},
-		"repo_url": {
-			"type": "string"
-		},
-		"demo_url": {
-			"type": "string"
-		},
-		"thumbnail_url": {
-			"type": "string"
-		},
-		"track": {
-			"type": "string"
 		},
 		"evidence": {
 			"type": "array",
@@ -37,11 +15,19 @@
 				"type": "string"
 			}
 		},
+		"external_id": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 200
+		},
 		"hackatime_projects": {
 			"type": "array",
 			"items": {
 				"type": "string"
 			}
+		},
+		"ingest_version": {
+			"type": "integer"
 		},
 		"journals": {
 			"type": "array",
@@ -49,16 +35,6 @@
 				"type": "object",
 				"properties": {
 					"at": {
-						"type": "string",
-						"minLength": 1
-					},
-					"minutes": {
-						"type": "integer"
-					},
-					"seconds": {
-						"type": "integer"
-					},
-					"text": {
 						"type": "string",
 						"minLength": 1
 					},
@@ -70,15 +46,15 @@
 						"items": {
 							"type": "object",
 							"properties": {
+								"alt": {
+									"type": "string"
+								},
 								"type": {
 									"type": "string"
 								},
 								"url": {
 									"type": "string",
 									"minLength": 1
-								},
-								"alt": {
-									"type": "string"
 								}
 							},
 							"required": [
@@ -86,25 +62,35 @@
 							]
 						}
 					},
+					"minutes": {
+						"type": "integer"
+					},
+					"seconds": {
+						"type": "integer"
+					},
+					"text": {
+						"type": "string",
+						"minLength": 1
+					},
 					"timelapses": {
 						"type": "array",
 						"items": {
 							"type": "object",
 							"properties": {
-								"provider": {
-									"type": "string"
+								"coveredSeconds": {
+									"type": "integer"
 								},
 								"externalId": {
 									"type": "string"
 								},
-								"url": {
+								"provider": {
 									"type": "string"
 								},
 								"thumbnailUrl": {
 									"type": "string"
 								},
-								"coveredSeconds": {
-									"type": "integer"
+								"url": {
+									"type": "string"
 								}
 							},
 							"required": []
@@ -125,14 +111,14 @@
 					"type": "string",
 					"minLength": 1
 				},
+				"hackatime_id": {
+					"type": "string"
+				},
 				"name": {
 					"type": "string",
 					"minLength": 1
 				},
 				"slack_id": {
-					"type": "string"
-				},
-				"hackatime_id": {
 					"type": "string"
 				}
 			},
@@ -145,35 +131,14 @@
 		"meta": {
 			"type": "object",
 			"properties": {
-				"program": {
-					"type": "string"
-				},
-				"phase": {
-					"type": "string"
-				},
-				"theme": {
-					"type": "string"
-				},
-				"week": {
-					"type": "integer"
-				},
-				"requested_tier": {
-					"type": "integer"
-				},
-				"priority": {
-					"type": "integer"
-				},
-				"grant_cap_cents": {
-					"type": "integer"
-				},
-				"submission_notes": {
-					"type": "string"
-				},
 				"bom": {
 					"type": "array",
 					"items": {
 						"type": "object",
 						"properties": {
+							"link": {
+								"type": "string"
+							},
 							"name": {
 								"type": "string",
 								"minLength": 1
@@ -186,9 +151,6 @@
 							},
 							"vendor": {
 								"type": "string"
-							},
-							"link": {
-								"type": "string"
 							}
 						},
 						"required": [
@@ -197,6 +159,9 @@
 						"title": "IngestBomLine"
 					}
 				},
+				"grant_cap_cents": {
+					"type": "integer"
+				},
 				"hours": {
 					"type": "object",
 					"properties": {
@@ -204,11 +169,11 @@
 							"type": "integer",
 							"minimum": 0
 						},
-						"journal_seconds": {
+						"hackatime_seconds": {
 							"type": "integer",
 							"minimum": 0
 						},
-						"hackatime_seconds": {
+						"journal_seconds": {
 							"type": "integer",
 							"minimum": 0
 						},
@@ -218,31 +183,34 @@
 					},
 					"required": [
 						"claimed_seconds",
-						"journal_seconds",
-						"hackatime_seconds"
+						"hackatime_seconds",
+						"journal_seconds"
 					],
 					"title": "IngestHours"
+				},
+				"phase": {
+					"type": "string"
 				},
 				"prior_reviews": {
 					"type": "array",
 					"items": {
 						"type": "object",
 						"properties": {
-							"result": {
-								"type": "string",
-								"minLength": 1
+							"at": {
+								"type": "string"
 							},
 							"feedback": {
 								"type": "string"
 							},
-							"reviewer": {
-								"type": "string"
-							},
-							"at": {
-								"type": "string"
-							},
 							"invalidated": {
 								"type": "integer"
+							},
+							"result": {
+								"type": "string",
+								"minLength": 1
+							},
+							"reviewer": {
+								"type": "string"
 							}
 						},
 						"required": [
@@ -250,17 +218,49 @@
 						],
 						"title": "IngestPriorReview"
 					}
+				},
+				"priority": {
+					"type": "integer"
+				},
+				"program": {
+					"type": "string"
+				},
+				"requested_tier": {
+					"type": "integer"
+				},
+				"submission_notes": {
+					"type": "string"
+				},
+				"theme": {
+					"type": "string"
+				},
+				"week": {
+					"type": "integer"
 				}
 			},
 			"required": [],
 			"title": "IngestMeta"
+		},
+		"repo_url": {
+			"type": "string"
+		},
+		"thumbnail_url": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 200
+		},
+		"track": {
+			"type": "string"
 		}
 	},
 	"required": [
-		"external_id",
-		"title",
 		"description",
-		"maker"
+		"external_id",
+		"maker",
+		"title"
 	],
 	"title": "IngestRequest",
 	"$schema": "http://json-schema.org/draft-07/schema#",

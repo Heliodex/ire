@@ -1,9 +1,10 @@
 <script lang="ts">
+import { onMount } from "svelte"
 import { afterNavigate, goto } from "$app/navigation"
 import { page } from "$app/state"
-import { onMount } from "svelte"
-import { ApiError } from "../../lib/api-error"
 import {
+	type Bundle,
+	type Check,
 	claimShip,
 	decideShip,
 	fetchBundle,
@@ -12,9 +13,9 @@ import {
 	program,
 	releaseShip,
 	saveDraft,
-	type Bundle,
-	type Check,
 } from "../../lib/api"
+import { ApiError } from "../../lib/api-error"
+import { ignore, sleep } from "../../lib/async"
 import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -39,13 +40,13 @@ let idempotencyKey = $state("")
 
 const submission = $derived(bundle?.submission ?? null)
 const secondPass = $derived(submission?.stage === 2 || submission?.status === "stage2_hold")
-const role = $derived(session.me?.programs.find((item) => item.programSlug === program)?.role ?? "")
+const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
 const canDecide = $derived(!secondPass || canSecondPass)
-const heldReview = $derived(bundle?.reviews.find((review) => review.held === 1) ?? null)
+const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
-const missingAcks = $derived(warnings.filter((check) => !acknowledgements.includes(check.key)))
+const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const canApprove = $derived(blocking.length === 0 && (secondPass || missingAcks.length === 0))
 const groups = $derived(groupChecks(bundle?.checks ?? []))
 
@@ -60,7 +61,7 @@ afterNavigate((): void => {
 	acknowledgements = []
 	idempotencyKey = ""
 
-	if (previous && previous !== next) void releaseShip(previous).catch(() => {})
+	if (previous && previous !== next) ignore(releaseShip(previous))
 
 	claimedId = ""
 	void load(next)
@@ -78,7 +79,7 @@ onMount((): (() => void) => {
 	const beat = setInterval((): void => {
 		// A backgrounded tab does not need to hold the claim awake; the TTL releases it if the reviewer walks away.
 		if (document.visibilityState !== "visible" || claimedId === "") return
-		void heartbeat(claimedId).catch(() => {})
+		ignore(heartbeat(claimedId))
 	}, 60000)
 
 	function onKeydown(event: KeyboardEvent): void {
@@ -96,11 +97,8 @@ onMount((): (() => void) => {
 		} else if (event.key === "r") {
 			event.preventDefault()
 			void decide("rejected")
-		} else if (event.key === "Escape") {
-			void goto("/queue")
-		} else if (event.key === "?") {
-			showShortcuts = !showShortcuts
-		}
+		} else if (event.key === "Escape") void goto("/queue")
+		else if (event.key === "?") showShortcuts = !showShortcuts
 	}
 
 	window.addEventListener("keydown", onKeydown)
@@ -108,7 +106,7 @@ onMount((): (() => void) => {
 	return (): void => {
 		clearInterval(beat)
 		window.removeEventListener("keydown", onKeydown)
-		if (claimedId !== "") void releaseShip(claimedId).catch(() => {})
+		if (claimedId !== "") ignore(releaseShip(claimedId))
 	}
 })
 
@@ -134,7 +132,7 @@ async function load(target = id): Promise<void> {
 
 		let next = fetched
 		const canClaim = fetched.submission.stage !== 2 || canSecondPass
-		if (canClaim && (!fetched.claim || fetched.claim.isMine !== 1)) {
+		if (canClaim && fetched.claim?.isMine !== 1) {
 			await claimShip(target)
 			next = await fetchBundle(target)
 			if (target !== id) return
@@ -144,10 +142,7 @@ async function load(target = id): Promise<void> {
 		claimedId = target
 
 		// Restore the server-side draft so a refresh or another device does not lose typed notes.
-		if (next.draft) {
-			note = next.draft.note
-			internalNote = next.draft.internalNote
-		}
+		if (next.draft) ({ note, internalNote } = next.draft)
 
 		hourInit()
 		error = ""
@@ -192,17 +187,17 @@ function groupChecks(checks: Check[]): { group: string; items: Check[] }[] {
 		map.set(check.group, list)
 	}
 	return [...map.entries()]
-		.sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
+		.toSorted(([a], [b]) => order.indexOf(a) - order.indexOf(b))
 		.map(([group, items]) => ({ group, items }))
 }
 
 function toggleAck(key: string): void {
-	if (acknowledgements.includes(key)) acknowledgements = acknowledgements.filter((value) => value !== key)
+	if (acknowledgements.includes(key)) acknowledgements = acknowledgements.filter(value => value !== key)
 	else acknowledgements = [...acknowledgements, key]
 }
 
 function acknowledgeAll(): void {
-	acknowledgements = warnings.map((check) => check.key)
+	acknowledgements = warnings.map(check => check.key)
 }
 
 async function decide(decision: "approved" | "changes" | "rejected"): Promise<void> {
@@ -238,33 +233,32 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		idempotencyKey = key
 
 		const result = await decideShip(id, {
-			decision,
-			version: bundle.submission.version,
-			noteToMaker: note.trim(),
-			internalNote: internalNote.trim(),
-			hoursApprovedSeconds: Math.max(0, Math.round(hours * 3600)),
 			acknowledgements,
+			decision,
+			hoursApprovedSeconds: Math.max(0, Math.round(hours * 3600)),
 			idempotencyKey: key,
+			internalNote: internalNote.trim(),
+			noteToMaker: note.trim(),
+			version: bundle.submission.version,
 		})
 		idempotencyKey = ""
 
-		if (result.held === 1) {
-			flash(`Held for the second pass: ${result.heldReason ?? "policy"}.`)
-		} else {
-			const verb = decision === "approved" ? "Approved" : decision === "changes" ? "Changes requested" : "Rejected"
-			flash(`${verb} and sent${result.deliveryStatus ? ` (${result.deliveryStatus})` : ""}.`)
+		if (result.held === 1) flash(`Held for the second pass: ${result.heldReason ?? "policy"}.`)
+		else {
+			const verb =
+				decision === "approved" ? "Approved" : decision === "changes" ? "Changes requested" : "Rejected"
+			const delivery = result.deliveryStatus ? ` (${result.deliveryStatus})` : ""
+			flash(`${verb} and sent${delivery}.`)
 		}
 
-		await new Promise((resolve) => setTimeout(resolve, 300))
+		await sleep(300)
 
 		if (result.nextId) await goto(`/review?id=${encodeURIComponent(result.nextId)}`)
 		else await goto("/queue")
 	} catch (err) {
-		if (err instanceof ApiError && err.code === "stale_version") {
+		if (err instanceof ApiError && err.code === "stale_version")
 			actionError = "This ship changed since you opened it. Reload before deciding."
-		} else {
-			actionError = err instanceof Error ? err.message : "Could not record the decision."
-		}
+		else actionError = err instanceof Error ? err.message : "Could not record the decision."
 	} finally {
 		deciding = false
 	}
@@ -280,7 +274,7 @@ function flash(message: string): void {
 async function saveDraftNow(): Promise<void> {
 	if (!bundle) return
 	try {
-		await saveDraft(id, { note, internalNote })
+		await saveDraft(id, { internalNote, note })
 	} catch {
 		// Draft saving is best effort; the decision is the durable write.
 	}
@@ -309,7 +303,9 @@ async function saveDraftNow(): Promise<void> {
 				<a href="/queue">Queue</a>
 				<span>/</span>
 				{humanStatus(submission.status)}
-				{#if submission.theme}<span>/</span>{submission.theme}{/if}
+				{#if submission.theme}
+					<span>/</span>{submission.theme}
+				{/if}
 			</p>
 			<div class="title-line">
 				<h1>{submission.title}</h1>
@@ -317,19 +313,35 @@ async function saveDraftNow(): Promise<void> {
 				<span class="version">v{submission.version}</span>
 			</div>
 			<p class="maker">
-				{#if submission.makerName}{submission.makerName} · {/if}{submission.makerEmail}
-				{#if submission.week}<span>· Week {submission.week}</span>{/if}
-				{#if submission.requestedTier}<span>· Tier {submission.requestedTier}</span>{/if}
+				{#if submission.makerName}
+					{submission.makerName}
+					·
+				{/if}
+				{submission.makerEmail}
+				{#if submission.week}
+					<span>· Week {submission.week}</span>
+				{/if}
+				{#if submission.requestedTier}
+					<span>· Tier {submission.requestedTier}</span>
+				{/if}
 			</p>
 		</div>
 		<div class="head-links">
 			{#if submission.repoUrl}
-				<a class="ui-button ghost sm" href={submission.repoUrl} rel="noreferrer" target="_blank">Repository ↗</a>
+				<a class="ui-button ghost sm" href={submission.repoUrl} rel="noreferrer" target="_blank"
+					>Repository ↗</a
+				>
 			{/if}
 			{#if submission.demoUrl}
 				<a class="ui-button ghost sm" href={submission.demoUrl} rel="noreferrer" target="_blank">Demo ↗</a>
 			{/if}
-			<button class="ui-button ghost sm" onclick={(): void => { showShortcuts = !showShortcuts }} type="button">
+			<button
+				class="ui-button ghost sm"
+				onclick={(): void => {
+					showShortcuts = !showShortcuts
+				}}
+				type="button"
+			>
 				Shortcuts <kbd class="ui-kbd">?</kbd>
 			</button>
 		</div>
@@ -349,7 +361,7 @@ async function saveDraftNow(): Promise<void> {
 			<span class="ui-badge" data-tone="secondpass">Second pass</span>
 			<span>{submission.heldReason ?? "Held for a second review."}</span>
 		</div>
-		{#if heldReview && heldReview.noteToMaker}
+		{#if heldReview?.noteToMaker}
 			<div class="first-pass">
 				<strong>First pass · {heldReview.reviewerEmail}</strong>
 				<p>{heldReview.noteToMaker}</p>
@@ -360,15 +372,24 @@ async function saveDraftNow(): Promise<void> {
 	<div class="layout">
 		<section class="content">
 			<div aria-label="Ship sections" class="ui-tabs" role="tablist">
-				{#each [{ key: "overview", label: "Overview" }, { key: "checks", label: `Checks (${bundle.checks.length})` }, { key: "journal", label: `Journal (${bundle.journals.length})` }, { key: "bom", label: `BOM (${bundle.bom.length})` }] as item (item.key)}
+				{#each [
+					{ key: "overview", label: "Overview" },
+					{ key: "checks", label: `Checks (${bundle.checks.length})` },
+					{ key: "journal", label: `Journal (${bundle.journals.length})` },
+					{ key: "bom", label: `BOM (${bundle.bom.length})` },
+				] as item (item.key)}
 					<button
 						aria-selected={tab === item.key}
 						class="ui-tab"
-						class:active={tab === item.key}
-						onclick={(): void => { tab = item.key as Tab }}
+						onclick={(): void => {
+							tab = item.key as Tab
+						}}
 						role="tab"
 						type="button"
-					>{item.label}</button>
+						class:active={tab === item.key}
+					>
+						{item.label}
+					</button>
 				{/each}
 			</div>
 
@@ -389,7 +410,9 @@ async function saveDraftNow(): Promise<void> {
 					<div class="stats">
 						<div><span>Claimed</span><strong>{formatHours(submission.hoursClaimedSeconds)}</strong></div>
 						<div><span>Journals</span><strong>{formatHours(submission.hoursJournalSeconds)}</strong></div>
-						<div><span>Hackatime</span><strong>{formatHours(submission.hoursHackatimeSeconds)}</strong></div>
+						<div>
+							<span>Hackatime</span><strong>{formatHours(submission.hoursHackatimeSeconds)}</strong>
+						</div>
 						<div><span>BOM</span><strong>{formatMoney(submission.bomTotalCents)}</strong></div>
 					</div>
 
@@ -398,7 +421,13 @@ async function saveDraftNow(): Promise<void> {
 							<h3>Prior review</h3>
 							{#each bundle.priorReviews as prior (prior.at)}
 								<div class="prior-row">
-									<span class="ui-badge" data-tone={statusTone(prior.result.toLowerCase().includes("approved") ? "approved" : "changes")}>{prior.result}</span>
+									<span
+										class="ui-badge"
+										data-tone={statusTone(
+											prior.result.toLowerCase().includes("approved") ? "approved" : "changes",
+										)}
+										>{prior.result}</span
+									>
 									<p>{prior.feedback}</p>
 									<small>{prior.reviewer ?? "Reviewer"} · {formatDateTime(prior.at)}</small>
 								</div>
@@ -413,7 +442,9 @@ async function saveDraftNow(): Promise<void> {
 								<span class="dot"></span>
 								<div>
 									<strong>{event.kind}</strong>
-									{#if event.actorEmail}<span> · {event.actorEmail}</span>{/if}
+									{#if event.actorEmail}
+										<span> · {event.actorEmail}</span>
+									{/if}
 									<small>{formatDateTime(event.createdAt)}</small>
 								</div>
 							</div>
@@ -446,7 +477,9 @@ async function saveDraftNow(): Promise<void> {
 							<h2>{group.group}</h2>
 							{#each group.items as check (check.key)}
 								<div class="check">
-									<span class="ui-badge check-status" data-tone={statusTone(check.status)}>{check.status}</span>
+									<span class="ui-badge check-status" data-tone={statusTone(check.status)}
+										>{check.status}</span
+									>
 									<span class="check-label">{check.label}</span>
 									<code class="check-key ui-mono" title={check.key}>{check.key}</code>
 									{#if isWarning(check)}
@@ -464,7 +497,9 @@ async function saveDraftNow(): Promise<void> {
 									{/if}
 									<span class="check-detail">
 										<span class="check-summary">{check.summary}</span>
-										{#if check.detail}<span class="check-note">{check.detail}</span>{/if}
+										{#if check.detail}
+											<span class="check-note">{check.detail}</span>
+										{/if}
 									</span>
 								</div>
 							{/each}
@@ -486,7 +521,11 @@ async function saveDraftNow(): Promise<void> {
 									<span>{formatHours(entry.seconds)} · {formatDateTime(entry.at)}</span>
 								</div>
 								{#if entry.clipCount > 0}
-									<span class="ui-badge" data-tone="approved">{entry.clipCount} clip{entry.clipCount === 1 ? "" : "s"} · {formatHours(entry.coveredSeconds)} covered</span>
+									<span class="ui-badge" data-tone="approved"
+										>{entry.clipCount}
+										clip{entry.clipCount === 1 ? "" : "s"}
+										· {formatHours(entry.coveredSeconds)} covered</span
+									>
 								{/if}
 								<p>{entry.text || "No written entry."}</p>
 								{#if entry.mediaCount > 0}
@@ -506,12 +545,24 @@ async function saveDraftNow(): Promise<void> {
 					<div class="ui-card table-wrap">
 						<table class="ui-table">
 							<thead>
-								<tr><th>Part</th><th>Purpose</th><th class="num">Qty</th><th class="num">Unit (US$)</th><th>Vendor</th></tr>
+								<tr>
+									<th>Part</th>
+									<th>Purpose</th>
+									<th class="num">Qty</th>
+									<th class="num">Unit (US$)</th>
+									<th>Vendor</th>
+								</tr>
 							</thead>
 							<tbody>
 								{#each bundle.bom as line (line.name)}
 									<tr>
-										<td>{#if line.link}<a href={line.link} rel="noreferrer" target="_blank">{line.name} ↗</a>{:else}{line.name}{/if}</td>
+										<td>
+											{#if line.link}
+												<a href={line.link} rel="noreferrer" target="_blank">{line.name} ↗</a>
+											{:else}
+												{line.name}
+											{/if}
+										</td>
 										<td>{line.purpose ?? "–"}</td>
 										<td class="num">{line.quantity}</td>
 										<td class="num">{formatMoneyAmount(line.unitCostCents)}</td>
@@ -536,12 +587,15 @@ async function saveDraftNow(): Promise<void> {
 			<section class="ui-card padded summary">
 				<div class="summary-head">
 					<h2>Checks</h2>
-					<span class="ui-badge" data-tone={statusTone(bundle.checks.length > 0 ? overall(bundle.checks) : "pass")}>
+					<span
+						class="ui-badge"
+						data-tone={statusTone(bundle.checks.length > 0 ? overall(bundle.checks) : "pass")}
+					>
 						{bundle.checks.length > 0 ? overall(bundle.checks) : "pass"}
 					</span>
 				</div>
 				<div class="summary-counts">
-					<span><strong>{bundle.checks.filter((check) => check.status === "pass").length}</strong> pass</span>
+					<span><strong>{bundle.checks.filter(check => check.status === "pass").length}</strong> pass</span>
 					<span><strong>{warnings.length}</strong> warn</span>
 					<span><strong>{blocking.length}</strong> block</span>
 				</div>
@@ -561,31 +615,34 @@ async function saveDraftNow(): Promise<void> {
 				<label class="field">
 					<span>Approved hours</span>
 					<span class="hours-row">
-						<input bind:value={hours} class="ui-input" max="720" min="0" step="0.25" type="number">
+						<input class="ui-input" max="720" min="0" step="0.25" type="number" bind:value={hours}>
 						<span class="hours-hint">/ {formatHours(submission.hoursClaimedSeconds)} claimed</span>
 					</span>
 				</label>
 
 				<label class="field">
-					<span>Note to maker {!secondPass && (missingAcks.length > 0 || blocking.length > 0) ? "" : "(optional)"}</span>
+					<span
+						>Note to maker
+						{!secondPass && (missingAcks.length > 0 || blocking.length > 0) ? "" : "(optional)"}</span
+					>
 					<textarea
-						bind:this={noteElement}
-						bind:value={note}
 						class="ui-input"
 						onblur={(): void => void saveDraftNow()}
 						placeholder="What should they change, or why is this good?"
 						rows="5"
+						bind:this={noteElement}
+						bind:value={note}
 					></textarea>
 				</label>
 
 				<label class="field">
 					<span>Internal note</span>
 					<textarea
-						bind:value={internalNote}
 						class="ui-input"
 						onblur={(): void => void saveDraftNow()}
 						placeholder="Only the team sees this."
 						rows="2"
+						bind:value={internalNote}
 					></textarea>
 				</label>
 
@@ -593,7 +650,15 @@ async function saveDraftNow(): Promise<void> {
 					<div class="ui-notice" data-tone="warn">
 						<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
 						Acknowledge them in Checks to unlock approve.
-						<button class="link" onclick={(): void => { tab = "checks" }} type="button">Open checks</button>
+						<button
+							class="link"
+							onclick={(): void => {
+								tab = "checks"
+							}}
+							type="button"
+						>
+							Open checks
+						</button>
 					</div>
 				{/if}
 
@@ -601,7 +666,15 @@ async function saveDraftNow(): Promise<void> {
 					<div class="ui-notice" data-tone="bad">
 						<strong>Approval disabled</strong>
 						{blocking[0].summary}.
-						<button class="link" onclick={(): void => { tab = "checks" }} type="button">Read the blocking check</button>
+						<button
+							class="link"
+							onclick={(): void => {
+								tab = "checks"
+							}}
+							type="button"
+						>
+							Read the blocking check
+						</button>
 					</div>
 				{/if}
 
@@ -619,17 +692,29 @@ async function saveDraftNow(): Promise<void> {
 						{deciding ? "Saving…" : secondPass ? "Confirm approval" : "Approve"} <kbd class="ui-kbd">A</kbd>
 					</button>
 					<div class="secondary">
-						<button class="ui-button changes" disabled={deciding || !canDecide} onclick={(): Promise<void> => decide("changes")} type="button">
+						<button
+							class="ui-button changes"
+							disabled={deciding || !canDecide}
+							onclick={(): Promise<void> => decide("changes")}
+							type="button"
+						>
 							Request changes
 						</button>
-						<button class="ui-button danger" disabled={deciding || !canDecide} onclick={(): Promise<void> => decide("rejected")} type="button">
+						<button
+							class="ui-button danger"
+							disabled={deciding || !canDecide}
+							onclick={(): Promise<void> => decide("rejected")}
+							type="button"
+						>
 							Reject
 						</button>
 					</div>
 				</div>
 
 				{#if bundle.claim}
-					<p class="claim">Claimed by {bundle.claim.reviewerEmail} until {formatDateTime(bundle.claim.expiresAt)}</p>
+					<p class="claim">
+						Claimed by {bundle.claim.reviewerEmail} until {formatDateTime(bundle.claim.expiresAt)}
+					</p>
 				{/if}
 			</section>
 		</aside>
@@ -649,6 +734,11 @@ async function saveDraftNow(): Promise<void> {
 .loading div {
 	height: 150px;
 	animation: pulse 1.4s ease-in-out infinite;
+}
+
+h1 {
+	font-size: var(--text-2xl);
+	overflow-wrap: anywhere;
 }
 
 .missing {
@@ -703,11 +793,6 @@ async function saveDraftNow(): Promise<void> {
 	flex-wrap: wrap;
 	gap: var(--space-2);
 	align-items: center;
-}
-
-h1 {
-	font-size: var(--text-2xl);
-	overflow-wrap: anywhere;
 }
 
 .version {
@@ -786,6 +871,12 @@ h1 {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+}
+
+.journals {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
 }
 
 .content > .ui-card,
@@ -927,8 +1018,8 @@ h1 {
 .check {
 	display: grid;
 	grid-template-columns: 58px 190px minmax(0, 1fr) 64px;
-	column-gap: var(--space-3);
 	row-gap: var(--space-1);
+	column-gap: var(--space-3);
 	align-items: start;
 	padding: var(--space-2) var(--space-4);
 	border-top: 1px solid var(--border);
@@ -948,11 +1039,11 @@ h1 {
 }
 
 .check-key {
-	overflow: hidden;
 	padding-top: 2px;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	font-size: var(--text-xs);
 	color: var(--text-3);
-	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
@@ -986,12 +1077,6 @@ h1 {
 
 .ack input {
 	accent-color: var(--primary);
-}
-
-.journals {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-2);
 }
 
 .journal-head {
@@ -1054,8 +1139,8 @@ h1 {
 }
 
 .summary-counts strong {
-	color: var(--text);
 	font-variant-numeric: tabular-nums;
+	color: var(--text);
 }
 
 .policy {
@@ -1170,10 +1255,10 @@ h1 {
 
 @media (max-width: 760px) {
 	.check {
-		grid-template-columns: 54px minmax(0, 1fr) minmax(90px, 150px);
 		grid-template-areas:
 			"status label key"
 			"detail detail ack";
+		grid-template-columns: 54px minmax(0, 1fr) minmax(90px, 150px);
 		row-gap: var(--space-1);
 	}
 
@@ -1202,11 +1287,11 @@ h1 {
 
 @media (max-width: 500px) {
 	.check {
-		grid-template-columns: 54px minmax(0, 1fr) 56px;
 		grid-template-areas:
 			"status label ack"
 			"key key key"
 			"detail detail detail";
+		grid-template-columns: 54px minmax(0, 1fr) 56px;
 	}
 }
 
