@@ -666,12 +666,11 @@ h1 {
 	}
 
 	.row {
-		grid-template-columns: 64px minmax(0, 1fr) auto;
+		grid-template-columns: 64px auto minmax(0, 1fr) auto;
 		grid-template-areas:
-			"thumb title action"
-			"thumb badges badges"
-			"facts facts facts"
-			"checks checks checks";
+			"thumb title title action"
+			"thumb badges checks checks"
+			"facts facts facts facts";
 	}
 
 	.facts {
