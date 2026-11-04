@@ -114,11 +114,13 @@ type config struct {
 
 // reviewApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.
 type reviewApp struct {
-	store  *storage.Client
-	client *http.Client
-	mux    *http.ServeMux
-	config config
-	clock  func() time.Time
+	store          *storage.Client
+	client         *http.Client
+	mux            *http.ServeMux
+	config         config
+	clock          func() time.Time
+	browserLimiter *rateLimiter
+	machineLimiter *rateLimiter
 }
 
 // newReviewApp builds the routes around one store and outbound client.
@@ -135,6 +137,8 @@ func newReviewApp(store *storage.Client, client *http.Client, cfg config) *revie
 	}
 
 	a := &reviewApp{store: store, client: client, mux: http.NewServeMux(), config: cfg, clock: time.Now}
+	a.browserLimiter = newRateLimiter(browserRateLimit, a.now)
+	a.machineLimiter = newRateLimiter(machineRateLimit, a.now)
 	a.routes()
 
 	return a
@@ -142,7 +146,7 @@ func newReviewApp(store *storage.Client, client *http.Client, cfg config) *revie
 
 // handler exposes the routes to the wasm wiring or a test.
 func (a *reviewApp) handler() http.Handler {
-	return a.mux
+	return a.withRateLimit(a.mux)
 }
 
 // now returns the app's clock in UTC.

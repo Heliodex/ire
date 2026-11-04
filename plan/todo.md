@@ -162,7 +162,7 @@ wt build --dir .
 - [ ] The queue refreshes from storage events and keeps a 10-second poll as a fallback.
 - [ ] No admin or settings UI, roster, analytics, audit browser, retention jobs or secret rotation UI.
 - [ ] No pagination beyond the current limits; queue limit is 50, feeds are 100.
-- [ ] No rate limiting; browser mutations rely on the session cookie, same-site policy and the same-origin guard.
+- [x] A sliding-window limiter caps browser mutations at 120/min per session and machine mutations at 240/min per address; reads are unaffected.
 - [ ] Duplicate, identity and demo checks exist; fraud is still a future provider.
 - [ ] Roster sync and role administration are still missing; identities are bound by the HCA subject.
 
@@ -347,7 +347,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [ ] Add pagination and stable cursors to queue, reviews and events.
 - [x] Subscribe the queue to the supervisor storage event stream, keeping the 10-second poll as a fallback.
 - [x] Enforce same-origin checks on state-changing browser routes.
-- [ ] Add request rate limits and body limits to browser and machine routes.
+- [x] Request bodies are bounded on ingest, withdraw and JSON routes; browser and machine mutations are rate limited.
 - [ ] Add audit-browser and review-history UI.
 - [ ] Add admin roster and role management, including stage 2 organisers.
 - [ ] Add metrics for queue depth, time to first review, hold rate, check duration and delivery failures.
