@@ -38,6 +38,7 @@ const (
 
 	minDescriptionLength = 160
 	minJournalText       = 80
+	minClipCoverage      = 0.2
 
 	signatureWindow = 300
 
@@ -96,6 +97,7 @@ type config struct {
 	OutboundURL       string
 	GitHubToken       string
 	GitHubAPIBase     string
+	HackatimeAPIBase  string
 	HCClientID        string
 	HCClientSecret    string
 	HCRedirectURI     string

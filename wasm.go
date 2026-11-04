@@ -23,6 +23,7 @@ func loadConfig() config {
 		OutboundURL:       envOr("REVIEW_OUTBOUND_URL", "fake://receiver"),
 		GitHubToken:       envOr("REVIEW_GITHUB_TOKEN", ""),
 		GitHubAPIBase:     envOr("REVIEW_GITHUB_API", githubDefaultAPI),
+		HackatimeAPIBase:  envOr("HACKATIME_API_BASE", hackatimeDefaultAPI),
 		HCClientID:        envOr("HC_CLIENT_ID", ""),
 		HCClientSecret:    envOr("HC_CLIENT_SECRET", ""),
 		HCRedirectURI:     envOr("HC_REDIRECT_URI", ""),

@@ -153,7 +153,7 @@ wt build --dir .
 
 ## Deliberately fake or incomplete
 
-- [ ] Checks cover GitHub only; GitLab, Hackatime, Lapse, demo, identity and duplicate checks are not ported.
+- [ ] Checks cover GitHub only; GitLab, demo, identity and duplicate checks are not ported.
 - [ ] Auth uses HCA when credentials are configured; there are no live credentials or roster sync yet, and development accounts remain.
 - [ ] Stage 2 has the full seeded loop, but the hold rule engine and fraud provider are not built.
 - [ ] Fraud is a configured minimum stage and a future provider, with no implementation.
@@ -163,7 +163,7 @@ wt build --dir .
 - [ ] No admin or settings UI, roster, analytics, audit browser, retention jobs or secret rotation UI.
 - [ ] No pagination beyond the current limits; queue limit is 50, feeds are 100.
 - [ ] No rate limiting; browser mutations rely on the session cookie, same-site policy and the same-origin guard.
-- [ ] No duplicate, identity, demo, Hackatime, Lapse or fraud checks.
+- [ ] No duplicate, identity, demo or fraud checks.
 - [ ] No live HCA identities, programme roster sync or role administration.
 
 ## Next 1 – Stage 2 loop
@@ -227,6 +227,10 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] The BOM check parses CSV, TSV, semicolon and Markdown tables for part, quantity, unit price and vendor.
 - [x] The BOM summary reports part count and total, warns on missing prices or vendors, and ignores subtotal/tax rows.
 - [x] Commits are fetched since the programme start, with a fallback to full history for repositories older than the programme record.
+- [x] Hackatime links are read from the public stats endpoint; a failed refresh is `error` with cached values, never zero.
+- [x] Hackatime checks cover linked projects, tracked time and staleness, with a five-minute cache.
+- [x] Journal checks cover presence, clip-only entries and journal time against the claim.
+- [x] Clip checks cover count, coverage and HTTPS link validity.
 
 ### Remaining
 
@@ -236,7 +240,9 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [ ] Combine the BOM parse with the maker's submitted BOM lines and flag mismatched prices.
 - [ ] Use the previous approval as the commit window for resubmissions, not only the programme start.
 - [ ] Add GitLab behind the same forge interface.
-- [ ] Port the remaining groups: Hackatime, clips, demo probe, identity, duplicate and theme requirements.
+- [ ] Port the remaining groups: demo probe, identity, duplicate and theme requirements.
+- [ ] Add Hackatime span overlap against timelapses and the reviewer override path.
+- [ ] Scope Hackatime totals to the phase week instead of the all-time project total.
 - [ ] Show the check-run error and attempt count in the review rail, not only the banner.
 - [ ] Add tests for rate limit, timeout, malformed JSON, oversized tree, BOM parsing, commit windows and the job runner.
 - [ ] Add a fixture parity suite and a sample run over real `.projects.csv` rows (not committed).
@@ -296,7 +302,7 @@ The auth flow and signed HTTP delivery are implemented and tested against a fake
 
 **Goal:** fetch and cache the evidence reviewers currently open in other tabs, without slowing the first paint.
 
-The repository half is working: ingest caches the README, file tree and commits, the Evidence tab shows them, and an organiser can refresh the cache. Journal and clip parsing, Markdown rendering and richer tests remain.
+The repository half is working: ingest caches the README, file tree and commits, the Evidence tab shows them, and an organiser can refresh the cache. Journal and clip evidence is validated at ingest; Markdown rendering and richer tests remain.
 
 ### Working now
 
@@ -315,11 +321,10 @@ The repository half is working: ingest caches the README, file tree and commits,
 
 ### Remaining
 
-- [ ] Use the commit window from programme start or the previous approval through the submission time.
+- [ ] Use the previous approval as the start of the next commit window.
 - [ ] Store co-authors and merge commits, and mark commits made after submission.
-- [ ] Parse BOM tables for parts, quantities, prices and vendors.
-- [ ] Store journal images and clip URLs from the ingest payload with counts and coverage.
-- [ ] Validate evidence and media URLs as HTTPS; do not proxy project binaries.
+- [x] Store journal images and clip URLs from the ingest payload with counts and coverage.
+- [ ] Validate the remaining evidence and media URLs as HTTPS; do not proxy project binaries.
 - [ ] Reuse the forge cache and rate-limit handling; add ETag and a short unavailable cache.
 - [ ] Render README Markdown safely through parsed blocks rather than raw HTML.
 - [ ] Add a file-tree depth filter and a commit search for large repositories.

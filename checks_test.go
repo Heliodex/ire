@@ -1,6 +1,12 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+
+	"review/contract"
+)
 
 // TestParseBOMCSV covers quoted names, quantities and prices.
 func TestParseBOMCSV(t *testing.T) {
@@ -58,5 +64,50 @@ func TestParseBOMMissingColumns(t *testing.T) {
 
 	if bom.Rows != 1 || bom.HasPrice || bom.HasVendor {
 		t.Fatalf("bom = %+v", bom)
+	}
+}
+
+// TestLocalEvidenceChecks covers journal words and clip coverage on the ingest payload.
+func TestLocalEvidenceChecks(t *testing.T) {
+	seconds := 600
+	clip := "http://example.com/clip.mp4"
+
+	request := contract.IngestRequest{
+		Title:       "Evidence",
+		Description: strings.Repeat("A detailed board and firmware description. ", 5),
+		Journals: []contract.IngestJournal{{
+			At:   "2026-11-01T10:00:00Z",
+			Text: "Built it.",
+			Timelapses: []contract.IngestRequestJournalsElemTimelapsesElem{{
+				CoveredSeconds: &seconds,
+				URL:            &clip,
+			}},
+		}},
+		Meta: &contract.IngestMeta{Hours: &contract.IngestHours{ClaimedSeconds: 3600}},
+	}
+
+	checks := map[string]contract.CheckResult{}
+
+	for _, result := range localChecks(request, time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)) {
+		checks[result.Key] = result
+	}
+
+	if checks["journal.present"].Status != statusPass || checks["journal.wordless"].Status != statusWarn || checks["journal.hours"].Status != statusWarn {
+		t.Errorf("journal checks = %+v", checks)
+	}
+
+	if checks["lapse.clips"].Status != statusPass || checks["lapse.coverage"].Status != statusWarn || checks["lapse.links"].Status != statusError {
+		t.Errorf("clip checks = %+v", checks)
+	}
+
+	empty := localChecks(contract.IngestRequest{Title: "Empty", Description: strings.Repeat("A description. ", 12)}, time.Now())
+	emptyChecks := map[string]contract.CheckResult{}
+
+	for _, result := range empty {
+		emptyChecks[result.Key] = result
+	}
+
+	if emptyChecks["journal.present"].Status != statusFail || emptyChecks["lapse.coverage"].Status != statusSkip {
+		t.Errorf("empty evidence = %+v", emptyChecks)
 	}
 }
