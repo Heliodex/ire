@@ -226,7 +226,8 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] A failed run records its error; after five failed attempts the ship moves to `needs_attention` immediately.
 - [x] The BOM check parses CSV, TSV, semicolon and Markdown tables for part, quantity, unit price and vendor.
 - [x] The BOM summary reports part count and total, warns on missing prices or vendors, and ignores subtotal/tax rows.
-- [x] Commits are fetched since the programme start, with a fallback to full history for repositories older than the programme record.
+- [x] Commits are fetched since the previous approval for a resubmission, or the programme start for a first version.
+- [x] A full-history fallback keeps repositories older than the programme record visible.
 - [x] Hackatime links are read from the public stats endpoint; a failed refresh is `error` with cached values, never zero.
 - [x] Hackatime checks cover linked projects, tracked time and staleness, with a five-minute cache.
 - [x] Journal checks cover presence, clip-only entries and journal time against the claim.
@@ -242,7 +243,6 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [ ] Add a "checks outdated" notice when the head SHA moves after the snapshot.
 - [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
 - [ ] Combine the BOM parse with the maker's submitted BOM lines and flag mismatched prices.
-- [ ] Use the previous approval as the commit window for resubmissions, not only the programme start.
 - [ ] Add GitLab behind the same forge interface.
 - [ ] Port the remaining group: theme requirements.
 - [ ] Add Hackatime span overlap against timelapses and the reviewer override path.
@@ -329,7 +329,6 @@ The repository half is working: ingest caches the README, file tree and commits,
 
 ### Remaining
 
-- [ ] Use the previous approval as the start of the next commit window.
 - [ ] Store co-authors and merge commits, and mark commits made after submission.
 - [x] Store journal images and clip URLs from the ingest payload with counts and coverage.
 - [ ] Validate the remaining evidence and media URLs as HTTPS; do not proxy project binaries.

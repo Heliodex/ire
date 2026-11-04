@@ -1162,6 +1162,29 @@ func TestPageGate(t *testing.T) {
 	}
 }
 
+// TestCommitSinceUsesPreviousApproval covers the resubmission commit window.
+func TestCommitSinceUsesPreviousApproval(t *testing.T) {
+	application := newTestApp(t)
+	approved := "2026-10-01T09:00:00.000000000Z"
+
+	if _, err := application.store.Exec(t.Context(), `update submission set decided_at = ? where id = ?`, approved, "sub_fixture_1"); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := application.commitSince(t.Context(), programID, "sub_fixture_1"); got != approved {
+		t.Errorf("since = %q, want %q", got, approved)
+	}
+
+	programme, err := application.programByID(t.Context(), programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := application.commitSince(t.Context(), programID, ""); got != programme.CreatedAt {
+		t.Errorf("first version since = %q, want %q", got, programme.CreatedAt)
+	}
+}
+
 // TestDraftSurvivesReload covers the server-side draft the review page restores.
 func TestDraftSurvivesReload(t *testing.T) {
 	application := newTestApp(t)

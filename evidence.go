@@ -52,8 +52,15 @@ func (a *reviewApp) loadEvidence(ctx context.Context, submissionID string, versi
 	return evidence, true, nil
 }
 
-// programStart returns the programme start used as the commit window.
-func (a *reviewApp) programStart(ctx context.Context, programID string) string {
+// commitSince returns the previous approval time, or the programme start for a first version.
+func (a *reviewApp) commitSince(ctx context.Context, programID, previousID string) string {
+	if previousID != "" {
+		var decidedAt string
+		if err := a.store.QueryRow(ctx, `select coalesce(decided_at, '') from submission where id = ?`, previousID).Scan(&decidedAt); err == nil && decidedAt != "" {
+			return decidedAt
+		}
+	}
+
 	program, err := a.programByID(ctx, programID)
 	if err != nil {
 		return ""
@@ -118,7 +125,7 @@ func (a *reviewApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	_, evidence := a.repoChecks(r.Context(), ship.RepoURL, a.programStart(r.Context(), ship.ProgramID), a.now())
+	_, evidence := a.repoChecks(r.Context(), ship.RepoURL, a.commitSince(r.Context(), ship.ProgramID, ship.PreviousID), a.now())
 	if evidence == nil {
 		app.WriteError(w, http.StatusUnprocessableEntity, "only public GitHub repositories can be refreshed")
 		return
