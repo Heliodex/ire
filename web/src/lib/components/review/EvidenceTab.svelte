@@ -68,7 +68,7 @@ const filteredCommits = $derived(
 	</div>
 
 	{#if error}
-		<div class="ui-notice" data-tone="bad">{error}</div>
+		<div class="ui-notice evidence-error" data-tone="bad">{error}</div>
 	{/if}
 
 	<div class="evidence-grid">
@@ -171,6 +171,10 @@ const filteredCommits = $derived(
 
 .evidence-meta span {
 	color: var(--text-3);
+}
+
+.evidence-error {
+	margin-top: var(--space-3);
 }
 
 .filters {
