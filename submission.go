@@ -99,7 +99,7 @@ func (a *reviewApp) loadSubmissionByExternalID(ctx context.Context, programID, e
 
 // latestChecks returns the newest result per check key for one version.
 func (a *reviewApp) latestChecks(ctx context.Context, submissionID string, version int) ([]contract.CheckResult, error) {
-	rows, err := a.store.Query(ctx, `select check_key, label, group_key, status, severity, summary, coalesce(detail, ''), checked_at
+	rows, err := a.store.Query(ctx, `select check_key, label, group_key, status, severity, summary, coalesce(detail, ''), coalesce(data, ''), checked_at
 		from check_result c
 		where c.submission_id = ? and c.version = ?
 		  and c.checked_at = (select max(c2.checked_at) from check_result c2
@@ -114,14 +114,15 @@ func (a *reviewApp) latestChecks(ctx context.Context, submissionID string, versi
 
 	for rows.Next() {
 		var (
-			item   contract.CheckResult
-			detail string
+			item         contract.CheckResult
+			detail, data string
 		)
-		if err := rows.Scan(&item.Key, &item.Label, &item.Group, &item.Status, &item.Severity, &item.Summary, &detail, &item.CheckedAt); err != nil {
+		if err := rows.Scan(&item.Key, &item.Label, &item.Group, &item.Status, &item.Severity, &item.Summary, &detail, &data, &item.CheckedAt); err != nil {
 			return nil, err
 		}
 
 		item.Detail = stringPtr(detail)
+		item.Source = sourceFromData(data)
 		out = append(out, item)
 	}
 

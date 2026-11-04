@@ -179,6 +179,7 @@ func (a *reviewApp) failCheckRun(ctx context.Context, ship submissionRow, attemp
 func (a *reviewApp) collectRepositoryChecks(ctx context.Context, ship submissionRow) error {
 	remote, evidence := a.repoChecks(ctx, ship.RepoURL, a.programStart(ctx, ship.ProgramID), a.now())
 	remote = append(remote, a.hackatimeChecks(ctx, ship)...)
+	remote = append(remote, a.demoChecks(ctx, ship)...)
 
 	now := a.nowText()
 	statements := make([]storage.TransactionStatement, 0, len(remote)*2)
@@ -190,9 +191,9 @@ func (a *reviewApp) collectRepositoryChecks(ctx context.Context, ship submission
 				Args: []any{ship.ID, ship.Version, check.Key},
 			},
 			storage.TransactionStatement{
-				SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, checked_at)
-					values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				Args: []any{newID("chk"), ship.ID, ship.Version, check.Key, check.Label, check.Group, check.Status, check.Severity, check.Summary, stringValue(check.Detail), check.CheckedAt},
+				SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, data, checked_at)
+					values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				Args: []any{newID("chk"), ship.ID, ship.Version, check.Key, check.Label, check.Group, check.Status, check.Severity, check.Summary, stringValue(check.Detail), sourceData(check.Source), check.CheckedAt},
 			},
 		)
 	}
@@ -267,7 +268,7 @@ func (a *reviewApp) loadCheckRun(ctx context.Context, submissionID string, versi
 
 // loadCheckResults reads the current rows for one submission version.
 func (a *reviewApp) loadCheckResults(ctx context.Context, submissionID string, version int) ([]contract.CheckResult, error) {
-	rows, err := a.store.Query(ctx, `select check_key, label, group_key, status, severity, summary, coalesce(detail, ''), checked_at
+	rows, err := a.store.Query(ctx, `select check_key, label, group_key, status, severity, summary, coalesce(detail, ''), coalesce(data, ''), checked_at
 		from check_result where submission_id = ? and version = ? order by checked_at asc, id asc`, submissionID, version)
 	if err != nil {
 		return nil, err
@@ -278,16 +279,18 @@ func (a *reviewApp) loadCheckResults(ctx context.Context, submissionID string, v
 
 	for rows.Next() {
 		var (
-			check  contract.CheckResult
-			detail string
+			check        contract.CheckResult
+			detail, data string
 		)
-		if err := rows.Scan(&check.Key, &check.Label, &check.Group, &check.Status, &check.Severity, &check.Summary, &detail, &check.CheckedAt); err != nil {
+		if err := rows.Scan(&check.Key, &check.Label, &check.Group, &check.Status, &check.Severity, &check.Summary, &detail, &data, &check.CheckedAt); err != nil {
 			return nil, err
 		}
 
 		if detail != "" {
 			check.Detail = &detail
 		}
+
+		check.Source = sourceFromData(data)
 
 		checks = append(checks, check)
 	}

@@ -108,6 +108,9 @@ type CheckResult struct {
 	// Severity corresponds to the JSON schema field "severity".
 	Severity string `json:"severity" yaml:"severity" mapstructure:"severity"`
 
+	// Source corresponds to the JSON schema field "source".
+	Source *string `json:"source,omitempty,omitzero" yaml:"source,omitempty" mapstructure:"source,omitempty"`
+
 	// Status corresponds to the JSON schema field "status".
 	Status string `json:"status" yaml:"status" mapstructure:"status"`
 

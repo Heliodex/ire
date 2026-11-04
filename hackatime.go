@@ -87,6 +87,10 @@ func (a *reviewApp) hackatimeChecks(ctx context.Context, ship submissionRow) []c
 			strings.Join(failures, "; ")+"; cached values are shown where available", checkedAt))
 	}
 
+	for i := range checks {
+		checks[i].Source = stringPtr("forge")
+	}
+
 	return checks
 }
 

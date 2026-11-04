@@ -114,6 +114,10 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 	checks = append(checks, journalChecks(request.Journals, journalTime, claimed, wordless, checkedAt)...)
 	checks = append(checks, clipChecks(clips, clipLinks, coveredSeconds, claimed, invalidClips, checkedAt)...)
 
+	for i := range checks {
+		checks[i].Source = stringPtr("payload")
+	}
+
 	return checks
 }
 

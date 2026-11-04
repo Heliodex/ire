@@ -126,6 +126,10 @@ func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now t
 		checks = append(checks, commitCheck(commits, checkedAt))
 	}
 
+	for i := range checks {
+		checks[i].Source = stringPtr("forge")
+	}
+
 	snapshot := repositoryEvidence(owner, name, meta, readme, readmeStatus, readmeErr, tree, treeStatus, treeErr, commits, commitStatus, commitErr, now)
 
 	return checks, &snapshot
@@ -261,6 +265,33 @@ func fileKind(path string) string {
 	default:
 		return "file"
 	}
+}
+
+// sourceData encodes a check source for the unused data column.
+func sourceData(source *string) string {
+	if source == nil || strings.TrimSpace(*source) == "" {
+		return ""
+	}
+
+	data, _ := json.Marshal(map[string]string{"source": *source})
+
+	return string(data)
+}
+
+// sourceFromData reads the source from a stored check data value.
+func sourceFromData(raw string) *string {
+	if raw == "" {
+		return nil
+	}
+
+	var data struct {
+		Source string `json:"source"`
+	}
+	if err := json.Unmarshal([]byte(raw), &data); err != nil || data.Source == "" {
+		return nil
+	}
+
+	return &data.Source
 }
 
 // optionalText returns a pointer for a value the contract treats as absent.

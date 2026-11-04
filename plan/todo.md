@@ -233,16 +233,17 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] Clip checks cover count, coverage and HTTPS link validity.
 - [x] Organisers can rerun repository checks from the review rail; the run is queued with a unique idempotency key and the page polls it.
 - [x] The checks rail shows a failed attempt and its error.
+- [x] Check results carry a `source` (`fixture`, `forge`, `payload`, `probe`) exposed through the bundle.
+- [x] A public HTTPS demo is probed once per check job; loopback, private and link-local targets are rejected.
 
 ### Remaining
 
-- [ ] Add `source` to check results (`fixture`, `forge`, `payload`, `manual`).
 - [ ] Add a "checks outdated" notice when the head SHA moves after the snapshot.
 - [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
 - [ ] Combine the BOM parse with the maker's submitted BOM lines and flag mismatched prices.
 - [ ] Use the previous approval as the commit window for resubmissions, not only the programme start.
 - [ ] Add GitLab behind the same forge interface.
-- [ ] Port the remaining groups: demo probe, identity, duplicate and theme requirements.
+- [ ] Port the remaining groups: identity, duplicate and theme requirements.
 - [ ] Add Hackatime span overlap against timelapses and the reviewer override path.
 - [ ] Scope Hackatime totals to the phase week instead of the all-time project total.
 - [ ] Add tests for rate limit, timeout, malformed JSON, oversized tree, BOM parsing, commit windows and the job runner.

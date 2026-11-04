@@ -165,9 +165,9 @@ func checkStatements(id string, version int, checks []contract.CheckResult) []st
 
 	for _, check := range checks {
 		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, checked_at)
-				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			Args: []any{newID("chk"), id, version, check.Key, check.Label, check.Group, check.Status, check.Severity, check.Summary, stringValue(check.Detail), check.CheckedAt},
+			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, data, checked_at)
+				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			Args: []any{newID("chk"), id, version, check.Key, check.Label, check.Group, check.Status, check.Severity, check.Summary, stringValue(check.Detail), sourceData(check.Source), check.CheckedAt},
 		})
 	}
 

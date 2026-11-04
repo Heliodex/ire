@@ -48,6 +48,7 @@ export const checkResultSchema = pipe(
 		key: pipe(string(), minLength(1)),
 		label: pipe(string(), minLength(1)),
 		severity: pipe(string(), minLength(1)),
+		source: optionalString,
 		status: pipe(string(), minLength(1)),
 		summary: pipe(string(), minLength(1)),
 	}),

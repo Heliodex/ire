@@ -149,6 +149,16 @@ func TestIngestQueuesRepositoryChecks(t *testing.T) {
 		}
 	}
 
+	for _, check := range bundle.Checks {
+		if check.Key == "repo.accessible" && (check.Source == nil || *check.Source != "forge") {
+			t.Errorf("repo source = %v", check.Source)
+		}
+
+		if check.Key == "evidence.hours" && (check.Source == nil || *check.Source != "payload") {
+			t.Errorf("payload source = %v", check.Source)
+		}
+	}
+
 	// A retried job for a ship that has already moved on must not write twice.
 	bundleChecks := len(bundle.Checks)
 
