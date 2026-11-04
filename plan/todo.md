@@ -336,7 +336,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [ ] Validate the remaining evidence and media URLs as HTTPS; do not proxy project binaries.
 - [x] Forge requests share the ETag cache, the 30-second unavailable cache and the review rate limits.
 - [x] Render README Markdown through parsed blocks; raw HTML, images and link targets never reach the page.
-- [ ] Add a file-tree depth filter and a commit search for large repositories.
+- [x] The evidence tab filters files by path and depth, and searches commits by message, author or SHA, with clear empty states.
 - [x] The review rail shows a stale notice and a rerun action when the head SHA has moved since the snapshot.
 - [x] Parsed Markdown never keeps raw HTML or image syntax; an oversized tree is capped and marked truncated. Oversized README, paginated commit and refresh failure tests remain.
 - [ ] Document what is stored, what is linked, retention and privacy.

@@ -16,6 +16,33 @@ let {
 	error: string
 	onRefresh(): void
 } = $props()
+
+let fileQuery = $state("")
+let commitQuery = $state("")
+let depth = $state("0")
+
+const filteredFiles = $derived(
+	(evidence?.files ?? []).filter(file => {
+		const needle = fileQuery.trim().toLowerCase()
+		const levels = depth === "0" ? 0 : Number(depth)
+		const slash = file.path.split("/").length - 1
+
+		return (needle === "" || file.path.toLowerCase().includes(needle)) && (levels === 0 || slash < levels)
+	}),
+)
+
+const filteredCommits = $derived(
+	(evidence?.commits ?? []).filter(commit => {
+		const needle = commitQuery.trim().toLowerCase()
+		if (needle === "") return true
+
+		return (
+			commit.message.toLowerCase().includes(needle)
+			|| commit.author.toLowerCase().includes(needle)
+			|| commit.sha.toLowerCase().includes(needle)
+		)
+	}),
+)
 </script>
 
 {#if !evidence}
@@ -50,13 +77,32 @@ let {
 			{#if evidence.files.length === 0}
 				<p class="muted">The file tree was not fetched.</p>
 			{:else}
-				<ul class="file-tree">
-					{#each evidence.files.slice(0, 80) as file (file.path)}
-						<li><span class="file-kind">{file.kind}</span><code>{file.path}</code></li>
-					{/each}
-				</ul>
-				{#if evidence.files.length > 80}
-					<p class="muted">and {evidence.files.length - 80} more files</p>
+				<div class="filters">
+					<input
+						aria-label="Filter files"
+						class="ui-input"
+						placeholder="Filter files"
+						type="search"
+						bind:value={fileQuery}
+					>
+					<select aria-label="File depth" class="ui-input" bind:value={depth}>
+						<option value="0">All depths</option>
+						<option value="1">Top level</option>
+						<option value="2">2 levels</option>
+						<option value="3">3 levels</option>
+					</select>
+				</div>
+				{#if filteredFiles.length === 0}
+					<p class="muted">No files match that filter.</p>
+				{:else}
+					<ul class="file-tree">
+						{#each filteredFiles.slice(0, 80) as file (file.path)}
+							<li><span class="file-kind">{file.kind}</span><code>{file.path}</code></li>
+						{/each}
+					</ul>
+					{#if filteredFiles.length > 80}
+						<p class="muted">and {filteredFiles.length - 80} more files</p>
+					{/if}
 				{/if}
 			{/if}
 		</section>
@@ -66,8 +112,20 @@ let {
 			{#if evidence.commits.length === 0}
 				<p class="muted">No commits were fetched.</p>
 			{:else}
+				<div class="filters">
+					<input
+						aria-label="Search commits"
+						class="ui-input"
+						placeholder="Search message, author or SHA"
+						type="search"
+						bind:value={commitQuery}
+					>
+				</div>
+				{#if filteredCommits.length === 0}
+					<p class="muted">No commits match that search.</p>
+				{/if}
 				<ul class="commit-list">
-					{#each evidence.commits.slice(0, 30) as commit (commit.sha)}
+					{#each filteredCommits.slice(0, 30) as commit (commit.sha)}
 						<li>
 							<strong>{commit.message || "(no message)"}</strong>
 							<span
@@ -77,6 +135,9 @@ let {
 						</li>
 					{/each}
 				</ul>
+				{#if filteredCommits.length > 30}
+					<p class="muted">and {filteredCommits.length - 30} more commits</p>
+				{/if}
 			{/if}
 		</section>
 	</div>
@@ -110,6 +171,16 @@ let {
 
 .evidence-meta span {
 	color: var(--text-3);
+}
+
+.filters {
+	display: flex;
+	gap: var(--space-2);
+	margin-bottom: var(--space-2);
+}
+
+.filters .ui-input {
+	min-width: 0;
 }
 
 .evidence-grid {
