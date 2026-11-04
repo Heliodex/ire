@@ -10,9 +10,6 @@ export default defineConfig({
 			adapter: adapter({
 				precompress: true,
 			}),
-			paths: {
-				relative: false,
-			},
 			compilerOptions: {
 				cssHash: ({ css, filename, hash }) => `s-${hash(filename ?? css)}`,
 				experimental: {
@@ -20,6 +17,9 @@ export default defineConfig({
 				},
 				modernAst: true,
 				runes: true,
+			},
+			paths: {
+				relative: false,
 			},
 		}),
 	],
