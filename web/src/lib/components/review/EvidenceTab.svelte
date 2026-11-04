@@ -314,7 +314,8 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 	flex-direction: column;
 	gap: var(--space-1);
 	max-height: 320px;
-	margin-top: var(--space-2);
+	padding: 0;
+	margin: var(--space-2) 0 0;
 	overflow: auto;
 	list-style: none;
 }
