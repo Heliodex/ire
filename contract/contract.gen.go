@@ -172,6 +172,65 @@ func (j *CheckResult) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type CheckRun struct {
+	// Attempts corresponds to the JSON schema field "attempts".
+	Attempts int `json:"attempts" yaml:"attempts" mapstructure:"attempts"`
+
+	// Error corresponds to the JSON schema field "error".
+	Error *string `json:"error,omitempty,omitzero" yaml:"error,omitempty" mapstructure:"error,omitempty"`
+
+	// FinishedAt corresponds to the JSON schema field "finishedAt".
+	FinishedAt *string `json:"finishedAt,omitempty,omitzero" yaml:"finishedAt,omitempty" mapstructure:"finishedAt,omitempty"`
+
+	// RunnerVersion corresponds to the JSON schema field "runnerVersion".
+	RunnerVersion string `json:"runnerVersion" yaml:"runnerVersion" mapstructure:"runnerVersion"`
+
+	// StartedAt corresponds to the JSON schema field "startedAt".
+	StartedAt string `json:"startedAt" yaml:"startedAt" mapstructure:"startedAt"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *CheckRun) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["attempts"]; raw != nil && !ok {
+		return fmt.Errorf("field attempts in CheckRun: required")
+	}
+	if _, ok := raw["runnerVersion"]; raw != nil && !ok {
+		return fmt.Errorf("field runnerVersion in CheckRun: required")
+	}
+	if _, ok := raw["startedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field startedAt in CheckRun: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in CheckRun: required")
+	}
+	type Plain CheckRun
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Attempts {
+		return fmt.Errorf("field %s: must be >= %v", "attempts", 0)
+	}
+	if utf8.RuneCountInString(string(plain.RunnerVersion)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "runnerVersion", 1)
+	}
+	if utf8.RuneCountInString(string(plain.StartedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "startedAt", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	*j = CheckRun(plain)
+	return nil
+}
+
 type CheckSummary struct {
 	// Error corresponds to the JSON schema field "error".
 	Error int `json:"error" yaml:"error" mapstructure:"error"`
@@ -1819,6 +1878,9 @@ func (j *QueueCheck) UnmarshalJSON(value []byte) error {
 }
 
 type QueueCounts struct {
+	// Checking corresponds to the JSON schema field "checking".
+	Checking int `json:"checking" yaml:"checking" mapstructure:"checking"`
+
 	// Claimed corresponds to the JSON schema field "claimed".
 	Claimed int `json:"claimed" yaml:"claimed" mapstructure:"claimed"`
 
@@ -1838,6 +1900,9 @@ func (j *QueueCounts) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
+	if _, ok := raw["checking"]; raw != nil && !ok {
+		return fmt.Errorf("field checking in QueueCounts: required")
+	}
 	if _, ok := raw["claimed"]; raw != nil && !ok {
 		return fmt.Errorf("field claimed in QueueCounts: required")
 	}
@@ -1854,6 +1919,9 @@ func (j *QueueCounts) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
+	}
+	if 0 > plain.Checking {
+		return fmt.Errorf("field %s: must be >= %v", "checking", 0)
 	}
 	if 0 > plain.Claimed {
 		return fmt.Errorf("field %s: must be >= %v", "claimed", 0)
@@ -1872,6 +1940,9 @@ func (j *QueueCounts) UnmarshalJSON(value []byte) error {
 }
 
 type QueueItem struct {
+	// CheckRun corresponds to the JSON schema field "checkRun".
+	CheckRun *CheckRun `json:"checkRun,omitempty,omitzero" yaml:"checkRun,omitempty" mapstructure:"checkRun,omitempty"`
+
 	// CheckSummary corresponds to the JSON schema field "checkSummary".
 	CheckSummary CheckSummary `json:"checkSummary" yaml:"checkSummary" mapstructure:"checkSummary"`
 
@@ -2082,6 +2153,9 @@ type ReviewBundle struct {
 
 	// Bom corresponds to the JSON schema field "bom".
 	Bom []BomLine `json:"bom" yaml:"bom" mapstructure:"bom"`
+
+	// CheckRun corresponds to the JSON schema field "checkRun".
+	CheckRun *CheckRun `json:"checkRun,omitempty,omitzero" yaml:"checkRun,omitempty" mapstructure:"checkRun,omitempty"`
 
 	// Checks corresponds to the JSON schema field "checks".
 	Checks []CheckResult `json:"checks" yaml:"checks" mapstructure:"checks"`
@@ -2647,6 +2721,9 @@ func (j *SendBackResult) UnmarshalJSON(value []byte) error {
 }
 
 type StatusResponse struct {
+	// CheckRun corresponds to the JSON schema field "check_run".
+	CheckRun *CheckRun `json:"check_run,omitempty,omitzero" yaml:"check_run,omitempty" mapstructure:"check_run,omitempty"`
+
 	// Checks corresponds to the JSON schema field "checks".
 	Checks StatusResponseChecks `json:"checks" yaml:"checks" mapstructure:"checks"`
 

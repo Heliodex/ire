@@ -46,12 +46,14 @@ let overrideElement = $state<HTMLTextAreaElement | null>(null)
 let sendBackReason = $state("")
 let sendBackError = $state("")
 let sendingBack = $state(false)
+let checksTimer: ReturnType<typeof setTimeout> | null = null
 
 const submission = $derived(bundle?.submission ?? null)
 const secondPass = $derived(submission?.stage === 2 || submission?.status === "stage2_hold")
 const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
-const canDecide = $derived(!secondPass || canSecondPass)
+const checking = $derived(submission?.status === "checking")
+const canDecide = $derived(!checking && (!secondPass || canSecondPass))
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
@@ -66,6 +68,7 @@ afterNavigate((): void => {
 	const previous = claimedId
 	id = next
 	loading = true
+	stopChecks()
 	error = ""
 	acknowledgements = []
 	idempotencyKey = ""
@@ -114,10 +117,59 @@ onMount((): (() => void) => {
 
 	return (): void => {
 		clearInterval(beat)
+		stopChecks()
 		window.removeEventListener("keydown", onKeydown)
 		if (claimedId !== "") ignore(releaseShip(claimedId))
 	}
 })
+
+// stopChecks cancels the polling started while a ship is checking.
+function stopChecks(): void {
+	if (checksTimer) {
+		clearTimeout(checksTimer)
+		checksTimer = null
+	}
+}
+
+// watchChecks refreshes a ship while the check job runs, then reloads so the reviewer can claim it.
+function watchChecks(): void {
+	if (bundle?.submission.status !== "checking" || checksTimer) return
+
+	checksTimer = setTimeout((): void => {
+		checksTimer = null
+		void refreshWhileChecking()
+	}, 2000)
+}
+
+// checkMessage describes the running state for the banner.
+function checkMessage(): string {
+	const run = bundle?.checkRun
+	if (run?.status !== "running") return "Waiting for the check worker…"
+
+	const attempt = run.attempts > 1 ? ` · attempt ${run.attempts}` : ""
+
+	return `Running repository checks${attempt}…`
+}
+
+// refreshWhileChecking loads the next state and keeps polling until the job finishes.
+async function refreshWhileChecking(): Promise<void> {
+	try {
+		const next = await fetchBundle(id)
+		if (id === "") return
+
+		bundle = next
+
+		if (next.submission.status === "checking") {
+			watchChecks()
+			return
+		}
+
+		flash("Checks finished.")
+		await load(id)
+	} catch {
+		watchChecks()
+	}
+}
 
 async function boot(): Promise<void> {
 	try {
@@ -140,7 +192,7 @@ async function load(target = id): Promise<void> {
 		if (target !== id) return
 
 		let next = fetched
-		const canClaim = fetched.submission.stage !== 2 || canSecondPass
+		const canClaim = fetched.submission.status !== "checking" && (fetched.submission.stage !== 2 || canSecondPass)
 		if (canClaim && fetched.claim?.isMine !== 1) {
 			await claimShip(target)
 			next = await fetchBundle(target)
@@ -155,6 +207,7 @@ async function load(target = id): Promise<void> {
 
 		hourInit()
 		error = ""
+		watchChecks()
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
 			void goto("/")
@@ -411,6 +464,13 @@ async function saveDraftNow(): Promise<void> {
 			</button>
 		</div>
 	</header>
+
+	{#if checking}
+		<div class="checking-banner">
+			<span class="ui-badge" data-tone="pending">Checking</span>
+			<span>{checkMessage()}</span>
+		</div>
+	{/if}
 
 	{#if showShortcuts}
 		<div class="shortcuts">
@@ -1049,6 +1109,19 @@ h1 {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-2);
+}
+
+.checking-banner {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+	padding: var(--space-2) var(--space-3);
+	margin-top: var(--space-3);
+	font-size: var(--text-sm);
+	color: var(--text-2);
+	background: var(--surface-2);
+	border-radius: var(--radius-md);
 }
 
 .second-pass {

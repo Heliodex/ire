@@ -13,6 +13,11 @@ import (
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
+const (
+	checkRunnerVersion  = "review-checks-v1"
+	checkRunMaxAttempts = 5
+)
+
 // checkJob is the durable job payload for the repository checks.
 type checkJob struct {
 	SubmissionID string `json:"submission_id"`
@@ -96,8 +101,83 @@ func (a *reviewApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// runRepositoryChecks fetches the forge, replaces the repository check rows, stores the evidence and moves a checking ship to its real status.
+// runRepositoryChecks records one attempt around the repository fetch.
 func (a *reviewApp) runRepositoryChecks(ctx context.Context, ship submissionRow) error {
+	attempts := a.startCheckRun(ctx, ship)
+
+	if err := a.collectRepositoryChecks(ctx, ship); err != nil {
+		a.failCheckRun(ctx, ship, attempts, err)
+
+		return err
+	}
+
+	a.finishCheckRun(ctx, ship)
+
+	return nil
+}
+
+// startCheckRun marks a new attempt and returns its number.
+func (a *reviewApp) startCheckRun(ctx context.Context, ship submissionRow) int {
+	now := a.nowText()
+
+	result, err := a.store.Exec(ctx, `update check_run set status = 'running', attempts = attempts + 1,
+		started_at = ?, finished_at = null, error = null where submission_id = ? and version = ?`, now, ship.ID, ship.Version)
+	if err != nil {
+		app.Errorf("start check run: %v", err)
+
+		return 0
+	}
+
+	if result.RowsAffected == 0 {
+		if _, err := a.store.Exec(ctx, `insert into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version)
+			values (?, ?, 'running', 1, ?, null, null, ?)`, ship.ID, ship.Version, now, checkRunnerVersion); err != nil {
+			app.Errorf("insert check run: %v", err)
+
+			return 0
+		}
+	}
+
+	var attempts int
+	if err := a.store.QueryRow(ctx, `select attempts from check_run where submission_id = ? and version = ?`, ship.ID, ship.Version).Scan(&attempts); err != nil {
+		return 0
+	}
+
+	return attempts
+}
+
+// finishCheckRun records a successful attempt.
+func (a *reviewApp) finishCheckRun(ctx context.Context, ship submissionRow) {
+	if _, err := a.store.Exec(ctx, `update check_run set status = 'succeeded', finished_at = ?, error = null
+		where submission_id = ? and version = ?`, a.nowText(), ship.ID, ship.Version); err != nil {
+		app.Errorf("finish check run: %v", err)
+	}
+}
+
+// failCheckRun records the error and surfaces a terminal failure without waiting for the stale sweep.
+func (a *reviewApp) failCheckRun(ctx context.Context, ship submissionRow, attempts int, runErr error) {
+	now := a.nowText()
+
+	if _, err := a.store.Exec(ctx, `update check_run set status = 'failed', finished_at = ?, error = ?
+		where submission_id = ? and version = ?`, now, runErr.Error(), ship.ID, ship.Version); err != nil {
+		app.Errorf("fail check run: %v", err)
+	}
+
+	if attempts < checkRunMaxAttempts {
+		return
+	}
+
+	result, err := a.store.Exec(ctx, `update submission set status = ?, updated_at = ?
+		where id = ? and version = ? and status = 'checking'`, statusNeedsAttention, now, ship.ID, ship.Version)
+	if err != nil || result.RowsAffected == 0 {
+		return
+	}
+
+	_, _ = a.store.Exec(ctx, `insert into submission_event (id, submission_id, kind, data, created_at)
+		values (?, ?, 'checks_failed', ?, ?)`, newID("evt"), ship.ID, marshalMap(map[string]any{"error": runErr.Error()}), now)
+}
+
+// collectRepositoryChecks fetches the forge, replaces the repository check rows, stores the evidence and moves a checking ship to its real status.
+func (a *reviewApp) collectRepositoryChecks(ctx context.Context, ship submissionRow) error {
 	remote, evidence := a.repoChecks(ctx, ship.RepoURL, a.now())
 
 	now := a.nowText()
@@ -159,6 +239,30 @@ func (a *reviewApp) runRepositoryChecks(ctx context.Context, ship submissionRow)
 		values (?, ?, 'checks_completed', ?, ?)`, newID("evt"), ship.ID, string(summaryJSON), now)
 
 	return err
+}
+
+// loadCheckRun returns the run row for one submission version and whether it exists.
+func (a *reviewApp) loadCheckRun(ctx context.Context, submissionID string, version int) (contract.CheckRun, bool, error) {
+	var (
+		run                 contract.CheckRun
+		finishedAt, failure string
+	)
+
+	err := a.store.QueryRow(ctx, `select status, attempts, started_at, coalesce(finished_at, ''), coalesce(error, ''), runner_version
+		from check_run where submission_id = ? and version = ?`, submissionID, version).
+		Scan(&run.Status, &run.Attempts, &run.StartedAt, &finishedAt, &failure, &run.RunnerVersion)
+	if err != nil {
+		if errors.Is(err, storage.ErrNoRows) {
+			return contract.CheckRun{}, false, nil
+		}
+
+		return contract.CheckRun{}, false, err
+	}
+
+	run.FinishedAt = optionalText(finishedAt)
+	run.Error = optionalText(failure)
+
+	return run, true, nil
 }
 
 // loadCheckResults reads the current rows for one submission version.

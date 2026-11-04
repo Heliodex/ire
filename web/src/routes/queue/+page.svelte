@@ -9,7 +9,10 @@ import { session } from "../../lib/session.svelte.js"
 
 type Filter = "all" | "fast" | "attention" | "mine"
 
-let queue = $state<Queue>({ counts: { claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 }, items: [] })
+let queue = $state<Queue>({
+	counts: { checking: 0, claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
+	items: [],
+})
 let filter = $state<Filter>("all")
 let stage = $state(1)
 let loading = $state(true)
@@ -233,6 +236,9 @@ async function open(item: QueueItem): Promise<void> {
 	</div>
 
 	<div class="stats ui-card">
+		{#if queue.counts.checking > 0}
+			<div><strong>{queue.counts.checking}</strong><span>Checking</span></div>
+		{/if}
 		<div><strong>{queue.counts.ready}</strong><span>Ready</span></div>
 		<div><strong>{queue.counts.claimed}</strong><span>In review</span></div>
 		<div><strong>{queue.counts.needsAttention}</strong><span>Needs a look</span></div>
@@ -369,23 +375,27 @@ async function open(item: QueueItem): Promise<void> {
 					</div>
 					<span class="checks">
 						<span class="counts">
-							{#if item.checkSummary.pass > 0}
-								<span class="pass">{item.checkSummary.pass} pass</span>
-							{/if}
-							{#if item.checkSummary.warn > 0}
-								<span class="warn">{item.checkSummary.warn} warn</span>
-							{/if}
-							{#if item.checkSummary.fail > 0}
-								<span class="fail">{item.checkSummary.fail} fail</span>
-							{/if}
-							{#if item.checkSummary.error > 0}
-								<span class="fail">{item.checkSummary.error} error</span>
-							{/if}
-							{#if item.checkSummary.overall === "pass"}
-								<span class="fast">Fast lane</span>
+							{#if item.status === "checking"}
+								<span class="pending-text">Checks running…</span>
+							{:else}
+								{#if item.checkSummary.pass > 0}
+									<span class="pass">{item.checkSummary.pass} pass</span>
+								{/if}
+								{#if item.checkSummary.warn > 0}
+									<span class="warn">{item.checkSummary.warn} warn</span>
+								{/if}
+								{#if item.checkSummary.fail > 0}
+									<span class="fail">{item.checkSummary.fail} fail</span>
+								{/if}
+								{#if item.checkSummary.error > 0}
+									<span class="fail">{item.checkSummary.error} error</span>
+								{/if}
+								{#if item.checkSummary.overall === "pass"}
+									<span class="fast">Fast lane</span>
+								{/if}
 							{/if}
 						</span>
-						{#if item.checks.length > 0}
+						{#if item.checks.length > 0 && item.status !== "checking"}
 							<span
 								aria-label={item.checks.map(check => `${check.label}: ${check.status}`).join(", ")}
 								class="dots"

@@ -164,8 +164,6 @@ wt build --dir .
 - [ ] No pagination beyond the current limits; queue limit is 50, feeds are 100.
 - [ ] No rate limiting; browser mutations rely on the session cookie, same-site policy and the same-origin guard.
 - [ ] No duplicate, identity, demo, Hackatime, Lapse or fraud checks.
-- [ ] No `check_run` table; results are written directly with no run status or retry record.
-- [ ] The `checking` status is not shown in the queue; ships appear when the check job finishes.
 - [ ] No live HCA identities, programme roster sync or role administration.
 
 ## Next 1 – Stage 2 loop
@@ -222,20 +220,21 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] The job handler skips a version that was decided, withdrawn or replaced.
 - [x] `job_concurrency` is four; `REVIEW_DISABLE_JOBS=1` keeps the inline path.
 - [x] Tests cover the queued path, idempotent rerun and the inline fallback.
+- [x] `check_run` stores status, attempts, start/finish, last error and runner version per submission version.
+- [x] The queue, review bundle and status feed expose the check run; the queue shows a Checking count and label.
+- [x] The review screen shows the running attempt and reloads itself when checks finish.
+- [x] A failed run records its error; after five failed attempts the ship moves to `needs_attention` immediately.
 
 ### Remaining
 
-- [ ] Add `check_run` with submission, version, status, attempts, started/finished, error and runner version.
 - [ ] Add `source` to check results (`fixture`, `forge`, `payload`, `manual`).
-- [ ] Add `checking` and a running summary to queue, status and bundle contracts.
-- [ ] Add a `check_run` row with attempts, timings and the last error; the job queue currently carries that history.
-- [ ] Surface a terminal job failure in the queue instead of relying on the ten-minute stale sweep.
+- [ ] Add a rerun action and a "checks outdated" notice.
 - [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
 - [ ] Parse BOM tables for parts, quantities, prices and vendors instead of only finding the file.
 - [ ] Use the commit window from programme start or the previous approval, not the latest page of commits.
 - [ ] Add GitLab behind the same forge interface.
 - [ ] Port the remaining groups: Hackatime, clips, demo probe, identity, duplicate and theme requirements.
-- [ ] Show a checking state, a rerun action and a "checks outdated" notice in the UI.
+- [ ] Show the check-run error and attempt count in the review rail, not only the banner.
 - [ ] Add tests for rate limit, timeout, malformed JSON, oversized tree, BOM parsing, commit windows and the job runner.
 - [ ] Add a fixture parity suite and a sample run over real `.projects.csv` rows (not committed).
 - [ ] Document every check key, severity, blocking rule and the porting map.

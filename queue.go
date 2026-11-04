@@ -15,6 +15,8 @@ import (
 )
 
 // handleQueue returns the stage 1 work list, counts and claim state in one response.
+//
+//nolint:funlen // The query, row mapping and check join belong together.
 func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
@@ -46,12 +48,15 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	now := a.nowText()
 	query := `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
 			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), s.hours_claimed_seconds,
-			coalesce(s.check_summary, ''), s.ingested_at, coalesce(u.email, '')
+			coalesce(s.check_summary, ''), s.ingested_at, coalesce(u.email, ''),
+			coalesce(r.status, ''), coalesce(r.attempts, 0), coalesce(r.started_at, ''), coalesce(r.finished_at, ''),
+			coalesce(r.error, ''), coalesce(r.runner_version, '')
 		from submission s
 		left join claim c on c.submission_id = s.id and c.expires_at > ?
 		left join user u on u.id = c.reviewer_id
+		left join check_run r on r.submission_id = s.id and r.version = s.version
 		where s.program_id = ? and s.stage = ?
-		  and s.status in ('ready','claimed','in_review','needs_attention','stage2_hold')`
+		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`
 
 	args := []any{now, person.ProgramID, stage}
 
@@ -80,19 +85,21 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	response := contract.QueueResponse{
-		Counts: contract.QueueCounts{Ready: 0, Claimed: 0, NeedsAttention: 0, Stage2Hold: 0},
+		Counts: contract.QueueCounts{Checking: 0, Ready: 0, Claimed: 0, NeedsAttention: 0, Stage2Hold: 0},
 		Items:  []contract.QueueItem{},
 	}
 
 	for rows.Next() {
 		var (
-			item                        contract.QueueItem
-			theme, thumbnail, makerName string
-			summaryJSON, claimedBy      string
-			week                        int
+			item                                                     contract.QueueItem
+			theme, thumbnail, makerName                              string
+			summaryJSON, claimedBy                                   string
+			runStatus, runStarted, runFinished, runError, runVersion string
+			week, runAttempts                                        int
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Version, &item.Status, &item.Stage, &item.Priority,
-			&item.Title, &theme, &thumbnail, &week, &makerName, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy); err != nil {
+			&item.Title, &theme, &thumbnail, &week, &makerName, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy,
+			&runStatus, &runAttempts, &runStarted, &runFinished, &runError, &runVersion); err != nil {
 			writeStorage(w, err)
 
 			return
@@ -119,6 +126,17 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		item.CheckSummary = parseCheckSummary(summaryJSON)
 		if claimedBy != "" {
 			item.ClaimedBy = &claimedBy
+		}
+
+		if runStatus != "" {
+			item.CheckRun = &contract.CheckRun{
+				Status:        runStatus,
+				Attempts:      runAttempts,
+				StartedAt:     runStarted,
+				FinishedAt:    optionalText(runFinished),
+				Error:         optionalText(runError),
+				RunnerVersion: runVersion,
+			}
 		}
 
 		response.Items = append(response.Items, item)
@@ -190,19 +208,20 @@ func (a *reviewApp) queueChecks(ctx context.Context, items []contract.QueueItem)
 	return out, rows.Err()
 }
 
-// queueCounts computes the four programme-wide badges, independent of the stage being viewed.
+// queueCounts computes the programme-wide badges, independent of the stage being viewed.
 func (a *reviewApp) queueCounts(ctx context.Context, programID string) (contract.QueueCounts, error) {
 	var counts contract.QueueCounts
 
 	err := a.store.QueryRow(ctx, `select
+			coalesce(sum(case when s.status = 'checking' then 1 else 0 end), 0),
 			coalesce(sum(case when s.status = 'ready' then 1 else 0 end), 0),
 			coalesce(sum(case when s.status in ('claimed','in_review') then 1 else 0 end), 0),
 			coalesce(sum(case when s.status = 'needs_attention' then 1 else 0 end), 0),
 			coalesce(sum(case when s.status = 'stage2_hold' then 1 else 0 end), 0)
 		from submission s
 		where s.program_id = ?
-		  and s.status in ('ready','claimed','in_review','needs_attention','stage2_hold')`, programID).
-		Scan(&counts.Ready, &counts.Claimed, &counts.NeedsAttention, &counts.Stage2Hold)
+		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`, programID).
+		Scan(&counts.Checking, &counts.Ready, &counts.Claimed, &counts.NeedsAttention, &counts.Stage2Hold)
 
 	return counts, err
 }
@@ -455,6 +474,8 @@ func (a *reviewApp) handleBundle(w http.ResponseWriter, r *http.Request) {
 }
 
 // reviewBundle assembles the seven indexed reads behind the review screen.
+//
+//nolint:funlen // The payload is one mapping of the ship and its evidence.
 func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person reviewer) (contract.ReviewBundle, error) {
 	checks, err := a.latestChecks(ctx, ship.ID, ship.Version)
 	if err != nil {
@@ -484,6 +505,16 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 	snapshot, hasEvidence, err := a.loadEvidence(ctx, ship.ID, ship.Version)
 	if err != nil {
 		return contract.ReviewBundle{}, err
+	}
+
+	run, hasRun, err := a.loadCheckRun(ctx, ship.ID, ship.Version)
+	if err != nil {
+		return contract.ReviewBundle{}, err
+	}
+
+	var checkRun *contract.CheckRun
+	if hasRun {
+		checkRun = &run
 	}
 
 	var evidence *contract.Evidence
@@ -579,6 +610,7 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		Reviews:          reviews,
 		Events:           events,
 		Evidence:         evidence,
+		CheckRun:         checkRun,
 		PriorReviews:     payloadPriorReviews(ctx, a.store, ship.ID, ship.Version),
 		Claim:            claim,
 		Draft:            a.draftFor(ctx, ship.ID, person.ID),

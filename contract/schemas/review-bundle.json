@@ -42,6 +42,40 @@
 				"title": "BomLine"
 			}
 		},
+		"checkRun": {
+			"type": "object",
+			"properties": {
+				"attempts": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"error": {
+					"type": "string"
+				},
+				"finishedAt": {
+					"type": "string"
+				},
+				"runnerVersion": {
+					"type": "string",
+					"minLength": 1
+				},
+				"startedAt": {
+					"type": "string",
+					"minLength": 1
+				},
+				"status": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"required": [
+				"attempts",
+				"runnerVersion",
+				"startedAt",
+				"status"
+			],
+			"title": "CheckRun"
+		},
 		"checks": {
 			"type": "array",
 			"items": {

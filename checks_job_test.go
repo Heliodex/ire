@@ -69,6 +69,28 @@ func TestIngestQueuesRepositoryChecks(t *testing.T) {
 		t.Fatalf("status = %q, want checking", bundle.Submission.Status)
 	}
 
+	if bundle.CheckRun == nil || bundle.CheckRun.Status != "queued" || bundle.CheckRun.Attempts != 0 {
+		t.Fatalf("check run = %+v", bundle.CheckRun)
+	}
+
+	queue := decode[contract.QueueResponse](t, do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all", nil, cookie, nil))
+
+	if queue.Counts.Checking != 1 {
+		t.Errorf("checking count = %d, want 1", queue.Counts.Checking)
+	}
+
+	found := false
+
+	for _, item := range queue.Items {
+		if item.ID == created.ID {
+			found = item.Status == statusChecking && item.CheckRun != nil && item.CheckRun.Status == "queued"
+		}
+	}
+
+	if !found {
+		t.Errorf("checking ship is missing from the queue: %+v", queue.Items)
+	}
+
 	if bundle.Evidence != nil {
 		t.Fatalf("evidence before the job = %+v", bundle.Evidence)
 	}
@@ -104,6 +126,18 @@ func TestIngestQueuesRepositoryChecks(t *testing.T) {
 
 	if bundle.Evidence == nil || bundle.Evidence.FullName != "example/queued" {
 		t.Fatalf("evidence after the job = %+v", bundle.Evidence)
+	}
+
+	if bundle.CheckRun == nil || bundle.CheckRun.Status != "succeeded" || bundle.CheckRun.Attempts != 1 || bundle.CheckRun.FinishedAt == nil {
+		t.Fatalf("check run after the job = %+v", bundle.CheckRun)
+	}
+
+	status := decode[contract.StatusResponse](t, do(t, application, http.MethodGet, "/api/ingest/half-life/status?external_id=queued:design", nil, nil, map[string]string{
+		"Authorization": "Bearer test-ingest",
+	}))
+
+	if status.CheckRun == nil || status.CheckRun.Status != "succeeded" {
+		t.Fatalf("status check run = %+v", status.CheckRun)
 	}
 
 	statuses := checkStatuses(bundle.Checks)

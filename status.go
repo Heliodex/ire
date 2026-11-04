@@ -129,7 +129,18 @@ func (a *reviewApp) statusResponse(ctx context.Context, ship submissionRow) (con
 		return contract.StatusResponse{}, err
 	}
 
+	run, hasRun, err := a.loadCheckRun(ctx, ship.ID, ship.Version)
+	if err != nil {
+		return contract.StatusResponse{}, err
+	}
+
+	var checkRun *contract.CheckRun
+	if hasRun {
+		checkRun = &run
+	}
+
 	response := contract.StatusResponse{
+		CheckRun:     checkRun,
 		ID:           ship.ID,
 		ExternalID:   ship.ExternalID,
 		Version:      ship.Version,

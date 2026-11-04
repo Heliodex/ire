@@ -401,6 +401,8 @@ create table check_run (
 create index check_run_submission_idx on check_run(submission_id, version, started_at desc);
 ```
 
+The vertical slice keeps one row per submission version under a `(submission_id, version)` primary key, with `status`, `attempts`, `started_at`, `finished_at`, `error` and `runner_version`. That is enough for the queue badge and the job retry surface; the per-group `id`/`run_id` split waits until checks run as separate groups.
+
 ### `check_result`
 
 ```sql

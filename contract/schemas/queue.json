@@ -4,6 +4,10 @@
 		"counts": {
 			"type": "object",
 			"properties": {
+				"checking": {
+					"type": "integer",
+					"minimum": 0
+				},
 				"claimed": {
 					"type": "integer",
 					"minimum": 0
@@ -22,6 +26,7 @@
 				}
 			},
 			"required": [
+				"checking",
 				"claimed",
 				"needsAttention",
 				"ready",
@@ -34,6 +39,40 @@
 			"items": {
 				"type": "object",
 				"properties": {
+					"checkRun": {
+						"type": "object",
+						"properties": {
+							"attempts": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"error": {
+								"type": "string"
+							},
+							"finishedAt": {
+								"type": "string"
+							},
+							"runnerVersion": {
+								"type": "string",
+								"minLength": 1
+							},
+							"startedAt": {
+								"type": "string",
+								"minLength": 1
+							},
+							"status": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"attempts",
+							"runnerVersion",
+							"startedAt",
+							"status"
+						],
+						"title": "CheckRun"
+					},
 					"checkSummary": {
 						"$ref": "check-summary.json"
 					},

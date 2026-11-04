@@ -180,7 +180,7 @@ func (a *reviewApp) allowLegacySignature(ctx context.Context, programID string) 
 
 // ingestShip writes a new version, or reports the existing delivery or open ship. response is the API body; status is the HTTP status.
 //
-//nolint:funlen,maintidx,gocognit // The transaction statements and evidence mapping belong together.
+//nolint:funlen,maintidx,gocognit,gocyclo // The transaction statements and evidence mapping belong together.
 func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request contract.IngestRequest, deliveryID, rawBody string) (contract.IngestAccepted, int, error) {
 	now := a.nowText()
 
@@ -387,6 +387,14 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, checked_at)
 				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{newID("chk"), id, version, check.Key, check.Label, check.Group, check.Status, check.Severity, check.Summary, stringValue(check.Detail), check.CheckedAt},
+		})
+	}
+
+	if queuedChecks {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert or replace into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version)
+				values (?, ?, 'queued', 0, ?, null, null, ?)`,
+			Args: []any{id, version, now, checkRunnerVersion},
 		})
 	}
 

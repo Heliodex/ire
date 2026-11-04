@@ -98,8 +98,21 @@ export const meResponseSchema = pipe(
 
 // ─── Queue ──────────────────────────────────────────────────────────────────
 
+export const checkRunSchema = pipe(
+	object({
+		attempts: nonNegative,
+		error: optionalString,
+		finishedAt: optionalString,
+		runnerVersion: pipe(string(), minLength(1)),
+		startedAt: timestamp,
+		status: pipe(string(), minLength(1)),
+	}),
+	title("CheckRun"),
+)
+
 export const queueCountsSchema = pipe(
 	object({
+		checking: nonNegative,
 		claimed: nonNegative,
 		needsAttention: nonNegative,
 		ready: nonNegative,
@@ -120,6 +133,7 @@ export const queueCheckSchema = pipe(
 
 export const queueItemSchema = pipe(
 	object({
+		checkRun: optional(checkRunSchema),
 		checkSummary: checkSummarySchema,
 		checks: array(queueCheckSchema),
 		claimedBy: optionalString,
@@ -317,6 +331,7 @@ export const reviewBundleSchema = pipe(
 	object({
 		acknowledgements: array(string()),
 		bom: array(bomLineSchema),
+		checkRun: optional(checkRunSchema),
 		checks: array(checkResultSchema),
 		claim: optional(claimSchema),
 		draft: optional(draftSchema),
@@ -568,6 +583,7 @@ const statusChecksSchema = object({
 
 export const statusResponseSchema = pipe(
 	object({
+		check_run: optional(checkRunSchema),
 		checks: statusChecksSchema,
 		decision: optional(string()),
 		external_id: pipe(string(), minLength(1)),
