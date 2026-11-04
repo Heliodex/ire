@@ -717,6 +717,8 @@ create index outbox_submission_idx on outbox(submission_id, created_at);
 
 `dedupe_key` is the idempotency guarantee: a retried decision cannot create a second delivery for the same review. `payload` is stored before send, so a restart or an operator can inspect exactly what was sent. The outbox row is written in the decision transaction; the job only sends it.
 
+The vertical slice uses `packages/v2/outbox` with its `webhook_outbox` table. That table adds `headers`, `metadata`, `max_attempts` and `lease_until`; `program_id` and `submission_id` live in `metadata`. The older `outbox` table is migrated once on startup and then left read-only.
+
 ## Counters
 
 ```sql

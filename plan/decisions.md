@@ -82,7 +82,7 @@ A stage transition is a row, not an inferred status. The UI always says which st
 
 **Context.** `wt` apps can use the supervisor's platform identity (email and password) or own their login. Reviewers already have Hack Club accounts, and Ari authenticates them with HCA (`openid profile email slack_id`). Creating another password is a support burden and a security downgrade.
 
-**Decision.** Use HCA's authorisation-code flow with PKCE through `packages/oauth`, store opaque sessions in SQLite through `packages/session`, and map the HCA email to a program membership. Keep a dev-only login path for local work.
+**Decision.** Use HCA's authorisation-code flow with PKCE through `packages/v2/oauth`, store opaque sessions in SQLite through `packages/v2/session`, and map the HCA email to a program membership. Keep a dev-only login path for local work.
 
 **Consequences.**
 

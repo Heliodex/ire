@@ -17,8 +17,8 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // handleIngest accepts an Ari-compatible ship, verifies the signature over the raw body, and writes the snapshot, evidence and local checks in one transaction.
@@ -140,7 +140,7 @@ func (a *reviewApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request
 		return false
 	}
 
-	message := body
+	signer := a.signer(a.config.IngestSecret)
 
 	if timestamp := strings.TrimSpace(r.Header.Get("X-Ari-Timestamp")); timestamp != "" {
 		seconds, err := strconv.ParseInt(timestamp, 10, 64)
@@ -149,16 +149,20 @@ func (a *reviewApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request
 			return false
 		}
 
-		message = append([]byte(timestamp+"."), body...)
-	} else if !a.allowLegacySignature(r.Context(), program.ID) {
-		app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "X-Ari-Timestamp is required")
-		return false
-	}
+		if !signer.VerifyParts(signature, []byte(timestamp), []byte("."), body) {
+			app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "signature does not match")
+			return false
+		}
+	} else {
+		if !a.allowLegacySignature(r.Context(), program.ID) {
+			app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "X-Ari-Timestamp is required")
+			return false
+		}
 
-	expected := hmacHex(a.config.IngestSecret, message)
-	if !hmacEqual(expected, signature) {
-		app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "signature does not match")
-		return false
+		if !signer.VerifyParts(signature, body) {
+			app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "signature does not match")
+			return false
+		}
 	}
 
 	return true
@@ -718,19 +722,4 @@ func hmacHex(secret string, message []byte) string {
 	mac.Write(message)
 
 	return hex.EncodeToString(mac.Sum(nil))
-}
-
-// hmacEqual compares two hex digests without leaking timing.
-func hmacEqual(expected, actual string) bool {
-	decoded, err := hex.DecodeString(strings.TrimSpace(actual))
-	if err != nil {
-		return false
-	}
-
-	expectedBytes, err := hex.DecodeString(expected)
-	if err != nil {
-		return false
-	}
-
-	return hmac.Equal(expectedBytes, decoded)
 }

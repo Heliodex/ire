@@ -129,12 +129,14 @@ wt build --dir .
 
 The contract in [`web/src/lib/contract.ts`](./web/src/lib/contract.ts) is the source of truth for every request and response. `wt contract` writes the JSON schemas and generated Go types; both are tracked so a clean checkout builds without running the generator.
 
+The app builds against the v2 SDK (`github.com/heliodex/better-deploy/wt/packages/v2`). Storage, HTTP, OAuth, sessions, durable jobs, webhook signing and the signed outbox all come from shared packages; `packages/v2/sign` verifies inbound Ari signatures and `packages/v2/outbox` owns delivery leases, retries, permanent failures and the stored attempt history.
+
 ### What is deliberately fake
 
 - **Checks** are real for public GitHub repositories on new ingests and run as a durable job. Fixture ships carry prescribed results. GitLab, Hackatime, Lapse, demo probes, identity and duplicate checks are not ported yet.
 - **Auth** uses Hack Club Auth over OIDC when configured. Development accounts remain for local work; the platform identity provider is not used because it is a separate password store, and there is no roster admin UI yet.
 - **Stage 2** has the queue, confirm, override with a reason, send-back and a final decision. The configurable rule engine, fraud, and admin revert or requeue are later.
-- **Delivery receiver** defaults to the in-process `fake://receiver`. Point `REVIEW_OUTBOUND_URL` at a real endpoint to use HTTP; the sender signs the exact bytes and retries on 5xx.
+- **Delivery receiver** defaults to the in-process `fake://receiver`. Point `REVIEW_OUTBOUND_URL` at a real endpoint to use HTTP; `packages/v2/outbox` signs the exact bytes, leases each attempt, retries 5xx/timeouts and fails permanent 4xx responses.
 - **Evidence** for GitHub ships now includes the README, file tree and commits fetched at ingest. Journals and clips still come only from the ingest payload, and the README is shown as plain text rather than rendered Markdown.
 
 ## Where the plan goes next

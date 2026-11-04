@@ -3,31 +3,46 @@ package main
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/outbox"
 )
 
-// backoffSeconds is the retry ladder for an outbound delivery: 30s, 2m, 10m, 30m, 2h, 6h, 12h, 24h.
-var backoffSeconds = []int{30, 120, 600, 1800, 7200, 21600, 43200, 86400}
+const outboxTable = "webhook_outbox"
 
-// outboxRow is one pending or finished delivery.
-type outboxRow struct {
-	ID         string
-	ProgramID  string
-	Submission string
-	Event      string
-	Payload    string
-	URL        string
-	Status     string
-	Attempts   int
-	DeliveryID string
-	LastStatus int
-	LastError  string
+// outboxStore builds the signed delivery queue around the app clock, HTTP client and fake receiver.
+func (a *reviewApp) outboxStore() outbox.Outbox {
+	return outbox.Outbox{
+		Table:  outboxTable,
+		Signer: a.signer(a.config.OutboundSecret),
+		HTTP:   &http.Client{Transport: a.client.Transport, Timeout: outboundTimeout},
+		Now:    a.now,
+		Sender: reviewSender{app: a},
+	}
+}
+
+// reviewSender keeps the in-process fake receiver for the demo and posts real HTTP deliveries with Ari's headers.
+type reviewSender struct {
+	app *reviewApp
+}
+
+// Send performs one delivery attempt.
+func (s reviewSender) Send(ctx context.Context, delivery outbox.Delivery) (int, error) {
+	if strings.HasPrefix(delivery.URL, "fake://") {
+		return s.app.receiveFake(ctx, delivery)
+	}
+
+	sender := outbox.HTTPSender{
+		Client:          s.app.outboxStore().HTTP,
+		TimestampHeader: "X-Ari-Timestamp",
+		DeliveryHeader:  "X-Ari-Delivery-Id",
+		SignatureHeader: "X-Ari-Signature",
+		UserAgent:       "half-life-review",
+	}
+
+	return sender.Send(ctx, delivery)
 }
 
 // handleTick is driven by app.json's schedule. It sends due deliveries, releases expired claims and clears expired sessions.
@@ -63,157 +78,57 @@ func (a *reviewApp) handleTick(w http.ResponseWriter, r *http.Request) {
 	app.WriteJSON(w, http.StatusOK, map[string]int{"delivered": delivered, "retried": retried, "failed": failed})
 }
 
-// deliverDue sends the pending deliveries whose retry time has arrived.
+// deliverDue sends every delivery whose retry time has arrived.
 func (a *reviewApp) deliverDue(ctx context.Context) (int, int, int) {
-	rows, err := a.store.Query(ctx, `select id, program_id, coalesce(submission_id, ''), event, payload, url, status, attempts, coalesce(delivery_id, '')
-		from outbox where status = 'pending' and next_attempt_at <= ? order by next_attempt_at asc limit 20`, a.nowText())
+	summary, err := a.outboxStore().DeliverDue(ctx, a.store, outbox.DefaultLimit)
 	if err != nil {
+		app.Errorf("outbox delivery: %v", err)
+
 		return 0, 0, 0
 	}
-	defer rows.Close()
 
-	ids := []string{}
-
-	for rows.Next() {
-		var row outboxRow
-		if err := rows.Scan(&row.ID, &row.ProgramID, &row.Submission, &row.Event, &row.Payload, &row.URL, &row.Status, &row.Attempts, &row.DeliveryID); err == nil {
-			ids = append(ids, row.ID)
-		}
-	}
-
-	delivered, retried, failed := 0, 0, 0
-
-	for _, id := range ids {
-		switch a.deliverOutboxByID(ctx, id) {
-		case "delivered":
-			delivered++
-		case "failed":
-			failed++
-		case "pending":
-			retried++
-		}
-	}
-
-	return delivered, retried, failed
+	return summary.Delivered, summary.Retried, summary.Failed
 }
 
-// deliverOutboxByID sends one delivery and returns its new status.
-func (a *reviewApp) deliverOutboxByID(ctx context.Context, id string) string {
-	var row outboxRow
+// deliverOutboxNow sends the queue and returns the stored status of one delivery.
+func (a *reviewApp) deliverOutboxNow(ctx context.Context, id string) string {
+	a.deliverDue(ctx)
 
-	err := a.store.QueryRow(ctx, `select id, program_id, coalesce(submission_id, ''), event, payload, url, status, attempts, coalesce(delivery_id, '')
-		from outbox where id = ?`, id).
-		Scan(&row.ID, &row.ProgramID, &row.Submission, &row.Event, &row.Payload, &row.URL, &row.Status, &row.Attempts, &row.DeliveryID)
+	record, err := a.outboxStore().Get(ctx, a.store, id)
 	if err != nil {
 		return ""
 	}
 
-	if row.Status == "delivered" {
-		return "delivered"
-	}
-
-	if row.DeliveryID == "" {
-		row.DeliveryID = newID("del")
-	}
-
-	timestamp := strconv.FormatInt(a.now().Unix(), 10)
-	signature := hmacHex(a.config.OutboundSecret, []byte(timestamp+"."+row.DeliveryID+"."+row.Payload))
-
-	httpStatus, permanent, sendErr := a.sendOutbox(ctx, row, timestamp, signature)
-	now := a.nowText()
-
-	if sendErr == nil {
-		if _, err := a.store.Exec(ctx, `update outbox set status = 'delivered', attempts = attempts + 1, last_http_status = ?, last_error = NULL, delivered_at = ?, delivery_id = ? where id = ?`,
-			httpStatus, now, row.DeliveryID, row.ID); err != nil {
-			return "pending"
-		}
-
-		_, _ = a.store.Exec(ctx, `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'delivered', ?, ?)`,
-			newID("evt"), row.Submission, marshalMap(map[string]any{"event": row.Event, "deliveryId": row.DeliveryID}), now)
-
-		return "delivered"
-	}
-
-	attempts := row.Attempts + 1
-	if permanent || attempts >= len(backoffSeconds) {
-		_, _ = a.store.Exec(ctx, `update outbox set status = 'failed', attempts = ?, last_http_status = ?, last_error = ?, delivery_id = ? where id = ?`,
-			attempts, httpStatus, sendErr.Error(), row.DeliveryID, row.ID)
-		_, _ = a.store.Exec(ctx, `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'delivery_failed', ?, ?)`,
-			newID("evt"), row.Submission, marshalMap(map[string]any{"event": row.Event, "error": sendErr.Error()}), now)
-
-		return "failed"
-	}
-
-	next := a.now().Add(time.Duration(backoffSeconds[attempts-1]) * time.Second).Format(timestampFormat)
-	if _, err := a.store.Exec(ctx, `update outbox set attempts = ?, next_attempt_at = ?, last_http_status = ?, last_error = ?, delivery_id = ? where id = ?`,
-		attempts, next, httpStatus, sendErr.Error(), row.DeliveryID, row.ID); err != nil {
-		return "pending"
-	}
-
-	return "pending"
+	return normalizeOutboxStatus(record.Status)
 }
 
-// sendOutbox posts the exact stored bytes with the Ari headers, or hands them to the in-process receiver when the URL is fake://.
-func (a *reviewApp) sendOutbox(ctx context.Context, row outboxRow, timestamp, signature string) (int, bool, error) {
-	if strings.HasPrefix(row.URL, "fake://") {
-		return a.receiveFake(ctx, row, timestamp, signature)
+// normalizeOutboxStatus collapses a claimed delivery to pending for the API.
+func normalizeOutboxStatus(status string) string {
+	if status == outbox.StatusSending {
+		return outbox.StatusPending
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, row.URL, strings.NewReader(row.Payload))
-	if err != nil {
-		return 0, true, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Ari-Timestamp", timestamp)
-	req.Header.Set("X-Ari-Delivery-Id", row.DeliveryID)
-	req.Header.Set("X-Ari-Signature", signature)
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, outboundTimeout)
-	defer cancel()
-
-	req = req.WithContext(timeoutCtx)
-
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return 0, false, err
-	}
-	defer resp.Body.Close()
-
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
-
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return resp.StatusCode, false, nil
-	}
-
-	permanent := resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusRequestTimeout && resp.StatusCode != http.StatusTooEarly && resp.StatusCode != http.StatusTooManyRequests
-
-	return resp.StatusCode, permanent, errors.New("receiver returned " + resp.Status)
+	return status
 }
 
 // receiveFake verifies and stores a delivery in the prototype's in-process receiver.
-func (a *reviewApp) receiveFake(ctx context.Context, row outboxRow, timestamp, signature string) (int, bool, error) {
-	expected := hmacHex(a.config.OutboundSecret, []byte(timestamp+"."+row.DeliveryID+"."+row.Payload))
+func (a *reviewApp) receiveFake(ctx context.Context, delivery outbox.Delivery) (int, error) {
+	signer := a.signer(a.config.OutboundSecret)
 
 	verified := 0
-	if hmacEqual(expected, signature) {
+	if signer.Verify(delivery.Timestamp, delivery.DeliveryID, delivery.Signature, delivery.Payload) == nil {
 		verified = 1
-	}
-
-	// The receiver enforces the same five-minute window as a real Ari handler, so a replay from an old delivery is rejected even with a valid MAC.
-	if seconds, err := strconv.ParseInt(timestamp, 10, 64); err != nil || absInt64(a.now().Unix()-seconds) > signatureWindow {
-		verified = 0
 	}
 
 	if _, err := a.store.Exec(ctx, `insert or ignore into fake_receiver_delivery (id, delivery_id, event, timestamp, body, signature, verified, received_at)
 		values (?, ?, ?, ?, ?, ?, ?, ?)`,
-		newID("rcv"), row.DeliveryID, row.Event, timestamp, row.Payload, signature, verified, a.nowText()); err != nil {
-		return http.StatusInternalServerError, false, err
+		newID("rcv"), delivery.DeliveryID, delivery.Event, delivery.Timestamp, string(delivery.Payload), delivery.Signature, verified, a.nowText()); err != nil {
+		return http.StatusInternalServerError, err
 	}
 
 	if verified == 0 {
-		return http.StatusUnauthorized, false, errors.New("fake receiver rejected the signature")
+		return http.StatusUnauthorized, errors.New("fake receiver rejected the signature")
 	}
 
-	return http.StatusOK, false, nil
+	return http.StatusOK, nil
 }

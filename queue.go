@@ -10,8 +10,8 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // handleQueue returns the stage 1 work list, counts and claim state in one response.

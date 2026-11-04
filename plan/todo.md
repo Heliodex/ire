@@ -251,9 +251,12 @@ The auth flow and signed HTTP delivery are implemented and tested against a fake
 ### Working now
 
 - [x] `GET /api/v1/auth/config` publishes which methods are enabled.
-- [x] `packages/oauth` handles OIDC discovery, PKCE, token exchange, RS256 ID-token verification and userinfo.
+- [x] `packages/v2/oauth` handles OIDC discovery, PKCE, token exchange, RS256 ID-token verification and userinfo.
 - [x] OAuth state, verifier and nonce live in a short-lived `login_flow` row and are consumed once.
-- [x] `packages/session` owns the session and OAuth-state cookies, hashed tokens and same-origin checks.
+- [x] `packages/v2/session` owns the session and OAuth-state cookies, hashed tokens and same-origin checks.
+- [x] The app builds against the v2 SDK module.
+- [x] Inbound signatures are verified through `packages/v2/sign`.
+- [x] Deliveries use `packages/v2/outbox` with leases, stored attempt history and its `webhook_outbox` table; old rows are migrated once.
 - [x] `GET /auth/login` creates a short-lived state cookie and redirects to Hack Club Auth.
 - [x] `GET /auth/callback` verifies state, exchanges the code and fetches `/api/v1/me`.
 - [x] Identity is mapped to an existing active membership by email; unknown accounts are refused, never auto-created.

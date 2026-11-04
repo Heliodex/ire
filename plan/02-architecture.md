@@ -265,7 +265,7 @@ HCA OAuth 2.0 authorisation code with PKCE. Use the scopes `openid profile email
 4. The Go component exchanges the code, verifies the ID token against HCA's JWKS, reads userinfo, and sets an opaque session cookie.
 5. The session row stores a hash of the token; the cookie is `HttpOnly`, `SameSite=Lax`, `Secure` behind HTTPS.
 
-The app uses `packages/oauth` and `packages/session`; it does not invent a token format.
+The app uses the v2 SDK: `packages/v2/oauth` and `packages/v2/session` for sign-in, `packages/v2/sign` for webhook signatures, and `packages/v2/outbox` for the signed delivery queue. It does not invent a token format or a retry loop.
 
 ### Membership
 
@@ -381,11 +381,11 @@ The current scaffold is close. The production shape should look like this:
   "schedule": [
     { "method": "POST", "path": "/jobs/tick", "every": "1m" }
   ],
-  "build_component": "cd web && bun install --frozen-lockfile && cd .. && go generate ./contract/ && go tool componentize-go -d \"$(go list -m -f '{{.Dir}}' github.com/heliodex/better-deploy/wt/packages)/wit\" -w wt:app/app build",
+  "build_component": "cd web && bun install --frozen-lockfile && cd .. && go generate ./contract/ && go tool componentize-go -d \"$(go list -m -f '{{.Dir}}' github.com/heliodex/better-deploy/wt/packages/v2)/wit\" -w wt:app/app build",
   "build_static": "cd web && bun install --frozen-lockfile && bun run build && rm -rf ../static && cp -r build ../static",
   "component_inputs": ["web/bun.lock", "web/package.json", "web/src/lib/contract.ts"],
   "dev": {
-    "build": "cd web && bun install --frozen-lockfile && cd .. && go generate ./contract/ && go tool componentize-go -d \"$(go list -m -f '{{.Dir}}' github.com/heliodex/better-deploy/wt/packages)/wit\" -w wt:app/app build",
+    "build": "cd web && bun install --frozen-lockfile && cd .. && go generate ./contract/ && go tool componentize-go -d \"$(go list -m -f '{{.Dir}}' github.com/heliodex/better-deploy/wt/packages/v2)/wit\" -w wt:app/app build",
     "command": "bun run dev",
     "proxy": ["/api", "/auth/login", "/auth/logout"],
     "watch": ["web/src/lib/contract.ts"]

@@ -8,7 +8,7 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // submissionRow is the flattened ship row every handler reads. Nullable columns are coalesced to zero values.

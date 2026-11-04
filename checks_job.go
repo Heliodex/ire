@@ -9,8 +9,8 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // checkJob is the durable job payload for the repository checks.

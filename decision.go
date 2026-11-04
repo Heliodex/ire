@@ -11,8 +11,9 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/outbox"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // handleDecision records a stage 1 decision, applies the hold policy, writes the outbox row and returns the next ship to open.
@@ -236,13 +237,23 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	outboxID := ""
+
 	if !held {
-		outboxID = newID("out")
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into outbox (id, program_id, submission_id, event, dedupe_key, payload, url, status, attempts, next_attempt_at, delivery_id, created_at)
-				values (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)`,
-			Args: []any{outboxID, ship.ProgramID, ship.ID, event, "decision:" + reviewID, string(payloadJSON), a.outboundURL(ship.ProgramID), now, newID("del"), now},
+		message, statement, queueErr := a.outboxStore().PrepareTransaction(outbox.Message{
+			Event:     event,
+			DedupeKey: "decision:" + reviewID,
+			Payload:   payloadJSON,
+			URL:       a.outboundURL(ship.ProgramID),
+			Metadata:  map[string]string{"program_id": ship.ProgramID, "submission_id": ship.ID},
 		})
+		if queueErr != nil {
+			app.WriteError(w, http.StatusInternalServerError, "could not queue the delivery")
+			return
+		}
+
+		outboxID = message.ID
+
+		statements = append(statements, statement)
 	}
 
 	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
@@ -259,7 +270,7 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 
 	deliveryStatus := ""
 	if outboxID != "" {
-		deliveryStatus = a.deliverOutboxByID(r.Context(), outboxID)
+		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
 	}
 
 	nextStage := ship.Stage
@@ -366,7 +377,7 @@ func (a *reviewApp) findReview(ctx context.Context, submissionID, key string) (r
 // outboxForReview returns the delivery id and status for a review, or empty strings.
 func (a *reviewApp) outboxForReview(ctx context.Context, reviewID string) (string, string) {
 	var id, status string
-	if err := a.store.QueryRow(ctx, `select id, status from outbox where dedupe_key = ?`, "decision:"+reviewID).Scan(&id, &status); err != nil {
+	if err := a.store.QueryRow(ctx, `select id, status from webhook_outbox where dedupe_key = ?`, "decision:"+reviewID).Scan(&id, &status); err != nil {
 		return "", ""
 	}
 

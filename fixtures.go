@@ -10,8 +10,8 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // A fixture is a real half-life project row reduced to the fields a reviewer needs: the repo and description, the evidence, the claimed hours and a prescribed check outcome. The fixture suite stands in for the network checks until they are ported.
@@ -264,7 +264,7 @@ func (a *reviewApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := a.nowText()
-	tables := []string{"draft", "check_ack", "claim", "review", "outbox", "submission_event", "journal_entry", "bom_line", "check_result", "submission_version", "ingest_delivery", "submission"}
+	tables := []string{"draft", "check_ack", "claim", "review_override", "review", "webhook_outbox", "outbox", "submission_event", "journal_entry", "bom_line", "check_result", "submission_version", "ingest_delivery", "submission"}
 
 	statements := make([]storage.TransactionStatement, 0, len(tables)+1)
 	for _, table := range tables {

@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/outbox"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 5
+const schemaVersion = 6
 
 // schemaStatements is the prototype subset of plan/03-data-model.md: programmes, people, sessions, ships, evidence, checks, claims, reviews, drafts, timeline, audit, outbox and settings. Fraud, forms, counters and retention jobs come later.
 //
@@ -363,10 +364,25 @@ func schemaStatements() []storage.Statement {
 		)`,
 	}
 
-	out := make([]storage.Statement, len(statements))
-	for i, statement := range statements {
-		out[i] = storage.Statement{SQL: statement}
+	out := make([]storage.Statement, 0, len(statements)+8)
+	for _, statement := range statements {
+		out = append(out, storage.Statement{SQL: statement})
 	}
+
+	boxStatements, err := outbox.Outbox{Table: outboxTable}.Schema()
+	if err == nil {
+		out = append(out, boxStatements...)
+	}
+
+	// Move the prototype's first outbox table into the shared package table. insert or ignore keeps a replay harmless.
+	out = append(out, storage.Statement{SQL: `insert or ignore into webhook_outbox
+		(id, event, dedupe_key, payload, url, headers, metadata, status, attempts, max_attempts, next_attempt_at,
+			last_http_status, last_error, delivery_id, created_at, delivered_at)
+		select id, event, dedupe_key, payload, url, '{}',
+			json_object('program_id', program_id, 'submission_id', coalesce(submission_id, '')),
+			status, attempts, 8, next_attempt_at, coalesce(last_http_status, 0), coalesce(last_error, ''),
+			coalesce(delivery_id, ''), created_at, delivered_at
+		from outbox`})
 
 	return out
 }

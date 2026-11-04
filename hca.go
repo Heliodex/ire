@@ -10,10 +10,10 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/oauth"
-	"github.com/heliodex/better-deploy/wt/packages/session"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/oauth"
+	"github.com/heliodex/better-deploy/wt/packages/v2/session"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 const (
@@ -106,7 +106,7 @@ func (a *reviewApp) handleHCAStart(w http.ResponseWriter, r *http.Request) {
 
 	redirect := a.redirectURI(r)
 
-	authoriseURL, err := client.AuthorizeURL(r.Context(), redirect, state, nonce, challenge)
+	authoriseURL, err := client.AuthoriseURL(r.Context(), redirect, state, nonce, challenge)
 	if err != nil {
 		app.WriteError(w, http.StatusBadGateway, "the identity provider is unavailable")
 		return

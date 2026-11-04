@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
-	wasihttp "github.com/heliodex/better-deploy/wt/packages/wasihttp"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
+	wasihttp "github.com/heliodex/better-deploy/wt/packages/v2/wasihttp"
 )
 
 // loadConfig reads the prototype's configuration. Missing secrets fall back to documented development values; production must set both.

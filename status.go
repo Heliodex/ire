@@ -12,8 +12,8 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // requireMachine authenticates a machine endpoint with the programme signing secret as a bearer token.
@@ -273,8 +273,8 @@ func (a *reviewApp) handleReviews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := a.store.Query(r.Context(), `select payload, created_at from outbox
-		where program_id = ? and event like 'review.%' and created_at > ?
+	rows, err := a.store.Query(r.Context(), `select payload, created_at from webhook_outbox
+		where json_extract(metadata, '$.program_id') = ? and event like 'review.%' and created_at > ?
 		order by created_at asc limit ?`, program.ID, since, parseLimit(r))
 	if err != nil {
 		writeStorage(w, err)
@@ -372,53 +372,54 @@ func (a *reviewApp) handleOutbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := a.store.Query(r.Context(), `select id, coalesce(submission_id, ''), event, status, attempts,
-			coalesce(last_http_status, 0), coalesce(last_error, ''), created_at, coalesce(delivered_at, ''),
-			coalesce(delivery_id, ''), payload
-		from outbox where program_id = ? order by created_at desc limit ?`, person.ProgramID, parseLimit(r))
+	records, err := a.outboxStore().List(r.Context(), a.store, parseLimit(r))
 	if err != nil {
 		writeStorage(w, err)
 
 		return
 	}
-	defer rows.Close()
 
 	response := contract.OutboxResponse{Deliveries: []contract.OutboxRow{}}
 
-	for rows.Next() {
-		var (
-			item                                                      contract.OutboxRow
-			submissionID, lastError, deliveredAt, deliveryID, payload string
-			lastHTTP                                                  int
-		)
-		if err := rows.Scan(&item.ID, &submissionID, &item.Event, &item.Status, &item.Attempts, &lastHTTP, &lastError,
-			&item.CreatedAt, &deliveredAt, &deliveryID, &payload); err != nil {
-			writeStorage(w, err)
-
-			return
+	for _, record := range records {
+		if record.Metadata["program_id"] != person.ProgramID {
+			continue
 		}
 
-		if submissionID != "" {
+		item := contract.OutboxRow{
+			ID:        record.ID,
+			Event:     record.Event,
+			Status:    normalizeOutboxStatus(record.Status),
+			Attempts:  record.Attempts,
+			CreatedAt: record.CreatedAt.Format(timestampFormat),
+		}
+
+		if submissionID := record.Metadata["submission_id"]; submissionID != "" {
 			item.SubmissionID = &submissionID
 		}
 
-		if lastHTTP > 0 {
+		if record.LastHTTPStatus > 0 {
+			lastHTTP := record.LastHTTPStatus
 			item.LastHttpStatus = &lastHTTP
 		}
 
-		if lastError != "" {
+		if record.LastError != "" {
+			lastError := record.LastError
 			item.LastError = &lastError
 		}
 
-		if deliveredAt != "" {
+		if record.DeliveredAt != nil {
+			deliveredAt := record.DeliveredAt.Format(timestampFormat)
 			item.DeliveredAt = &deliveredAt
 		}
 
-		if deliveryID != "" {
+		if record.DeliveryID != "" {
+			deliveryID := record.DeliveryID
 			item.DeliveryID = &deliveryID
 		}
 
-		if payload != "" {
+		if len(record.Payload) > 0 {
+			payload := string(record.Payload)
 			item.Payload = &payload
 
 			if person.Role == roleReviewer {

@@ -8,9 +8,9 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/app"
-	"github.com/heliodex/better-deploy/wt/packages/session"
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/session"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // reviewSessions owns the browser cookie name and lifetime shared by both sign-in methods.

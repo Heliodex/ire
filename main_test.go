@@ -15,7 +15,7 @@ import (
 
 	"review/contract"
 
-	"github.com/heliodex/better-deploy/wt/packages/storage"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 const testBase = "/api/v1/programs/half-life"
