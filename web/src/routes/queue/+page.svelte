@@ -441,7 +441,9 @@ async function open(item: QueueItem): Promise<void> {
 							</svg>
 						{/if}
 					</span>
-					<span class="ship-title" title={item.title}>{item.title}</span>
+					<span class="ship-title" title={item.title}
+						>{item.title}<span class="maker inline-maker">{item.makerName}</span></span
+					>
 					<span class="badges">
 						<span
 							class="ui-badge status"
@@ -453,7 +455,7 @@ async function open(item: QueueItem): Promise<void> {
 						<span class="theme">{item.theme ?? ""}</span>
 					</span>
 					<div class="facts">
-						<span class="maker">{item.makerName}</span>
+						<span class="maker fact-maker">{item.makerName}</span>
 						<span class="version">v{item.version}</span>
 						<span class="timing">
 							<span class="hours">{formatHours(item.hoursClaimedSeconds)} claimed</span>
@@ -738,6 +740,12 @@ h1 {
 	white-space: nowrap;
 }
 
+.inline-maker {
+	display: none;
+	padding-left: var(--space-2);
+	font-weight: 400;
+}
+
 .version,
 .age {
 	font-size: var(--text-xs);
@@ -982,6 +990,23 @@ h1 {
 	.timing {
 		flex-direction: column;
 		gap: 0;
+	}
+}
+
+@media (max-width: 700px) {
+	.inline-maker {
+		display: inline;
+	}
+
+	.fact-maker {
+		display: none;
+	}
+
+	.facts {
+		display: flex;
+		gap: var(--space-3);
+		align-items: flex-start;
+		justify-content: flex-end;
 	}
 }
 
