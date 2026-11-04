@@ -201,6 +201,8 @@ func (a *reviewApp) routes() {
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/members/{id}/revoke-sessions", a.handleRevokeSessions)
 	a.mux.HandleFunc("GET /api/v1/dev/outbox/received", a.handleFakeDeliveries)
 
+	a.mux.HandleFunc("GET /metrics", a.handleMetrics)
+
 	a.mux.HandleFunc("POST /jobs/tick", a.handleTick)
 	a.mux.HandleFunc("POST /jobs/checks", a.handleJobChecks)
 }

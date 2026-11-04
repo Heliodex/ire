@@ -350,7 +350,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [x] Request bodies are bounded on ingest, withdraw and JSON routes; browser and machine mutations are rate limited.
 - [ ] Add audit-browser and review-history UI.
 - [ ] Add admin roster and role management, including stage 2 organisers.
-- [ ] Add metrics for queue depth, time to first review, hold rate, check duration and delivery failures.
+- [x] `GET /metrics` exposes queue depth, active claims, stage 1 hold rate, time to first review, check duration and delivery counts in Prometheus text.
 - [x] The scheduled tick prunes login flows, ingest deliveries, closed-ship snapshots, audit records and fake receipts on fixed windows.
 - [ ] Add secret rotation and environment documentation.
 - [ ] Keep every step behind tests and a deployable `wt build`.

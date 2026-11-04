@@ -91,6 +91,7 @@ The check job stores a snapshot in `repo_snapshot`: the README (capped at 200 KB
 | `GET` | `/api/v1/reviews/{program}?since=...` | Bearer ingest secret |
 | `GET` | `/api/v1/events/{program}?since=...` | Bearer ingest secret |
 | `GET` | `/api/v1/auth/config` | Public method discovery |
+| `GET` | `/metrics` | Prometheus counters (machine bearer token) |
 | `GET` | `/auth/login` | Hack Club Auth start |
 | `GET` | `/auth/callback` | Hack Club Auth callback |
 | `POST` | `/api/v1/logout` | Session |
