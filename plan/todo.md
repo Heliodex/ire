@@ -319,8 +319,8 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] Shadow mode writes no outbox rows and `deliverDue` is suppressed; `program.outbound_enabled` is enforced in live mode too.
 - [x] `maxIngestBody` is raised from 1 MiB to 16 MiB, with tests for a payload above 1 MiB and one above the new cap.
 - [x] A nested meta payload with BOM, hours, grant cap and prior reviews round-trips into the review bundle.
-- [ ] Half Life dual-sends the open queue and every new hand-in to Review.
-- [ ] Half Life withdraws the Review copy when Ari resolves, reverts or receives a resubmission.
+- [x] Half Life dual-sends the open queue and every new hand-in to Review on branch `review` (75401a76..2a5eb392).
+- [x] Half Life withdraws the Review copy when Ari resolves, reverts or receives a resubmission, and uses a per-submission delivery id so a resubmission creates the next version.
 - [x] `GET /api/v1/programs/{program}/parity` gives the Half Life parity script the open queue with hours, BOM and check summaries.
 - [ ] `review-parity` runs over the live open queue before cutover.
 - [ ] The signed inbound shadow webhook stays disabled until provider-aware decision handling is built.
