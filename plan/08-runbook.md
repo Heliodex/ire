@@ -55,3 +55,45 @@ This runbook covers the review service as deployed through `wt`. Half Life stays
 - A check stuck in `checking`: the scheduled tick moves it to `needs_attention` after ten minutes; an organizer can rerun checks from the review rail.
 - A repository moved after its snapshot: the review rail shows the stale notice and offers a rerun.
 - A session or audit incident: `/admin` lists recent actions; the tick prunes sessions, login flows, old deliveries, closed-ship snapshots and audit rows on fixed windows.
+
+## Staging deployment
+
+The read-only staging instance runs on the shared `wt-demo` supervisor:
+
+- Supervisor: `https://wt-demo.k.hackclub.dev`
+- App host: `https://review-wt-demo.k.hackclub.dev`
+- App name: `review`
+- Ingress: `review-wt-demo.k.hackclub.dev` on the `wt-demo` deployment, service port 8080
+
+Current staging posture:
+
+- `REVIEW_SHADOW=1` and outbound `fake://receiver`
+- `REVIEW_SEED_FIXTURES=0` and `REVIEW_DEV_AUTH=0`, so the queue starts empty and only Hack Club Auth can sign in
+- Secrets: `HC_CLIENT_ID`, `HC_CLIENT_SECRET`, `HC_REDIRECT_URI`, `REVIEW_BOOTSTRAP_EMAIL`, `REVIEW_INGEST_SECRET`, `REVIEW_OUTBOUND_SECRET`
+- The Hack Club Auth application must allow `https://review-wt-demo.k.hackclub.dev/auth/callback`; the deployed client sends that exact URI
+- The bootstrap email is the first admin; invite the rest at `/admin` after signing in
+
+Deploy from a clean `main` with the staging env temporarily applied to `app.json`:
+
+```json
+"REVIEW_SHADOW": "1",
+"REVIEW_SEED_FIXTURES": "0",
+"REVIEW_DEV_AUTH": "0",
+"REVIEW_OUTBOUND_URL": "fake://receiver",
+"REVIEW_INGEST_SECRET": "secret://REVIEW_INGEST_SECRET",
+"REVIEW_OUTBOUND_SECRET": "secret://REVIEW_OUTBOUND_SECRET"
+```
+
+Then:
+
+```sh
+wt deploy --dir . \
+  --host https://wt-demo.k.hackclub.dev \
+  --app-host review-wt-demo.k.hackclub.dev
+```
+
+The first deploy needed `--skip-route-check` because the ingress existed before the app did; later deploys do not. `wt route check review` and `wt doctor review` should both pass.
+
+Do not deploy the development `app.json` unchanged: it defaults to `REVIEW_SHADOW=0`, fixtures on and development sign-in on, which would turn the public staging host into an open demo. The staging overrides above must be applied for every deploy until a separate production manifest exists.
+
+Half Life needs `REVIEW_SIGNING_SECRET` equal to Review's `REVIEW_INGEST_SECRET`, `REVIEW_PROGRAM=half-life`, `REVIEW_API_URL=https://review-wt-demo.k.hackclub.dev` and `REVIEW_MODE=shadow`. Deliver the ingest secret out of band; `wt secrets` lists names only.
