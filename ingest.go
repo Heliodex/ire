@@ -7,14 +7,10 @@ import (
 	"encoding/hex"
 	"encoding/json/v2"
 	"errors"
-	"fmt"
 	"io"
-	"math"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"review/contract"
 
@@ -123,26 +119,6 @@ func validateIngest(w http.ResponseWriter, request contract.IngestRequest) bool 
 	return true
 }
 
-// validHTTPSURL reports whether value parses as an absolute https URL.
-func validHTTPSURL(value string) bool {
-	parsed, err := url.Parse(strings.TrimSpace(value))
-	if err != nil {
-		return false
-	}
-
-	return parsed.Scheme == "https" && parsed.Host != ""
-}
-
-// validHTTPURL reports whether value parses as an absolute http or https URL.
-func validHTTPURL(value string) bool {
-	parsed, err := url.Parse(strings.TrimSpace(value))
-	if err != nil {
-		return false
-	}
-
-	return (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Host != ""
-}
-
 // verifyIngestSignature checks the HMAC over timestamp.body, or the legacy body-only signature when the programme allows it. It writes the 401 and returns false on failure.
 func (a *reviewApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request, program programRow, body []byte) bool {
 	signature := strings.ToLower(strings.TrimSpace(r.Header.Get("X-Ari-Signature")))
@@ -190,8 +166,6 @@ func (a *reviewApp) allowLegacySignature(ctx context.Context, programID string) 
 }
 
 // ingestShip writes a new version, or reports the existing delivery or open ship. response is the API body; status is the HTTP status.
-//
-//nolint:funlen,maintidx,gocognit,gocyclo // The transaction statements and evidence mapping belong together.
 func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request contract.IngestRequest, deliveryID, rawBody string) (contract.IngestAccepted, int, error) {
 	now := a.nowText()
 
@@ -231,21 +205,8 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 		return contract.IngestAccepted{ID: openID, Status: "duplicate", Version: openVersion}, http.StatusConflict, nil
 	}
 
-	version := 1
-	previousID := ""
-
-	var (
-		lastID, lastStatus string
-		lastVersion        int
-	)
-
-	err = a.store.QueryRow(ctx, `select id, version, status from submission
-		where program_id = ? and external_id = ? order by version desc limit 1`, program.ID, request.ExternalID).
-		Scan(&lastID, &lastVersion, &lastStatus)
-	if err == nil {
-		version = lastVersion + 1
-		previousID = lastID
-	} else if !errors.Is(err, storage.ErrNoRows) {
+	version, previousID, err := a.nextSubmissionVersion(ctx, program.ID, request.ExternalID)
+	if err != nil {
 		return contract.IngestAccepted{}, 0, err
 	}
 
@@ -285,67 +246,10 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 
 	id := newID("sub")
 
-	track := "hardware"
-	if request.Track != nil && strings.TrimSpace(*request.Track) != "" {
-		track = strings.TrimSpace(*request.Track)
-	}
-
-	var (
-		phase, theme, makerSlack, makerHackatime, demoURL, thumbnailURL *string
-		week, requestedTier, priority, grantCap                         *int
-		bomTotal                                                        int
-		hoursClaimed, hoursJournal, hoursHackatime                      int
-	)
-
-	if request.Meta != nil {
-		meta := request.Meta
-		phase = trimSpace(meta.Phase)
-		theme = trimSpace(meta.Theme)
-		week = meta.Week
-		requestedTier = meta.RequestedTier
-		priority = meta.Priority
-		grantCap = meta.GrantCapCents
-
-		if meta.Hours != nil {
-			hoursClaimed = meta.Hours.ClaimedSeconds
-			hoursJournal = meta.Hours.JournalSeconds
-			hoursHackatime = meta.Hours.HackatimeSeconds
-		}
-
-		for _, line := range meta.Bom {
-			quantity := 1
-			if line.Qty != nil {
-				quantity = max(*line.Qty, 0)
-			}
-
-			unit := 0
-			if line.UnitUsd != nil {
-				unit = int(math.Round(*line.UnitUsd * 100))
-			}
-
-			bomTotal += quantity * unit
-		}
-	}
-
-	makerSlack = trimSpace(request.Maker.SlackID)
-	makerHackatime = trimSpace(request.Maker.HackatimeID)
-	demoURL = trimSpace(request.DemoURL)
-	thumbnailURL = trimSpace(request.ThumbnailURL)
-
-	if hoursJournal == 0 {
-		for _, entry := range request.Journals {
-			hoursJournal += journalSeconds(entry)
-		}
-	}
-
-	if hoursClaimed == 0 {
-		hoursClaimed = hoursJournal
-	}
+	fields := buildSubmissionFields(request)
 
 	statements := []storage.TransactionStatement{
-		{SQL: `insert into submission (id, program_id, external_id, version, previous_submission_id, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, maker_slack_id, maker_hackatime_id, repo_url, demo_url, thumbnail_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, ingested_at, created_at, updated_at)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			Args: []any{id, program.ID, request.ExternalID, version, nullString(previousID), status, stageOne, intValue(priority), request.Title, request.Description, track, nullString(stringValue(theme)), nullString(stringValue(phase)), nullInt(week), strings.ToLower(strings.TrimSpace(request.Maker.Email)), request.Maker.Name, nullString(stringValue(makerSlack)), nullString(stringValue(makerHackatime)), nullString(stringValue(request.RepoURL)), nullString(stringValue(demoURL)), nullString(stringValue(thumbnailURL)), nullInt(requestedTier), nullInt(grantCap), bomTotal, hoursClaimed, hoursJournal, hoursHackatime, string(summaryJSON), now, now, now}},
+		submissionStatement(id, program, request, fields, version, previousID, status, string(summaryJSON), now),
 		{SQL: `insert into submission_version (submission_id, version, payload, payload_sha256, received_at, delivery_id)
 			values (?, ?, ?, ?, ?, ?)`,
 			Args: []any{id, version, rawBody, sha256Hex([]byte(rawBody)), now, deliveryID}},
@@ -358,68 +262,10 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 			Args: []any{deliveryID, program.ID, request.ExternalID, version, id, http.StatusCreated, sha256Hex([]byte(rawBody)), now, now}},
 	}
 
-	for i, entry := range request.Journals {
-		seconds := journalSeconds(entry)
-		mediaJSON, _ := json.Marshal(mediaURLs(entry))
-		timelapseJSON, _ := json.Marshal(timelapseRecords(entry))
-
-		title := "Work session"
-		if entry.Markdown != nil && strings.TrimSpace(*entry.Markdown) != "" {
-			title = firstLine(*entry.Markdown)
-		}
-
-		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert into journal_entry (id, submission_id, at, seconds, title, text, markdown, media, timelapses, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			Args: []any{newID("jrn"), id, entry.At, seconds, title, entry.Text, stringValue(entry.Markdown), string(mediaJSON), string(timelapseJSON), i},
-		})
-	}
-
-	seenProjects := map[string]struct{}{}
-
-	for i, project := range request.HackatimeProjects {
-		project = strings.TrimSpace(project)
-		if project == "" || i >= 20 {
-			continue
-		}
-
-		if _, seen := seenProjects[project]; seen {
-			continue
-		}
-
-		seenProjects[project] = struct{}{}
-
-		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert into hackatime_link (submission_id, project) values (?, ?)`,
-			Args: []any{id, project},
-		})
-	}
-
-	if request.Meta != nil {
-		for i, line := range request.Meta.Bom {
-			quantity := 1
-			if line.Qty != nil {
-				quantity = max(*line.Qty, 0)
-			}
-
-			unit := 0
-			if line.UnitUsd != nil {
-				unit = int(math.Round(*line.UnitUsd * 100))
-			}
-
-			statements = append(statements, storage.TransactionStatement{
-				SQL:  `insert into bom_line (id, submission_id, name, quantity, unit_cost_cents, vendor, link, sort) values (?, ?, ?, ?, ?, ?, ?, ?)`,
-				Args: []any{newID("bom"), id, line.Name, quantity, unit, stringValue(line.Vendor), stringValue(line.Link), i},
-			})
-		}
-	}
-
-	for _, check := range checks {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, checked_at)
-				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			Args: []any{newID("chk"), id, version, check.Key, check.Label, check.Group, check.Status, check.Severity, check.Summary, stringValue(check.Detail), check.CheckedAt},
-		})
-	}
+	statements = append(statements, journalStatements(id, request.Journals)...)
+	statements = append(statements, hackatimeStatements(id, request.HackatimeProjects)...)
+	statements = append(statements, bomStatements(id, request.Meta)...)
+	statements = append(statements, checkStatements(id, version, checks)...)
 
 	if queuedChecks {
 		statements = append(statements, storage.TransactionStatement{
@@ -429,25 +275,13 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 		})
 	}
 
-	if evidence != nil {
-		files, marshalErr := json.Marshal(evidence.Files)
-		if marshalErr != nil {
-			return contract.IngestAccepted{}, 0, marshalErr
-		}
+	snapshot, err := evidenceStatement(id, version, evidence)
+	if err != nil {
+		return contract.IngestAccepted{}, 0, err
+	}
 
-		commits, marshalErr := json.Marshal(evidence.Commits)
-		if marshalErr != nil {
-			return contract.IngestAccepted{}, 0, marshalErr
-		}
-
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha,
-					file_count, truncated, readme_text, files, commits, fetched_at, error)
-				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')`,
-			Args: []any{id, version, evidence.Forge, evidence.FullName, stringValue(evidence.DefaultBranch),
-				stringValue(evidence.HeadSha), len(evidence.Files), boolInt(evidence.Truncated), stringValue(evidence.Readme),
-				string(files), string(commits), evidence.FetchedAt},
-		})
+	if snapshot.SQL != "" {
+		statements = append(statements, snapshot)
 	}
 
 	if _, err := a.store.Transaction(ctx, statements...); err != nil {
@@ -459,6 +293,27 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 	}
 
 	return contract.IngestAccepted{ID: id, Status: "accepted", Version: version}, http.StatusCreated, nil
+}
+
+// nextSubmissionVersion returns the next version and the ship it replaces.
+func (a *reviewApp) nextSubmissionVersion(ctx context.Context, programID, externalID string) (int, string, error) {
+	var (
+		lastID, lastStatus string
+		lastVersion        int
+	)
+
+	err := a.store.QueryRow(ctx, `select id, version, status from submission
+		where program_id = ? and external_id = ? order by version desc limit 1`, programID, externalID).
+		Scan(&lastID, &lastVersion, &lastStatus)
+	if errors.Is(err, storage.ErrNoRows) {
+		return 1, "", nil
+	}
+
+	if err != nil {
+		return 0, "", err
+	}
+
+	return lastVersion + 1, lastID, nil
 }
 
 // openShip returns the open ship for an external id.
@@ -535,245 +390,6 @@ func (a *reviewApp) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.WriteJSON(w, http.StatusOK, contract.WithdrawOutcome{ID: id, Status: "withdrawn"})
-}
-
-// localChecks is the prototype's offline check suite. It reads only the payload: no network, no forge token. The fixtures show what the ported checks will report.
-func localChecks(request contract.IngestRequest, now time.Time) []contract.CheckResult {
-	checkedAt := now.Format(timestampFormat)
-	checks := make([]contract.CheckResult, 0, 7)
-
-	repo := ""
-	if request.RepoURL != nil {
-		repo = strings.TrimSpace(*request.RepoURL)
-	}
-
-	if repo == "" {
-		checks = append(checks, check("repo.accessible", "Repository reachable", "repo", statusFail, severityBlock, "No repository URL", "Half Life sent no repo_url, so the ship cannot be reviewed.", checkedAt))
-	} else {
-		checks = append(checks, check("repo.accessible", "Repository reachable", "repo", statusPass, severityInfo, "Repository URL present", "Network fetching is disabled in this prototype; the ported check fetches the tree and README.", checkedAt))
-	}
-
-	description := strings.TrimSpace(request.Description)
-	if len(description) >= minDescriptionLength {
-		checks = append(checks, check("repo.description", "Project description", "repo", statusPass, severityInfo, "Detailed description", descriptionLength(len(description)), checkedAt))
-	} else {
-		checks = append(checks, check("repo.description", "Project description", "repo", statusWarn, severityWarn, "Short description", descriptionLength(len(description)), checkedAt))
-	}
-
-	images := 0
-	if request.ThumbnailURL != nil && strings.TrimSpace(*request.ThumbnailURL) != "" {
-		images++
-	}
-
-	shortEntries, wordless, clips, clipLinks, coveredSeconds, journalTime := 0, 0, 0, 0, 0, 0
-	invalidClips := []string{}
-
-	for _, entry := range request.Journals {
-		images += len(entry.Media)
-		journalTime += journalSeconds(entry)
-
-		words := len(strings.Fields(entry.Text))
-		if words < 15 && (len(entry.Timelapses) > 0 || len(entry.Media) > 0) {
-			wordless++
-		}
-
-		for _, clip := range entry.Timelapses {
-			clips++
-
-			if clip.CoveredSeconds != nil {
-				coveredSeconds += max(*clip.CoveredSeconds, 0)
-			}
-
-			if clip.URL != nil && strings.TrimSpace(*clip.URL) != "" {
-				clipLinks++
-
-				if !validHTTPSURL(*clip.URL) {
-					invalidClips = append(invalidClips, *clip.URL)
-				}
-			}
-		}
-
-		if len(strings.TrimSpace(entry.Text)) < minJournalText {
-			shortEntries++
-		}
-	}
-
-	switch {
-	case images >= 2:
-		checks = append(checks, check("repo.readme.images", "README images", "repo", statusPass, severityInfo, strconv.Itoa(images)+" images", "The ship carries enough images for a first pass.", checkedAt))
-	case images == 1:
-		checks = append(checks, check("repo.readme.images", "README images", "repo", statusWarn, severityWarn, "1 image (2 recommended)", "Add a schematic or board render.", checkedAt))
-	default:
-		checks = append(checks, check("repo.readme.images", "README images", "repo", statusWarn, severityWarn, "No images", "The payload carries no cover or journal images.", checkedAt))
-	}
-
-	bomLines := 0
-	if request.Meta != nil {
-		bomLines = len(request.Meta.Bom)
-	}
-
-	if bomLines > 0 {
-		checks = append(checks, check("repo.bom", "Bill of materials", "repo", statusPass, severityInfo, strconv.Itoa(bomLines)+" BOM lines", "The platform list was sent with the ship.", checkedAt))
-	} else {
-		checks = append(checks, check("repo.bom", "Bill of materials", "repo", statusFail, severityWarn, "No BOM sent", "Half Life sent no BOM lines, so the grant cannot be checked.", checkedAt))
-	}
-
-	switch {
-	case len(request.Journals) == 0:
-		checks = append(checks, check("evidence.journals", "Journal evidence", "evidence", statusFail, severityWarn, "No journal entries", "There is no written evidence to read.", checkedAt))
-	case shortEntries > 0:
-		checks = append(checks, check("evidence.journals", "Journal evidence", "evidence", statusWarn, severityWarn, pluralCount(shortEntries, "short entry", "short entries"), "Some entries lack enough detail to justify their time.", checkedAt))
-	default:
-		checks = append(checks, check("evidence.journals", "Journal evidence", "evidence", statusPass, severityInfo, strconv.Itoa(len(request.Journals))+" entries", "Every entry has enough detail for a first pass.", checkedAt))
-	}
-
-	claimed := 0
-	if request.Meta != nil && request.Meta.Hours != nil {
-		claimed = request.Meta.Hours.ClaimedSeconds
-	}
-
-	if claimed > 0 {
-		checks = append(checks, check("evidence.hours", "Claimed hours", "evidence", statusPass, severityInfo, strconv.Itoa(claimed/secondsPerHour)+"h claimed", "The hours breakdown was sent with the ship.", checkedAt))
-	} else {
-		checks = append(checks, check("evidence.hours", "Claimed hours", "evidence", statusWarn, severityWarn, "No hours claimed", "The maker claimed no time.", checkedAt))
-	}
-
-	checks = append(checks, journalChecks(request.Journals, journalTime, claimed, wordless, checkedAt)...)
-	checks = append(checks, clipChecks(clips, clipLinks, coveredSeconds, claimed, invalidClips, checkedAt)...)
-
-	return checks
-}
-
-// journalChecks reports the written evidence and how its time compares with the claim.
-func journalChecks(entries []contract.IngestJournal, journalTime, claimed, wordless int, checkedAt string) []contract.CheckResult {
-	checks := []contract.CheckResult{}
-
-	if len(entries) == 0 {
-		checks = append(checks, check("journal.present", "Journal entries", "evidence", statusFail, severityWarn, "No journal entries", "There is no written evidence to read.", checkedAt))
-	} else {
-		checks = append(checks, check("journal.present", "Journal entries", "evidence", statusPass, severityInfo,
-			pluralCount(len(entries), "entry", "entries"), "The maker sent written journal entries.", checkedAt))
-	}
-
-	if len(entries) > 0 {
-		status, severity := statusPass, severityInfo
-		summary := "Every entry has words"
-
-		if wordless > 0 {
-			status, severity = statusWarn, severityWarn
-			summary = pluralCount(wordless, "clip-only entry", "clip-only entries")
-		}
-
-		checks = append(checks, check("journal.wordless", "Journal words", "evidence", status, severity, summary,
-			"Clip-only entries are evidence, but they do not explain the work in words.", checkedAt))
-
-		hoursStatus, hoursSeverity := statusPass, severityInfo
-		hoursSummary := formatHours(journalTime) + " logged"
-
-		switch {
-		case claimed == 0:
-			hoursStatus, hoursSeverity = statusSkip, severityInfo
-			hoursSummary = "No claimed time"
-		case journalTime == 0:
-			hoursStatus, hoursSeverity = statusWarn, severityWarn
-			hoursSummary = "No journal time"
-		case journalTime*2 < claimed:
-			hoursStatus, hoursSeverity = statusWarn, severityWarn
-			hoursSummary = formatHours(journalTime) + " of " + formatHours(claimed)
-		}
-
-		checks = append(checks, check("journal.hours", "Journal time", "evidence", hoursStatus, hoursSeverity, hoursSummary,
-			"Journal time is compared with the claim; it is not added to Hackatime time again.", checkedAt))
-	}
-
-	return checks
-}
-
-// pluralCount returns a count with its singular or plural noun.
-func pluralCount(count int, singular, plural string) string {
-	if count == 1 {
-		return strconv.Itoa(count) + " " + singular
-	}
-
-	return strconv.Itoa(count) + " " + plural
-}
-
-// clipChecks reports clip presence, coverage and link validity.
-func clipChecks(clips, links, covered, claimed int, invalid []string, checkedAt string) []contract.CheckResult {
-	if clips == 0 {
-		return []contract.CheckResult{
-			check("lapse.clips", "Timelapses", "evidence", statusSkip, severityInfo, "No timelapses", "The ship carries no timelapse clips.", checkedAt),
-			check("lapse.coverage", "Timelapse coverage", "evidence", statusSkip, severityInfo, "No coverage to measure", "There are no clips to compare with the claim.", checkedAt),
-			check("lapse.links", "Timelapse links", "evidence", statusSkip, severityInfo, "No clip links", "There are no clip URLs to validate.", checkedAt),
-		}
-	}
-
-	checks := []contract.CheckResult{
-		check("lapse.clips", "Timelapses", "evidence", statusPass, severityInfo, fmt.Sprintf("%d clip%s", clips, plural(clips)), "The ship carries timelapse evidence.", checkedAt),
-	}
-
-	if claimed > 0 {
-		ratio := float64(covered) / float64(claimed)
-		if ratio > 1 {
-			ratio = 1
-		}
-
-		status, severity := statusPass, severityInfo
-		if ratio < minClipCoverage {
-			status, severity = statusWarn, severityWarn
-		}
-
-		checks = append(checks, check("lapse.coverage", "Timelapse coverage", "evidence", status, severity,
-			fmt.Sprintf("%.0f%% covered", ratio*100),
-			fmt.Sprintf("%s covered of %s claimed.", formatHours(covered), formatHours(claimed)), checkedAt))
-	} else {
-		checks = append(checks, check("lapse.coverage", "Timelapse coverage", "evidence", statusSkip, severityInfo, "No claimed time", "There is no claim to measure coverage against.", checkedAt))
-	}
-
-	switch {
-	case len(invalid) > 0:
-		checks = append(checks, check("lapse.links", "Timelapse links", "evidence", statusError, severityWarn,
-			fmt.Sprintf("%d clip link%s could not be used", len(invalid), plural(len(invalid))),
-			"Use an HTTPS clip URL: "+strings.Join(capStrings(invalid, 3), ", "), checkedAt))
-	case links == 0:
-		checks = append(checks, check("lapse.links", "Timelapse links", "evidence", statusSkip, severityInfo, "No clip URLs", "The clips carry no direct link to validate.", checkedAt))
-	default:
-		checks = append(checks, check("lapse.links", "Timelapse links", "evidence", statusPass, severityInfo, "Clip links are HTTPS", "Every clip carries a usable HTTPS URL.", checkedAt))
-	}
-
-	return checks
-}
-
-// check builds one check result.
-func check(key, label, group, status, severity, summary, detail, checkedAt string) contract.CheckResult {
-	return contract.CheckResult{
-		Key:       key,
-		Label:     label,
-		Group:     group,
-		Status:    status,
-		Severity:  severity,
-		Summary:   summary,
-		Detail:    stringPtr(detail),
-		CheckedAt: checkedAt,
-	}
-}
-
-// descriptionLength explains why the description check warns.
-func descriptionLength(length int) string {
-	return strconv.Itoa(length) + " characters; 160 is the prototype's minimum."
-}
-
-// journalSeconds reads an entry's duration, preferring seconds over the Ari-compatible minutes.
-func journalSeconds(entry contract.IngestJournal) int {
-	if entry.Seconds != nil {
-		return max(*entry.Seconds, 0)
-	}
-
-	if entry.Minutes != nil {
-		return max(*entry.Minutes, 0) * 60
-	}
-
-	return 0
 }
 
 // mediaURLs returns the media records worth copying into the evidence snapshot.
