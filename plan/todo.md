@@ -235,6 +235,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] The checks rail shows a failed attempt and its error.
 - [x] Check results carry a `source` (`fixture`, `forge`, `payload`, `probe`) exposed through the bundle.
 - [x] A public HTTPS demo is probed once per check job; loopback, private and link-local targets are rejected.
+- [x] Duplicate repository/demo links and Hackatime/Slack identities reused across maker emails warn on ingest.
 
 ### Remaining
 
@@ -243,7 +244,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [ ] Combine the BOM parse with the maker's submitted BOM lines and flag mismatched prices.
 - [ ] Use the previous approval as the commit window for resubmissions, not only the programme start.
 - [ ] Add GitLab behind the same forge interface.
-- [ ] Port the remaining groups: identity, duplicate and theme requirements.
+- [ ] Port the remaining group: theme requirements.
 - [ ] Add Hackatime span overlap against timelapses and the reviewer override path.
 - [ ] Scope Hackatime totals to the phase week instead of the all-time project total.
 - [ ] Add tests for rate limit, timeout, malformed JSON, oversized tree, BOM parsing, commit windows and the job runner.

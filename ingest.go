@@ -213,6 +213,7 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 
 	nowTime := a.now()
 	checks := localChecks(request, nowTime)
+	checks = append(checks, a.duplicateChecks(ctx, program.ID, request, nowTime)...)
 
 	var (
 		evidence     *contract.Evidence
