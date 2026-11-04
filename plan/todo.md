@@ -351,7 +351,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [ ] Add audit-browser and review-history UI.
 - [ ] Add admin roster and role management, including stage 2 organisers.
 - [ ] Add metrics for queue depth, time to first review, hold rate, check duration and delivery failures.
-- [ ] Add retention for sessions, deliveries, snapshots and audit.
+- [x] The scheduled tick prunes login flows, ingest deliveries, closed-ship snapshots, audit records and fake receipts on fixed windows.
 - [ ] Add secret rotation and environment documentation.
 - [ ] Keep every step behind tests and a deployable `wt build`.
 

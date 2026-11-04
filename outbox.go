@@ -71,6 +71,10 @@ func (a *reviewApp) handleTick(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if _, err := a.pruneRetention(r.Context()); err != nil {
+		app.Errorf("retention: %v", err)
+	}
+
 	_, _ = a.store.Exec(r.Context(), `delete from session where expires_at <= ?`, now)
 	_, _ = a.store.Exec(r.Context(), `update submission set status = 'needs_attention', updated_at = ?
 		where status = 'checking' and ingested_at < ?`, now, a.later(-checkStaleAfter))
