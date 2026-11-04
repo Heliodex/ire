@@ -5,7 +5,7 @@ import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { checkTone } from "../../lib/checks"
-import { formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
+import { formatDateTime, formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
 type Filter = "all" | "fast" | "attention" | "mine"
@@ -21,6 +21,7 @@ let loading = $state(true)
 let refreshing = $state(false)
 let opening = $state("")
 let error = $state("")
+let actionError = $state("")
 let selected = $state(0)
 let search = $state("")
 let filterTabs = $state<HTMLDivElement | null>(null)
@@ -181,6 +182,7 @@ async function choose(next: Filter): Promise<void> {
 	filter = next
 	selected = 0
 	error = ""
+	actionError = ""
 
 	const cached = cache.get(`1:${next}`)
 	if (cached) {
@@ -204,6 +206,7 @@ async function chooseSecondPass(): Promise<void> {
 	filter = "all"
 	selected = 0
 	error = ""
+	actionError = ""
 
 	if (cached) {
 		queue = cached
@@ -241,15 +244,27 @@ async function moveSelection(step: number): Promise<void> {
 	listElement?.querySelector<HTMLElement>('.row[aria-current="true"]')?.scrollIntoView({ block: "nearest" })
 }
 
+// claimError makes a claim conflict readable and formats the expiry from the API.
+function claimError(err: unknown): string {
+	if (!(err instanceof ApiError) || err.code !== "claim_taken")
+		return err instanceof Error ? err.message : "Could not claim this ship."
+
+	const until = /until (\S+)$/.exec(err.message)?.[1]
+
+	return until
+		? `Another reviewer has already claimed this ship until ${formatDateTime(until)}.`
+		: "Another reviewer has already claimed this ship."
+}
+
 async function open(item: QueueItem): Promise<void> {
 	opening = item.id
-	error = ""
+	actionError = ""
 	try {
 		if (!session.me?.readOnly && (!item.claimedBy || item.claimedBy !== session.me?.user.email))
 			await claimShip(item.id)
 		window.location.assign(`/review/${encodeURIComponent(item.id)}`)
 	} catch (err) {
-		error = err instanceof Error ? err.message : "Could not claim this ship."
+		actionError = claimError(err)
 		await load()
 	} finally {
 		opening = ""
@@ -309,8 +324,21 @@ async function open(item: QueueItem): Promise<void> {
 	</label>
 </div>
 
-{#if error}
-	<div class="ui-notice" data-tone="bad" role="alert">{error}</div>
+{#if actionError || error}
+	<div class="ui-notice error-notice" data-tone="bad" role="alert">
+		<span>{actionError || error}</span>
+		{#if actionError}
+			<button
+				class="dismiss"
+				onclick={(): void => {
+					actionError = ""
+				}}
+				type="button"
+			>
+				Dismiss
+			</button>
+		{/if}
+	</div>
 {/if}
 
 <section aria-busy={loading || refreshing} aria-labelledby="list-title">
@@ -550,6 +578,26 @@ h1 {
 .list-head span {
 	font-size: var(--text-xs);
 	color: var(--text-3);
+}
+
+.error-notice {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--space-3);
+}
+
+.dismiss {
+	padding: 0;
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+	background: none;
+	border: 0;
 }
 
 .list {
