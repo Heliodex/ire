@@ -30,7 +30,7 @@ func (a *reviewApp) handleIngest(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		app.WriteError(w, http.StatusRequestEntityTooLarge, "payload is larger than 1 MiB")
+		app.WriteError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("payload is larger than %d MiB", maxIngestBody>>20))
 		return
 	}
 
