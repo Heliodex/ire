@@ -27,7 +27,7 @@ The interface follows Ari's visual language: Hanken Grotesk, Ari's grey surfaces
 wt dev --dir . --port 8080
 ```
 
-Open the `dev: vite at …` URL that it prints (the frontend is served by Vite in development; the API is on `review.localhost:8080`). For a production build, run `wt build --dir .` and `wt deploy --dir .`; the supervisor then serves both the static site and the API on `review.localhost`. The root and protected pages are selected server-side with `server_pages` and `app.StaticPage`: a signed-in root redirects to `/queue`, a signed-out root serves the login page, and `/queue`, `/review` and `/deliveries` redirect to `/` without loading the page first. A ship opens at `/review/{id}`; old `/review?id=…` links redirect to that path. `/login` remains as a compatibility redirect to `/`.
+Open the `dev: vite at …` URL that it prints (the frontend is served by Vite in development; the API is on `review.localhost:8080`). For a production build, run `wt build --dir .` and `wt deploy --dir .`; the supervisor then serves both the static site and the API on `review.localhost`. The root and protected pages are selected server-side with `server_pages` and `app.StaticPage`: a signed-in root redirects to `/queue`, a signed-out root serves the login page, and `/queue`, `/review` and `/deliveries` redirect to `/` without loading the page first. A ship opens at `/review/{id}`; old `/review?id=…` links redirect to that path. Organisers can rerun the repository checks from the review rail; the run is queued with the same fallback as ingest and the page follows it until it finishes. `/login` remains as a compatibility redirect to `/`.
 
 Sign in with one of the seeded accounts:
 

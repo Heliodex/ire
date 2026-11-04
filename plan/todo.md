@@ -231,11 +231,13 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] Hackatime checks cover linked projects, tracked time and staleness, with a five-minute cache.
 - [x] Journal checks cover presence, clip-only entries and journal time against the claim.
 - [x] Clip checks cover count, coverage and HTTPS link validity.
+- [x] Organisers can rerun repository checks from the review rail; the run is queued with a unique idempotency key and the page polls it.
+- [x] The checks rail shows a failed attempt and its error.
 
 ### Remaining
 
 - [ ] Add `source` to check results (`fixture`, `forge`, `payload`, `manual`).
-- [ ] Add a rerun action and a "checks outdated" notice.
+- [ ] Add a "checks outdated" notice when the head SHA moves after the snapshot.
 - [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
 - [ ] Combine the BOM parse with the maker's submitted BOM lines and flag mismatched prices.
 - [ ] Use the previous approval as the commit window for resubmissions, not only the programme start.
@@ -243,7 +245,6 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [ ] Port the remaining groups: demo probe, identity, duplicate and theme requirements.
 - [ ] Add Hackatime span overlap against timelapses and the reviewer override path.
 - [ ] Scope Hackatime totals to the phase week instead of the all-time project total.
-- [ ] Show the check-run error and attempt count in the review rail, not only the banner.
 - [ ] Add tests for rate limit, timeout, malformed JSON, oversized tree, BOM parsing, commit windows and the job runner.
 - [ ] Add a fixture parity suite and a sample run over real `.projects.csv` rows (not committed).
 - [ ] Document every check key, severity, blocking rule and the porting map.

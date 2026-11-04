@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -289,7 +290,7 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 	}
 
 	if queuedChecks {
-		a.queueRepositoryChecks(ctx, id, version)
+		a.queueRepositoryChecks(ctx, id, version, fmt.Sprintf("checks:%s:%d", id, version))
 	}
 
 	return contract.IngestAccepted{ID: id, Status: "accepted", Version: version}, http.StatusCreated, nil

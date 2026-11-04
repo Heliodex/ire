@@ -2,6 +2,7 @@ import { type BaseIssue, type GenericSchema, type InferOutput, safeParse } from 
 import { ApiError } from "./api-error"
 import {
 	authConfigSchema,
+	checkRunSchema,
 	claimResponseSchema,
 	decisionResultSchema,
 	draftResponseSchema,
@@ -26,6 +27,7 @@ export type Journal = Bundle["journals"][number]
 export type BomLine = Bundle["bom"][number]
 export type Review = Bundle["reviews"][number]
 export type Claim = InferOutput<typeof claimResponseSchema>["claim"]
+export type CheckRun = InferOutput<typeof checkRunSchema>
 export type Decision = InferOutput<typeof decisionResultSchema>
 export type Evidence = InferOutput<typeof evidenceSchema>
 export interface SendBackRequest {
@@ -187,6 +189,14 @@ export async function decideShip(
 		method: "POST",
 	})
 	return parseJSON(response, decisionResultSchema)
+}
+
+// rerunChecks queues a fresh repository check for an organiser.
+export async function rerunChecks(id: string): Promise<CheckRun> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/checks/rerun`, {
+		method: "POST",
+	})
+	return parseJSON(response, checkRunSchema)
 }
 
 // sendShipBack invalidates a held review and returns the ship to stage 1.

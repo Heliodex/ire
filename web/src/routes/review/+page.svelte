@@ -13,6 +13,7 @@ import {
 	program,
 	refreshRepositoryEvidence,
 	releaseShip,
+	rerunChecks,
 	saveDraft,
 	sendShipBack,
 } from "../../lib/api"
@@ -50,6 +51,8 @@ let overrideElement = $state<HTMLTextAreaElement | null>(null)
 let sendBackReason = $state("")
 let sendBackError = $state("")
 let sendingBack = $state(false)
+let rerunning = $state(false)
+let rerunError = $state("")
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 
 const submission = $derived(bundle?.submission ?? null)
@@ -244,6 +247,23 @@ function toggleAck(key: string): void {
 
 function acknowledgeAll(): void {
 	acknowledgements = warnings.map(check => check.key)
+}
+
+async function rerunChecksNow(): Promise<void> {
+	if (!bundle || rerunning) return
+
+	rerunning = true
+	rerunError = ""
+
+	try {
+		await rerunChecks(bundle.submission.id)
+		await load(id)
+		flash("Checks queued.")
+	} catch (err) {
+		rerunError = err instanceof Error ? err.message : "Could not rerun the checks."
+	} finally {
+		rerunning = false
+	}
 }
 
 async function refreshEvidenceNow(): Promise<void> {
@@ -665,18 +685,34 @@ async function saveDraftNow(): Promise<void> {
 			<section class="ui-card padded summary">
 				<div class="summary-head">
 					<h2>Checks</h2>
-					<span
-						class="ui-badge"
-						data-tone={statusTone(bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass")}
-					>
-						{bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass"}
-					</span>
+					<div class="summary-actions">
+						{#if canSecondPass && submission.status !== "checking"}
+							<button class="link" disabled={rerunning} onclick={rerunChecksNow} type="button">
+								{rerunning ? "Rerunning…" : "Rerun checks"}
+							</button>
+						{/if}
+						<span
+							class="ui-badge"
+							data-tone={statusTone(bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass")}
+						>
+							{bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass"}
+						</span>
+					</div>
 				</div>
 				<div class="summary-counts">
 					<span><strong>{bundle.checks.filter(check => check.status === "pass").length}</strong> pass</span>
 					<span><strong>{warnings.length}</strong> warn</span>
 					<span><strong>{blocking.length}</strong> block</span>
 				</div>
+				{#if bundle.checkRun?.error}
+					<div class="ui-notice" data-tone="bad">
+						<strong>Check attempt {bundle.checkRun.attempts} failed</strong>
+						{bundle.checkRun.error}
+					</div>
+				{/if}
+				{#if rerunError}
+					<p class="ui-notice" data-tone="bad" role="alert">{rerunError}</p>
+				{/if}
 				<p class="policy">
 					{#if bundle.policy.holdOnWarn === 1}
 						Approvals with warnings are held for the second pass.
@@ -1188,6 +1224,12 @@ h1 {
 	flex-direction: column;
 	gap: var(--space-3);
 	padding-top: var(--space-4);
+}
+
+.summary-actions {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
 }
 
 .summary-head {

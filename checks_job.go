@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"review/contract"
@@ -25,8 +24,8 @@ type checkJob struct {
 }
 
 // queueRepositoryChecks enqueues the forge work and falls back to running it inline if the queue is unavailable, so a ship never waits in checking forever.
-func (a *reviewApp) queueRepositoryChecks(ctx context.Context, submissionID string, version int) {
-	err := a.enqueueCheckJob(ctx, submissionID, version)
+func (a *reviewApp) queueRepositoryChecks(ctx context.Context, submissionID string, version int, idempotencyKey string) {
+	err := a.enqueueCheckJob(ctx, submissionID, version, idempotencyKey)
 	if err == nil {
 		return
 	}
@@ -44,7 +43,7 @@ func (a *reviewApp) queueRepositoryChecks(ctx context.Context, submissionID stri
 }
 
 // enqueueCheckJob adds one idempotent job per submission version.
-func (a *reviewApp) enqueueCheckJob(ctx context.Context, submissionID string, version int) error {
+func (a *reviewApp) enqueueCheckJob(ctx context.Context, submissionID string, version int, idempotencyKey string) error {
 	payload, err := json.Marshal(checkJob{SubmissionID: submissionID, Version: version})
 	if err != nil {
 		return err
@@ -56,7 +55,7 @@ func (a *reviewApp) enqueueCheckJob(ctx context.Context, submissionID string, ve
 		Body:           string(payload),
 		Headers:        map[string]string{"Content-Type": "application/json"},
 		MaxAttempts:    5,
-		IdempotencyKey: fmt.Sprintf("checks:%s:%d", submissionID, version),
+		IdempotencyKey: idempotencyKey,
 	})
 
 	return err
