@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { Bundle } from "../../api"
 import { formatDateTime } from "../../format"
+import Markdown from "./Markdown.svelte"
 
 let {
 	evidence,
@@ -83,7 +84,7 @@ let {
 	{#if evidence.readme}
 		<section class="ui-card padded readme">
 			<h3>README</h3>
-			<pre class="readme-body">{evidence.readme}</pre>
+			<div class="readme-body"><Markdown text={evidence.readme} /></div>
 		</section>
 	{/if}
 {/if}
@@ -178,7 +179,5 @@ let {
 	max-height: 420px;
 	margin-top: var(--space-2);
 	overflow: auto;
-	font-size: var(--text-sm);
-	line-height: 1.6;
 }
 </style>
