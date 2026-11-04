@@ -254,7 +254,7 @@ function acknowledgeAll(): void {
 
 // checkHead shows a stale notice when the default branch moved after the snapshot.
 async function checkHead(): Promise<void> {
-	if (!bundle || !bundle.submission.repoUrl) {
+	if (!bundle?.submission.repoUrl) {
 		checksOutdated = false
 		return
 	}
