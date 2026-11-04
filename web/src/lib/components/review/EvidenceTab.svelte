@@ -290,6 +290,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 	gap: var(--space-2);
 	align-items: baseline;
 	justify-content: space-between;
+	padding-bottom: var(--space-2);
 }
 
 .card-count {
