@@ -14,13 +14,14 @@ import {
 	refreshRepositoryEvidence,
 	releaseShip,
 	saveDraft,
+	sendShipBack,
 } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
 import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
-type Tab = "overview" | "checks" | "journal" | "bom" | "evidence"
+type Tab = "overview" | "checks" | "journal" | "bom" | "evidence" | "history"
 
 let bundle = $state<Bundle | null>(null)
 let id = $state("")
@@ -40,6 +41,11 @@ let claimedId = $state("")
 let idempotencyKey = $state("")
 let refreshingEvidence = $state(false)
 let evidenceError = $state("")
+let overrideReason = $state("")
+let overrideElement = $state<HTMLTextAreaElement | null>(null)
+let sendBackReason = $state("")
+let sendBackError = $state("")
+let sendingBack = $state(false)
 
 const submission = $derived(bundle?.submission ?? null)
 const secondPass = $derived(submission?.stage === 2 || submission?.status === "stage2_hold")
@@ -245,6 +251,17 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		return
 	}
 
+	if (
+		secondPass
+		&& heldReview
+		&& (decision !== "approved" || Math.round(hours * 3600) !== (heldReview.hoursApprovedSeconds ?? 0))
+		&& overrideReason.trim() === ""
+	) {
+		actionError = "Explain why the second pass changes the first-pass decision or hours."
+		overrideElement?.focus()
+		return
+	}
+
 	deciding = true
 	try {
 		// One key per ship and version: if the response is lost, the retry returns the review that was already written instead of creating a second one.
@@ -259,6 +276,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 			idempotencyKey: key,
 			internalNote: internalNote.trim(),
 			noteToMaker: note.trim(),
+			overrideReason: overrideReason.trim(),
 			version: bundle.submission.version,
 		})
 		idempotencyKey = ""
@@ -281,6 +299,33 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		else actionError = err instanceof Error ? err.message : "Could not record the decision."
 	} finally {
 		deciding = false
+	}
+}
+
+async function sendBackToStageOne(): Promise<void> {
+	if (!bundle || sendingBack) return
+
+	sendBackError = ""
+
+	if (sendBackReason.trim() === "") {
+		sendBackError = "Write why stage 1 should look at this ship again."
+		return
+	}
+
+	sendingBack = true
+
+	try {
+		await sendShipBack(bundle.submission.id, {
+			reason: sendBackReason.trim(),
+			version: bundle.submission.version,
+		})
+		await goto("/queue")
+	} catch (err) {
+		if (err instanceof ApiError && err.code === "stale_version")
+			sendBackError = "This ship changed since you opened it. Reload before sending it back."
+		else sendBackError = err instanceof Error ? err.message : "Could not send the ship back."
+	} finally {
+		sendingBack = false
 	}
 }
 
@@ -381,10 +426,15 @@ async function saveDraftNow(): Promise<void> {
 			<span class="ui-badge" data-tone="secondpass">Second pass</span>
 			<span>{submission.heldReason ?? "Held for a second review."}</span>
 		</div>
-		{#if heldReview?.noteToMaker}
+		{#if heldReview}
 			<div class="first-pass">
 				<strong>First pass · {heldReview.reviewerEmail}</strong>
-				<p>{heldReview.noteToMaker}</p>
+				{#if heldReview.noteToMaker}
+					<p>{heldReview.noteToMaker}</p>
+				{/if}
+				{#if heldReview.acknowledgements.length > 0}
+					<p class="acks">Acknowledged: {heldReview.acknowledgements.join(", ")}</p>
+				{/if}
 			</div>
 		{/if}
 	{/if}
@@ -398,6 +448,7 @@ async function saveDraftNow(): Promise<void> {
 					{ key: "journal", label: `Journal (${bundle.journals.length})` },
 					{ key: "bom", label: `BOM (${bundle.bom.length})` },
 					{ key: "evidence", label: "Evidence" },
+					{ key: "history", label: `History (${bundle.reviews.length})` },
 				] as item (item.key)}
 					<button
 						aria-selected={tab === item.key}
@@ -681,6 +732,52 @@ async function saveDraftNow(): Promise<void> {
 						</section>
 					{/if}
 				{/if}
+			{:else if tab === "history"}
+				{#if bundle.reviews.length === 0}
+					<div class="ui-card ui-empty">
+						<strong>No decisions yet</strong>
+						<span>Stage 1 and the second pass will appear here.</span>
+					</div>
+				{:else}
+					<ol class="history">
+						{#each bundle.reviews as review (review.id)}
+							<li class="ui-card padded" class:invalidated={review.invalidatedAt}>
+								<div class="history-head">
+									<span class="ui-badge">Stage {review.stage}</span>
+									<strong>{review.decision}</strong>
+									{#if review.held === 1}
+										<span class="ui-badge" data-tone="secondpass">Held</span>
+									{/if}
+									{#if review.invalidatedAt}
+										<span class="ui-badge" data-tone="warn">Invalidated</span>
+									{/if}
+									<span class="history-when">
+										{review.reviewerEmail}
+										· {formatDateTime(review.createdAt)}
+									</span>
+								</div>
+								{#if review.hoursApprovedSeconds !== undefined}
+									<p>{formatHours(review.hoursApprovedSeconds)} approved</p>
+								{/if}
+								{#if review.heldReason}
+									<p class="muted">Held because {review.heldReason}.</p>
+								{/if}
+								{#if review.noteToMaker}
+									<p>{review.noteToMaker}</p>
+								{/if}
+								{#if review.overrideReason}
+									<p class="muted">Override: {review.overrideReason}</p>
+								{/if}
+								{#if review.acknowledgements.length > 0}
+									<p class="muted">Acknowledged: {review.acknowledgements.join(", ")}</p>
+								{/if}
+								{#if review.invalidatedAt}
+									<p class="muted">Sent back {formatDateTime(review.invalidatedAt)}.</p>
+								{/if}
+							</li>
+						{/each}
+					</ol>
+				{/if}
 			{/if}
 		</section>
 
@@ -747,6 +844,19 @@ async function saveDraftNow(): Promise<void> {
 					></textarea>
 				</label>
 
+				{#if secondPass}
+					<label class="field">
+						<span>Override reason (required if you change the first pass)</span>
+						<textarea
+							class="ui-input"
+							placeholder="Why the first-pass hours or decision should change."
+							rows="2"
+							bind:this={overrideElement}
+							bind:value={overrideReason}
+						></textarea>
+					</label>
+				{/if}
+
 				{#if !secondPass && missingAcks.length > 0}
 					<div class="ui-notice" data-tone="warn">
 						<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
@@ -811,6 +921,30 @@ async function saveDraftNow(): Promise<void> {
 						</button>
 					</div>
 				</div>
+
+				{#if secondPass && canSecondPass}
+					<div class="send-back">
+						<h3>Send back to stage 1</h3>
+						<p>Invalidate the held review and let a reviewer look again. No event is sent to the maker.</p>
+						<textarea
+							class="ui-input"
+							placeholder="What should stage 1 look at again?"
+							rows="2"
+							bind:value={sendBackReason}
+						></textarea>
+						{#if sendBackError}
+							<p class="ui-notice" data-tone="bad" role="alert">{sendBackError}</p>
+						{/if}
+						<button
+							class="ui-button secondary block"
+							disabled={sendingBack}
+							onclick={sendBackToStageOne}
+							type="button"
+						>
+							{sendingBack ? "Sending back…" : "Send back"}
+						</button>
+					</div>
+				{/if}
 
 				{#if bundle.claim}
 					<p class="claim">
@@ -951,6 +1085,59 @@ h1 {
 .ship-tabs {
 	flex-wrap: wrap;
 	overflow-x: visible;
+}
+
+.history {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin-top: var(--space-3);
+	list-style: none;
+}
+
+.history-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: baseline;
+	padding-bottom: var(--space-1);
+}
+
+.history-when {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.history p {
+	padding-bottom: var(--space-1);
+	font-size: var(--text-sm);
+}
+
+.history .invalidated {
+	opacity: 0.72;
+}
+
+.acks {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.send-back {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding-top: var(--space-3);
+	margin-top: var(--space-3);
+	border-top: 1px solid var(--border);
+}
+
+.send-back h3 {
+	font-size: var(--text-sm);
+}
+
+.send-back p {
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .evidence-meta {

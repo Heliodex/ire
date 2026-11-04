@@ -12,6 +12,7 @@ import {
 	outboxResponseSchema,
 	queueResponseSchema,
 	reviewBundleSchema,
+	sendBackResultSchema,
 } from "./contract"
 import { ValidationError } from "./validation-error"
 
@@ -27,6 +28,11 @@ export type Review = Bundle["reviews"][number]
 export type Claim = InferOutput<typeof claimResponseSchema>["claim"]
 export type Decision = InferOutput<typeof decisionResultSchema>
 export type Evidence = InferOutput<typeof evidenceSchema>
+export interface SendBackRequest {
+	reason: string
+	version: number
+}
+export type SendBackResult = InferOutput<typeof sendBackResultSchema>
 export type OutboxRow = InferOutput<typeof outboxResponseSchema>["deliveries"][number]
 export type FakeDelivery = InferOutput<typeof fakeDeliveriesResponseSchema>["deliveries"][number]
 
@@ -172,6 +178,7 @@ export async function decideShip(
 		hoursApprovedSeconds: number
 		acknowledgements: string[]
 		idempotencyKey: string
+		overrideReason?: string
 	},
 ): Promise<Decision> {
 	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/decision`, {
@@ -180,6 +187,16 @@ export async function decideShip(
 		method: "POST",
 	})
 	return parseJSON(response, decisionResultSchema)
+}
+
+// sendShipBack invalidates a held review and returns the ship to stage 1.
+export async function sendShipBack(id: string, request: SendBackRequest): Promise<SendBackResult> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/send-back`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	return parseJSON(response, sendBackResultSchema)
 }
 
 // fetchOutbox returns recent deliveries for the operations page.

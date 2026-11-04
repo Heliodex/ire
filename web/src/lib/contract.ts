@@ -209,13 +209,17 @@ export const bomLineSchema = pipe(
 
 export const reviewSchema = pipe(
 	object({
+		acknowledgements: array(string()),
 		createdAt: timestamp,
 		decision: pipe(string(), minLength(1)),
 		held: nonNegative,
+		heldReason: optionalString,
 		hoursApprovedSeconds: optional(pipe(number(), integer())),
 		id: pipe(string(), minLength(1)),
 		internalNote: optionalString,
+		invalidatedAt: optionalString,
 		noteToMaker: string(),
+		overrideReason: optionalString,
 		reviewerEmail: pipe(string(), minLength(1)),
 		reviewerName: optionalString,
 		stage: nonNegative,
@@ -355,9 +359,27 @@ export const decisionRequestSchema = pipe(
 		idempotencyKey: pipe(string(), minLength(1), maxLength(120)),
 		internalNote: pipe(string(), maxLength(maxNote)),
 		noteToMaker: pipe(string(), maxLength(maxNote)),
+		overrideReason: optional(pipe(string(), maxLength(maxNote))),
 		version: nonNegative,
 	}),
 	title("DecisionRequest"),
+)
+
+export const sendBackRequestSchema = pipe(
+	object({
+		reason: pipe(string(), maxLength(maxNote)),
+		version: nonNegative,
+	}),
+	title("SendBackRequest"),
+)
+
+export const sendBackResultSchema = pipe(
+	object({
+		id: pipe(string(), minLength(1)),
+		stage: nonNegative,
+		status: pipe(string(), minLength(1)),
+	}),
+	title("SendBackResult"),
 )
 
 export const decisionResultSchema = pipe(
@@ -586,6 +608,7 @@ export const reviewEventSchema = pipe(
 				}),
 			),
 			note_to_maker: string(),
+			override_reason: optionalString,
 			reviewer: optional(object({ email: optionalString, slack_id: optionalString })),
 			seconds_breakdown: secondsBreakdownSchema,
 		}),
@@ -663,6 +686,7 @@ export const requestSchemas = Object.freeze([
 	loginRequestSchema,
 	draftRequestSchema,
 	decisionRequestSchema,
+	sendBackRequestSchema,
 	ingestRequestSchema,
 	withdrawRequestSchema,
 ])
@@ -684,6 +708,7 @@ export const responseSchemas = Object.freeze([
 	reviewBundleSchema,
 	reviewEventSchema,
 	reviewsResponseSchema,
+	sendBackResultSchema,
 	statusResponseSchema,
 	withdrawResponseSchema,
 ])

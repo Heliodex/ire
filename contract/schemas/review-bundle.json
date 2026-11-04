@@ -338,6 +338,12 @@
 			"items": {
 				"type": "object",
 				"properties": {
+					"acknowledgements": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
 					"createdAt": {
 						"type": "string",
 						"minLength": 1
@@ -350,6 +356,9 @@
 						"type": "integer",
 						"minimum": 0
 					},
+					"heldReason": {
+						"type": "string"
+					},
 					"hoursApprovedSeconds": {
 						"type": "integer"
 					},
@@ -360,7 +369,13 @@
 					"internalNote": {
 						"type": "string"
 					},
+					"invalidatedAt": {
+						"type": "string"
+					},
 					"noteToMaker": {
+						"type": "string"
+					},
+					"overrideReason": {
 						"type": "string"
 					},
 					"reviewerEmail": {
@@ -376,6 +391,7 @@
 					}
 				},
 				"required": [
+					"acknowledgements",
 					"createdAt",
 					"decision",
 					"held",

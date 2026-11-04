@@ -154,6 +154,10 @@ func (a *reviewApp) statusResponse(ctx context.Context, ship submissionRow) (con
 	}
 
 	for _, review := range slices.Backward(reviews) {
+		if review.InvalidatedAt != nil {
+			continue
+		}
+
 		response.StageHistory = append(response.StageHistory, contract.StatusResponseStageHistoryElem{
 			Stage:    review.Stage,
 			Decision: review.Decision,
@@ -163,7 +167,7 @@ func (a *reviewApp) statusResponse(ctx context.Context, ship submissionRow) (con
 	}
 
 	for _, review := range reviews {
-		if review.Held != 0 {
+		if review.Held != 0 || review.InvalidatedAt != nil {
 			continue
 		}
 

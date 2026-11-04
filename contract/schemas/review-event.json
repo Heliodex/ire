@@ -56,6 +56,9 @@
 				"note_to_maker": {
 					"type": "string"
 				},
+				"override_reason": {
+					"type": "string"
+				},
 				"reviewer": {
 					"type": "object",
 					"properties": {

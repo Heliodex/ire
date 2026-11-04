@@ -17,7 +17,7 @@ import (
 
 // handleDecision records a stage 1 decision, applies the hold policy, writes the outbox row and returns the next ship to open.
 //
-//nolint:funlen,maintidx,gocognit,gocyclo // The decision transaction reads best as one unit; splitting it would hide the ordering.
+//nolint:funlen,maintidx,gocognit,gocyclo,cyclop // The decision transaction reads best as one unit; splitting it would hide the ordering.
 func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
@@ -114,6 +114,7 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 
 	hours := ship.HoursClaimed
 	supersedes := ""
+	heldDecision, heldHours := "", 0
 
 	if secondPass {
 		held, found, heldErr := a.heldReview(r.Context(), ship.ID)
@@ -137,6 +138,8 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 			hours = held.Hours
 		}
 
+		heldDecision, heldHours = held.Decision, held.Hours
+
 		if request.Decision == decisionApproved && note == "" {
 			note = held.NoteToMaker
 		}
@@ -150,6 +153,17 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 
 	if hours < 0 || hours > 30*24*3600 {
 		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "hoursApprovedSeconds", "approved hours must be between 0 and 30 days")
+		return
+	}
+
+	overrideReason := strings.TrimSpace(stringValue(request.OverrideReason))
+	if len(overrideReason) > maxNote {
+		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "overrideReason", "the override reason is limited to 4000 characters")
+		return
+	}
+
+	if secondPass && heldDecision != "" && (hours != heldHours || request.Decision != heldDecision) && overrideReason == "" {
+		app.WriteErrorCode(w, http.StatusUnprocessableEntity, "override_reason_required", "explain why the second pass changes the first-pass decision")
 		return
 	}
 
@@ -171,7 +185,7 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stageHistory := a.stageHistory(r.Context(), ship.ID, person, request.Decision, now, stage)
-	payload := a.outboundPayload(ship, person, checks, request.Decision, hours, note, strings.TrimSpace(request.InternalNote), now, stageHistory, payloadHackatimeProjects(r.Context(), a.store, ship.ID, ship.Version))
+	payload := a.outboundPayload(ship, person, checks, request.Decision, hours, note, strings.TrimSpace(request.InternalNote), overrideReason, now, stageHistory, payloadHackatimeProjects(r.Context(), a.store, ship.ID, ship.Version))
 
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
@@ -188,7 +202,8 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{reviewID, ship.ID, ship.Version, stage, person.ID, person.Email, person.Name, person.Role,
 				request.Decision, note, strings.TrimSpace(request.InternalNote), hours, marshalStrings(request.Acknowledgements),
-				a.policyVersion(r.Context(), ship.ProgramID), boolInt(held), nullString(reason), nullString(supersedes), boolInt(!held), request.IdempotencyKey, now}},
+				a.policyVersion(r.Context(), ship.ProgramID), boolInt(held), nullString(reason),
+				nullString(supersedes), boolInt(!held), request.IdempotencyKey, now}},
 		{SQL: `update submission set status = ?, stage = ?, hours_approved_seconds = ?, held_reason = ?,
 				decided_at = ?, updated_at = ? where id = ?`,
 			Args: []any{status, submissionStage, hours, nullString(reason), nullString(now), now, ship.ID}},
@@ -201,6 +216,13 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 			Args: []any{newID("aud"), ship.ProgramID, person.ID, person.Email, ship.ID,
 				marshalMap(map[string]any{"status": ship.Status, "version": ship.Version}),
 				marshalMap(map[string]any{"status": status, "decision": request.Decision, "held": held, "hours": hours}), now}},
+	}
+
+	if overrideReason != "" {
+		statements = append(statements, storage.TransactionStatement{
+			SQL:  `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
+			Args: []any{reviewID, overrideReason, now},
+		})
 	}
 
 	if !secondPass {
@@ -296,6 +318,7 @@ type reviewRow struct {
 type heldReview struct {
 	ID          string
 	ReviewerID  string
+	Decision    string
 	Hours       int
 	NoteToMaker string
 }
@@ -304,9 +327,9 @@ type heldReview struct {
 func (a *reviewApp) heldReview(ctx context.Context, submissionID string) (heldReview, bool, error) {
 	var row heldReview
 
-	err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), coalesce(hours_approved_seconds, 0), note_to_maker
+	err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), decision, coalesce(hours_approved_seconds, 0), note_to_maker
 		from review where submission_id = ? and held = 1 and invalidated_at is null
-		order by created_at desc limit 1`, submissionID).Scan(&row.ID, &row.ReviewerID, &row.Hours, &row.NoteToMaker)
+		order by created_at desc limit 1`, submissionID).Scan(&row.ID, &row.ReviewerID, &row.Decision, &row.Hours, &row.NoteToMaker)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return heldReview{}, false, nil
@@ -471,6 +494,7 @@ type outboundReview struct {
 	SecondsBreakdown outboundBreakdown     `json:"seconds_breakdown"`
 	NoteToMaker      string                `json:"note_to_maker"`
 	AuditNote        string                `json:"audit_note"`
+	OverrideReason   string                `json:"override_reason,omitempty"`
 	Reviewer         outboundReviewer      `json:"reviewer"`
 	ReviewerEmail    string                `json:"reviewerEmail"`
 	Justification    outboundJustification `json:"justification"`
@@ -505,7 +529,7 @@ type outboundEvent struct {
 }
 
 // outboundPayload builds the final event. A held decision never reaches here because no outbox row is written.
-func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks []contract.CheckResult, decision string, hours int, note, internalNote, now string, history []outboundStage, hackatimeProjects []string) outboundEvent {
+func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks []contract.CheckResult, decision string, hours int, note, internalNote, overrideReason, now string, history []outboundStage, hackatimeProjects []string) outboundEvent {
 	results := make([]outboundCheck, 0, len(checks))
 	for _, check := range checks {
 		results = append(results, outboundCheck{Key: check.Key, Status: check.Status, Summary: check.Summary})
@@ -541,11 +565,12 @@ func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks 
 				Hackatime: ship.HoursHackatim,
 				Journals:  ship.HoursJournal,
 			},
-			NoteToMaker:   note,
-			AuditNote:     internalNote,
-			Reviewer:      outboundReviewer{Email: person.Email},
-			ReviewerEmail: person.Email,
-			Justification: justification,
+			NoteToMaker:    note,
+			AuditNote:      internalNote,
+			OverrideReason: overrideReason,
+			Reviewer:       outboundReviewer{Email: person.Email},
+			ReviewerEmail:  person.Email,
+			Justification:  justification,
 		},
 		Checks:    outboundChecks{Overall: summaryOverall(ship.CheckSummary), Results: results},
 		CreatedAt: now,
@@ -559,6 +584,10 @@ func (a *reviewApp) stageHistory(ctx context.Context, submissionID string, perso
 	reviews, err := a.loadReviews(ctx, submissionID)
 	if err == nil {
 		for _, review := range slices.Backward(reviews) {
+			if review.InvalidatedAt != nil {
+				continue
+			}
+
 			out = append(out, outboundStage{Stage: review.Stage, Decision: review.Decision, Reviewer: review.ReviewerEmail, At: review.CreatedAt})
 		}
 	}
@@ -602,6 +631,18 @@ func optionalString(value string) *string {
 // optionalID returns nil for an empty id.
 func optionalID(value string) *string {
 	return optionalString(value)
+}
+
+// unmarshalStrings decodes a stored string slice, returning an empty list for a missing value.
+func unmarshalStrings(raw string) []string {
+	out := []string{}
+	if raw == "" {
+		return out
+	}
+
+	_ = json.Unmarshal([]byte(raw), &out)
+
+	return out
 }
 
 // marshalStrings encodes a string slice for storage.

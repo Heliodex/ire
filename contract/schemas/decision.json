@@ -27,6 +27,10 @@
 			"type": "string",
 			"maxLength": 4000
 		},
+		"overrideReason": {
+			"type": "string",
+			"maxLength": 4000
+		},
 		"version": {
 			"type": "integer",
 			"minimum": 0

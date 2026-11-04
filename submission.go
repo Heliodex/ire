@@ -192,9 +192,13 @@ func (a *reviewApp) loadBom(ctx context.Context, submissionID string) ([]contrac
 
 // loadReviews returns every review for a ship, newest first.
 func (a *reviewApp) loadReviews(ctx context.Context, submissionID string) ([]contract.Review, error) {
-	rows, err := a.store.Query(ctx, `select id, stage, decision, note_to_maker, coalesce(internal_note, ''), coalesce(hours_approved_seconds, 0),
-			reviewer_email, coalesce(reviewer_name, ''), held, created_at
-		from review where submission_id = ? order by created_at desc, stage desc, id desc`, submissionID)
+	rows, err := a.store.Query(ctx, `select review.id, review.stage, review.decision, review.note_to_maker, coalesce(review.internal_note, ''),
+			coalesce(review.hours_approved_seconds, 0), review.reviewer_email, coalesce(review.reviewer_name, ''), review.held,
+			coalesce(review.held_reason, ''), coalesce(review_override.reason, ''), coalesce(review.acknowledgements, ''),
+			coalesce(review.invalidated_at, ''), review.created_at
+		from review
+		left join review_override on review_override.review_id = review.id
+		where review.submission_id = ? order by review.created_at desc, review.stage desc, review.id desc`, submissionID)
 	if err != nil {
 		return nil, err
 	}
@@ -204,18 +208,25 @@ func (a *reviewApp) loadReviews(ctx context.Context, submissionID string) ([]con
 
 	for rows.Next() {
 		var (
-			item                       contract.Review
-			internalNote, reviewerName string
-			hours                      int
+			item                                 contract.Review
+			internalNote, reviewerName           string
+			heldReason, overrideReason, acksJSON string
+			invalidatedAt                        string
+			hours                                int
 		)
 		if err := rows.Scan(&item.ID, &item.Stage, &item.Decision, &item.NoteToMaker, &internalNote, &hours,
-			&item.ReviewerEmail, &reviewerName, &item.Held, &item.CreatedAt); err != nil {
+			&item.ReviewerEmail, &reviewerName, &item.Held, &heldReason, &overrideReason, &acksJSON, &invalidatedAt, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 
 		item.InternalNote = stringPtr(internalNote)
 
 		item.ReviewerName = stringPtr(reviewerName)
+		item.HeldReason = optionalText(heldReason)
+		item.OverrideReason = optionalText(overrideReason)
+		item.InvalidatedAt = optionalText(invalidatedAt)
+		item.Acknowledgements = unmarshalStrings(acksJSON)
+
 		if hours > 0 {
 			item.HoursApprovedSeconds = &hours
 		}

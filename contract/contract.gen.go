@@ -395,6 +395,9 @@ type DecisionRequest struct {
 	// NoteToMaker corresponds to the JSON schema field "noteToMaker".
 	NoteToMaker string `json:"noteToMaker" yaml:"noteToMaker" mapstructure:"noteToMaker"`
 
+	// OverrideReason corresponds to the JSON schema field "overrideReason".
+	OverrideReason *string `json:"overrideReason,omitempty,omitzero" yaml:"overrideReason,omitempty" mapstructure:"overrideReason,omitempty"`
+
 	// Version corresponds to the JSON schema field "version".
 	Version int `json:"version" yaml:"version" mapstructure:"version"`
 }
@@ -442,6 +445,9 @@ func (j *DecisionRequest) UnmarshalJSON(value []byte) error {
 	}
 	if utf8.RuneCountInString(string(plain.NoteToMaker)) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "noteToMaker", 4000)
+	}
+	if plain.OverrideReason != nil && utf8.RuneCountInString(string(*plain.OverrideReason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "overrideReason", 4000)
 	}
 	if 0 > plain.Version {
 		return fmt.Errorf("field %s: must be >= %v", "version", 0)
@@ -2026,6 +2032,9 @@ func (j *QueueResponse) UnmarshalJSON(value []byte) error {
 }
 
 type Review struct {
+	// Acknowledgements corresponds to the JSON schema field "acknowledgements".
+	Acknowledgements []string `json:"acknowledgements" yaml:"acknowledgements" mapstructure:"acknowledgements"`
+
 	// CreatedAt corresponds to the JSON schema field "createdAt".
 	CreatedAt string `json:"createdAt" yaml:"createdAt" mapstructure:"createdAt"`
 
@@ -2034,6 +2043,9 @@ type Review struct {
 
 	// Held corresponds to the JSON schema field "held".
 	Held int `json:"held" yaml:"held" mapstructure:"held"`
+
+	// HeldReason corresponds to the JSON schema field "heldReason".
+	HeldReason *string `json:"heldReason,omitempty,omitzero" yaml:"heldReason,omitempty" mapstructure:"heldReason,omitempty"`
 
 	// HoursApprovedSeconds corresponds to the JSON schema field
 	// "hoursApprovedSeconds".
@@ -2045,8 +2057,14 @@ type Review struct {
 	// InternalNote corresponds to the JSON schema field "internalNote".
 	InternalNote *string `json:"internalNote,omitempty,omitzero" yaml:"internalNote,omitempty" mapstructure:"internalNote,omitempty"`
 
+	// InvalidatedAt corresponds to the JSON schema field "invalidatedAt".
+	InvalidatedAt *string `json:"invalidatedAt,omitempty,omitzero" yaml:"invalidatedAt,omitempty" mapstructure:"invalidatedAt,omitempty"`
+
 	// NoteToMaker corresponds to the JSON schema field "noteToMaker".
 	NoteToMaker string `json:"noteToMaker" yaml:"noteToMaker" mapstructure:"noteToMaker"`
+
+	// OverrideReason corresponds to the JSON schema field "overrideReason".
+	OverrideReason *string `json:"overrideReason,omitempty,omitzero" yaml:"overrideReason,omitempty" mapstructure:"overrideReason,omitempty"`
 
 	// ReviewerEmail corresponds to the JSON schema field "reviewerEmail".
 	ReviewerEmail string `json:"reviewerEmail" yaml:"reviewerEmail" mapstructure:"reviewerEmail"`
@@ -2182,6 +2200,9 @@ type ReviewEventReview struct {
 
 	// NoteToMaker corresponds to the JSON schema field "note_to_maker".
 	NoteToMaker string `json:"note_to_maker" yaml:"note_to_maker" mapstructure:"note_to_maker"`
+
+	// OverrideReason corresponds to the JSON schema field "override_reason".
+	OverrideReason *string `json:"override_reason,omitempty,omitzero" yaml:"override_reason,omitempty" mapstructure:"override_reason,omitempty"`
 
 	// Reviewer corresponds to the JSON schema field "reviewer".
 	Reviewer *ReviewEventReviewReviewer `json:"reviewer,omitempty,omitzero" yaml:"reviewer,omitempty" mapstructure:"reviewer,omitempty"`
@@ -2469,6 +2490,9 @@ func (j *Review) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
+	if _, ok := raw["acknowledgements"]; raw != nil && !ok {
+		return fmt.Errorf("field acknowledgements in Review: required")
+	}
 	if _, ok := raw["createdAt"]; raw != nil && !ok {
 		return fmt.Errorf("field createdAt in Review: required")
 	}
@@ -2540,6 +2564,85 @@ func (j *ReviewsResponse) UnmarshalJSON(value []byte) error {
 		return err
 	}
 	*j = ReviewsResponse(plain)
+	return nil
+}
+
+type SendBackRequest struct {
+	// Reason corresponds to the JSON schema field "reason".
+	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *SendBackRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["reason"]; raw != nil && !ok {
+		return fmt.Errorf("field reason in SendBackRequest: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in SendBackRequest: required")
+	}
+	type Plain SendBackRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Reason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "reason", 4000)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = SendBackRequest(plain)
+	return nil
+}
+
+type SendBackResult struct {
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *SendBackResult) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in SendBackResult: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in SendBackResult: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in SendBackResult: required")
+	}
+	type Plain SendBackResult
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if 0 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	*j = SendBackResult(plain)
 	return nil
 }
 
