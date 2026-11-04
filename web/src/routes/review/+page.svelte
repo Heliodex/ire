@@ -24,6 +24,7 @@ import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
+import { maxNote } from "../../lib/contract"
 import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -812,12 +813,18 @@ async function saveDraftNow(): Promise<void> {
 					</label>
 
 					<label class="field">
-						<span
-							>Note to maker
-							{!secondPass && (missingAcks.length > 0 || blocking.length > 0) ? "" : "(optional)"}</span
-						>
+						<span class="field-head">
+							<span
+								>Note to maker
+								{!secondPass && (missingAcks.length > 0 || blocking.length > 0)
+									? ""
+									: "(optional)"}</span
+							>
+							<span aria-hidden="true" class="field-count">{note.length} / {maxNote}</span>
+						</span>
 						<textarea
 							class="ui-input"
+							maxlength={maxNote}
 							onblur={(): void => void saveDraftNow()}
 							placeholder="What should they change, or why is this good?"
 							rows="5"
@@ -827,9 +834,13 @@ async function saveDraftNow(): Promise<void> {
 					</label>
 
 					<label class="field">
-						<span>Internal note</span>
+						<span class="field-head">
+							<span>Internal note</span>
+							<span aria-hidden="true" class="field-count">{internalNote.length} / {maxNote}</span>
+						</span>
 						<textarea
 							class="ui-input"
+							maxlength={maxNote}
 							onblur={(): void => void saveDraftNow()}
 							placeholder="Only the team sees this."
 							rows="2"
@@ -839,9 +850,13 @@ async function saveDraftNow(): Promise<void> {
 
 					{#if secondPass}
 						<label class="field">
-							<span>Override reason (required if you change the first pass)</span>
+							<span class="field-head">
+								<span>Override reason (required if you change the first pass)</span>
+								<span aria-hidden="true" class="field-count">{overrideReason.length} / {maxNote}</span>
+							</span>
 							<textarea
 								class="ui-input"
+								maxlength={maxNote}
 								placeholder="Why the first-pass hours or decision should change."
 								rows="2"
 								bind:this={overrideElement}
@@ -1346,6 +1361,21 @@ h1 {
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--text-2);
+}
+
+.field-head {
+	display: flex;
+	gap: var(--space-2);
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.field-count {
+	flex: none;
+	font-weight: 400;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-3);
+	white-space: nowrap;
 }
 
 .hours-row {
