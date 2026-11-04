@@ -15,6 +15,47 @@ let ready = $state(false)
 let signingOut = $state(false)
 
 const readOnly = $derived(session.me?.readOnly ?? false)
+const showAdmin = $derived(session.me?.programs.some(item => item.role === "admin") ?? false)
+const navRoutes = $derived(["/queue", "/deliveries", ...(showAdmin ? ["/admin"] : [])])
+
+// tabIndex maps the current route onto the navigation tabs; review counts as part of the queue.
+function tabIndex(path: string): number {
+	if (path.startsWith("/queue") || path.startsWith("/review")) return 0
+	if (path.startsWith("/deliveries")) return 1
+	if (showAdmin && path.startsWith("/admin")) return 2
+
+	return -1
+}
+
+// onKeydown moves between the main sections with [ and ].
+function onKeydown(event: KeyboardEvent): void {
+	if (!session.me) return
+	if (event.key !== "[" && event.key !== "]") return
+	if (event.ctrlKey || event.metaKey || event.altKey) return
+
+	const { target } = event
+	if (
+		target instanceof HTMLInputElement
+		|| target instanceof HTMLTextAreaElement
+		|| target instanceof HTMLSelectElement
+		|| (target instanceof HTMLElement && target.isContentEditable)
+	)
+		return
+
+	const current = tabIndex(page.url.pathname)
+	const step = event.key === "]" ? 1 : -1
+	const next =
+		current === -1
+			? step === 1
+				? 0
+				: navRoutes.length - 1
+			: (current + step + navRoutes.length) % navRoutes.length
+	const destination = navRoutes[next]
+	if (!destination) return
+
+	event.preventDefault()
+	void goto(destination)
+}
 
 onMount(async (): Promise<void> => {
 	theme.init()
@@ -49,6 +90,8 @@ async function signOut(): Promise<void> {
 	<link href="/favicon.svg" rel="icon">
 	<meta content="Review queue for Half Life hardware ships" name="description">
 </svelte:head>
+
+<svelte:window onkeydown={onKeydown} />
 
 <div class="shell">
 	<header>
@@ -119,7 +162,7 @@ async function signOut(): Promise<void> {
 					Queue
 				</a>
 				<a href="/deliveries" class:active={page.url.pathname.startsWith("/deliveries")}>Deliveries</a>
-				{#if session.me.programs.some(item => item.role === "admin")}
+				{#if showAdmin}
 					<a href="/admin" class:active={page.url.pathname.startsWith("/admin")}>Admin</a>
 				{/if}
 			</nav>
