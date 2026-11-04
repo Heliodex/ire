@@ -317,6 +317,7 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] The review decision rail and decision keyboard shortcuts are hidden in shadow mode.
 - [x] Shadow mode writes no outbox rows and `deliverDue` is suppressed; `program.outbound_enabled` is enforced in live mode too.
 - [x] `maxIngestBody` is raised from 1 MiB to 16 MiB, with tests for a payload above 1 MiB and one above the new cap.
+- [x] A nested meta payload with BOM, hours, grant cap and prior reviews round-trips into the review bundle.
 - [ ] Half Life dual-sends the open queue and every new hand-in to Review.
 - [ ] Half Life withdraws the Review copy when Ari resolves, reverts or receives a resubmission.
 - [ ] `review-parity` compares queue counts, checks, hours and BOM before cutover.
