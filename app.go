@@ -176,6 +176,7 @@ func (a *reviewApp) routes() {
 	a.mux.HandleFunc("POST /api/v1/dev/logout", a.handleLogout)
 	a.mux.HandleFunc("POST /api/v1/logout", a.handleLogout)
 	a.mux.HandleFunc("GET /api/v1/auth/config", a.handleAuthConfig)
+	a.mux.HandleFunc("GET /", a.handleRoot)
 	a.mux.HandleFunc("GET /auth/login", a.handleHCAStart)
 	a.mux.HandleFunc("GET /auth/callback", a.handleHCACallback)
 	a.mux.HandleFunc("POST /api/v1/dev/reset", a.handleDevReset)
@@ -194,6 +195,16 @@ func (a *reviewApp) routes() {
 
 	a.mux.HandleFunc("POST /jobs/tick", a.handleTick)
 	a.mux.HandleFunc("POST /jobs/checks", a.handleJobChecks)
+}
+
+// handleRoot sends a signed-in browser to the queue and everyone else to the login page.
+func (a *reviewApp) handleRoot(w http.ResponseWriter, r *http.Request) {
+	if a.hasSession(r) {
+		http.Redirect(w, r, "/queue", http.StatusFound)
+		return
+	}
+
+	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
 // programFor resolves the path's programme slug, writing a 404 when it does not exist.

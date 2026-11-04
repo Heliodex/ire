@@ -178,7 +178,7 @@ async function boot(): Promise<void> {
 	try {
 		session.me ??= await fetchMe()
 	} catch {
-		void goto("/")
+		void goto("/login")
 		return
 	}
 
@@ -213,7 +213,7 @@ async function load(target = id): Promise<void> {
 		watchChecks()
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
-			void goto("/")
+			void goto("/login")
 			return
 		}
 		if (target === id) error = err instanceof Error ? err.message : "Could not open this ship."

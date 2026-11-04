@@ -64,6 +64,25 @@ func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (rev
 	return person, true
 }
 
+// hasSession reports a live session without writing an error response.
+func (a *reviewApp) hasSession(r *http.Request) bool {
+	token, ok := reviewSessions.Token(r)
+	if !ok {
+		return false
+	}
+
+	var found int
+
+	err := a.store.QueryRow(r.Context(), `select 1 from session s
+		join user u on u.id = s.user_id
+		join membership m on m.user_id = u.id
+		join program p on p.id = m.program_id
+		where s.id = ? and s.expires_at > ? and m.active = 1 and p.active = 1 limit 1`,
+		session.Hash(token), a.nowText()).Scan(&found)
+
+	return err == nil
+}
+
 // requireReviewer is currentReviewer plus a check that the membership can review this programme.
 func (a *reviewApp) requireReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions && !session.SameOrigin(r) {

@@ -28,7 +28,7 @@ onMount(async (): Promise<void> => {
 })
 
 $effect((): void => {
-	if (ready && !session.me && page.url.pathname !== "/") void goto("/")
+	if (ready && !session.me && page.url.pathname !== "/" && page.url.pathname !== "/login") void goto("/login")
 })
 
 async function signOut(): Promise<void> {
@@ -38,7 +38,7 @@ async function signOut(): Promise<void> {
 	} finally {
 		session.me = null
 		signingOut = false
-		void goto("/")
+		void goto("/login")
 	}
 }
 </script>

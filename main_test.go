@@ -1109,6 +1109,23 @@ func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
 	return nil
 }
 
+// TestRootRedirectsBySession covers the server-side login redirect.
+func TestRootRedirectsBySession(t *testing.T) {
+	application := newTestApp(t)
+
+	anonymous := do(t, application, http.MethodGet, "/", nil, nil, nil)
+	if anonymous.Code != http.StatusFound || anonymous.Header().Get("Location") != "/login" {
+		t.Fatalf("anonymous root = %d %q", anonymous.Code, anonymous.Header().Get("Location"))
+	}
+
+	cookie := login(t, application, "reviewer@example.com")
+
+	signedIn := do(t, application, http.MethodGet, "/", nil, cookie, nil)
+	if signedIn.Code != http.StatusFound || signedIn.Header().Get("Location") != "/queue" {
+		t.Fatalf("signed-in root = %d %q", signedIn.Code, signedIn.Header().Get("Location"))
+	}
+}
+
 // TestDraftSurvivesReload covers the server-side draft the review page restores.
 func TestDraftSurvivesReload(t *testing.T) {
 	application := newTestApp(t)

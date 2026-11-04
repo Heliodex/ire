@@ -19,7 +19,7 @@ async function boot(): Promise<void> {
 	try {
 		session.me ??= await fetchMe()
 	} catch {
-		void goto("/")
+		void goto("/login")
 		return
 	}
 
