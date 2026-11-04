@@ -185,12 +185,19 @@ async function chooseSecondPass(): Promise<void> {
 	await load(filter, stage)
 }
 
-// moveFilter selects the next filter and keeps keyboard focus on it, wrapping at the ends.
+// moveFilter selects the next filter or the second-pass tab, wrapping at the ends.
 function moveFilter(step: number): void {
-	const index = filters.findIndex(option => option.key === filter)
-	const next = (index + step + filters.length) % filters.length
+	const count = filters.length + (canSecondPass ? 1 : 0)
+	const current = stage === 2 ? filters.length : filters.findIndex(option => option.key === filter)
+	const next = (current + step + count) % count
 
 	filterTabs?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus()
+
+	if (next === filters.length) {
+		void chooseSecondPass()
+		return
+	}
+
 	void choose(filters[next].key)
 }
 
