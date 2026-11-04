@@ -64,8 +64,16 @@ const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const canApprove = $derived(blocking.length === 0 && (secondPass || missingAcks.length === 0))
 
+// idFromURL reads the ship id from /review/{id}, keeping the query form for old links.
+function idFromURL(): string {
+	const parts = page.url.pathname.split("/").filter(Boolean)
+	if (parts[0] === "review" && parts[1]) return decodeURIComponent(parts[1])
+
+	return page.url.searchParams.get("id") ?? ""
+}
+
 afterNavigate((): void => {
-	const next = page.url.searchParams.get("id") ?? ""
+	const next = idFromURL()
 	if (next === "" || next === id) return
 
 	const previous = claimedId
@@ -83,7 +91,7 @@ afterNavigate((): void => {
 })
 
 onMount((): (() => void) => {
-	id = page.url.searchParams.get("id") ?? ""
+	id = idFromURL()
 	if (id === "") {
 		void goto("/queue")
 		return (): void => {}
@@ -320,7 +328,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 
 		await sleep(300)
 
-		if (result.nextId) await goto(`/review?id=${encodeURIComponent(result.nextId)}`)
+		if (result.nextId) window.location.assign(`/review/${encodeURIComponent(result.nextId)}`)
 		else await goto("/queue")
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "stale_version")

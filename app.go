@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -222,13 +223,20 @@ func (a *reviewApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 		//nolint:gosec // The target is a fixed local path plus the request query.
 		http.Redirect(w, r, target, http.StatusFound)
+	case path == "/review" && r.URL.Query().Get("id") != "":
+		http.Redirect(w, r, "/review/"+url.PathEscape(r.URL.Query().Get("id")), http.StatusFound)
 	case protectedPage(path):
 		if !signedIn {
 			http.Redirect(w, r, "/", http.StatusFound)
 			return
 		}
 
-		app.StaticPage(w, path)
+		page := path
+		if strings.HasPrefix(path, "/review/") {
+			page = "/review"
+		}
+
+		app.StaticPage(w, page)
 	default:
 		http.NotFound(w, r)
 	}

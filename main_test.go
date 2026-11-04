@@ -1136,6 +1136,21 @@ func TestPageGate(t *testing.T) {
 		t.Fatalf("signed-in queue = %d %q", queue.Code, queue.Header().Get(app.StaticPageHeader))
 	}
 
+	review := do(t, application, http.MethodGet, "/review/sub_fixture_1", nil, cookie, nil)
+	if review.Code != http.StatusOK || review.Header().Get(app.StaticPageHeader) != "/review" {
+		t.Fatalf("signed-in review = %d %q", review.Code, review.Header().Get(app.StaticPageHeader))
+	}
+
+	oldReview := do(t, application, http.MethodGet, "/review?id=sub_fixture_1", nil, cookie, nil)
+	if oldReview.Code != http.StatusFound || oldReview.Header().Get("Location") != "/review/sub_fixture_1" {
+		t.Fatalf("old review = %d %q", oldReview.Code, oldReview.Header().Get("Location"))
+	}
+
+	guestReview := do(t, application, http.MethodGet, "/review/sub_fixture_1", nil, nil, nil)
+	if guestReview.Code != http.StatusFound || guestReview.Header().Get("Location") != "/" {
+		t.Fatalf("guest review = %d %q", guestReview.Code, guestReview.Header().Get("Location"))
+	}
+
 	login := do(t, application, http.MethodGet, "/login", nil, cookie, nil)
 	if login.Code != http.StatusFound || login.Header().Get("Location") != "/queue" {
 		t.Fatalf("signed-in login = %d %q", login.Code, login.Header().Get("Location"))
