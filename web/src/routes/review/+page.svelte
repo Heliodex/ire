@@ -145,6 +145,12 @@ onMount((): (() => void) => {
 			return
 		}
 
+		if (event.key === "Escape") {
+			event.preventDefault()
+			void goto("/queue")
+			return
+		}
+
 		if (readOnly) {
 			if (event.key === "?") showShortcuts = !showShortcuts
 			return
@@ -159,8 +165,7 @@ onMount((): (() => void) => {
 		} else if (event.key === "r") {
 			event.preventDefault()
 			void decide("rejected")
-		} else if (event.key === "Escape") void goto("/queue")
-		else if (event.key === "?") showShortcuts = !showShortcuts
+		} else if (event.key === "?") showShortcuts = !showShortcuts
 	}
 
 	window.addEventListener("keydown", onKeydown)
@@ -533,9 +538,11 @@ async function saveDraftNow(): Promise<void> {
 
 	{#if showShortcuts}
 		<div class="shortcuts">
-			<span><kbd class="ui-kbd">A</kbd> approve</span>
-			<span><kbd class="ui-kbd">C</kbd> focus the note</span>
-			<span><kbd class="ui-kbd">R</kbd> reject</span>
+			{#if !readOnly}
+				<span><kbd class="ui-kbd">A</kbd> approve</span>
+				<span><kbd class="ui-kbd">C</kbd> focus the note</span>
+				<span><kbd class="ui-kbd">R</kbd> reject</span>
+			{/if}
 			<span><kbd class="ui-kbd">Esc</kbd> back to queue</span>
 		</div>
 	{/if}
