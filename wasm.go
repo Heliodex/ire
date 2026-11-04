@@ -28,6 +28,8 @@ func loadConfig() config {
 		HCClientSecret:    envOr("HC_CLIENT_SECRET", ""),
 		HCRedirectURI:     envOr("HC_REDIRECT_URI", ""),
 		HCAuthBase:        envOr("HC_AUTH_BASE", "https://auth.hackclub.com"),
+		BootstrapEmail:    strings.ToLower(strings.TrimSpace(os.Getenv("REVIEW_BOOTSTRAP_EMAIL"))),
+		BootstrapRole:     envOr("REVIEW_BOOTSTRAP_ROLE", roleAdmin),
 		SeedFixtures:      seed,
 		AllowDevAccounts:  os.Getenv("REVIEW_DEV_AUTH") != "0",
 		DisableRepoChecks: os.Getenv("REVIEW_DISABLE_REPO_CHECKS") == "1",

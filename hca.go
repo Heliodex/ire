@@ -196,6 +196,14 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !found && a.canBootstrap(email) {
+		person, found, err = a.bootstrapMember(r.Context(), email, identity.Name)
+		if err != nil {
+			writeStorage(w, err)
+			return
+		}
+	}
+
 	if !found {
 		a.redirectAuthError(w, r, "not_member")
 		return
@@ -282,6 +290,81 @@ func (a *reviewApp) memberByEmail(ctx context.Context, email string) (reviewer, 
 	}
 
 	return person, true, nil
+}
+
+// canBootstrap reports whether this sign-in may create the first membership.
+func (a *reviewApp) canBootstrap(email string) bool {
+	if !validBootstrapRole(a.config.BootstrapRole) || a.config.BootstrapEmail == "" {
+		return false
+	}
+
+	// "*" is a local-only shortcut: it never applies when development accounts are disabled.
+	if a.config.BootstrapEmail == "*" {
+		return a.config.AllowDevAccounts
+	}
+
+	return strings.EqualFold(strings.TrimSpace(email), a.config.BootstrapEmail)
+}
+
+// validBootstrapRole limits the role a bootstrap email can receive.
+func validBootstrapRole(role string) bool {
+	switch role {
+	case roleAdmin, roleOrganizer, roleReviewer, roleAuditor:
+		return true
+	}
+
+	return false
+}
+
+// bootstrapMember creates the configured bootstrap account and its programme membership once.
+func (a *reviewApp) bootstrapMember(ctx context.Context, email, name string) (reviewer, bool, error) {
+	userID := ""
+
+	err := a.store.QueryRow(ctx, `select id from user where lower(email) = ?`, email).Scan(&userID)
+	if err != nil && !errors.Is(err, storage.ErrNoRows) {
+		return reviewer{}, false, err
+	}
+
+	now := a.nowText()
+
+	if userID == "" {
+		userID = newID("usr")
+
+		if _, err := a.store.Exec(ctx, `insert into user (id, email, name, created_at) values (?, ?, ?, ?)`,
+			userID, email, name, now); err != nil {
+			return reviewer{}, false, err
+		}
+	}
+
+	var (
+		membershipID string
+		active       int
+	)
+
+	err = a.store.QueryRow(ctx, `select id, active from membership where program_id = ? and user_id = ?`, programID, userID).
+		Scan(&membershipID, &active)
+	if err != nil && !errors.Is(err, storage.ErrNoRows) {
+		return reviewer{}, false, err
+	}
+
+	if err == nil {
+		// An existing membership, including an inactive one, is never silently changed by bootstrap.
+		return a.memberByEmail(ctx, email)
+	}
+
+	if _, err := a.store.Exec(ctx, `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at, created_by)
+		values (?, ?, ?, ?, '["hardware"]', '[]', 1, ?, 'bootstrap')`,
+		newID("mem"), programID, userID, a.config.BootstrapRole, now); err != nil {
+		return reviewer{}, false, err
+	}
+
+	_, _ = a.store.Exec(ctx, `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
+		values (?, ?, ?, ?, 'user.bootstrap', 'user', ?, '{}', ?, ?)`,
+		newID("aud"), programID, userID, email, userID, marshalMap(map[string]any{"role": a.config.BootstrapRole}), now)
+
+	app.Infof("bootstrapped %s as %s", email, a.config.BootstrapRole)
+
+	return a.memberByEmail(ctx, email)
 }
 
 // redirectAuthError sends the browser back to the login screen with a short reason.

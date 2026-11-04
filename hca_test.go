@@ -261,6 +261,63 @@ func TestHCARejectsUnknownMember(t *testing.T) {
 	}
 }
 
+// TestHCABootstrapsConfiguredEmail covers the first roster entry without opening the roster to everyone.
+func TestHCABootstrapsConfiguredEmail(t *testing.T) {
+	provider := newFakeHCA(t)
+	provider.email = "new@example.com"
+	provider.displayName = "New Reviewer"
+
+	application := newTestApp(t)
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCAuthBase = provider.server.URL
+	application.config.BootstrapEmail = "new@example.com"
+	application.config.BootstrapRole = roleOrganizer
+
+	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+	location, _ := url.Parse(start.Header().Get("Location"))
+	provider.setNonce(location.Query().Get("nonce"))
+
+	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
+	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+	if callback.Header().Get("Location") != "/queue" {
+		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
+	}
+
+	sessionCookie := findCookie(callback.Result().Cookies(), cookieName)
+	if sessionCookie == nil || sessionCookie.Value == "" {
+		t.Fatal("bootstrap did not create a session")
+	}
+
+	me := decode[contract.MeResponse](t, do(t, application, http.MethodGet, "/api/v1/me", nil, sessionCookie, nil))
+	if me.User.Email != "new@example.com" || len(me.Programs) != 1 || me.Programs[0].Role != roleOrganizer {
+		t.Fatalf("me = %+v", me)
+	}
+
+	// A second sign-in reuses the account rather than creating another membership.
+	start = do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+	location, _ = url.Parse(start.Header().Get("Location"))
+	provider.setNonce(location.Query().Get("nonce"))
+
+	stateCookie = findCookie(start.Result().Cookies(), oauthStateCookie)
+
+	callback = do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+	if callback.Header().Get("Location") != "/queue" {
+		t.Fatalf("second callback redirect = %q", callback.Header().Get("Location"))
+	}
+
+	var memberships int
+	if err := application.store.QueryRow(t.Context(), `select count(*) from membership where user_id = (select id from user where email = ?)`, "new@example.com").Scan(&memberships); err != nil {
+		t.Fatal(err)
+	}
+
+	if memberships != 1 {
+		t.Errorf("memberships = %d, want 1", memberships)
+	}
+}
+
 // TestHCASignInRejectsForeignOrigin covers the cross-site guard on development sign-in.
 func TestHCASignInRejectsForeignOrigin(t *testing.T) {
 	application := newTestApp(t)

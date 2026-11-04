@@ -102,6 +102,8 @@ type config struct {
 	HCClientSecret    string
 	HCRedirectURI     string
 	HCAuthBase        string
+	BootstrapEmail    string
+	BootstrapRole     string
 	SeedFixtures      bool
 	AllowDevAccounts  bool
 	DisableRepoChecks bool
