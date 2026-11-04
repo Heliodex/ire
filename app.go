@@ -200,6 +200,10 @@ func (a *reviewApp) routes() {
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/submissions/{id}/checks/head", a.handleChecksHead)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/outbox", a.handleOutbox)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/members/{id}/revoke-sessions", a.handleRevokeSessions)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/members", a.handleMembers)
+	a.mux.HandleFunc("POST /api/v1/programs/{program}/members", a.handleInviteMember)
+	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/members/{id}", a.handleUpdateMember)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/audit", a.handleAudit)
 	a.mux.HandleFunc("GET /api/v1/dev/outbox/received", a.handleFakeDeliveries)
 
 	a.mux.HandleFunc("GET /metrics", a.handleMetrics)
@@ -254,7 +258,7 @@ func (a *reviewApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 // protectedPage reports the prerendered routes that need a session.
 func protectedPage(path string) bool {
-	for _, prefix := range []string{"/queue", "/review", "/deliveries"} {
+	for _, prefix := range []string{"/queue", "/review", "/deliveries", "/admin"} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}

@@ -7,6 +7,91 @@ import "fmt"
 import "regexp"
 import "unicode/utf8"
 
+type AuditEntry struct {
+	// Action corresponds to the JSON schema field "action".
+	Action string `json:"action" yaml:"action" mapstructure:"action"`
+
+	// ActorEmail corresponds to the JSON schema field "actorEmail".
+	ActorEmail *string `json:"actorEmail,omitempty,omitzero" yaml:"actorEmail,omitempty" mapstructure:"actorEmail,omitempty"`
+
+	// CreatedAt corresponds to the JSON schema field "createdAt".
+	CreatedAt string `json:"createdAt" yaml:"createdAt" mapstructure:"createdAt"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// Reason corresponds to the JSON schema field "reason".
+	Reason *string `json:"reason,omitempty,omitzero" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+
+	// TargetID corresponds to the JSON schema field "targetId".
+	TargetID *string `json:"targetId,omitempty,omitzero" yaml:"targetId,omitempty" mapstructure:"targetId,omitempty"`
+
+	// TargetType corresponds to the JSON schema field "targetType".
+	TargetType *string `json:"targetType,omitempty,omitzero" yaml:"targetType,omitempty" mapstructure:"targetType,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AuditEntry) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["action"]; raw != nil && !ok {
+		return fmt.Errorf("field action in AuditEntry: required")
+	}
+	if _, ok := raw["createdAt"]; raw != nil && !ok {
+		return fmt.Errorf("field createdAt in AuditEntry: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in AuditEntry: required")
+	}
+	type Plain AuditEntry
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Action)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "action", 1)
+	}
+	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	*j = AuditEntry(plain)
+	return nil
+}
+
+type AuditResponse struct {
+	// Entries corresponds to the JSON schema field "entries".
+	Entries []AuditEntry `json:"entries" yaml:"entries" mapstructure:"entries"`
+
+	// HasMore corresponds to the JSON schema field "hasMore".
+	HasMore bool `json:"hasMore" yaml:"hasMore" mapstructure:"hasMore"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AuditResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["entries"]; raw != nil && !ok {
+		return fmt.Errorf("field entries in AuditResponse: required")
+	}
+	if _, ok := raw["hasMore"]; raw != nil && !ok {
+		return fmt.Errorf("field hasMore in AuditResponse: required")
+	}
+	type Plain AuditResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = AuditResponse(plain)
+	return nil
+}
+
 type AuthConfig struct {
 	// Dev corresponds to the JSON schema field "dev".
 	Dev bool `json:"dev" yaml:"dev" mapstructure:"dev"`
@@ -1483,6 +1568,47 @@ func (j *IngestRequest) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type InviteMember struct {
+	// Email corresponds to the JSON schema field "email".
+	Email string `json:"email" yaml:"email" mapstructure:"email"`
+
+	// Role corresponds to the JSON schema field "role".
+	Role string `json:"role" yaml:"role" mapstructure:"role"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *InviteMember) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["email"]; raw != nil && !ok {
+		return fmt.Errorf("field email in InviteMember: required")
+	}
+	if _, ok := raw["role"]; raw != nil && !ok {
+		return fmt.Errorf("field role in InviteMember: required")
+	}
+	type Plain InviteMember
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if matched, _ := regexp.MatchString(`\S`, string(plain.Email)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Email", `\S`)
+	}
+	if utf8.RuneCountInString(string(plain.Email)) < 3 {
+		return fmt.Errorf("field %s length: must be >= %d", "email", 3)
+	}
+	if utf8.RuneCountInString(string(plain.Email)) > 320 {
+		return fmt.Errorf("field %s length: must be <= %d", "email", 320)
+	}
+	if matched, _ := regexp.MatchString(`^(reviewer|organizer|admin|auditor)$`, string(plain.Role)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Role", `^(reviewer|organizer|admin|auditor)$`)
+	}
+	*j = InviteMember(plain)
+	return nil
+}
+
 type JournalEntry struct {
 	// At corresponds to the JSON schema field "at".
 	At string `json:"at" yaml:"at" mapstructure:"at"`
@@ -1659,6 +1785,94 @@ func (j *MeResponse) UnmarshalJSON(value []byte) error {
 		return err
 	}
 	*j = MeResponse(plain)
+	return nil
+}
+
+type Member struct {
+	// Active corresponds to the JSON schema field "active".
+	Active bool `json:"active" yaml:"active" mapstructure:"active"`
+
+	// CreatedAt corresponds to the JSON schema field "createdAt".
+	CreatedAt string `json:"createdAt" yaml:"createdAt" mapstructure:"createdAt"`
+
+	// Email corresponds to the JSON schema field "email".
+	Email string `json:"email" yaml:"email" mapstructure:"email"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// LastLoginAt corresponds to the JSON schema field "lastLoginAt".
+	LastLoginAt *string `json:"lastLoginAt,omitempty,omitzero" yaml:"lastLoginAt,omitempty" mapstructure:"lastLoginAt,omitempty"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name *string `json:"name,omitempty,omitzero" yaml:"name,omitempty" mapstructure:"name,omitempty"`
+
+	// Role corresponds to the JSON schema field "role".
+	Role string `json:"role" yaml:"role" mapstructure:"role"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Member) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["active"]; raw != nil && !ok {
+		return fmt.Errorf("field active in Member: required")
+	}
+	if _, ok := raw["createdAt"]; raw != nil && !ok {
+		return fmt.Errorf("field createdAt in Member: required")
+	}
+	if _, ok := raw["email"]; raw != nil && !ok {
+		return fmt.Errorf("field email in Member: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in Member: required")
+	}
+	if _, ok := raw["role"]; raw != nil && !ok {
+		return fmt.Errorf("field role in Member: required")
+	}
+	type Plain Member
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Email)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "email", 1)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if matched, _ := regexp.MatchString(`^(reviewer|organizer|admin|auditor)$`, string(plain.Role)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Role", `^(reviewer|organizer|admin|auditor)$`)
+	}
+	*j = Member(plain)
+	return nil
+}
+
+type MembersResponse struct {
+	// Members corresponds to the JSON schema field "members".
+	Members []Member `json:"members" yaml:"members" mapstructure:"members"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *MembersResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["members"]; raw != nil && !ok {
+		return fmt.Errorf("field members in MembersResponse: required")
+	}
+	type Plain MembersResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = MembersResponse(plain)
 	return nil
 }
 
@@ -3414,6 +3628,38 @@ func (j *Submission) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "version", 0)
 	}
 	*j = Submission(plain)
+	return nil
+}
+
+type UpdateMember struct {
+	// Active corresponds to the JSON schema field "active".
+	Active bool `json:"active" yaml:"active" mapstructure:"active"`
+
+	// Role corresponds to the JSON schema field "role".
+	Role string `json:"role" yaml:"role" mapstructure:"role"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *UpdateMember) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["active"]; raw != nil && !ok {
+		return fmt.Errorf("field active in UpdateMember: required")
+	}
+	if _, ok := raw["role"]; raw != nil && !ok {
+		return fmt.Errorf("field role in UpdateMember: required")
+	}
+	type Plain UpdateMember
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if matched, _ := regexp.MatchString(`^(reviewer|organizer|admin|auditor)$`, string(plain.Role)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Role", `^(reviewer|organizer|admin|auditor)$`)
+	}
+	*j = UpdateMember(plain)
 	return nil
 }
 

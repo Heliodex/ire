@@ -97,6 +97,59 @@ export const meResponseSchema = pipe(
 	title("MeResponse"),
 )
 
+// ─── Admin ──────────────────────────────────────────────────────────────────
+
+const memberRole = pipe(string(), regex(/^(reviewer|organizer|admin|auditor)$/, "Choose a role."))
+
+export const memberSchema = pipe(
+	object({
+		active: boolean(),
+		createdAt: timestamp,
+		email: pipe(string(), minLength(1)),
+		id: pipe(string(), minLength(1)),
+		lastLoginAt: optionalString,
+		name: optionalString,
+		role: memberRole,
+	}),
+	title("Member"),
+)
+
+export const membersResponseSchema = pipe(object({ members: array(memberSchema) }), title("MembersResponse"))
+
+export const inviteMemberSchema = pipe(
+	object({
+		email: pipe(string(), minLength(3), maxLength(320), nonBlank),
+		role: memberRole,
+	}),
+	title("InviteMember"),
+)
+
+export const updateMemberSchema = pipe(
+	object({
+		active: boolean(),
+		role: memberRole,
+	}),
+	title("UpdateMember"),
+)
+
+export const auditEntrySchema = pipe(
+	object({
+		action: pipe(string(), minLength(1)),
+		actorEmail: optionalString,
+		createdAt: timestamp,
+		id: pipe(string(), minLength(1)),
+		reason: optionalString,
+		targetId: optionalString,
+		targetType: optionalString,
+	}),
+	title("AuditEntry"),
+)
+
+export const auditResponseSchema = pipe(
+	object({ entries: array(auditEntrySchema), hasMore: boolean() }),
+	title("AuditResponse"),
+)
+
 // ─── Queue ──────────────────────────────────────────────────────────────────
 
 export const checkRunSchema = pipe(
@@ -165,7 +218,7 @@ export const queueItemSchema = pipe(
 )
 
 export const queueResponseSchema = pipe(
-	object({ counts: queueCountsSchema, items: array(queueItemSchema) }),
+	object({ counts: queueCountsSchema, hasMore: boolean(), items: array(queueItemSchema) }),
 	title("QueueResponse"),
 )
 
@@ -714,10 +767,13 @@ export const requestSchemas = Object.freeze([
 	decisionRequestSchema,
 	sendBackRequestSchema,
 	ingestRequestSchema,
+	inviteMemberSchema,
+	updateMemberSchema,
 	withdrawRequestSchema,
 ])
 
 export const responseSchemas = Object.freeze([
+	auditResponseSchema,
 	checkHeadSchema,
 	checkResultSchema,
 	checkSummarySchema,
@@ -730,6 +786,7 @@ export const responseSchemas = Object.freeze([
 	fakeDeliveriesResponseSchema,
 	ingestResponseSchema,
 	meResponseSchema,
+	membersResponseSchema,
 	outboxResponseSchema,
 	queueResponseSchema,
 	reviewBundleSchema,

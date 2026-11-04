@@ -1,0 +1,53 @@
+{
+	"type": "object",
+	"properties": {
+		"entries": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"action": {
+						"type": "string",
+						"minLength": 1
+					},
+					"actorEmail": {
+						"type": "string"
+					},
+					"createdAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"reason": {
+						"type": "string"
+					},
+					"targetId": {
+						"type": "string"
+					},
+					"targetType": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"action",
+					"createdAt",
+					"id"
+				],
+				"title": "AuditEntry"
+			}
+		},
+		"hasMore": {
+			"type": "boolean"
+		}
+	},
+	"required": [
+		"entries",
+		"hasMore"
+	],
+	"title": "AuditResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/audit.json"
+}

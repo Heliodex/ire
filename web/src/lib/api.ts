@@ -1,6 +1,7 @@
 import { type BaseIssue, type GenericSchema, type InferOutput, safeParse } from "valibot"
 import { ApiError } from "./api-error"
 import {
+	auditResponseSchema,
 	authConfigSchema,
 	checkHeadSchema,
 	checkRunSchema,
@@ -10,6 +11,8 @@ import {
 	errorResponseSchema,
 	evidenceSchema,
 	fakeDeliveriesResponseSchema,
+	memberSchema,
+	membersResponseSchema,
 	meResponseSchema,
 	outboxResponseSchema,
 	queueResponseSchema,
@@ -39,6 +42,9 @@ export interface SendBackRequest {
 export type SendBackResult = InferOutput<typeof sendBackResultSchema>
 export type OutboxRow = InferOutput<typeof outboxResponseSchema>["deliveries"][number]
 export type FakeDelivery = InferOutput<typeof fakeDeliveriesResponseSchema>["deliveries"][number]
+export type Member = InferOutput<typeof memberSchema>
+export type AuditEntry = InferOutput<typeof auditResponseSchema>["entries"][number]
+export type Audit = InferOutput<typeof auditResponseSchema>
 
 export const program = "half-life"
 
@@ -199,6 +205,40 @@ export async function rerunChecks(id: string): Promise<CheckRun> {
 		method: "POST",
 	})
 	return parseJSON(response, checkRunSchema)
+}
+
+// fetchMembers lists the programme roster.
+export async function fetchMembers(): Promise<Member[]> {
+	const response = await fetch(`/api/v1/programs/${program}/members`)
+	const body = await parseJSON(response, membersResponseSchema)
+
+	return body.members
+}
+
+// inviteMember adds an email to the roster.
+export async function inviteMember(email: string, role: string): Promise<Member> {
+	const response = await fetch(`/api/v1/programs/${program}/members`, {
+		body: JSON.stringify({ email, role }),
+		headers: { "Content-Type": "application/json" },
+		method: "POST",
+	})
+	return parseJSON(response, memberSchema)
+}
+
+// updateMember changes a role or reactivates an account.
+export async function updateMember(id: string, role: string, active: boolean): Promise<Member> {
+	const response = await fetch(`/api/v1/programs/${program}/members/${encodeURIComponent(id)}`, {
+		body: JSON.stringify({ active, role }),
+		headers: { "Content-Type": "application/json" },
+		method: "PATCH",
+	})
+	return parseJSON(response, memberSchema)
+}
+
+// fetchAudit lists recent admin actions.
+export async function fetchAudit(offset = 0, limit = 50): Promise<Audit> {
+	const response = await fetch(`/api/v1/programs/${program}/audit?offset=${offset}&limit=${limit}`)
+	return parseJSON(response, auditResponseSchema)
 }
 
 // fetchCheckHead compares the snapshot with the live repository head.

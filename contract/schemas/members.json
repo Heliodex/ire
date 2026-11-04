@@ -1,0 +1,52 @@
+{
+	"type": "object",
+	"properties": {
+		"members": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"active": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"email": {
+						"type": "string",
+						"minLength": 1
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"lastLoginAt": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"role": {
+						"type": "string",
+						"pattern": "^(reviewer|organizer|admin|auditor)$"
+					}
+				},
+				"required": [
+					"active",
+					"createdAt",
+					"email",
+					"id",
+					"role"
+				],
+				"title": "Member"
+			}
+		}
+	},
+	"required": [
+		"members"
+	],
+	"title": "MembersResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/members.json"
+}

@@ -154,17 +154,17 @@ wt build --dir .
 ## Deliberately fake or incomplete
 
 - [ ] Checks cover GitHub only; GitLab and the theme group are not ported.
-- [ ] Auth uses the live HCA app, but roster sync, an invite UI and production developer-account cleanup are still missing.
+- [ ] Auth uses the live HCA app and an admin invite flow; roster sync and production developer-account cleanup are still missing.
 - [ ] Stage 2 has the full seeded loop, but the hold rule engine and fraud provider are not built.
 - [ ] Fraud is a configured minimum stage and a future provider, with no implementation.
 - [ ] Evidence caches the repo README, tree and commits; journals and clips still come from the ingest payload.
 - [ ] The outbound receiver defaults to in-process. HTTP delivery works, but no live Half Life staging endpoint is wired.
 - [ ] The queue refreshes from storage events and keeps a 10-second poll as a fallback.
-- [ ] No admin or settings UI, roster, analytics, audit browser, retention jobs or secret rotation UI.
+- [ ] No settings UI, analytics or secret rotation UI; the admin roster and audit browser now exist alongside the retention job.
 - [x] The queue pages with `limit` (up to 100) and `offset` (up to 10000) and reports `hasMore`; the recovery feeds page with a stable `since` cursor.
 - [x] A sliding-window limiter caps browser mutations at 120/min per session and machine mutations at 240/min per address; reads are unaffected.
 - [ ] Duplicate, identity and demo checks exist; fraud is still a future provider.
-- [ ] Roster sync and role administration are still missing; identities are bound by the HCA subject.
+- [ ] Roster sync is still missing; roles and active state are managed from the admin page, and identities are bound by the HCA subject.
 
 ## Next 1 – Stage 2 loop
 
@@ -291,7 +291,8 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 
 - [x] Register the real Hack Club Auth application and set `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` through `wt secrets`.
 - [ ] Point `REVIEW_OUTBOUND_URL` at the staging Half Life receiver and set its signing secret.
-- [ ] Add roster sync or an admin invite flow; today members must already exist in the database.
+- [x] Admins invite emails and change roles or active state from `/admin`, with an audit trail.
+- [ ] Roster sync from Half Life or Hack Club is still missing; invited members must be added by email.
 - [x] Store the stable Hack Club subject in `user_identity` so an email change cannot break the binding.
 - [x] Refuse a second Hack Club subject for an account and show `identity_conflict` on the login screen.
 - [x] Signing in rotates an existing browser session; admins can revoke every session for a member.
@@ -348,8 +349,8 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [x] Subscribe the queue to the supervisor storage event stream, keeping the 10-second poll as a fallback.
 - [x] Enforce same-origin checks on state-changing browser routes.
 - [x] Request bodies are bounded on ingest, withdraw and JSON routes; browser and machine mutations are rate limited.
-- [ ] Add audit-browser and review-history UI.
-- [ ] Add admin roster and role management, including stage 2 organisers.
+- [x] `/admin` lists recent audit entries; a review History tab already shows both stages, holds, overrides and invalidations.
+- [x] `/admin` manages the roster, roles (including organizers), active state and session revocation.
 - [x] `GET /metrics` exposes queue depth, active claims, stage 1 hold rate, time to first review, check duration and delivery counts in Prometheus text.
 - [x] The scheduled tick prunes login flows, ingest deliveries, closed-ship snapshots, audit records and fake receipts on fixed windows.
 - [ ] Add secret rotation and environment documentation.

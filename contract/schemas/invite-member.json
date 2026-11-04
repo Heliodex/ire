@@ -1,0 +1,22 @@
+{
+	"type": "object",
+	"properties": {
+		"email": {
+			"type": "string",
+			"minLength": 3,
+			"maxLength": 320,
+			"pattern": "\\S"
+		},
+		"role": {
+			"type": "string",
+			"pattern": "^(reviewer|organizer|admin|auditor)$"
+		}
+	},
+	"required": [
+		"email",
+		"role"
+	],
+	"title": "InviteMember",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/invite-member.json"
+}

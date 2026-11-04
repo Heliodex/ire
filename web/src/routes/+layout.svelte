@@ -110,6 +110,9 @@ async function signOut(): Promise<void> {
 					Queue
 				</a>
 				<a href="/deliveries" class:active={page.url.pathname.startsWith("/deliveries")}>Deliveries</a>
+				{#if session.me.programs.some(item => item.role === "admin")}
+					<a href="/admin" class:active={page.url.pathname.startsWith("/admin")}>Admin</a>
+				{/if}
 			</nav>
 		{/if}
 	</header>

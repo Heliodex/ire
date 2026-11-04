@@ -1,0 +1,19 @@
+{
+	"type": "object",
+	"properties": {
+		"active": {
+			"type": "boolean"
+		},
+		"role": {
+			"type": "string",
+			"pattern": "^(reviewer|organizer|admin|auditor)$"
+		}
+	},
+	"required": [
+		"active",
+		"role"
+	],
+	"title": "UpdateMember",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/update-member.json"
+}
