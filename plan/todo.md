@@ -308,6 +308,22 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 
 **Done when:** a real HCA reviewer can sign in and complete a clean approval, and the staging Half Life receiver verifies and applies the signed final event.
 
+## Integration – read-only shadow
+
+**Goal:** run Review beside Ari without changing any decision path, until parity is proven.
+
+- [x] `REVIEW_SHADOW=1` makes claim, heartbeat, release, draft, decision and send-back return `409 shadow_mode`.
+- [x] `GET /api/v1/me` returns `readOnly`, the layout shows a shadow banner, and the queue and review pages never auto-claim.
+- [x] The review decision rail and decision keyboard shortcuts are hidden in shadow mode.
+- [x] Shadow mode writes no outbox rows and `deliverDue` is suppressed; `program.outbound_enabled` is enforced in live mode too.
+- [x] `maxIngestBody` is raised from 1 MiB to 16 MiB, with tests for a payload above 1 MiB and one above the new cap.
+- [ ] Half Life dual-sends the open queue and every new hand-in to Review.
+- [ ] Half Life withdraws the Review copy when Ari resolves, reverts or receives a resubmission.
+- [ ] `review-parity` compares queue counts, checks, hours and BOM before cutover.
+- [ ] The signed inbound shadow webhook stays disabled until provider-aware decision handling is built.
+
+**Done when:** a shadow ship appears in Review with real checks, reviewers cannot claim it or cause a delivery, and Half Life's Ari-only behaviour is unchanged.
+
 ## Next 4 – Evidence snapshot
 
 **Goal:** fetch and cache the evidence reviewers currently open in other tabs, without slowing the first paint.

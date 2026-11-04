@@ -116,6 +116,7 @@ func (a *reviewApp) handleMe(w http.ResponseWriter, r *http.Request) {
 // meResponse builds the shared sign-in response.
 func (a *reviewApp) meResponse(ctx context.Context, person reviewer) contract.MeResponse {
 	response := contract.MeResponse{
+		ReadOnly: a.config.Shadow,
 		User: contract.MeResponseUser{
 			ID:    person.ID,
 			Email: person.Email,

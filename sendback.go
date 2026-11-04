@@ -17,6 +17,10 @@ func (a *reviewApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !a.requireWritable(w) {
+		return
+	}
+
 	if !canReviewSecondPass(person.Role) {
 		app.WriteError(w, http.StatusForbidden, "only organisers can send a ship back")
 		return

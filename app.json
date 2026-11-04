@@ -35,7 +35,8 @@
 		"HC_CLIENT_SECRET": "secret://HC_CLIENT_SECRET",
 		"HC_REDIRECT_URI": "secret://HC_REDIRECT_URI",
 		"REVIEW_BOOTSTRAP_EMAIL": "secret://REVIEW_BOOTSTRAP_EMAIL",
-		"REVIEW_BOOTSTRAP_ROLE": "admin"
+		"REVIEW_BOOTSTRAP_ROLE": "admin",
+		"REVIEW_SHADOW": "0"
 	},
 	"server_paths": [
 		"/auth"

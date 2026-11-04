@@ -32,6 +32,9 @@
 				"title": "Membership"
 			}
 		},
+		"readOnly": {
+			"type": "boolean"
+		},
 		"user": {
 			"type": "object",
 			"properties": {
@@ -55,6 +58,7 @@
 	},
 	"required": [
 		"programs",
+		"readOnly",
 		"user"
 	],
 	"title": "MeResponse",

@@ -1725,6 +1725,9 @@ type MeResponse struct {
 	// Programs corresponds to the JSON schema field "programs".
 	Programs []Membership `json:"programs" yaml:"programs" mapstructure:"programs"`
 
+	// ReadOnly corresponds to the JSON schema field "readOnly".
+	ReadOnly bool `json:"readOnly" yaml:"readOnly" mapstructure:"readOnly"`
+
 	// User corresponds to the JSON schema field "user".
 	User MeResponseUser `json:"user" yaml:"user" mapstructure:"user"`
 }
@@ -1775,6 +1778,9 @@ func (j *MeResponse) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["programs"]; raw != nil && !ok {
 		return fmt.Errorf("field programs in MeResponse: required")
+	}
+	if _, ok := raw["readOnly"]; raw != nil && !ok {
+		return fmt.Errorf("field readOnly in MeResponse: required")
 	}
 	if _, ok := raw["user"]; raw != nil && !ok {
 		return fmt.Errorf("field user in MeResponse: required")

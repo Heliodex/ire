@@ -25,7 +25,7 @@ const (
 
 	maxNote = 4000
 
-	maxIngestBody = 1 << 20
+	maxIngestBody = 16 << 20
 	maxAPIBody    = 64 << 10
 
 	defaultLimit = 50
@@ -111,6 +111,7 @@ type config struct {
 	DisableRepoChecks bool
 	EnableJobs        bool
 	OutboundDryRun    bool
+	Shadow            bool
 	Enqueue           func(context.Context, app.JobRequest) (bool, error)
 }
 

@@ -14,6 +14,8 @@ let { children }: LayoutProps = $props()
 let ready = $state(false)
 let signingOut = $state(false)
 
+const readOnly = $derived(session.me?.readOnly ?? false)
+
 onMount(async (): Promise<void> => {
 	theme.init()
 
@@ -102,6 +104,13 @@ async function signOut(): Promise<void> {
 		</div>
 
 		{#if session.me}
+			{#if readOnly}
+				<div class="shadow-banner" role="status">
+					<strong>Shadow mode</strong>
+					Review is read-only. Ships and decisions stay in Ari.
+				</div>
+			{/if}
+
 			<nav aria-label="Sections">
 				<a
 					href="/queue"
@@ -123,6 +132,19 @@ async function signOut(): Promise<void> {
 </div>
 
 <style>
+.shadow-banner {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+	width: 100%;
+	max-width: 1240px;
+	padding: var(--space-2) var(--space-4);
+	margin: 0 auto;
+	font-size: var(--text-sm);
+	color: var(--warning);
+	border-top: 1px solid var(--border);
+}
+
 .shell {
 	display: flex;
 	flex-direction: column;

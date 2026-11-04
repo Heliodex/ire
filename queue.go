@@ -258,6 +258,10 @@ func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !a.requireWritable(w) {
+		return
+	}
+
 	ship, ok := a.loadShipForReview(w, r)
 	if !ok {
 		return
@@ -346,6 +350,10 @@ func (a *reviewApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !a.requireWritable(w) {
+		return
+	}
+
 	id := r.PathValue("id")
 	now := a.nowText()
 
@@ -379,6 +387,10 @@ func (a *reviewApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 func (a *reviewApp) handleRelease(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
+		return
+	}
+
+	if !a.requireWritable(w) {
 		return
 	}
 
@@ -421,6 +433,10 @@ func (a *reviewApp) handleRelease(w http.ResponseWriter, r *http.Request) {
 func (a *reviewApp) handleDraft(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
+		return
+	}
+
+	if !a.requireWritable(w) {
 		return
 	}
 

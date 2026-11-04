@@ -23,6 +23,10 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !a.requireWritable(w) {
+		return
+	}
+
 	ship, ok := a.loadShipForReview(w, r)
 	if !ok {
 		return
@@ -205,7 +209,7 @@ func (a *reviewApp) decisionStatements(ctx context.Context, record decisionRecor
 
 	outboxID := ""
 
-	if !record.held {
+	if !record.held && a.outboundEnabled(ctx, record.ship.ProgramID) {
 		message, statement, err := a.outboxStore().PrepareTransaction(outbox.Message{
 			Event:     record.event,
 			DedupeKey: "decision:" + record.reviewID,

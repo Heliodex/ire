@@ -10,7 +10,8 @@ This runbook covers the review service as deployed through `wt`. Half Life stays
    - `REVIEW_OUTBOUND_URL` – the staging receiver URL.
    - `HC_CLIENT_ID`, `HC_CLIENT_SECRET`, `HC_REDIRECT_URI` – the registered Hack Club Auth application.
 2. Set `REVIEW_OUTBOUND_DRY_RUN=1` for the shadow window. Deliveries appear as `delivered` in `/deliveries` with their payloads, but nothing leaves the service.
-3. Set `REVIEW_DEV_AUTH=0` and remove the seeded accounts from the production copy:
+3. Set `REVIEW_SHADOW=1` and keep `REVIEW_OUTBOUND_URL=fake://receiver` for the read-only shadow window. Reviewer claim, draft, decision and send-back calls return `409 shadow_mode`, and no outbox row is written.
+4. Set `REVIEW_DEV_AUTH=0` and remove the seeded accounts from the production copy:
 
    ```sql
    delete from user
@@ -18,8 +19,8 @@ This runbook covers the review service as deployed through `wt`. Half Life stays
    ```
 
    The memberships cascade with the user rows. Re-run the bootstrap only if the roster is empty.
-4. Sign in once with the bootstrap admin, invite the real reviewers and organizers at `/admin`, then disable the bootstrap by setting `REVIEW_BOOTSTRAP_EMAIL` to an address that cannot sign in, or by removing the secret reference.
-5. Run `wt doctor review` and open `/queue`, `/review/{id}` and `/admin`.
+5. Sign in once with the bootstrap admin, invite the real reviewers and organizers at `/admin`, then disable the bootstrap by setting `REVIEW_BOOTSTRAP_EMAIL` to an address that cannot sign in, or by removing the secret reference.
+6. Run `wt doctor review` and open `/queue`, `/review/{id}` and `/admin`.
 
 ## Shadow window
 

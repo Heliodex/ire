@@ -88,6 +88,7 @@ export const membershipSchema = pipe(
 export const meResponseSchema = pipe(
 	object({
 		programs: array(membershipSchema),
+		readOnly: boolean(),
 		user: object({
 			email: pipe(string(), minLength(1)),
 			id: pipe(string(), minLength(1)),

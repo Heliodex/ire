@@ -62,7 +62,8 @@ const secondPass = $derived(submission?.stage === 2 || submission?.status === "s
 const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
 const checking = $derived(submission?.status === "checking")
-const canDecide = $derived(!checking && (!secondPass || canSecondPass))
+const readOnly = $derived(session.me?.readOnly ?? false)
+const canDecide = $derived(!readOnly && !checking && (!secondPass || canSecondPass))
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
@@ -113,6 +114,11 @@ onMount((): (() => void) => {
 	function onKeydown(event: KeyboardEvent): void {
 		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
 			if (event.key === "Escape") (event.target as HTMLElement).blur()
+			return
+		}
+
+		if (readOnly) {
+			if (event.key === "?") showShortcuts = !showShortcuts
 			return
 		}
 
@@ -208,7 +214,8 @@ async function load(target = id): Promise<void> {
 		if (target !== id) return
 
 		let next = fetched
-		const canClaim = fetched.submission.status !== "checking" && (fetched.submission.stage !== 2 || canSecondPass)
+		const canClaim =
+			!readOnly && fetched.submission.status !== "checking" && (fetched.submission.stage !== 2 || canSecondPass)
 		if (canClaim && fetched.claim?.isMine !== 1) {
 			await claimShip(target)
 			next = await fetchBundle(target)
@@ -756,151 +763,164 @@ async function saveDraftNow(): Promise<void> {
 				</p>
 			</section>
 
-			<section class="ui-card padded decision">
-				<h2>Decision</h2>
+			{#if readOnly}
+				<section class="ui-card padded decision">
+					<h2>Read-only shadow</h2>
+					<p class="policy">
+						This copy is here for review and parity only. Claims, drafts and decisions stay in Ari, and
+						Review sends nothing to the maker.
+					</p>
+				</section>
+			{:else}
+				<section class="ui-card padded decision">
+					<h2>Decision</h2>
 
-				<label class="field">
-					<span>Approved hours</span>
-					<span class="hours-row">
-						<input class="ui-input" max="720" min="0" step="0.25" type="number" bind:value={hours}>
-						<span class="hours-hint">/ {formatHours(submission.hoursClaimedSeconds)} claimed</span>
-					</span>
-				</label>
-
-				<label class="field">
-					<span
-						>Note to maker
-						{!secondPass && (missingAcks.length > 0 || blocking.length > 0) ? "" : "(optional)"}</span
-					>
-					<textarea
-						class="ui-input"
-						onblur={(): void => void saveDraftNow()}
-						placeholder="What should they change, or why is this good?"
-						rows="5"
-						bind:this={noteElement}
-						bind:value={note}
-					></textarea>
-				</label>
-
-				<label class="field">
-					<span>Internal note</span>
-					<textarea
-						class="ui-input"
-						onblur={(): void => void saveDraftNow()}
-						placeholder="Only the team sees this."
-						rows="2"
-						bind:value={internalNote}
-					></textarea>
-				</label>
-
-				{#if secondPass}
 					<label class="field">
-						<span>Override reason (required if you change the first pass)</span>
+						<span>Approved hours</span>
+						<span class="hours-row">
+							<input class="ui-input" max="720" min="0" step="0.25" type="number" bind:value={hours}>
+							<span class="hours-hint">/ {formatHours(submission.hoursClaimedSeconds)} claimed</span>
+						</span>
+					</label>
+
+					<label class="field">
+						<span
+							>Note to maker
+							{!secondPass && (missingAcks.length > 0 || blocking.length > 0) ? "" : "(optional)"}</span
+						>
 						<textarea
 							class="ui-input"
-							placeholder="Why the first-pass hours or decision should change."
-							rows="2"
-							bind:this={overrideElement}
-							bind:value={overrideReason}
+							onblur={(): void => void saveDraftNow()}
+							placeholder="What should they change, or why is this good?"
+							rows="5"
+							bind:this={noteElement}
+							bind:value={note}
 						></textarea>
 					</label>
-				{/if}
 
-				{#if !secondPass && missingAcks.length > 0}
-					<div class="ui-notice" data-tone="warn">
-						<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
-						Acknowledge them in Checks to unlock approve.
-						<button
-							class="link"
-							onclick={(): void => {
-								tab = "checks"
-							}}
-							type="button"
-						>
-							Open checks
-						</button>
-					</div>
-				{/if}
-
-				{#if blocking.length > 0}
-					<div class="ui-notice" data-tone="bad">
-						<strong>Approval disabled</strong>
-						{blocking[0].summary}.
-						<button
-							class="link"
-							onclick={(): void => {
-								tab = "checks"
-							}}
-							type="button"
-						>
-							Read the blocking check
-						</button>
-					</div>
-				{/if}
-
-				{#if actionError}
-					<p class="ui-notice" data-tone="bad" role="alert">{actionError}</p>
-				{/if}
-
-				<div class="buttons">
-					<button
-						class="ui-button ok block"
-						disabled={deciding || !canApprove || !canDecide}
-						onclick={(): Promise<void> => decide("approved")}
-						type="button"
-					>
-						{deciding ? "Saving…" : secondPass ? "Confirm approval" : "Approve"} <kbd class="ui-kbd">A</kbd>
-					</button>
-					<div class="secondary">
-						<button
-							class="ui-button changes"
-							disabled={deciding || !canDecide}
-							onclick={(): Promise<void> => decide("changes")}
-							type="button"
-						>
-							Request changes
-						</button>
-						<button
-							class="ui-button danger"
-							disabled={deciding || !canDecide}
-							onclick={(): Promise<void> => decide("rejected")}
-							type="button"
-						>
-							Reject
-						</button>
-					</div>
-				</div>
-
-				{#if secondPass && canSecondPass}
-					<div class="send-back">
-						<h3>Send back to stage 1</h3>
-						<p>Invalidate the held review and let a reviewer look again. No event is sent to the maker.</p>
+					<label class="field">
+						<span>Internal note</span>
 						<textarea
 							class="ui-input"
-							placeholder="What should stage 1 look at again?"
+							onblur={(): void => void saveDraftNow()}
+							placeholder="Only the team sees this."
 							rows="2"
-							bind:value={sendBackReason}
+							bind:value={internalNote}
 						></textarea>
-						{#if sendBackError}
-							<p class="ui-notice" data-tone="bad" role="alert">{sendBackError}</p>
-						{/if}
+					</label>
+
+					{#if secondPass}
+						<label class="field">
+							<span>Override reason (required if you change the first pass)</span>
+							<textarea
+								class="ui-input"
+								placeholder="Why the first-pass hours or decision should change."
+								rows="2"
+								bind:this={overrideElement}
+								bind:value={overrideReason}
+							></textarea>
+						</label>
+					{/if}
+
+					{#if !secondPass && missingAcks.length > 0}
+						<div class="ui-notice" data-tone="warn">
+							<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
+							Acknowledge them in Checks to unlock approve.
+							<button
+								class="link"
+								onclick={(): void => {
+									tab = "checks"
+								}}
+								type="button"
+							>
+								Open checks
+							</button>
+						</div>
+					{/if}
+
+					{#if blocking.length > 0}
+						<div class="ui-notice" data-tone="bad">
+							<strong>Approval disabled</strong>
+							{blocking[0].summary}.
+							<button
+								class="link"
+								onclick={(): void => {
+									tab = "checks"
+								}}
+								type="button"
+							>
+								Read the blocking check
+							</button>
+						</div>
+					{/if}
+
+					{#if actionError}
+						<p class="ui-notice" data-tone="bad" role="alert">{actionError}</p>
+					{/if}
+
+					<div class="buttons">
 						<button
-							class="ui-button secondary block"
-							disabled={sendingBack}
-							onclick={sendBackToStageOne}
+							class="ui-button ok block"
+							disabled={deciding || !canApprove || !canDecide}
+							onclick={(): Promise<void> => decide("approved")}
 							type="button"
 						>
-							{sendingBack ? "Sending back…" : "Send back"}
+							{deciding ? "Saving…" : secondPass ? "Confirm approval" : "Approve"}
+							<kbd class="ui-kbd">A</kbd>
 						</button>
+						<div class="secondary">
+							<button
+								class="ui-button changes"
+								disabled={deciding || !canDecide}
+								onclick={(): Promise<void> => decide("changes")}
+								type="button"
+							>
+								Request changes
+							</button>
+							<button
+								class="ui-button danger"
+								disabled={deciding || !canDecide}
+								onclick={(): Promise<void> => decide("rejected")}
+								type="button"
+							>
+								Reject
+							</button>
+						</div>
 					</div>
-				{/if}
 
-				{#if bundle.claim}
-					<p class="claim">
-						Claimed by {bundle.claim.reviewerEmail} until {formatDateTime(bundle.claim.expiresAt)}
-					</p>
-				{/if}
-			</section>
+					{#if secondPass && canSecondPass}
+						<div class="send-back">
+							<h3>Send back to stage 1</h3>
+							<p>
+								Invalidate the held review and let a reviewer look again. No event is sent to the maker.
+							</p>
+							<textarea
+								class="ui-input"
+								placeholder="What should stage 1 look at again?"
+								rows="2"
+								bind:value={sendBackReason}
+							></textarea>
+							{#if sendBackError}
+								<p class="ui-notice" data-tone="bad" role="alert">{sendBackError}</p>
+							{/if}
+							<button
+								class="ui-button secondary block"
+								disabled={sendingBack}
+								onclick={sendBackToStageOne}
+								type="button"
+							>
+								{sendingBack ? "Sending back…" : "Send back"}
+							</button>
+						</div>
+					{/if}
+
+					{#if bundle.claim}
+						<p class="claim">
+							Claimed by {bundle.claim.reviewerEmail} until {formatDateTime(bundle.claim.expiresAt)}
+						</p>
+					{/if}
+				</section>
+			{/if}
 		</aside>
 	</div>
 

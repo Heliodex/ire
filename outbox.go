@@ -90,6 +90,10 @@ func (a *reviewApp) handleTick(w http.ResponseWriter, r *http.Request) {
 
 // deliverDue sends every delivery whose retry time has arrived.
 func (a *reviewApp) deliverDue(ctx context.Context) (int, int, int) {
+	if !a.outboundEnabled(ctx, programID) {
+		return 0, 0, 0
+	}
+
 	summary, err := a.outboxStore().DeliverDue(ctx, a.store, outbox.DefaultLimit)
 	if err != nil {
 		app.Errorf("outbox delivery: %v", err)

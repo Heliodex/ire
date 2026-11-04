@@ -245,7 +245,8 @@ async function open(item: QueueItem): Promise<void> {
 	opening = item.id
 	error = ""
 	try {
-		if (!item.claimedBy || item.claimedBy !== session.me?.user.email) await claimShip(item.id)
+		if (!session.me?.readOnly && (!item.claimedBy || item.claimedBy !== session.me?.user.email))
+			await claimShip(item.id)
 		window.location.assign(`/review/${encodeURIComponent(item.id)}`)
 	} catch (err) {
 		error = err instanceof Error ? err.message : "Could not claim this ship."
