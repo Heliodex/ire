@@ -8,7 +8,7 @@ A review service for Half Life hardware ships. This is the working vertical slic
 - Ari-compatible status at `GET /api/ingest/{program}/status`, withdraw, and the native `reviews?since` / `events?since` recovery feeds.
 - A stage 1 queue with claims, heartbeats, drafts, warning acknowledgements, blocking checks, decisions and idempotency keys.
 - A stage 2 hold policy for approvals: a warning, a held tier, or hours above the claim waits for the second pass and emits no webhook. Changes and rejections are final and always deliver. The stage 1 endpoints refuse a ship that is already on the second pass.
-- A second-pass queue for organisers, with claim, confirm, reject and changes actions, stage history and one final outbound event. Reviewers can read a held ship but cannot decide it.
+- A second-pass queue for organisers, with claim, confirm, reject, changes, send-back and override-with-reason actions, stage history and one final outbound event. Reviewers can read a held ship but cannot decide it.
 - Real GitHub checks for new ingests, queued as a durable supervisor job so ingest returns immediately: repository access, README and image count, BOM file, design files and commit history. Fixtures keep their prescribed results.
 - Hack Club Auth sign-in for roster members over OpenID Connect discovery, PKCE, nonce and a verified RS256 ID token. Development sign-in remains for local use.
 - A cached repository snapshot per ship: README, capped file tree, commit list and head SHA, shown in the Evidence tab. Organisers can refresh it without re-running the checks.
@@ -100,6 +100,7 @@ The check job stores a snapshot in `repo_snapshot`: the README (capped at 200 KB
 | `DELETE` | `/api/v1/programs/{program}/submissions/{id}/claim` | Session |
 | `PUT` | `/api/v1/programs/{program}/submissions/{id}/draft` | Session |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/decision` | Session |
+| `POST` | `/api/v1/programs/{program}/submissions/{id}/send-back` | Organiser or admin |
 | `GET` | `/api/v1/programs/{program}/outbox` | Session |
 | `POST` | `/jobs/tick` | Supervisor schedule |
 | `POST` | `/jobs/checks` | Supervisor durable job |
@@ -132,7 +133,7 @@ The contract in [`web/src/lib/contract.ts`](./web/src/lib/contract.ts) is the so
 
 - **Checks** are real for public GitHub repositories on new ingests and run as a durable job. Fixture ships carry prescribed results. GitLab, Hackatime, Lapse, demo probes, identity and duplicate checks are not ported yet.
 - **Auth** uses Hack Club Auth over OIDC when configured. Development accounts remain for local work; the platform identity provider is not used because it is a separate password store, and there is no roster admin UI yet.
-- **Stage 2** now has a queue and a final decision, but override, send-back and fraud are later. Fraud has a configured minimum stage of 2 and no implementation.
+- **Stage 2** has the queue, confirm, override with a reason, send-back and a final decision. The configurable rule engine, fraud, and admin revert or requeue are later.
 - **Delivery receiver** defaults to the in-process `fake://receiver`. Point `REVIEW_OUTBOUND_URL` at a real endpoint to use HTTP; the sender signs the exact bytes and retries on 5xx.
 - **Evidence** for GitHub ships now includes the README, file tree and commits fetched at ingest. Journals and clips still come only from the ingest payload, and the README is shown as plain text rather than rendered Markdown.
 

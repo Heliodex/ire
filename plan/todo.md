@@ -153,38 +153,44 @@ wt build --dir .
 
 ## Deliberately fake or incomplete
 
-- [ ] Checks are payload-only. No GitHub/GitLab fetch, tree, README, commit or Hackatime call.
-- [ ] Auth is the development account table, not Hack Club Auth.
-- [ ] Stage 2 is a status and a hold policy, not a working second-pass queue or decision.
+- [ ] Checks cover GitHub only; GitLab, Hackatime, Lapse, demo, identity and duplicate checks are not ported.
+- [ ] Auth uses HCA when credentials are configured; there are no live credentials or roster sync yet, and development accounts remain.
+- [ ] Stage 2 has the full seeded loop, but the hold rule engine and fraud provider are not built.
 - [ ] Fraud is a configured minimum stage and a future provider, with no implementation.
-- [ ] Evidence is whatever Half Life sends in the payload. Review does not fetch or snapshot the repo.
-- [ ] The outbound receiver is in-process. No live Half Life staging endpoint is wired.
-- [ ] No SSE. The queue polls every 10 seconds.
+- [ ] Evidence caches the repo README, tree and commits; journals and clips still come from the ingest payload.
+- [ ] The outbound receiver defaults to in-process. HTTP delivery works, but no live Half Life staging endpoint is wired.
+- [ ] The queue refreshes from storage events and keeps a 10-second poll as a fallback.
 - [ ] No admin or settings UI, roster, analytics, audit browser, retention jobs or secret rotation UI.
 - [ ] No pagination beyond the current limits; queue limit is 50, feeds are 100.
-- [ ] No rate limiting or CSRF token beyond the session cookie and same-site policy.
+- [ ] No rate limiting; browser mutations rely on the session cookie, same-site policy and the same-origin guard.
 - [ ] No duplicate, identity, demo, Hackatime, Lapse or fraud checks.
 - [ ] No `check_run` table; results are written directly with no run status or retry record.
-- [ ] The `checking` status is not shown in the queue; ingest runs local checks synchronously.
+- [ ] The `checking` status is not shown in the queue; ships appear when the check job finishes.
 - [ ] No live HCA identities, programme roster sync or role administration.
 
 ## Next 1 – Stage 2 loop
 
 **Goal:** a warned or held approval can be finished by an organiser instead of dead-ending in `stage2_hold`.
 
-The core loop is working: a stage 1 hold, an organiser second-pass queue, claim, confirm/reject/changes, own-decision prevention and one final event. The remaining items are polish and the less common actions.
+The loop is complete for the seeded policy: a stage 1 hold, an organiser second-pass queue, claim, confirm, override, send-back and one final event.
+
+### Working now
+
+- [x] Show the stage 1 acknowledgements, note and reviewer on the stage 2 screen.
+- [x] Send-back invalidates the held review, returns the ship to stage 1 `ready`, clears the approved hours and records the reason and event.
+- [x] Send-back is organiser-only, needs a claim and a reason, and writes no outbound event.
+- [x] An override needs a reason when the second pass changes the first-pass hours or decision; the reason is stored and sent to Half Life.
+- [x] A History tab shows both stages, held state, acknowledgements, overrides and invalidations.
+- [x] The second-pass stale-version guard has a test.
+- [x] The held review keeps its acknowledgements so the second pass can read them.
+- [x] The review screen handles the second-pass empty and invalidated states.
+- [x] `plan/07-delivery.md` records the implemented loop and its gaps.
 
 ### Remaining
 
-- [ ] Show the stage 1 acknowledgements on the stage 2 screen, not just the checks themselves.
-- [ ] Add send-back: invalidate the held review, return the ship to stage 1 `ready`, record the reason and event.
-- [ ] Add override with a required reason when the organiser changes the first-pass hours or decision.
-- [ ] Add a dedicated stage history panel on the review screen; today the timeline and the second-pass banner carry it.
 - [ ] Add an explicit fraud stage guard test when the provider exists; there is no fraud path to guard yet.
-- [ ] Add a stage 2 stale-version test; the version guard exists but is only covered on stage 1.
-- [ ] Add a second-pass empty state and keyboard coverage to the browser smoke script.
-- [ ] Update `plan/07-delivery.md` with the implemented second-pass flow and its remaining gaps.
-- [ ] Decide whether stage 2 should allow a reviewer to send a ship back to stage 1 without a full decision.
+- [ ] Extend the browser smoke script with keyboard coverage for the second pass.
+- [ ] Decide whether send-back should be available to reviewers or remain organiser-only.
 
 **Done when:** a warned ship can be held at stage 1, claimed by an organiser, confirmed, overridden or sent back at stage 2, and Half Life receives exactly one final event per final decision.
 
