@@ -27,7 +27,7 @@ The interface follows Ari's visual language: Hanken Grotesk, Ari's grey surfaces
 wt dev --dir . --port 8080
 ```
 
-Open the `dev: vite at …` URL that it prints (the frontend is served by Vite in development; the API is on `review.localhost:8080`). For a production build, run `wt build --dir .` and `wt deploy --dir .`; the supervisor then serves both the static site and the API on `review.localhost`. The root path is handled by the component: a signed-in browser is redirected server-side to `/queue`, and everyone else to `/login`.
+Open the `dev: vite at …` URL that it prints (the frontend is served by Vite in development; the API is on `review.localhost:8080`). For a production build, run `wt build --dir .` and `wt deploy --dir .`; the supervisor then serves both the static site and the API on `review.localhost`. The root and protected pages are selected server-side with `server_pages` and `app.StaticPage`: a signed-in root redirects to `/queue`, a signed-out root serves the login page, and `/queue`, `/review` and `/deliveries` redirect to `/login` without loading the page first.
 
 Sign in with one of the seeded accounts:
 

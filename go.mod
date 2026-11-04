@@ -2,7 +2,7 @@ module review
 
 go 1.27.1
 
-require github.com/heliodex/better-deploy/wt/packages/v2 v2.0.0
+require github.com/heliodex/better-deploy/wt/packages/v2 v2.0.1-0.20261104051217-e9fe6d7cba27
 
 require (
 	dario.cat/mergo v1.0.2 // indirect

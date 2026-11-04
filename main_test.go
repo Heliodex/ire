@@ -15,6 +15,7 @@ import (
 
 	"review/contract"
 
+	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
@@ -1109,13 +1110,18 @@ func findCookie(cookies []*http.Cookie, name string) *http.Cookie {
 	return nil
 }
 
-// TestRootRedirectsBySession covers the server-side login redirect.
-func TestRootRedirectsBySession(t *testing.T) {
+// TestPageGate covers the server-selected login and protected pages.
+func TestPageGate(t *testing.T) {
 	application := newTestApp(t)
 
 	anonymous := do(t, application, http.MethodGet, "/", nil, nil, nil)
-	if anonymous.Code != http.StatusFound || anonymous.Header().Get("Location") != "/login" {
-		t.Fatalf("anonymous root = %d %q", anonymous.Code, anonymous.Header().Get("Location"))
+	if anonymous.Code != http.StatusOK || anonymous.Header().Get(app.StaticPageHeader) != "/" {
+		t.Fatalf("anonymous root = %d %q", anonymous.Code, anonymous.Header().Get(app.StaticPageHeader))
+	}
+
+	protected := do(t, application, http.MethodGet, "/queue", nil, nil, nil)
+	if protected.Code != http.StatusFound || protected.Header().Get("Location") != "/login" {
+		t.Fatalf("anonymous queue = %d %q", protected.Code, protected.Header().Get("Location"))
 	}
 
 	cookie := login(t, application, "reviewer@example.com")
@@ -1123,6 +1129,16 @@ func TestRootRedirectsBySession(t *testing.T) {
 	signedIn := do(t, application, http.MethodGet, "/", nil, cookie, nil)
 	if signedIn.Code != http.StatusFound || signedIn.Header().Get("Location") != "/queue" {
 		t.Fatalf("signed-in root = %d %q", signedIn.Code, signedIn.Header().Get("Location"))
+	}
+
+	queue := do(t, application, http.MethodGet, "/queue", nil, cookie, nil)
+	if queue.Code != http.StatusOK || queue.Header().Get(app.StaticPageHeader) != "/queue" {
+		t.Fatalf("signed-in queue = %d %q", queue.Code, queue.Header().Get(app.StaticPageHeader))
+	}
+
+	login := do(t, application, http.MethodGet, "/login", nil, cookie, nil)
+	if login.Code != http.StatusFound || login.Header().Get("Location") != "/queue" {
+		t.Fatalf("signed-in login = %d %q", login.Code, login.Header().Get("Location"))
 	}
 }
 

@@ -1,6 +1,6 @@
 {
 	"build_component": "cd web && bun install && cd .. && go tool componentize-go -d \"$(go list -m -f '{{.Dir}}' github.com/heliodex/better-deploy/wt/packages/v2)/wit\" -w wt:app/app build",
-	"build_static": "cd web && bun install && bun run build && rm -f build/index.html build/index.html.br build/index.html.gz && rm -rf ../static && cp -r build ../static",
+	"build_static": "cd web && bun install && bun run build && rm -rf ../static && cp -r build ../static",
 	"component_inputs": [
 		"web/bun.lock",
 		"web/package.json",
@@ -39,5 +39,8 @@
 	},
 	"server_paths": [
 		"/auth"
+	],
+	"server_pages": [
+		"/"
 	]
 }
