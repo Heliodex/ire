@@ -321,7 +321,8 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] A nested meta payload with BOM, hours, grant cap and prior reviews round-trips into the review bundle.
 - [ ] Half Life dual-sends the open queue and every new hand-in to Review.
 - [ ] Half Life withdraws the Review copy when Ari resolves, reverts or receives a resubmission.
-- [ ] `review-parity` compares queue counts, checks, hours and BOM before cutover.
+- [x] `GET /api/v1/programs/{program}/parity` gives the Half Life parity script the open queue with hours, BOM and check summaries.
+- [ ] `review-parity` runs over the live open queue before cutover.
 - [ ] The signed inbound shadow webhook stays disabled until provider-aware decision handling is built.
 
 **Done when:** a shadow ship appears in Review with real checks, reviewers cannot claim it or cause a delivery, and Half Life's Ari-only behaviour is unchanged.

@@ -1,0 +1,79 @@
+{
+	"type": "object",
+	"properties": {
+		"generatedAt": {
+			"type": "string",
+			"minLength": 1
+		},
+		"ships": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"bomTotalCents": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"checkSummary": {
+						"$ref": "check-summary.json"
+					},
+					"externalId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"hoursApprovedSeconds": {
+						"type": "integer"
+					},
+					"hoursClaimedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"phase": {
+						"type": "string",
+						"minLength": 1
+					},
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"status": {
+						"type": "string",
+						"minLength": 1
+					},
+					"updatedAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"version": {
+						"type": "integer",
+						"minimum": 0
+					}
+				},
+				"required": [
+					"bomTotalCents",
+					"checkSummary",
+					"externalId",
+					"hoursClaimedSeconds",
+					"id",
+					"phase",
+					"stage",
+					"status",
+					"updatedAt",
+					"version"
+				],
+				"title": "ParityShip"
+			}
+		}
+	},
+	"required": [
+		"generatedAt",
+		"ships"
+	],
+	"title": "ParityResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/parity.json"
+}

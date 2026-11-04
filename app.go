@@ -203,6 +203,7 @@ func (a *reviewApp) routes() {
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/checks/rerun", a.handleChecksRerun)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/submissions/{id}/checks/head", a.handleChecksHead)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/outbox", a.handleOutbox)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/parity", a.handleParity)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/members/{id}/revoke-sessions", a.handleRevokeSessions)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/members", a.handleMembers)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/members", a.handleInviteMember)

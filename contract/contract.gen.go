@@ -2038,6 +2038,146 @@ func (j *OutboxRow) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type ParityResponse struct {
+	// GeneratedAt corresponds to the JSON schema field "generatedAt".
+	GeneratedAt string `json:"generatedAt" yaml:"generatedAt" mapstructure:"generatedAt"`
+
+	// Ships corresponds to the JSON schema field "ships".
+	Ships []ParityShip `json:"ships" yaml:"ships" mapstructure:"ships"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ParityResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["generatedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field generatedAt in ParityResponse: required")
+	}
+	if _, ok := raw["ships"]; raw != nil && !ok {
+		return fmt.Errorf("field ships in ParityResponse: required")
+	}
+	type Plain ParityResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.GeneratedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "generatedAt", 1)
+	}
+	*j = ParityResponse(plain)
+	return nil
+}
+
+type ParityShip struct {
+	// BomTotalCents corresponds to the JSON schema field "bomTotalCents".
+	BomTotalCents int `json:"bomTotalCents" yaml:"bomTotalCents" mapstructure:"bomTotalCents"`
+
+	// CheckSummary corresponds to the JSON schema field "checkSummary".
+	CheckSummary CheckSummary `json:"checkSummary" yaml:"checkSummary" mapstructure:"checkSummary"`
+
+	// ExternalID corresponds to the JSON schema field "externalId".
+	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
+
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hoursApprovedSeconds".
+	HoursApprovedSeconds *int `json:"hoursApprovedSeconds,omitempty,omitzero" yaml:"hoursApprovedSeconds,omitempty" mapstructure:"hoursApprovedSeconds,omitempty"`
+
+	// HoursClaimedSeconds corresponds to the JSON schema field "hoursClaimedSeconds".
+	HoursClaimedSeconds int `json:"hoursClaimedSeconds" yaml:"hoursClaimedSeconds" mapstructure:"hoursClaimedSeconds"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// Phase corresponds to the JSON schema field "phase".
+	Phase string `json:"phase" yaml:"phase" mapstructure:"phase"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+
+	// UpdatedAt corresponds to the JSON schema field "updatedAt".
+	UpdatedAt string `json:"updatedAt" yaml:"updatedAt" mapstructure:"updatedAt"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ParityShip) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["bomTotalCents"]; raw != nil && !ok {
+		return fmt.Errorf("field bomTotalCents in ParityShip: required")
+	}
+	if _, ok := raw["checkSummary"]; raw != nil && !ok {
+		return fmt.Errorf("field checkSummary in ParityShip: required")
+	}
+	if _, ok := raw["externalId"]; raw != nil && !ok {
+		return fmt.Errorf("field externalId in ParityShip: required")
+	}
+	if _, ok := raw["hoursClaimedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursClaimedSeconds in ParityShip: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in ParityShip: required")
+	}
+	if _, ok := raw["phase"]; raw != nil && !ok {
+		return fmt.Errorf("field phase in ParityShip: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in ParityShip: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in ParityShip: required")
+	}
+	if _, ok := raw["updatedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field updatedAt in ParityShip: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in ParityShip: required")
+	}
+	type Plain ParityShip
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.BomTotalCents {
+		return fmt.Errorf("field %s: must be >= %v", "bomTotalCents", 0)
+	}
+	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
+	}
+	if 0 > plain.HoursClaimedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Phase)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "phase", 1)
+	}
+	if 0 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = ParityShip(plain)
+	return nil
+}
+
 type PriorReview struct {
 	// At corresponds to the JSON schema field "at".
 	At *string `json:"at,omitempty,omitzero" yaml:"at,omitempty" mapstructure:"at,omitempty"`

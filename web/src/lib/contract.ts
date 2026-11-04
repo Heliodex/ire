@@ -223,6 +223,30 @@ export const queueResponseSchema = pipe(
 	title("QueueResponse"),
 )
 
+// ─── Parity ─────────────────────────────────────────────────────────────────
+
+export const parityShipSchema = pipe(
+	object({
+		bomTotalCents: nonNegative,
+		checkSummary: checkSummarySchema,
+		externalId: pipe(string(), minLength(1)),
+		hoursApprovedSeconds: optional(pipe(number(), integer())),
+		hoursClaimedSeconds: nonNegative,
+		id: pipe(string(), minLength(1)),
+		phase: pipe(string(), minLength(1)),
+		stage: nonNegative,
+		status: pipe(string(), minLength(1)),
+		updatedAt: timestamp,
+		version: nonNegative,
+	}),
+	title("ParityShip"),
+)
+
+export const parityResponseSchema = pipe(
+	object({ generatedAt: timestamp, ships: array(parityShipSchema) }),
+	title("ParityResponse"),
+)
+
 // ─── Review bundle ──────────────────────────────────────────────────────────
 
 export const submissionSchema = pipe(
@@ -789,6 +813,7 @@ export const responseSchemas = Object.freeze([
 	meResponseSchema,
 	membersResponseSchema,
 	outboxResponseSchema,
+	parityResponseSchema,
 	queueResponseSchema,
 	reviewBundleSchema,
 	reviewEventSchema,
