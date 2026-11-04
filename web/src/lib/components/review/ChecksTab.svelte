@@ -21,60 +21,68 @@ const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes
 const groups = $derived(groupChecks(checks))
 </script>
 
-{#if blocking.length > 0}
-	<div class="ui-notice" data-tone="bad" role="alert">
-		<strong>Approval is blocked</strong>
-		{blocking[0].summary}. Ask the maker for changes or reject with a note.
-	</div>
-{/if}
-
-{#if warnings.length > 0}
-	<div class="ui-notice warn-box" data-tone="warn">
-		<div>
-			<strong>{warnings.length} warning{warnings.length === 1 ? "" : "s"}</strong>
-			Acknowledge each one before approving. Warnings are held for the second pass.
+<div class="checks-panel">
+	{#if blocking.length > 0}
+		<div class="ui-notice" data-tone="bad" role="alert">
+			<strong>Approval is blocked</strong>
+			{blocking[0].summary}. Ask the maker for changes or reject with a note.
 		</div>
-		{#if missingAcks.length > 0}
-			<button class="ui-button sm" onclick={onAcknowledgeAll} type="button">Acknowledge all</button>
-		{/if}
-	</div>
-{/if}
+	{/if}
 
-<div class="ui-card checks">
-	{#each groups as group (group.group)}
-		<div class="group">
-			<h2>{group.group}</h2>
-			{#each group.items as check (check.key)}
-				<div class="check">
-					<span class="ui-badge check-status" data-tone={statusTone(check.status)}>{check.status}</span>
-					<span class="check-label">{check.label}</span>
-					<code class="check-key ui-mono" title={check.key}>{check.key}</code>
-					{#if isWarning(check)}
-						<label class="ack" title="Acknowledge this warning">
-							<input
-								aria-label={`Acknowledge ${check.label}`}
-								checked={acknowledgements.includes(check.key)}
-								onchange={(): void => onToggle(check.key)}
-								type="checkbox"
-							>
-							<span>Ack</span>
-						</label>
-					{:else}
-						<span class="ack-empty"></span>
-					{/if}
-					<span class="check-detail">
-						<span class="check-summary">{check.summary}</span>
-						{#if check.detail}
-							<span class="check-note">{check.detail}</span>
+	{#if warnings.length > 0}
+		<div class="ui-notice warn-box" data-tone="warn">
+			<div>
+				<strong>{warnings.length} warning{warnings.length === 1 ? "" : "s"}</strong>
+				Acknowledge each one before approving. Warnings are held for the second pass.
+			</div>
+			{#if missingAcks.length > 0}
+				<button class="ui-button sm" onclick={onAcknowledgeAll} type="button">Acknowledge all</button>
+			{/if}
+		</div>
+	{/if}
+
+	<div class="ui-card checks">
+		{#each groups as group (group.group)}
+			<div class="group">
+				<h2>{group.group}</h2>
+				{#each group.items as check (check.key)}
+					<div class="check">
+						<span class="ui-badge check-status" data-tone={statusTone(check.status)}>{check.status}</span>
+						<span class="check-label">{check.label}</span>
+						<code class="check-key ui-mono" title={check.key}>{check.key}</code>
+						{#if isWarning(check)}
+							<label class="ack" title="Acknowledge this warning">
+								<input
+									aria-label={`Acknowledge ${check.label}`}
+									checked={acknowledgements.includes(check.key)}
+									onchange={(): void => onToggle(check.key)}
+									type="checkbox"
+								>
+								<span>Ack</span>
+							</label>
+						{:else}
+							<span class="ack-empty"></span>
 						{/if}
-					</span>
-				</div>
-			{/each}
-		</div>
-	{/each}
+						<span class="check-detail">
+							<span class="check-summary">{check.summary}</span>
+							{#if check.detail}
+								<span class="check-note">{check.detail}</span>
+							{/if}
+						</span>
+					</div>
+				{/each}
+			</div>
+		{/each}
+	</div>
 </div>
 
 <style>
+.checks-panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+
 .warn-box {
 	display: flex;
 	flex-wrap: wrap;
