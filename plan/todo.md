@@ -302,9 +302,9 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] Outbound tests cover a 5xx retry, a dropped connection retry and permanent failure on 4xx.
 - [ ] Send one approved, one changes and one rejected event to staging; verify Half Life applies each.
 - [x] `REVIEW_OUTBOUND_DRY_RUN=1` records deliveries as sent without calling the receiver, so a pilot can compare before cutover.
-- [ ] Write the cutover, rollback and replay runbook (`reviews?since`, `events?since`).
-- [ ] Disable development accounts on the production database and document the cleanup.
-- [ ] Remove any seeded dev users from a production copy before the pilot.
+- [x] `plan/08-runbook.md` covers the shadow window, cutover, recovery feeds, rollback and incident checks.
+- [x] `plan/08-runbook.md` documents `REVIEW_DEV_AUTH=0` and the SQL that removes the seeded accounts from a production copy.
+- [x] The runbook includes the delete for the three seeded emails before the pilot.
 
 **Done when:** a real HCA reviewer can sign in and complete a clean approval, and the staging Half Life receiver verifies and applies the signed final event.
 
