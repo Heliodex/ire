@@ -325,7 +325,8 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] `GET /api/v1/programs/{program}/parity` gives the Half Life parity script the open queue with hours, BOM and check summaries.
 - [x] Review is deployed to `https://review-wt-demo.k.hackclub.dev` with shadow on, an empty DB and machine ingest verified by the Half Life client.
 - [ ] `review-parity` is committed but has not run against a Half Life DB with real open hand-ins; the staging smoke and fixtures validated the feed.
-- [ ] Add the staging callback to Hack Club Auth and complete a reviewer UI smoke test.
+- [x] The staging callback is allowed; `lewin@hackclub.com` signs in as the only member and the admin roster shows one active admin.
+- [x] Unauthenticated queue, review, deliveries, admin and API requests are rejected; dev sign-in and fixtures are off.
 - [x] Half Life's shadow webhook verifies the `timestamp.delivery_id.body` envelope, records every event as ignored and never applies it; Review sends nothing while shadow.
 
 **Done when:** a shadow ship appears in Review with real checks, reviewers cannot claim it or cause a delivery, and Half Life's Ari-only behaviour is unchanged.

@@ -96,6 +96,18 @@ The first deploy needed `--skip-route-check` because the ingress existed before 
 
 Do not deploy the development `app.json` unchanged: it defaults to `REVIEW_SHADOW=0`, fixtures on and development sign-in on, which would turn the public staging host into an open demo. The staging overrides above must be applied for every deploy until a separate production manifest exists.
 
-The first staging smoke used the committed Half Life client and the staging ingest secret: design create v1, same-submission replay duplicate v1, build create v1, design withdraw, design recreate v2, and parity with both ships. Both ships were withdrawn; parity is empty again. The fake repository produced the expected check warnings and errors. Hack Club Auth still rejects the staging callback until the redirect URI above is added to the application.
+### Access model
+
+The deployed Review is membership-gated, not sign-up gated. Hack Club Auth can authenticate any account, but `handleHCACallback` only creates a session when the email or stable subject already has an active membership, or when the email is the single configured bootstrap address. Anyone else lands on `/?error=not_member` with no session. The bootstrap address is `lewin@hackclub.com`; after the first sign-in the roster contains one active admin and no one else. Development sign-in is off and no fixtures or seeded accounts exist.
+
+To keep the production shadow locked down:
+
+- Leave `REVIEW_DEV_AUTH=0` and `REVIEW_SEED_FIXTURES=0`.
+- Keep the bootstrap address as `lewin@hackclub.com`; never use `*` with development accounts on.
+- Do not invite another member until the reviewer workflow is intentionally opened.
+- Keep `REVIEW_INGEST_SECRET` strong and only on the Half Life server; it also protects `/metrics` and the parity feed.
+- Reviewer pages and APIs redirect or return 401 without a session; `/admin` requires an admin membership.
+
+The first staging smoke used the committed Half Life client and the staging ingest secret: design create v1, same-submission replay duplicate v1, build create v1, design withdraw, design recreate v2, and parity with both ships. Both ships were withdrawn; parity is empty again. The fake repository produced the expected check warnings and errors. The staging callback is now allowed: `lewin@hackclub.com` signs in as the only member, sees the shadow banner and the empty queue, and the admin roster shows one active admin.
 
 Half Life needs `REVIEW_SIGNING_SECRET` equal to Review's `REVIEW_INGEST_SECRET`, `REVIEW_PROGRAM=half-life`, `REVIEW_API_URL=https://review-wt-demo.k.hackclub.dev` and `REVIEW_MODE=shadow`. Deliver the ingest secret out of band; `wt secrets` lists names only.
