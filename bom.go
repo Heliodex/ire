@@ -26,7 +26,15 @@ type bomSummary struct {
 	HasPrice   bool
 	HasVendor  bool
 	Parts      []string
+	Items      []bomItem
 	Err        error
+}
+
+// bomItem is one parsed repository BOM row with the values compared against the submitted BOM.
+type bomItem struct {
+	Name      string
+	Quantity  int
+	UnitCents int
 }
 
 // fetchBOM reads the first bill-of-materials file and parses its rows.
@@ -99,6 +107,94 @@ func bomCheck(bom bomSummary, checkedAt string) contract.CheckResult {
 	return check("repo.bom", "Bill of materials", "repo", status, severity, summary, detail, checkedAt)
 }
 
+// bomMatchCheck compares repository unit prices with the maker's submitted BOM.
+func bomMatchCheck(bom bomSummary, maker []contract.BomLine, checkedAt string) contract.CheckResult {
+	if bom.Path == "" || len(maker) == 0 {
+		return check("repo.bom.prices", "BOM prices match", "repo", statusSkip, severityInfo, "Not compared", "The repository BOM or the submitted BOM is missing.", checkedAt)
+	}
+
+	matched := 0
+	mismatches := []string{}
+
+	for _, line := range maker {
+		if line.UnitCostCents <= 0 {
+			continue
+		}
+
+		item, ok := matchBomItem(bom.Items, line.Name)
+		if !ok {
+			continue
+		}
+
+		matched++
+
+		if item.UnitCents <= 0 {
+			continue
+		}
+
+		tolerance := max(line.UnitCostCents/20, 2)
+		if math.Abs(float64(item.UnitCents-line.UnitCostCents)) > float64(tolerance) {
+			mismatches = append(mismatches, fmt.Sprintf("%s: repo $%.2f, submitted $%.2f", line.Name,
+				float64(item.UnitCents)/100, float64(line.UnitCostCents)/100))
+		}
+	}
+
+	if matched == 0 {
+		return check("repo.bom.prices", "BOM prices match", "repo", statusSkip, severityInfo, "No matching parts", "No submitted part name matched a row in the repository BOM.", checkedAt)
+	}
+
+	if len(mismatches) > 0 {
+		result := check("repo.bom.prices", "BOM prices match", "repo", statusWarn, severityWarn,
+			fmt.Sprintf("%d price mismatch%s", len(mismatches), plural(len(mismatches))), strings.Join(capStrings(mismatches, 4), "; ")+".", checkedAt)
+		result.Source = stringPtr("forge")
+
+		return result
+	}
+
+	result := check("repo.bom.prices", "BOM prices match", "repo", statusPass, severityInfo,
+		fmt.Sprintf("%d part%s compared", matched, plural(matched)), "Repository unit prices agree with the submitted BOM.", checkedAt)
+	result.Source = stringPtr("forge")
+
+	return result
+}
+
+// matchBomItem finds the repository row that best matches a submitted part name.
+func matchBomItem(items []bomItem, name string) (bomItem, bool) {
+	target := normalizePartName(name)
+	if target == "" {
+		return bomItem{}, false
+	}
+
+	for _, item := range items {
+		candidate := normalizePartName(item.Name)
+		if candidate == "" {
+			continue
+		}
+
+		if candidate == target || strings.Contains(target, candidate) || strings.Contains(candidate, target) {
+			return item, true
+		}
+	}
+
+	return bomItem{}, false
+}
+
+// normalizePartName keeps the words that identify a part across naming styles.
+func normalizePartName(value string) string {
+	cleaned := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r + ('a' - 'A')
+		default:
+			return ' '
+		}
+	}, cleanBOMPart(value))
+
+	return strings.Join(strings.Fields(cleaned), " ")
+}
+
 // parseBOM reads a CSV, TSV, semicolon or Markdown table into part rows.
 func parseBOM(path string, content []byte) bomSummary {
 	summary := bomSummary{Path: path, Parts: []string{}}
@@ -131,11 +227,14 @@ func parseBOM(path string, content []byte) bomSummary {
 			summary.Parts = append(summary.Parts, part)
 
 			quantity := bomQuantity(bomCell(line, qty))
+			cents, priced := bomMoney(bomCell(line, price))
 
-			if cents, ok := bomMoney(bomCell(line, price)); ok {
+			if priced {
 				summary.TotalCents += quantity * cents
 				summary.HasPrice = true
 			}
+
+			summary.Items = append(summary.Items, bomItem{Name: part, Quantity: quantity, UnitCents: cents})
 
 			if bomCell(line, vendor) != "" {
 				summary.HasVendor = true
@@ -298,4 +397,63 @@ func bomMoney(value string) (int, bool) {
 	}
 
 	return int(math.Round(amount * 100)), true
+}
+
+// submittedBom converts the ingest payload's BOM lines for comparison with the repository.
+func submittedBom(meta *contract.IngestMeta) []contract.BomLine {
+	if meta == nil || len(meta.Bom) == 0 {
+		return nil
+	}
+
+	lines := make([]contract.BomLine, 0, len(meta.Bom))
+
+	for _, line := range meta.Bom {
+		quantity := 1
+		if line.Qty != nil {
+			quantity = max(*line.Qty, 0)
+		}
+
+		unit := 0
+		if line.UnitUsd != nil {
+			unit = int(math.Round(*line.UnitUsd * 100))
+		}
+
+		lines = append(lines, contract.BomLine{
+			Name:          line.Name,
+			Quantity:      quantity,
+			UnitCostCents: unit,
+			Vendor:        line.Vendor,
+			Link:          line.Link,
+		})
+	}
+
+	return lines
+}
+
+// loadBomLines reads the maker's submitted BOM for the check job and evidence refresh.
+func (a *reviewApp) loadBomLines(ctx context.Context, submissionID string) []contract.BomLine {
+	rows, err := a.store.Query(ctx, `select name, quantity, unit_cost_cents, coalesce(vendor, ''), coalesce(link, '')
+		from bom_line where submission_id = ? order by sort asc`, submissionID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	lines := []contract.BomLine{}
+
+	for rows.Next() {
+		var line contract.BomLine
+
+		var vendor, link string
+
+		if err := rows.Scan(&line.Name, &line.Quantity, &line.UnitCostCents, &vendor, &link); err != nil {
+			return nil
+		}
+
+		line.Vendor = optionalText(vendor)
+		line.Link = optionalText(link)
+		lines = append(lines, line)
+	}
+
+	return lines
 }

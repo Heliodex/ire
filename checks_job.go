@@ -177,7 +177,7 @@ func (a *reviewApp) failCheckRun(ctx context.Context, ship submissionRow, attemp
 
 // collectRepositoryChecks fetches the forge, replaces the repository check rows, stores the evidence and moves a checking ship to its real status.
 func (a *reviewApp) collectRepositoryChecks(ctx context.Context, ship submissionRow) error {
-	remote, evidence := a.repoChecks(ctx, ship.RepoURL, a.commitSince(ctx, ship.ProgramID, ship.PreviousID), a.now())
+	remote, evidence := a.repoChecks(ctx, ship.RepoURL, a.commitSince(ctx, ship.ProgramID, ship.PreviousID), a.now(), a.loadBomLines(ctx, ship.ID))
 	remote = append(remote, a.hackatimeChecks(ctx, ship)...)
 	remote = append(remote, a.demoChecks(ctx, ship)...)
 

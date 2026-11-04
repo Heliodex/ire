@@ -242,7 +242,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 
 - [x] The review rail compares the snapshot head with the live GitHub head and offers a rerun when the repository moved.
 - [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
-- [ ] Combine the BOM parse with the maker's submitted BOM lines and flag mismatched prices.
+- [x] The BOM parse is compared with the maker's submitted lines; a price mismatch over 5% warns (`repo.bom.prices`).
 - [ ] Add GitLab behind the same forge interface.
 - [ ] Port the remaining group: theme requirements.
 - [ ] Add Hackatime span overlap against timelapses and the reviewer override path.

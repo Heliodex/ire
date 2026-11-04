@@ -71,7 +71,7 @@ type githubClient struct {
 }
 
 // repoChecks runs the real repository checks and returns the snapshot the evidence tab reuses. Only GitHub is supported in this slice; other forges return a warning so the reviewer knows the repo was not fetched.
-func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now time.Time) ([]contract.CheckResult, *contract.Evidence) {
+func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now time.Time, maker []contract.BomLine) ([]contract.CheckResult, *contract.Evidence) {
 	checkedAt := now.Format(timestampFormat)
 
 	if strings.TrimSpace(repoURL) == "" {
@@ -111,7 +111,7 @@ func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now t
 		checks = append(checks, check("repo.tree", "Repository files", "repo", statusError, severityBlock, "Repository files could not be read", "The file tree request failed; retry the checks before deciding.", checkedAt))
 	} else {
 		bom := a.fetchBOM(ctx, client, owner, name, tree)
-		checks = append(checks, fileChecks(tree, bom, checkedAt)...)
+		checks = append(checks, fileChecks(tree, bom, maker, checkedAt)...)
 	}
 
 	commits, commitStatus, commitErr := client.commits(ctx, owner, name, since)
@@ -136,7 +136,7 @@ func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now t
 }
 
 // fileChecks checks the file tree for the BOM and design files, and adds the README image count.
-func fileChecks(tree githubTree, bom bomSummary, checkedAt string) []contract.CheckResult {
+func fileChecks(tree githubTree, bom bomSummary, maker []contract.BomLine, checkedAt string) []contract.CheckResult {
 	designFiles := []string{}
 
 	for _, file := range tree.Tree {
@@ -151,7 +151,7 @@ func fileChecks(tree githubTree, bom bomSummary, checkedAt string) []contract.Ch
 
 	sort.Strings(designFiles)
 
-	checks := []contract.CheckResult{bomCheck(bom, checkedAt)}
+	checks := []contract.CheckResult{bomCheck(bom, checkedAt), bomMatchCheck(bom, maker, checkedAt)}
 
 	if len(designFiles) > 0 {
 		checks = append(checks, check("repo.design_files", "Design files", "repo", statusPass, severityInfo, "Design files found", strings.Join(capStrings(designFiles, 6), ", "), checkedAt))
