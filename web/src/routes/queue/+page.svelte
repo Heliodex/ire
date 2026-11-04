@@ -33,6 +33,7 @@ const cache = new SvelteMap<string, Queue>()
 
 const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
+const readOnly = $derived(session.me?.readOnly ?? false)
 
 const filters: { key: Filter; label: string }[] = [
 	{ key: "all", label: "All open" },
@@ -48,6 +49,20 @@ const visible = $derived(
 		return item.title.toLowerCase().includes(needle) || item.makerName.toLowerCase().includes(needle)
 	}),
 )
+
+// isSelectable keeps ships claimed by another reviewer out of the keyboard cursor.
+function isSelectable(item: QueueItem): boolean {
+	return readOnly || !item.claimedBy || item.claimedBy === session.me?.user.email
+}
+
+$effect((): void => {
+	const next =
+		selected >= 0 && visible[selected] && isSelectable(visible[selected])
+			? selected
+			: visible.findIndex(isSelectable)
+
+	if (next !== selected) selected = next
+})
 
 onMount((): (() => void) => {
 	void boot()
@@ -83,7 +98,7 @@ onMount((): (() => void) => {
 		} else if (event.key === "ArrowUp") {
 			event.preventDefault()
 			void moveSelection(-1)
-		} else if (event.key === "Enter" && visible[selected]) {
+		} else if (event.key === "Enter" && visible[selected] && isSelectable(visible[selected])) {
 			void open(visible[selected])
 			event.preventDefault()
 		} else if (event.key === "ArrowRight") {
@@ -237,8 +252,19 @@ function moveFilter(step: number): void {
 
 // moveSelection moves the row cursor and scrolls the new row into view when the list is taller than the viewport.
 async function moveSelection(step: number): Promise<void> {
-	const last = Math.max(visible.length - 1, 0)
-	selected = Math.min(Math.max(selected + step, 0), last)
+	const start = selected === -1 ? (step > 0 ? -1 : visible.length) : selected
+	let next = -1
+
+	for (let index = start + step; index >= 0 && index < visible.length; index += step) {
+		if (!isSelectable(visible[index])) continue
+
+		next = index
+		break
+	}
+
+	if (next === -1) return
+
+	selected = next
 
 	await tick()
 	listElement?.querySelector<HTMLElement>('.row[aria-current="true"]')?.scrollIntoView({ block: "nearest" })
@@ -384,10 +410,11 @@ async function open(item: QueueItem): Promise<void> {
 				<button
 					aria-current={index === selected}
 					class="row"
-					disabled={opening !== ""}
+					disabled={opening !== "" || !isSelectable(item)}
 					onclick={(): Promise<void> => open(item)}
 					type="button"
 					class:selected={index === selected}
+					class:unavailable={!isSelectable(item)}
 				>
 					<span class="thumb">
 						{#if item.thumbnailUrl}
@@ -659,7 +686,15 @@ h1 {
 }
 
 .row:disabled {
+	cursor: not-allowed;
+}
+
+.row:not(.unavailable):disabled {
 	cursor: wait;
+}
+
+.row.unavailable {
+	opacity: 0.6;
 }
 
 .ship-title {
