@@ -27,7 +27,8 @@ import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
 import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
-type Tab = "overview" | "checks" | "journal" | "bom" | "evidence" | "history"
+const tabKeys = ["overview", "checks", "journal", "bom", "evidence", "history"] as const
+type Tab = (typeof tabKeys)[number]
 
 let bundle = $state<Bundle | null>(null)
 let id = $state("")
@@ -78,10 +79,35 @@ function idFromURL(): string {
 	return page.url.searchParams.get("id") ?? ""
 }
 
+// isTab narrows a query value to a section tab.
+function isTab(value: string): value is Tab {
+	return tabKeys.includes(value as Tab)
+}
+
+// tabFromURL restores the section from ?tab=, falling back to the overview.
+function tabFromURL(): Tab {
+	const requested = page.url.searchParams.get("tab") ?? ""
+
+	return isTab(requested) ? requested : "overview"
+}
+
+// selectTab keeps the section in the URL for reloads and links; review paths are outside the SvelteKit router.
+function selectTab(next: Tab): void {
+	if (next === tab) return
+
+	tab = next
+	const url = new URL(page.url.href)
+	if (next === "overview") url.searchParams.delete("tab")
+	else url.searchParams.set("tab", next)
+
+	history.replaceState(history.state, "", url)
+}
+
 afterNavigate((): void => {
 	const next = idFromURL()
 	if (next === "" || next === id) return
 
+	tab = tabFromURL()
 	const previous = claimedId
 	id = next
 	loading = true
@@ -98,6 +124,7 @@ afterNavigate((): void => {
 
 onMount((): (() => void) => {
 	id = idFromURL()
+	tab = tabFromURL()
 	if (id === "") {
 		void goto("/queue")
 		return (): void => {}
@@ -544,9 +571,7 @@ async function saveDraftNow(): Promise<void> {
 					<button
 						aria-selected={tab === item.key}
 						class="ui-tab"
-						onclick={(): void => {
-							tab = item.key as Tab
-						}}
+						onclick={(): void => selectTab(item.key as Tab)}
 						role="tab"
 						type="button"
 						class:active={tab === item.key}
@@ -829,13 +854,7 @@ async function saveDraftNow(): Promise<void> {
 						<div class="ui-notice" data-tone="warn">
 							<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
 							Acknowledge them in Checks to unlock approve.
-							<button
-								class="link"
-								onclick={(): void => {
-									tab = "checks"
-								}}
-								type="button"
-							>
+							<button class="link" onclick={(): void => selectTab("checks")} type="button">
 								Open checks
 							</button>
 						</div>
@@ -845,13 +864,7 @@ async function saveDraftNow(): Promise<void> {
 						<div class="ui-notice" data-tone="bad">
 							<strong>Approval disabled</strong>
 							{blocking[0].summary}.
-							<button
-								class="link"
-								onclick={(): void => {
-									tab = "checks"
-								}}
-								type="button"
-							>
+							<button class="link" onclick={(): void => selectTab("checks")} type="button">
 								Read the blocking check
 							</button>
 						</div>
