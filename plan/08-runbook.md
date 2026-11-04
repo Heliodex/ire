@@ -96,4 +96,6 @@ The first deploy needed `--skip-route-check` because the ingress existed before 
 
 Do not deploy the development `app.json` unchanged: it defaults to `REVIEW_SHADOW=0`, fixtures on and development sign-in on, which would turn the public staging host into an open demo. The staging overrides above must be applied for every deploy until a separate production manifest exists.
 
+The first staging smoke used the committed Half Life client and the staging ingest secret: design create v1, same-submission replay duplicate v1, build create v1, design withdraw, design recreate v2, and parity with both ships. Both ships were withdrawn; parity is empty again. The fake repository produced the expected check warnings and errors. Hack Club Auth still rejects the staging callback until the redirect URI above is added to the application.
+
 Half Life needs `REVIEW_SIGNING_SECRET` equal to Review's `REVIEW_INGEST_SECRET`, `REVIEW_PROGRAM=half-life`, `REVIEW_API_URL=https://review-wt-demo.k.hackclub.dev` and `REVIEW_MODE=shadow`. Deliver the ingest secret out of band; `wt secrets` lists names only.
