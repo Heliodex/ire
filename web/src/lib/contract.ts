@@ -111,6 +111,15 @@ export const checkRunSchema = pipe(
 	title("CheckRun"),
 )
 
+export const checkHeadSchema = pipe(
+	object({
+		headSha: optionalString,
+		outdated: boolean(),
+		snapshotSha: optionalString,
+	}),
+	title("CheckHead"),
+)
+
 export const queueCountsSchema = pipe(
 	object({
 		checking: nonNegative,
@@ -709,6 +718,7 @@ export const requestSchemas = Object.freeze([
 ])
 
 export const responseSchemas = Object.freeze([
+	checkHeadSchema,
 	checkResultSchema,
 	checkSummarySchema,
 	claimResponseSchema,

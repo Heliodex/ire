@@ -432,7 +432,7 @@ func fixtureSnapshot(id string, f fixture, ingested time.Time) storage.Transacti
 
 	return storage.TransactionStatement{
 		SQL: `insert into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha, file_count, truncated, readme_text, files, commits, fetched_at, error)
-			values (?, 1, 'github', ?, 'main', 'head1', 3, 0, ?, ?, ?, ?, null)`,
+			values (?, 1, 'fixture', ?, 'main', 'head1', 3, 0, ?, ?, ?, ?, null)`,
 		Args: []any{id, strings.TrimPrefix(f.repoURL, "https://github.com/"), f.readme, string(files), string(commits), ingested.Format(timestampFormat)},
 	}
 }

@@ -240,7 +240,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 
 ### Remaining
 
-- [ ] Add a "checks outdated" notice when the head SHA moves after the snapshot.
+- [x] The review rail compares the snapshot head with the live GitHub head and offers a rerun when the repository moved.
 - [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
 - [ ] Combine the BOM parse with the maker's submitted BOM lines and flag mismatched prices.
 - [ ] Add GitLab behind the same forge interface.
@@ -336,7 +336,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [ ] Reuse the forge cache and rate-limit handling; add ETag and a short unavailable cache.
 - [x] Render README Markdown through parsed blocks; raw HTML, images and link targets never reach the page.
 - [ ] Add a file-tree depth filter and a commit search for large repositories.
-- [ ] Add an explicit stale notice when the head SHA has moved since the snapshot.
+- [x] The review rail shows a stale notice and a rerun action when the head SHA has moved since the snapshot.
 - [x] Parsed Markdown never keeps raw HTML or image syntax; oversized README/tree, paginated commit and refresh failure tests remain.
 - [ ] Document what is stored, what is linked, retention and privacy.
 

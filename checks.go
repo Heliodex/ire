@@ -221,6 +221,10 @@ func repositoryEvidence(owner, name string, meta githubRepo, readme []byte, read
 		evidence.Readme = optionalText(text)
 	}
 
+	if commitErr == nil && commitStatus == http.StatusOK && len(commits) > 0 {
+		evidence.HeadSha = optionalText(commits[0].Sha)
+	}
+
 	if commitErr == nil && commitStatus == http.StatusOK {
 		for _, commit := range commits {
 			if len(evidence.Commits) >= maxSnapshotCommits {
@@ -534,6 +538,25 @@ func (c githubClient) commits(ctx context.Context, owner, name, since string) ([
 	err = json.Unmarshal(body, &commits)
 
 	return commits, status, err
+}
+
+// head returns the newest commit on the default branch, used to spot a repository that moved after its snapshot.
+func (c githubClient) head(ctx context.Context, owner, name string) (string, int, error) {
+	body, status, err := c.get(ctx, "/repos/"+url.PathEscape(owner)+"/"+url.PathEscape(name)+"/commits?per_page=1", "application/vnd.github+json")
+	if err != nil || status != http.StatusOK {
+		return "", status, err
+	}
+
+	var commits []githubCommit
+	if err := json.Unmarshal(body, &commits); err != nil {
+		return "", status, err
+	}
+
+	if len(commits) == 0 {
+		return "", status, nil
+	}
+
+	return commits[0].Sha, status, nil
 }
 
 // get performs one bounded GitHub request.

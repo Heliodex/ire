@@ -260,7 +260,7 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 		t.Fatalf("evidence = %+v", bundle.Evidence)
 	}
 
-	if bundle.Evidence.HeadSha == nil || *bundle.Evidence.HeadSha != "head1" {
+	if bundle.Evidence.HeadSha == nil || *bundle.Evidence.HeadSha != "sha1" {
 		t.Errorf("head sha = %v", bundle.Evidence.HeadSha)
 	}
 

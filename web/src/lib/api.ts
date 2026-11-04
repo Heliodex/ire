@@ -2,6 +2,7 @@ import { type BaseIssue, type GenericSchema, type InferOutput, safeParse } from 
 import { ApiError } from "./api-error"
 import {
 	authConfigSchema,
+	checkHeadSchema,
 	checkRunSchema,
 	claimResponseSchema,
 	decisionResultSchema,
@@ -28,6 +29,7 @@ export type BomLine = Bundle["bom"][number]
 export type Review = Bundle["reviews"][number]
 export type Claim = InferOutput<typeof claimResponseSchema>["claim"]
 export type CheckRun = InferOutput<typeof checkRunSchema>
+export type CheckHead = InferOutput<typeof checkHeadSchema>
 export type Decision = InferOutput<typeof decisionResultSchema>
 export type Evidence = InferOutput<typeof evidenceSchema>
 export interface SendBackRequest {
@@ -197,6 +199,12 @@ export async function rerunChecks(id: string): Promise<CheckRun> {
 		method: "POST",
 	})
 	return parseJSON(response, checkRunSchema)
+}
+
+// fetchCheckHead compares the snapshot with the live repository head.
+export async function fetchCheckHead(id: string): Promise<CheckHead> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/checks/head`)
+	return parseJSON(response, checkHeadSchema)
 }
 
 // sendShipBack invalidates a held review and returns the ship to stage 1.

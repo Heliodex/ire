@@ -8,6 +8,7 @@ import {
 	claimShip,
 	decideShip,
 	fetchBundle,
+	fetchCheckHead,
 	fetchMe,
 	heartbeat,
 	program,
@@ -53,6 +54,7 @@ let sendBackError = $state("")
 let sendingBack = $state(false)
 let rerunning = $state(false)
 let rerunError = $state("")
+let checksOutdated = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 
 const submission = $derived(bundle?.submission ?? null)
@@ -222,6 +224,7 @@ async function load(target = id): Promise<void> {
 		hourInit()
 		error = ""
 		watchChecks()
+		void checkHead()
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
 			void goto("/")
@@ -249,6 +252,22 @@ function acknowledgeAll(): void {
 	acknowledgements = warnings.map(check => check.key)
 }
 
+// checkHead shows a stale notice when the default branch moved after the snapshot.
+async function checkHead(): Promise<void> {
+	if (!bundle || !bundle.submission.repoUrl) {
+		checksOutdated = false
+		return
+	}
+
+	try {
+		const head = await fetchCheckHead(bundle.submission.id)
+		checksOutdated = head.outdated
+	} catch {
+		// A GitHub outage should not block the review; the reviewer can still rerun the checks.
+		checksOutdated = false
+	}
+}
+
 async function rerunChecksNow(): Promise<void> {
 	if (!bundle || rerunning) return
 
@@ -258,6 +277,7 @@ async function rerunChecksNow(): Promise<void> {
 	try {
 		await rerunChecks(bundle.submission.id)
 		await load(id)
+		checksOutdated = false
 		flash("Checks queued.")
 	} catch (err) {
 		rerunError = err instanceof Error ? err.message : "Could not rerun the checks."
@@ -708,6 +728,19 @@ async function saveDraftNow(): Promise<void> {
 					<div class="ui-notice" data-tone="bad">
 						<strong>Check attempt {bundle.checkRun.attempts} failed</strong>
 						{bundle.checkRun.error}
+					</div>
+				{/if}
+				{#if checksOutdated}
+					<div class="ui-notice" data-tone="warn">
+						<strong>Checks are out of date</strong>
+						The repository moved after the last check.
+						{#if canSecondPass}
+							<button class="link" disabled={rerunning} onclick={rerunChecksNow} type="button">
+								Rerun checks
+							</button>
+						{:else}
+							Ask an organiser to rerun the checks.
+						{/if}
 					</div>
 				{/if}
 				{#if rerunError}

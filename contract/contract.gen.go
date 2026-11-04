@@ -89,6 +89,35 @@ func (j *BomLine) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type CheckHead struct {
+	// HeadSha corresponds to the JSON schema field "headSha".
+	HeadSha *string `json:"headSha,omitempty,omitzero" yaml:"headSha,omitempty" mapstructure:"headSha,omitempty"`
+
+	// Outdated corresponds to the JSON schema field "outdated".
+	Outdated bool `json:"outdated" yaml:"outdated" mapstructure:"outdated"`
+
+	// SnapshotSha corresponds to the JSON schema field "snapshotSha".
+	SnapshotSha *string `json:"snapshotSha,omitempty,omitzero" yaml:"snapshotSha,omitempty" mapstructure:"snapshotSha,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *CheckHead) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["outdated"]; raw != nil && !ok {
+		return fmt.Errorf("field outdated in CheckHead: required")
+	}
+	type Plain CheckHead
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = CheckHead(plain)
+	return nil
+}
+
 type CheckResult struct {
 	// CheckedAt corresponds to the JSON schema field "checkedAt".
 	CheckedAt string `json:"checkedAt" yaml:"checkedAt" mapstructure:"checkedAt"`
