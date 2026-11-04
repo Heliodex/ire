@@ -216,7 +216,7 @@ func (a *reviewApp) handlePage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		app.StaticPage(w, "/login")
+		app.StaticPage(w, "/")
 	case protectedPage(path):
 		if !signedIn {
 			http.Redirect(w, r, "/login", http.StatusFound)

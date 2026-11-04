@@ -1140,6 +1140,11 @@ func TestPageGate(t *testing.T) {
 	if login.Code != http.StatusFound || login.Header().Get("Location") != "/queue" {
 		t.Fatalf("signed-in login = %d %q", login.Code, login.Header().Get("Location"))
 	}
+
+	guestLogin := do(t, application, http.MethodGet, "/login", nil, nil, nil)
+	if guestLogin.Code != http.StatusOK || guestLogin.Header().Get(app.StaticPageHeader) != "/" {
+		t.Fatalf("guest login = %d %q", guestLogin.Code, guestLogin.Header().Get(app.StaticPageHeader))
+	}
 }
 
 // TestDraftSurvivesReload covers the server-side draft the review page restores.
