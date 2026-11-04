@@ -206,3 +206,45 @@ func TestOutboundRetriesOnTransportError(t *testing.T) {
 		t.Fatalf("outbox after the retry = %+v", second.Deliveries)
 	}
 }
+
+// TestOutboundDryRun covers a pilot that records deliveries without reaching the receiver.
+func TestOutboundDryRun(t *testing.T) {
+	var calls atomic.Int32
+
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(receiver.Close)
+
+	application := newTestApp(t)
+	application.config.OutboundDryRun = true
+
+	if _, err := application.store.Exec(t.Context(), `update program set outbound_url = ? where id = ?`, receiver.URL, programID); err != nil {
+		t.Fatal(err)
+	}
+
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	body, _ := json.Marshal(contract.DecisionRequest{
+		Decision:       decisionApproved,
+		Version:        1,
+		NoteToMaker:    "Dry run this delivery.",
+		IdempotencyKey: "dry-run-delivery",
+	})
+
+	decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil))
+
+	outbox := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, cookie, nil))
+	if len(outbox.Deliveries) != 1 || outbox.Deliveries[0].Status != "delivered" {
+		t.Fatalf("outbox = %+v", outbox.Deliveries)
+	}
+
+	if calls.Load() != 0 {
+		t.Errorf("receiver calls = %d, want 0 in a dry run", calls.Load())
+	}
+}

@@ -110,6 +110,7 @@ type config struct {
 	AllowDevAccounts  bool
 	DisableRepoChecks bool
 	EnableJobs        bool
+	OutboundDryRun    bool
 	Enqueue           func(context.Context, app.JobRequest) (bool, error)
 }
 

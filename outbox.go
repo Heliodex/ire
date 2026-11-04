@@ -28,8 +28,14 @@ type reviewSender struct {
 	app *reviewApp
 }
 
-// Send performs one delivery attempt.
+// Send performs one delivery attempt. A dry run records the delivery as sent without touching the receiver, so a pilot can compare before cutover.
 func (s reviewSender) Send(ctx context.Context, delivery outbox.Delivery) (int, error) {
+	if s.app.config.OutboundDryRun {
+		app.Infof("outbox dry-run %s %s", delivery.Event, delivery.DeliveryID)
+
+		return http.StatusOK, nil
+	}
+
 	if strings.HasPrefix(delivery.URL, "fake://") {
 		return s.app.receiveFake(ctx, delivery)
 	}

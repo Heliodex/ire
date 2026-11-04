@@ -301,7 +301,7 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [ ] Test provider timeout and duplicate identity binding end to end.
 - [x] Outbound tests cover a 5xx retry, a dropped connection retry and permanent failure on 4xx.
 - [ ] Send one approved, one changes and one rejected event to staging; verify Half Life applies each.
-- [ ] Add a shadow or dry-run mode for the first pilot days.
+- [x] `REVIEW_OUTBOUND_DRY_RUN=1` records deliveries as sent without calling the receiver, so a pilot can compare before cutover.
 - [ ] Write the cutover, rollback and replay runbook (`reviews?since`, `events?since`).
 - [ ] Disable development accounts on the production database and document the cleanup.
 - [ ] Remove any seeded dev users from a production copy before the pilot.

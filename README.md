@@ -57,6 +57,7 @@ Reset the demo at any time with `POST /api/v1/dev/reset` while signed in. It del
 | `REVIEW_INGEST_SECRET` | `dev-ingest-secret` | Verifies Ari inbound signatures and the status bearer |
 | `REVIEW_OUTBOUND_SECRET` | `dev-outbound-secret` | Signs outbound webhooks |
 | `REVIEW_OUTBOUND_URL` | `fake://receiver` | `fake://receiver` keeps deliveries in-process; an `https://` URL posts them |
+| `REVIEW_OUTBOUND_DRY_RUN` | `0` | `1` records deliveries as sent without calling the receiver, for a pilot shadow window |
 | `REVIEW_SEED_FIXTURES` | `1` | `0` starts with an empty queue |
 | `REVIEW_DEV_AUTH` | `1` | `0` disables the development sign-in endpoint |
 | `REVIEW_GITHUB_TOKEN` | empty | GitHub token for the repository checks; raises the API rate limit |
