@@ -12,12 +12,8 @@ import (
 
 // handleSendBack returns a held ship to stage 1 and invalidates the first-pass review that held it.
 func (a *reviewApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireReviewer(w, r)
+	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
-		return
-	}
-
-	if !a.requireWritable(w) {
 		return
 	}
 

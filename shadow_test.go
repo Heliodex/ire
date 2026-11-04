@@ -188,3 +188,40 @@ func TestNestedMetaRoundTrip(t *testing.T) {
 		t.Errorf("prior reviews = %+v", bundle.PriorReviews)
 	}
 }
+
+// TestAuditorIsReadOnly covers the auditor role outside shadow mode.
+func TestAuditorIsReadOnly(t *testing.T) {
+	application := newTestApp(t)
+
+	if _, err := application.store.Exec(t.Context(), `insert into user (id, email, name, created_at) values ('usr_auditor', 'auditor@example.com', 'Aud', ?)`, application.nowText()); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := application.store.Exec(t.Context(), `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at)
+		values ('mem_auditor', ?, 'usr_auditor', ?, '["hardware"]', '[]', 1, ?)`, programID, roleAuditor, application.nowText()); err != nil {
+		t.Fatal(err)
+	}
+
+	cookie := login(t, application, "auditor@example.com")
+
+	if queue := do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all", nil, cookie, nil); queue.Code != http.StatusOK {
+		t.Fatalf("auditor queue = %d: %s", queue.Code, queue.Body.String())
+	}
+
+	claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil)
+	if claim.Code != http.StatusForbidden {
+		t.Fatalf("auditor claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	body, _ := json.Marshal(contract.DecisionRequest{
+		Decision:       decisionApproved,
+		Version:        1,
+		NoteToMaker:    "Auditors cannot decide.",
+		IdempotencyKey: "auditor-decision",
+	})
+
+	decision := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil)
+	if decision.Code != http.StatusForbidden {
+		t.Fatalf("auditor decision = %d: %s", decision.Code, decision.Body.String())
+	}
+}

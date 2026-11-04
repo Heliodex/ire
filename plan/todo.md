@@ -315,6 +315,7 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] `REVIEW_SHADOW=1` makes claim, heartbeat, release, draft, decision and send-back return `409 shadow_mode`.
 - [x] `GET /api/v1/me` returns `readOnly`, the layout shows a shadow banner, and the queue and review pages never auto-claim.
 - [x] The review decision rail and decision keyboard shortcuts are hidden in shadow mode.
+- [x] Auditors can read the queue and reviews but cannot claim, draft or decide, even outside shadow mode.
 - [x] Shadow mode writes no outbox rows and `deliverDue` is suppressed; `program.outbound_enabled` is enforced in live mode too.
 - [x] `maxIngestBody` is raised from 1 MiB to 16 MiB, with tests for a payload above 1 MiB and one above the new cap.
 - [x] A nested meta payload with BOM, hours, grant cap and prior reviews round-trips into the review bundle.

@@ -18,12 +18,8 @@ import (
 
 // handleDecision records a stage 1 decision, applies the hold policy, writes the outbox row and returns the next ship to open.
 func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireReviewer(w, r)
+	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
-		return
-	}
-
-	if !a.requireWritable(w) {
 		return
 	}
 

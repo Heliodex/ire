@@ -253,12 +253,8 @@ func parseCheckSummary(summary string) contract.CheckSummary {
 
 // handleClaim takes the stage 1 claim for a ship. It is one conditional write, so two reviewers cannot both win.
 func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireReviewer(w, r)
+	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
-		return
-	}
-
-	if !a.requireWritable(w) {
 		return
 	}
 
@@ -345,12 +341,8 @@ func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 
 // handleHeartbeat extends the caller's claim.
 func (a *reviewApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireReviewer(w, r)
+	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
-		return
-	}
-
-	if !a.requireWritable(w) {
 		return
 	}
 
@@ -385,12 +377,8 @@ func (a *reviewApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 
 // handleRelease gives a claimed ship back to the queue.
 func (a *reviewApp) handleRelease(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireReviewer(w, r)
+	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
-		return
-	}
-
-	if !a.requireWritable(w) {
 		return
 	}
 
@@ -431,12 +419,8 @@ func (a *reviewApp) handleRelease(w http.ResponseWriter, r *http.Request) {
 
 // handleDraft saves the reviewer's note and form state so a refresh does not lose typing.
 func (a *reviewApp) handleDraft(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireReviewer(w, r)
+	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
-		return
-	}
-
-	if !a.requireWritable(w) {
 		return
 	}
 

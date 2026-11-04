@@ -21,6 +21,25 @@ func (a *reviewApp) requireWritable(w http.ResponseWriter) bool {
 	return false
 }
 
+// requireReviewerWrite combines the session, shadow and role guards for a reviewer mutation.
+func (a *reviewApp) requireReviewerWrite(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+	person, ok := a.requireReviewer(w, r)
+	if !ok {
+		return reviewer{}, false
+	}
+
+	if !a.requireWritable(w) {
+		return reviewer{}, false
+	}
+
+	if !canReview(person.Role) {
+		app.WriteError(w, http.StatusForbidden, "your role can only read reviews")
+		return reviewer{}, false
+	}
+
+	return person, true
+}
+
 // outboundEnabled reports whether the programme may post a delivery right now.
 func (a *reviewApp) outboundEnabled(ctx context.Context, programID string) bool {
 	if a.config.Shadow {

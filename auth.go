@@ -30,6 +30,11 @@ func canReviewSecondPass(role string) bool {
 	return role == roleOrganizer || role == roleAdmin
 }
 
+// canReview reports whether a role may claim, draft or decide. Auditors are read-only.
+func canReview(role string) bool {
+	return role == roleReviewer || canReviewSecondPass(role)
+}
+
 // currentReviewer reads the session cookie and resolves it to an active membership. It writes the 401 itself so handlers only branch on the boolean.
 func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
 	token, ok := reviewSessions.Token(r)
