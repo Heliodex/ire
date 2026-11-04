@@ -43,6 +43,81 @@ const filteredCommits = $derived(
 		)
 	}),
 )
+
+type EvidenceFile = NonNullable<Bundle["evidence"]>["files"][number]
+
+interface FileTreeNode {
+	children: FileTreeNode[]
+	directory: boolean
+	kind: string
+	name: string
+	path: string
+}
+
+interface FileTreeRow {
+	depth: number
+	directory: boolean
+	kind: string
+	name: string
+	path: string
+}
+
+// compareFileNodes puts directories first, then sorts both groups by name.
+function compareFileNodes(a: FileTreeNode, b: FileTreeNode): number {
+	if (a.directory !== b.directory) return a.directory ? -1 : 1
+
+	return a.name.localeCompare(b.name)
+}
+
+// flattenFileTree walks the directory nodes into indented rows.
+function flattenFileTree(nodes: FileTreeNode[], rows: FileTreeRow[], level: number): void {
+	for (const node of nodes.toSorted(compareFileNodes)) {
+		rows.push({ depth: level, directory: node.directory, kind: node.kind, name: node.name, path: node.path })
+		if (node.directory) flattenFileTree(node.children, rows, level + 1)
+	}
+}
+
+// buildFileRows turns the flat path list into indented directory and file rows.
+function buildFileRows(files: EvidenceFile[]): FileTreeRow[] {
+	const roots: FileTreeNode[] = []
+	const directories = new Map<string, FileTreeNode>()
+
+	for (const file of files) {
+		const parts = file.path.split("/").filter(Boolean)
+		if (parts.length === 0) continue
+
+		let siblings = roots
+		let path = ""
+
+		for (let index = 0; index < parts.length; index++) {
+			const name = parts[index]
+			if (!name) continue
+
+			path = path === "" ? name : `${path}/${name}`
+
+			if (index === parts.length - 1) {
+				siblings.push({ children: [], directory: false, kind: file.kind, name, path })
+				continue
+			}
+
+			let directory = directories.get(path)
+			if (!directory) {
+				directory = { children: [], directory: true, kind: "directory", name, path }
+				directories.set(path, directory)
+				siblings.push(directory)
+			}
+
+			siblings = directory.children
+		}
+	}
+
+	const rows: FileTreeRow[] = []
+	flattenFileTree(roots, rows, 0)
+
+	return rows
+}
+
+const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 </script>
 
 {#if !evidence}
@@ -73,7 +148,10 @@ const filteredCommits = $derived(
 
 	<div class="evidence-grid">
 		<section class="ui-card padded">
-			<h3>Files</h3>
+			<div class="card-head">
+				<h3>Files</h3>
+				<span class="card-count">{evidence.files.length} file{evidence.files.length === 1 ? "" : "s"}</span>
+			</div>
 			{#if evidence.files.length === 0}
 				<p class="muted">The file tree was not fetched.</p>
 			{:else}
@@ -96,8 +174,15 @@ const filteredCommits = $derived(
 					<p class="muted">No files match that filter.</p>
 				{:else}
 					<ul class="file-tree">
-						{#each filteredFiles.slice(0, 80) as file (file.path)}
-							<li><span class="file-kind">{file.kind}</span><code>{file.path}</code></li>
+						{#each fileRows as row (row.path)}
+							<li
+								style={`padding-left: calc(${row.depth} * var(--space-3))`}
+								title={row.path}
+								class:directory={row.directory}
+							>
+								<span class="file-kind">{row.directory ? "dir" : row.kind}</span>
+								<code>{row.name}{row.directory ? "/" : ""}</code>
+							</li>
 						{/each}
 					</ul>
 					{#if filteredFiles.length > 80}
@@ -108,7 +193,13 @@ const filteredCommits = $derived(
 		</section>
 
 		<section class="ui-card padded">
-			<h3>Commits</h3>
+			<div class="card-head">
+				<h3>Commits</h3>
+				<span class="card-count"
+					>{evidence.commits.length}
+					commit{evidence.commits.length === 1 ? "" : "s"}</span
+				>
+			</div>
 			{#if evidence.commits.length === 0}
 				<p class="muted">No commits were fetched.</p>
 			{:else}
@@ -194,6 +285,20 @@ const filteredCommits = $derived(
 	margin-top: var(--space-3);
 }
 
+.card-head {
+	display: flex;
+	gap: var(--space-2);
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.card-count {
+	font-size: var(--text-xs);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-3);
+	white-space: nowrap;
+}
+
 .evidence-grid h3,
 .readme h3 {
 	font-size: var(--text-xs);
@@ -224,6 +329,11 @@ const filteredCommits = $derived(
 
 .file-tree code {
 	overflow-wrap: anywhere;
+}
+
+.file-tree .directory code {
+	font-weight: 700;
+	color: var(--text);
 }
 
 .file-kind {
