@@ -34,7 +34,7 @@
 		"HC_CLIENT_ID": "secret://HC_CLIENT_ID",
 		"HC_CLIENT_SECRET": "secret://HC_CLIENT_SECRET",
 		"HC_REDIRECT_URI": "secret://HC_REDIRECT_URI",
-		"REVIEW_BOOTSTRAP_EMAIL": "",
+		"REVIEW_BOOTSTRAP_EMAIL": "secret://REVIEW_BOOTSTRAP_EMAIL",
 		"REVIEW_BOOTSTRAP_ROLE": "admin"
 	},
 	"server_paths": [
