@@ -211,7 +211,7 @@ func TestHCAOAuthFlow(t *testing.T) {
 	}
 
 	replay := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, stateCookie, nil)
-	if replay.Header().Get("Location") != "/login?error=state" {
+	if replay.Header().Get("Location") != "/?error=state" {
 		t.Fatalf("replay redirect = %q", replay.Header().Get("Location"))
 	}
 }
@@ -229,7 +229,7 @@ func TestHCARejectsBadState(t *testing.T) {
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
 
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state=wrong", nil, stateCookie, nil)
-	if callback.Header().Get("Location") != "/login?error=state" {
+	if callback.Header().Get("Location") != "/?error=state" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
 }
@@ -252,7 +252,7 @@ func TestHCARejectsUnknownMember(t *testing.T) {
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
 
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
-	if callback.Header().Get("Location") != "/login?error=not_member" {
+	if callback.Header().Get("Location") != "/?error=not_member" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
 

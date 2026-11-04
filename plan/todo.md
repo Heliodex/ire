@@ -275,7 +275,7 @@ The auth flow and signed HTTP delivery are implemented and tested against a fake
 - [x] The redirect URI falls back to the public origin when `HC_REDIRECT_URI` is unset.
 - [x] Secrets resolve through `secret://` references in `app.json`; the live app now reports `hca: true`.
 - [x] One configured `REVIEW_BOOTSTRAP_EMAIL` can create its first membership; every other unknown account is refused.
-- [x] `server_pages` sends root and protected page loads through the component; signed-in root and `/login` go to `/queue`, while signed-out protected pages go to `/login` before any page renders.
+- [x] `server_pages` sends root and protected page loads through the component; signed-in root and `/login` go to `/queue`, while signed-out protected pages go to `/` before any page renders.
 - [x] Development accounts and login are gated by `REVIEW_DEV_AUTH`; seeding dev accounts is skipped when it is off.
 - [x] The login screen shows `Continue with Hack Club` when HCA is configured and keeps dev accounts for local use.
 - [x] Stage 2 actions are limited to organiser/admin roles.

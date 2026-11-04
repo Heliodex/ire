@@ -211,15 +211,20 @@ func (a *reviewApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 		app.StaticPage(w, "/")
 	case path == "/login":
-		if signedIn {
-			http.Redirect(w, r, "/queue", http.StatusFound)
-			return
+		target := "/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
 		}
 
-		app.StaticPage(w, "/")
+		if signedIn {
+			target = "/queue"
+		}
+
+		//nolint:gosec // The target is a fixed local path plus the request query.
+		http.Redirect(w, r, target, http.StatusFound)
 	case protectedPage(path):
 		if !signedIn {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			http.Redirect(w, r, "/", http.StatusFound)
 			return
 		}
 

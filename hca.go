@@ -371,7 +371,7 @@ func (a *reviewApp) bootstrapMember(ctx context.Context, email, name string) (re
 func (a *reviewApp) redirectAuthError(w http.ResponseWriter, r *http.Request, reason string) {
 	reviewSessions.Clear(w, r)
 	session.Clear(w, r, oauthStateCookie)
-	http.Redirect(w, r, "/login?error="+url.QueryEscape(reason), http.StatusFound)
+	http.Redirect(w, r, "/?error="+url.QueryEscape(reason), http.StatusFound)
 }
 
 // logAuthProblem keeps identity-merge failures out of the sign-in decision.

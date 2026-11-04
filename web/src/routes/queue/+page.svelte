@@ -106,7 +106,7 @@ async function boot(): Promise<void> {
 	try {
 		session.me ??= await fetchMe()
 	} catch {
-		void goto("/login")
+		void goto("/")
 		return
 	}
 	await load()
@@ -126,7 +126,7 @@ async function load(target = filter, targetStage = stage): Promise<void> {
 		error = ""
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
-			void goto("/login")
+			void goto("/")
 			return
 		}
 		if (target === filter && targetStage === stage)

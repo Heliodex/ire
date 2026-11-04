@@ -1120,7 +1120,7 @@ func TestPageGate(t *testing.T) {
 	}
 
 	protected := do(t, application, http.MethodGet, "/queue", nil, nil, nil)
-	if protected.Code != http.StatusFound || protected.Header().Get("Location") != "/login" {
+	if protected.Code != http.StatusFound || protected.Header().Get("Location") != "/" {
 		t.Fatalf("anonymous queue = %d %q", protected.Code, protected.Header().Get("Location"))
 	}
 
@@ -1141,9 +1141,9 @@ func TestPageGate(t *testing.T) {
 		t.Fatalf("signed-in login = %d %q", login.Code, login.Header().Get("Location"))
 	}
 
-	guestLogin := do(t, application, http.MethodGet, "/login", nil, nil, nil)
-	if guestLogin.Code != http.StatusOK || guestLogin.Header().Get(app.StaticPageHeader) != "/" {
-		t.Fatalf("guest login = %d %q", guestLogin.Code, guestLogin.Header().Get(app.StaticPageHeader))
+	guestLogin := do(t, application, http.MethodGet, "/login?error=state", nil, nil, nil)
+	if guestLogin.Code != http.StatusFound || guestLogin.Header().Get("Location") != "/?error=state" {
+		t.Fatalf("guest login = %d %q", guestLogin.Code, guestLogin.Header().Get("Location"))
 	}
 }
 
