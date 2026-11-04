@@ -61,6 +61,7 @@ func (a *reviewApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	a.forgeCache.clear()
 	a.queueRepositoryChecks(r.Context(), ship.ID, ship.Version, fmt.Sprintf("checks:%s:%d:rerun:%s", ship.ID, ship.Version, newID("rerun")))
 
 	run, found, err := a.loadCheckRun(r.Context(), ship.ID, ship.Version)

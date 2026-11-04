@@ -125,6 +125,8 @@ func (a *reviewApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	a.forgeCache.clear()
+
 	_, evidence := a.repoChecks(r.Context(), ship.RepoURL, a.commitSince(r.Context(), ship.ProgramID, ship.PreviousID), a.now(), a.loadBomLines(r.Context(), ship.ID))
 	if evidence == nil {
 		app.WriteError(w, http.StatusUnprocessableEntity, "only public GitHub repositories can be refreshed")

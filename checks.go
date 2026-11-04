@@ -68,6 +68,17 @@ type githubClient struct {
 	http  *http.Client
 	base  string
 	token string
+	cache *forgeCache
+	clock func() time.Time
+}
+
+// now returns the client's clock, falling back to wall time when a test did not set one.
+func (c githubClient) now() time.Time {
+	if c.clock == nil {
+		return time.Now()
+	}
+
+	return c.clock()
 }
 
 // repoChecks runs the real repository checks and returns the snapshot the evidence tab reuses. Only GitHub is supported in this slice; other forges return a warning so the reviewer knows the repo was not fetched.
@@ -83,7 +94,7 @@ func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now t
 		return []contract.CheckResult{check("repo.accessible", "Repository reachable", "repo", statusWarn, severityWarn, "Only GitHub repositories are checked", "This slice fetches GitHub repositories. Open the link and check the repository by hand.", checkedAt)}, nil
 	}
 
-	client := githubClient{http: a.client, base: a.config.GitHubAPIBase, token: a.config.GitHubToken}
+	client := a.githubClient()
 	if client.base == "" {
 		client.base = githubDefaultAPI
 	}
@@ -559,19 +570,44 @@ func (c githubClient) head(ctx context.Context, owner, name string) (string, int
 	return commits[0].Sha, status, nil
 }
 
-// get performs one bounded GitHub request.
+// githubClient builds the configured client with the app's cache and clock.
+func (a *reviewApp) githubClient() githubClient {
+	base := a.config.GitHubAPIBase
+	if base == "" {
+		base = githubDefaultAPI
+	}
+
+	return githubClient{http: a.client, base: base, token: a.config.GitHubToken, cache: a.forgeCache, clock: a.clock}
+}
+
+// get serves a request through the cache when one is configured.
 func (c githubClient) get(ctx context.Context, path, accept string) ([]byte, int, error) {
+	if c.cache != nil {
+		return c.cachedGet(ctx, path, accept)
+	}
+
+	body, status, _, err := c.fetch(ctx, path, accept, "")
+
+	return body, status, err
+}
+
+// fetch performs one bounded GitHub request, returning the response ETag for revalidation.
+func (c githubClient) fetch(ctx context.Context, path, accept, etag string) ([]byte, int, string, error) {
 	requestCtx, cancel := context.WithTimeout(ctx, repositoryTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet, strings.TrimRight(c.base, "/")+path, nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, "", err
 	}
 
 	req.Header.Set("Accept", accept)
 	req.Header.Set("User-Agent", "half-life-review")
 	req.Header.Set("X-Github-Api-Version", "2022-11-28")
+
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
 
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
@@ -579,13 +615,13 @@ func (c githubClient) get(ctx context.Context, path, accept string) ([]byte, int
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, "", err
 	}
 	defer resp.Body.Close()
 
 	body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxCheckBody))
 
-	return body, resp.StatusCode, readErr
+	return body, resp.StatusCode, resp.Header.Get("ETag"), readErr
 }
 
 // mergeChecks overlays forge checks on payload checks by key, so a real check replaces its payload approximation.

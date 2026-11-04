@@ -241,7 +241,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 ### Remaining
 
 - [x] The review rail compares the snapshot head with the live GitHub head and offers a rerun when the repository moved.
-- [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
+- [x] Forge responses are cached per request with ETag revalidation, a short commit window and a 30-second negative cache; rerun and evidence refresh clear it.
 - [x] The BOM parse is compared with the maker's submitted lines; a price mismatch over 5% warns (`repo.bom.prices`).
 - [ ] Add GitLab behind the same forge interface.
 - [ ] Port the remaining group: theme requirements.
@@ -334,7 +334,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [ ] Store co-authors and merge commits, and mark commits made after submission.
 - [x] Store journal images and clip URLs from the ingest payload with counts and coverage.
 - [ ] Validate the remaining evidence and media URLs as HTTPS; do not proxy project binaries.
-- [ ] Reuse the forge cache and rate-limit handling; add ETag and a short unavailable cache.
+- [x] Forge requests share the ETag cache, the 30-second unavailable cache and the review rate limits.
 - [x] Render README Markdown through parsed blocks; raw HTML, images and link targets never reach the page.
 - [ ] Add a file-tree depth filter and a commit search for large repositories.
 - [x] The review rail shows a stale notice and a rerun action when the head SHA has moved since the snapshot.

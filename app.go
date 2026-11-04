@@ -123,6 +123,7 @@ type reviewApp struct {
 	clock          func() time.Time
 	browserLimiter *rateLimiter
 	machineLimiter *rateLimiter
+	forgeCache     *forgeCache
 }
 
 // newReviewApp builds the routes around one store and outbound client.
@@ -141,6 +142,7 @@ func newReviewApp(store *storage.Client, client *http.Client, cfg config) *revie
 	a := &reviewApp{store: store, client: client, mux: http.NewServeMux(), config: cfg, clock: time.Now}
 	a.browserLimiter = newRateLimiter(browserRateLimit, a.now)
 	a.machineLimiter = newRateLimiter(machineRateLimit, a.now)
+	a.forgeCache = newForgeCache()
 	a.routes()
 
 	return a
