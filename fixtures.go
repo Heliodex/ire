@@ -20,6 +20,7 @@ type fixture struct {
 	title        string
 	description  string
 	repoURL      string
+	readme       string
 	thumbnailURL string
 	theme        string
 	makerEmail   string
@@ -126,6 +127,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			description:  "A tiny motion-controlled digital pet on a custom star-shaped PCB. The board carries a XIAO ESP32-C3, a 0.96-inch OLED, an MPU6050, a DHT11 and two Cherry MX switches. I drew my own panel art and added an angry expression when the pet's stats run out.",
 			repoURL:      "https://github.com/C6-H/Starbie",
 			thumbnailURL: "/projects/starbie.png",
+			readme:       "# Starbie\n\nA motion-controlled digital pet on a star-shaped PCB.\n\n## Build\n\n1. Order the board from the gerbers in `fabrication/`.\n2. Flash the XIAO ESP32-C3 with `firmware/starbie.ino`.\n3. Solder the OLED, the MPU6050 and the two Cherry MX switches.\n\n## Notes\n\n- The USB port faces the edge of the star.\n- Panel art lives in `art/`.\n\n![board](https://example.com/board.jpg)\n\n```\nmake flash\n```\n",
 			theme:        "starbie",
 			makerEmail:   "c6h@example.com",
 			makerName:    "C6-H",
@@ -400,6 +402,10 @@ func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now
 		})
 	}
 
+	if f.readme != "" {
+		tx = append(tx, fixtureSnapshot(id, f, ingested))
+	}
+
 	for _, check := range f.checks {
 		tx = append(tx, storage.TransactionStatement{
 			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, checked_at)
@@ -411,6 +417,24 @@ func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now
 	_, err = a.store.Transaction(ctx, tx...)
 
 	return err
+}
+
+// fixtureSnapshot builds the repo snapshot a fixture ship shows on its evidence tab.
+func fixtureSnapshot(id string, f fixture, ingested time.Time) storage.TransactionStatement {
+	files, _ := json.Marshal([]contract.EvidenceFile{
+		{Path: "README.md", Kind: "file"},
+		{Path: "BOM.csv", Kind: "file"},
+		{Path: "board.kicad_pcb", Kind: "file"},
+	})
+	commits, _ := json.Marshal([]contract.EvidenceCommit{{
+		Sha: "head1", Message: "Initial layout", Author: f.makerName, Date: ingested.Format(timestampFormat),
+	}})
+
+	return storage.TransactionStatement{
+		SQL: `insert into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha, file_count, truncated, readme_text, files, commits, fetched_at, error)
+			values (?, 1, 'github', ?, 'main', 'head1', 3, 0, ?, ?, ?, ?, null)`,
+		Args: []any{id, strings.TrimPrefix(f.repoURL, "https://github.com/"), f.readme, string(files), string(commits), ingested.Format(timestampFormat)},
+	}
 }
 
 // stringPtr returns a pointer to value. It keeps the fixture literals readable.

@@ -153,7 +153,7 @@ wt build --dir .
 
 ## Deliberately fake or incomplete
 
-- [ ] Checks cover GitHub only; GitLab, demo, identity and duplicate checks are not ported.
+- [ ] Checks cover GitHub only; GitLab and the theme group are not ported.
 - [ ] Auth uses the live HCA app, but roster sync, an invite UI and production developer-account cleanup are still missing.
 - [ ] Stage 2 has the full seeded loop, but the hold rule engine and fraud provider are not built.
 - [ ] Fraud is a configured minimum stage and a future provider, with no implementation.
@@ -163,7 +163,7 @@ wt build --dir .
 - [ ] No admin or settings UI, roster, analytics, audit browser, retention jobs or secret rotation UI.
 - [ ] No pagination beyond the current limits; queue limit is 50, feeds are 100.
 - [ ] No rate limiting; browser mutations rely on the session cookie, same-site policy and the same-origin guard.
-- [ ] No duplicate, identity, demo or fraud checks.
+- [ ] Duplicate, identity and demo checks exist; fraud is still a future provider.
 - [ ] Roster sync and role administration are still missing; identities are bound by the HCA subject.
 
 ## Next 1 – Stage 2 loop
@@ -334,10 +334,10 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [x] Store journal images and clip URLs from the ingest payload with counts and coverage.
 - [ ] Validate the remaining evidence and media URLs as HTTPS; do not proxy project binaries.
 - [ ] Reuse the forge cache and rate-limit handling; add ETag and a short unavailable cache.
-- [ ] Render README Markdown safely through parsed blocks rather than raw HTML.
+- [x] Render README Markdown through parsed blocks; raw HTML, images and link targets never reach the page.
 - [ ] Add a file-tree depth filter and a commit search for large repositories.
 - [ ] Add an explicit stale notice when the head SHA has moved since the snapshot.
-- [ ] Add oversized README/tree, paginated commit, sanitisation and refresh failure tests.
+- [x] Parsed Markdown never keeps raw HTML or image syntax; oversized README/tree, paginated commit and refresh failure tests remain.
 - [ ] Document what is stored, what is linked, retention and privacy.
 
 **Done when:** opening a ship shows its README, file tree, commits, journals and clips without leaving Review, the data is cached for the version, and a new version refreshes it.

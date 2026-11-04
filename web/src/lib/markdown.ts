@@ -26,6 +26,7 @@ function inline(value: string): string {
 	return value
 		.replaceAll(/!\[[^\]]*\]\([^)]+\)/g, "")
 		.replaceAll(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+		.replaceAll(/<[^>]*>/g, "")
 		.replaceAll(/[*_`]/g, "")
 		.replaceAll(/\s+/g, " ")
 		.trim()

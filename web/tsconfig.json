@@ -1,7 +1,8 @@
 {
 	"compilerOptions": {
-		"strict": true
+		"strict": true,
+		"types": ["bun", "$app/types"]
 	},
 	"extends": "$app/tsconfig",
-	"include": ["src", "vite.config.ts"]
+	"include": ["src", "tests", "vite.config.ts"]
 }
