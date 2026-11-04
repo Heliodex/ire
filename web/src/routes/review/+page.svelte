@@ -534,12 +534,12 @@ async function saveDraftNow(): Promise<void> {
 		<section class="content">
 			<div aria-label="Ship sections" class="ui-tabs ship-tabs" role="tablist">
 				{#each [
-					{ key: "overview", label: "Overview" },
-					{ key: "checks", label: `Checks (${bundle.checks.length})` },
-					{ key: "journal", label: `Journal (${bundle.journals.length})` },
-					{ key: "bom", label: `BOM (${bundle.bom.length})` },
-					{ key: "evidence", label: "Evidence" },
-					{ key: "history", label: `History (${bundle.reviews.length})` },
+					{ count: undefined, key: "overview", label: "Overview" },
+					{ count: bundle.checks.length, key: "checks", label: "Checks" },
+					{ count: bundle.journals.length, key: "journal", label: "Journal" },
+					{ count: bundle.bom.length, key: "bom", label: "BOM" },
+					{ count: undefined, key: "evidence", label: "Evidence" },
+					{ count: bundle.reviews.length, key: "history", label: "History" },
 				] as item (item.key)}
 					<button
 						aria-selected={tab === item.key}
@@ -552,6 +552,9 @@ async function saveDraftNow(): Promise<void> {
 						class:active={tab === item.key}
 					>
 						{item.label}
+						{#if item.count !== undefined}
+							<span class="tab-count">{item.count}</span>
+						{/if}
 					</button>
 				{/each}
 			</div>
@@ -1067,6 +1070,12 @@ h1 {
 .ship-tabs {
 	flex-wrap: wrap;
 	overflow-x: visible;
+}
+
+.tab-count {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-3);
 }
 
 .acks {
