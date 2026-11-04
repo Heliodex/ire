@@ -967,34 +967,6 @@ h1 {
 		column-gap: var(--space-2);
 	}
 
-	.facts {
-		display: grid;
-		grid-template-columns: minmax(90px, 1fr) 36px 110px;
-		gap: var(--space-2);
-		align-items: start;
-	}
-
-	.badges {
-		display: contents;
-	}
-
-	.status {
-		grid-area: status;
-	}
-
-	.theme {
-		grid-area: theme;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.timing {
-		flex-direction: column;
-		gap: 0;
-	}
-}
-
-@media (max-width: 700px) {
 	.ship-title {
 		display: grid;
 		grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
@@ -1022,6 +994,25 @@ h1 {
 		gap: var(--space-3);
 		align-items: flex-start;
 		justify-content: flex-end;
+	}
+
+	.badges {
+		display: contents;
+	}
+
+	.status {
+		grid-area: status;
+	}
+
+	.theme {
+		grid-area: theme;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.timing {
+		flex-direction: column;
+		gap: 0;
 	}
 }
 
