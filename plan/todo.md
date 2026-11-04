@@ -294,9 +294,10 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [ ] Add roster sync or an admin invite flow; today members must already exist in the database.
 - [x] Store the stable Hack Club subject in `user_identity` so an email change cannot break the binding.
 - [x] Refuse a second Hack Club subject for an account and show `identity_conflict` on the login screen.
-- [ ] Add session rotation and explicit revocation for compromised accounts.
+- [x] Signing in rotates an existing browser session; admins can revoke every session for a member.
+- [x] Tests cover inactive membership, an expired login flow and session replacement.
 - [ ] Store the Hack Club `slack_id` claim again; the shared OAuth identity does not expose it.
-- [ ] Test expired state, provider timeout, duplicate identity binding, inactive membership and session fixation.
+- [ ] Test provider timeout and duplicate identity binding end to end.
 - [ ] Test outbound retry on 5xx/timeout and permanent failure on 4xx.
 - [ ] Send one approved, one changes and one rejected event to staging; verify Half Life applies each.
 - [ ] Add a shadow or dry-run mode for the first pilot days.

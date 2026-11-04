@@ -236,6 +236,10 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 
 	_, _ = a.store.Exec(r.Context(), `update user set last_login_at = ? where id = ?`, a.nowText(), person.ID)
 
+	if old, ok := reviewSessions.Token(r); ok {
+		_, _ = a.store.Exec(r.Context(), `delete from session where id = ?`, session.Hash(old))
+	}
+
 	token, err := a.createSession(r.Context(), person.ID, r.UserAgent())
 	if err != nil {
 		writeStorage(w, err)

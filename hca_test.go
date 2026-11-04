@@ -411,3 +411,90 @@ func TestHCASignInRejectsForeignOrigin(t *testing.T) {
 		t.Fatalf("cross-site login = %d: %s", recorder.Code, recorder.Body.String())
 	}
 }
+
+// TestHCAInactiveMembership covers a roster row that has been disabled.
+func TestHCAInactiveMembership(t *testing.T) {
+	provider := newFakeHCA(t)
+	application := newTestApp(t)
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCAuthBase = provider.server.URL
+
+	if _, err := application.store.Exec(t.Context(), `update membership set active = 0 where user_id = (select id from user where email = ?)`, "reviewer@example.com"); err != nil {
+		t.Fatal(err)
+	}
+
+	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+	location, _ := url.Parse(start.Header().Get("Location"))
+	provider.setNonce(location.Query().Get("nonce"))
+
+	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
+	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+	if callback.Header().Get("Location") != "/?error=not_member" {
+		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
+	}
+}
+
+// TestHCAExpiredState covers a login flow that outlived its window.
+func TestHCAExpiredState(t *testing.T) {
+	provider := newFakeHCA(t)
+	application := newTestApp(t)
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCAuthBase = provider.server.URL
+
+	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+	location, _ := url.Parse(start.Header().Get("Location"))
+	provider.setNonce(location.Query().Get("nonce"))
+
+	if _, err := application.store.Exec(t.Context(), `update login_flow set created_at = ?`, "2020-01-01T00:00:00.000000000Z"); err != nil {
+		t.Fatal(err)
+	}
+
+	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
+	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+	if callback.Header().Get("Location") != "/?error=state" {
+		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
+	}
+}
+
+// TestHCASessionRotation covers replacing an existing browser session instead of keeping it alive.
+func TestHCASessionRotation(t *testing.T) {
+	provider := newFakeHCA(t)
+	application := newTestApp(t)
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCAuthBase = provider.server.URL
+
+	old := login(t, application, "reviewer@example.com")
+
+	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+	location, _ := url.Parse(start.Header().Get("Location"))
+	provider.setNonce(location.Query().Get("nonce"))
+
+	state := location.Query().Get("state")
+
+	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, nil,
+		map[string]string{"Cookie": cookieName + "=" + old.Value + "; " + oauthStateCookie + "=" + state})
+	if callback.Header().Get("Location") != "/queue" {
+		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
+	}
+
+	if stale := do(t, application, http.MethodGet, "/api/v1/me", nil, old, nil); stale.Code != http.StatusUnauthorized {
+		t.Fatalf("old session = %d: %s", stale.Code, stale.Body.String())
+	}
+
+	fresh := findCookie(callback.Result().Cookies(), cookieName)
+	if fresh == nil || fresh.Value == old.Value {
+		t.Fatal("session was not rotated")
+	}
+
+	if me := do(t, application, http.MethodGet, "/api/v1/me", nil, fresh, nil); me.Code != http.StatusOK {
+		t.Fatalf("fresh session = %d: %s", me.Code, me.Body.String())
+	}
+}
