@@ -50,6 +50,8 @@ function authMessage(reason: string): string {
 			return "Could not complete sign-in with Hack Club."
 		case "identity":
 			return "Hack Club did not return an email address."
+		case "identity_conflict":
+			return "That Hack Club account is already linked to a different reviewer."
 		case "not_member":
 			return "That Hack Club account is not on the Half Life roster."
 		default:

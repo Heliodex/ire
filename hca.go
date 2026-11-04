@@ -190,10 +190,18 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person, found, err := a.memberByEmail(r.Context(), email)
+	person, found, err := a.memberBySubject(r.Context(), identity.Subject)
 	if err != nil {
 		writeStorage(w, err)
 		return
+	}
+
+	if !found {
+		person, found, err = a.memberByEmail(r.Context(), email)
+		if err != nil {
+			writeStorage(w, err)
+			return
+		}
 	}
 
 	if !found && a.canBootstrap(email) {
@@ -207,6 +215,19 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 	if !found {
 		a.redirectAuthError(w, r, "not_member")
 		return
+	}
+
+	if identity.Subject != "" {
+		if err := a.bindIdentity(r.Context(), person.ID, "hca", identity.Subject); err != nil {
+			if errors.Is(err, errIdentityConflict) {
+				a.redirectAuthError(w, r, "identity_conflict")
+				return
+			}
+
+			writeStorage(w, err)
+
+			return
+		}
 	}
 
 	if person.Name == "" && identity.Name != "" {
@@ -290,6 +311,78 @@ func (a *reviewApp) memberByEmail(ctx context.Context, email string) (reviewer, 
 	}
 
 	return person, true, nil
+}
+
+// errIdentityConflict means an account is already bound to a different Hack Club identity.
+var errIdentityConflict = errors.New("identity is already linked")
+
+// memberBySubject finds an active membership through a stable provider subject.
+func (a *reviewApp) memberBySubject(ctx context.Context, subject string) (reviewer, bool, error) {
+	if strings.TrimSpace(subject) == "" {
+		return reviewer{}, false, nil
+	}
+
+	var person reviewer
+
+	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), m.role, m.program_id
+		from user_identity i
+		join user u on u.id = i.user_id
+		join membership m on m.user_id = u.id
+		join program p on p.id = m.program_id
+		where i.provider = 'hca' and i.subject = ? and m.active = 1 and p.active = 1
+		order by p.name limit 1`, subject).
+		Scan(&person.ID, &person.Email, &person.Name, &person.Role, &person.ProgramID)
+	if err != nil {
+		if errors.Is(err, storage.ErrNoRows) {
+			return reviewer{}, false, nil
+		}
+
+		return reviewer{}, false, err
+	}
+
+	return person, true, nil
+}
+
+// bindIdentity links a stable subject once and refuses a second subject for the same account.
+func (a *reviewApp) bindIdentity(ctx context.Context, userID, provider, subject string) error {
+	if strings.TrimSpace(subject) == "" {
+		return nil
+	}
+
+	var boundUser string
+
+	err := a.store.QueryRow(ctx, `select user_id from user_identity where provider = ? and subject = ?`, provider, subject).Scan(&boundUser)
+	if err == nil {
+		if boundUser != userID {
+			return errIdentityConflict
+		}
+
+		return nil
+	}
+
+	if !errors.Is(err, storage.ErrNoRows) {
+		return err
+	}
+
+	var boundSubject string
+
+	err = a.store.QueryRow(ctx, `select subject from user_identity where user_id = ? and provider = ?`, userID, provider).Scan(&boundSubject)
+	if err == nil {
+		if boundSubject != subject {
+			return errIdentityConflict
+		}
+
+		return nil
+	}
+
+	if !errors.Is(err, storage.ErrNoRows) {
+		return err
+	}
+
+	_, err = a.store.Exec(ctx, `insert or ignore into user_identity (user_id, provider, subject, created_at) values (?, ?, ?, ?)`,
+		userID, provider, subject, a.nowText())
+
+	return err
 }
 
 // canBootstrap reports whether this sign-in may create the first membership.

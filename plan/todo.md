@@ -154,7 +154,7 @@ wt build --dir .
 ## Deliberately fake or incomplete
 
 - [ ] Checks cover GitHub only; GitLab, demo, identity and duplicate checks are not ported.
-- [ ] Auth uses HCA when credentials are configured; there are no live credentials or roster sync yet, and development accounts remain.
+- [ ] Auth uses the live HCA app, but roster sync, an invite UI and production developer-account cleanup are still missing.
 - [ ] Stage 2 has the full seeded loop, but the hold rule engine and fraud provider are not built.
 - [ ] Fraud is a configured minimum stage and a future provider, with no implementation.
 - [ ] Evidence caches the repo README, tree and commits; journals and clips still come from the ingest payload.
@@ -164,7 +164,7 @@ wt build --dir .
 - [ ] No pagination beyond the current limits; queue limit is 50, feeds are 100.
 - [ ] No rate limiting; browser mutations rely on the session cookie, same-site policy and the same-origin guard.
 - [ ] No duplicate, identity, demo or fraud checks.
-- [ ] No live HCA identities, programme roster sync or role administration.
+- [ ] Roster sync and role administration are still missing; identities are bound by the HCA subject.
 
 ## Next 1 – Stage 2 loop
 
@@ -254,7 +254,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 
 **Goal:** real reviewer identity and a real signed delivery to a staging Half Life receiver, ready for a pilot.
 
-The auth flow and signed HTTP delivery are implemented and tested against a fake provider and a local receiver. Registering the real OAuth app, pointing at the staging receiver and the cutover rehearsal remain.
+The auth flow, real OAuth app and signed HTTP delivery are implemented and tested. Pointing at the staging receiver, the cutover rehearsal and the remaining account safeguards are left.
 
 ### Working now
 
@@ -286,10 +286,11 @@ The auth flow and signed HTTP delivery are implemented and tested against a fake
 
 ### Remaining
 
-- [ ] Register the real Hack Club Auth application and set `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` through `wt secrets`.
+- [x] Register the real Hack Club Auth application and set `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` through `wt secrets`.
 - [ ] Point `REVIEW_OUTBOUND_URL` at the staging Half Life receiver and set its signing secret.
 - [ ] Add roster sync or an admin invite flow; today members must already exist in the database.
-- [ ] Store the stable Hack Club identity id so an email change cannot break the binding; add the schema column and migration.
+- [x] Store the stable Hack Club subject in `user_identity` so an email change cannot break the binding.
+- [x] Refuse a second Hack Club subject for an account and show `identity_conflict` on the login screen.
 - [ ] Add session rotation and explicit revocation for compromised accounts.
 - [ ] Store the Hack Club `slack_id` claim again; the shared OAuth identity does not expose it.
 - [ ] Test expired state, provider timeout, duplicate identity binding, inactive membership and session fixation.

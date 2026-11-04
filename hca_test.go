@@ -210,10 +210,93 @@ func TestHCAOAuthFlow(t *testing.T) {
 		t.Fatalf("me = %+v", me.User)
 	}
 
+	var boundUser string
+	if err := application.store.QueryRow(t.Context(), `select user_id from user_identity where provider = 'hca' and subject = ?`, "ident!reviewer").Scan(&boundUser); err != nil {
+		t.Fatal(err)
+	}
+
+	if boundUser != me.User.ID {
+		t.Errorf("bound user = %q, want %q", boundUser, me.User.ID)
+	}
+
 	replay := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, stateCookie, nil)
 	if replay.Header().Get("Location") != "/?error=state" {
 		t.Fatalf("replay redirect = %q", replay.Header().Get("Location"))
 	}
+}
+
+// TestHCAKeepsIdentityAcrossEmailChange covers the stable subject binding.
+func TestHCAKeepsIdentityAcrossEmailChange(t *testing.T) {
+	provider := newFakeHCA(t)
+	application := newTestApp(t)
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCAuthBase = provider.server.URL
+
+	completeHCA(t, application, provider)
+
+	provider.email = "renamed@example.com"
+
+	cookie := completeHCA(t, application, provider)
+	me := decode[contract.MeResponse](t, do(t, application, http.MethodGet, "/api/v1/me", nil, cookie, nil))
+
+	if me.User.Email != "reviewer@example.com" {
+		t.Fatalf("email changed through the binding: %+v", me.User)
+	}
+}
+
+// TestHCARejectsSecondIdentity covers a second Hack Club subject for an existing account.
+func TestHCARejectsSecondIdentity(t *testing.T) {
+	provider := newFakeHCA(t)
+	application := newTestApp(t)
+	application.config.HCClientID = "client"
+	application.config.HCClientSecret = "secret"
+	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCAuthBase = provider.server.URL
+
+	completeHCA(t, application, provider)
+
+	provider.subject = "ident!different"
+
+	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+	location, _ := url.Parse(start.Header().Get("Location"))
+	provider.setNonce(location.Query().Get("nonce"))
+
+	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
+	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+	if callback.Header().Get("Location") != "/?error=identity_conflict" {
+		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
+	}
+}
+
+// completeHCA runs one full fake-provider login and returns the session cookie.
+func completeHCA(t *testing.T, application *reviewApp, provider *fakeHCA) *http.Cookie {
+	t.Helper()
+
+	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+
+	location, err := url.Parse(start.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	provider.setNonce(location.Query().Get("nonce"))
+
+	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
+	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+	if callback.Header().Get("Location") != "/queue" {
+		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
+	}
+
+	cookie := findCookie(callback.Result().Cookies(), cookieName)
+	if cookie == nil || cookie.Value == "" {
+		t.Fatal("missing session cookie")
+	}
+
+	return cookie
 }
 
 // TestHCARejectsBadState covers a callback that does not match the browser cookie.
