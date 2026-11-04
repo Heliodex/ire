@@ -174,9 +174,9 @@ const groups = $derived(groupChecks(checks))
 @media (max-width: 760px) {
 	.check {
 		grid-template-areas:
-			"status label key"
-			"detail detail ack";
-		grid-template-columns: 54px minmax(0, 1fr) minmax(90px, 150px);
+			"status label key ack"
+			"detail detail detail detail";
+		grid-template-columns: 54px minmax(0, 1fr) minmax(90px, 150px) 56px;
 		row-gap: var(--space-1);
 	}
 
