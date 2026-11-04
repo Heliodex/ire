@@ -249,7 +249,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [ ] Scope Hackatime totals to the phase week instead of the all-time project total.
 - [x] Tests cover rate limits, a dropped forge connection, malformed JSON, an oversized tree, BOM parsing and matching, commit windows and the check job runner.
 - [ ] Add a fixture parity suite and a sample run over real `.projects.csv` rows (not committed).
-- [ ] Document every check key, severity, blocking rule and the porting map.
+- [x] `plan/04-checks.md` lists every emitted key with its group, source, severity, blocking rule and Ari porting map.
 
 **Done when:** checks run as a job, a real PCB repo with a BOM, README and design files reaches `ready`, a private or missing repo reaches `needs_attention`, a timeout is `error` rather than `0`, and the queue state matches the check policy.
 

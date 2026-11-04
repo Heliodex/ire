@@ -492,3 +492,52 @@ Rules:
 - Do not count timelapse runtime as hours. It is coverage.
 - Do not run fraud at stage 1 "just in case". The policy and the code both forbid it.
 - Do not hide a check error behind a green tick.
+
+## Implemented keys
+
+The prototype emits the keys below. `Severity` is the worst severity the key can carry; only `block` disables approval, and only when the status is `fail` or `error`. A `warn` status asks the reviewer to acknowledge it; `skip` and `info` never block.
+
+| Key | Group | Source | Severity | Blocks | State |
+| --- | --- | --- | --- | --- | --- |
+| `repo.accessible` | repo | forge, payload | block | approval | live |
+| `repo.description` | repo | payload | warn | no | live |
+| `repo.readme` | repo | forge | warn | no | live |
+| `repo.readme.images` | repo | forge, payload | warn | no | live |
+| `repo.bom` | repo | forge, payload | warn | no | live |
+| `repo.bom.prices` | repo | forge + payload | warn | no | live |
+| `repo.design_files` | repo | forge | warn | no | live |
+| `repo.tree` | repo | forge | block | approval | live |
+| `repo.commits` | repo | forge | warn | no | live |
+| `evidence.journals` | evidence | payload | warn | no | live |
+| `evidence.hours` | evidence | payload | warn | no | live |
+| `journal.present` | evidence | payload | warn | no | live |
+| `journal.wordless` | evidence | payload | warn | no | live |
+| `journal.hours` | evidence | payload | warn | no | live |
+| `lapse.clips` | evidence | payload | info | no | live |
+| `lapse.coverage` | evidence | payload | warn | no | live |
+| `lapse.links` | evidence | payload | warn | no | live |
+| `hackatime.linked` | evidence | Hackatime + payload | warn | no | live |
+| `hackatime.time` | evidence | Hackatime | warn | no | live |
+| `hackatime.stale` | evidence | Hackatime | warn | no | live |
+| `demo.probe` | demo | probe | warn | no | live |
+| `duplicate.project` | duplicate | local | warn | no | live |
+| `identity.match` | duplicate | local | warn | no | live |
+| `checks outdated` notice | repo | forge | info | no | live (review rail) |
+
+Sources reported through `source`: `fixture` (seeded demo), `payload` (ingest data), `forge` (live GitHub), `probe` (demo request).
+
+### Porting map
+
+| Ari source | Implemented as |
+| --- | --- |
+| `ari-webhooks/internal/integrations/github` (public, tree, README, design files) | `repoChecks`, `repo.accessible`, `repo.tree`, `repo.readme`, `repo.readme.images`, `repo.design_files` |
+| GitHub BOM table parsing | `fetchBOM`, `parseBOM`, `repo.bom` |
+| Half Life BOM lines | `submittedBom`, `bomMatchCheck`, `repo.bom.prices` |
+| Commit window and authorship | `client.commits`, `commitCheck`, `repo.commits` |
+| Ari journal and clip checks | `localChecks`, `journalChecks`, `clipChecks` |
+| `ari-webhooks/internal/integrations/hackatime` | `hackatimeChecks`, `hackatime.linked`, `hackatime.time`, `hackatime.stale` |
+| Demo probe | `demoChecks`, `demo.probe` |
+| Duplicate ship detection | `duplicateChecks`, `duplicate.project`, `identity.match` |
+| Fraud provider interface | not implemented; only `fraudMinStage` policy exists |
+
+Not yet ported: theme/file-kind requirements, Hackatime span overlap, commit authors/spread, design JSON detection, and the GitLab forge.
