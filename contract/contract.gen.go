@@ -2109,6 +2109,9 @@ type QueueResponse struct {
 	// Counts corresponds to the JSON schema field "counts".
 	Counts QueueCounts `json:"counts" yaml:"counts" mapstructure:"counts"`
 
+	// HasMore corresponds to the JSON schema field "hasMore".
+	HasMore bool `json:"hasMore" yaml:"hasMore" mapstructure:"hasMore"`
+
 	// Items corresponds to the JSON schema field "items".
 	Items []QueueItem `json:"items" yaml:"items" mapstructure:"items"`
 }
@@ -2121,6 +2124,9 @@ func (j *QueueResponse) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["counts"]; raw != nil && !ok {
 		return fmt.Errorf("field counts in QueueResponse: required")
+	}
+	if _, ok := raw["hasMore"]; raw != nil && !ok {
+		return fmt.Errorf("field hasMore in QueueResponse: required")
 	}
 	if _, ok := raw["items"]; raw != nil && !ok {
 		return fmt.Errorf("field items in QueueResponse: required")

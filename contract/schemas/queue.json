@@ -34,6 +34,9 @@
 			],
 			"title": "QueueCounts"
 		},
+		"hasMore": {
+			"type": "boolean"
+		},
 		"items": {
 			"type": "array",
 			"items": {
@@ -180,6 +183,7 @@
 	},
 	"required": [
 		"counts",
+		"hasMore",
 		"items"
 	],
 	"title": "QueueResponse",

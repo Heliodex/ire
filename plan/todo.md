@@ -161,7 +161,7 @@ wt build --dir .
 - [ ] The outbound receiver defaults to in-process. HTTP delivery works, but no live Half Life staging endpoint is wired.
 - [ ] The queue refreshes from storage events and keeps a 10-second poll as a fallback.
 - [ ] No admin or settings UI, roster, analytics, audit browser, retention jobs or secret rotation UI.
-- [ ] No pagination beyond the current limits; queue limit is 50, feeds are 100.
+- [x] The queue pages with `limit` (up to 100) and `offset` (up to 10000) and reports `hasMore`; the recovery feeds page with a stable `since` cursor.
 - [x] A sliding-window limiter caps browser mutations at 120/min per session and machine mutations at 240/min per address; reads are unaffected.
 - [ ] Duplicate, identity and demo checks exist; fraud is still a future provider.
 - [ ] Roster sync and role administration are still missing; identities are bound by the HCA subject.
@@ -344,7 +344,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 
 ## Cross-cutting work for the four steps
 
-- [ ] Add pagination and stable cursors to queue, reviews and events.
+- [x] The queue has offset pagination; review and event feeds have stable `since` cursors.
 - [x] Subscribe the queue to the supervisor storage event stream, keeping the 10-second poll as a fallback.
 - [x] Enforce same-origin checks on state-changing browser routes.
 - [x] Request bodies are bounded on ingest, withdraw and JSON routes; browser and machine mutations are rate limited.

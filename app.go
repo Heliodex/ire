@@ -30,6 +30,7 @@ const (
 
 	defaultLimit = 50
 	maxLimit     = 100
+	maxOffset    = 10000
 
 	claimTTL = 30 * time.Minute
 
@@ -330,6 +331,21 @@ func parseLimit(r *http.Request) int {
 	}
 
 	return min(parsed, maxLimit)
+}
+
+// parseOffset reads a bounded offset, so a deep page cannot scan without limit.
+func parseOffset(r *http.Request) int {
+	value := r.URL.Query().Get("offset")
+	if value == "" {
+		return 0
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 0 {
+		return 0
+	}
+
+	return min(parsed, maxOffset)
 }
 
 // parseSince reads the optional since cursor as an RFC 3339 timestamp.

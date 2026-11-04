@@ -12,6 +12,7 @@ type Filter = "all" | "fast" | "attention" | "mine"
 
 let queue = $state<Queue>({
 	counts: { checking: 0, claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
+	hasMore: false,
 	items: [],
 })
 let filter = $state<Filter>("all")
@@ -24,6 +25,7 @@ let selected = $state(0)
 let search = $state("")
 let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
+let loadingMore = $state(false)
 
 // cache keeps each filter and stage response for this visit, so switching back is instant while a fresh copy loads behind it.
 const cache = new SvelteMap<string, Queue>()
@@ -49,7 +51,7 @@ const visible = $derived(
 onMount((): (() => void) => {
 	void boot()
 
-	const timer = setInterval((): void => void load(), 10000)
+	const timer = setInterval((): void => void load(filter, stage, true), 10000)
 
 	// Storage writes publish a compact event, so the queue refetches immediately instead of waiting for the poll.
 	let pending: ReturnType<typeof setTimeout> | null = null
@@ -113,11 +115,12 @@ async function boot(): Promise<void> {
 }
 
 // checkTone maps a check result to a dot tone. A failure with warning severity stays orange, matching the review screen.
-async function load(target = filter, targetStage = stage): Promise<void> {
+async function load(target = filter, targetStage = stage, keepRows = false): Promise<void> {
 	const key = `${targetStage}:${target}`
+	const limit = keepRows ? Math.min(Math.max(queue.items.length, 50), 100) : 50
 
 	try {
-		const next = await fetchQueue(target, targetStage)
+		const next = await fetchQueue(target, targetStage, 0, limit)
 		if (target !== filter || targetStage !== stage) return
 
 		cache.set(key, next)
@@ -137,6 +140,34 @@ async function load(target = filter, targetStage = stage): Promise<void> {
 			refreshing = false
 		}
 	}
+}
+
+// loadMore appends the next page without losing the rows already on screen.
+async function loadMore(): Promise<void> {
+	if (loadingMore || !queue.hasMore) return
+
+	loadingMore = true
+	error = ""
+
+	try {
+		const next = await fetchQueue(filter, stage, queue.items.length)
+
+		const seen = new Set(queue.items.map(item => item.id))
+		queue = {
+			...next,
+			items: [...queue.items, ...next.items.filter(item => !seen.has(item.id))],
+		}
+		refreshCache()
+	} catch (err) {
+		error = err instanceof Error ? err.message : "Could not load more ships."
+	} finally {
+		loadingMore = false
+	}
+}
+
+// refreshCache keeps the cache in step with the rows currently visible.
+function refreshCache(): void {
+	cache.set(`${stage}:${filter}`, queue)
 }
 
 async function choose(next: Filter): Promise<void> {
@@ -414,10 +445,29 @@ async function open(item: QueueItem): Promise<void> {
 				</button>
 			{/each}
 		</div>
+		{#if queue.hasMore}
+			<div class="more">
+				<button
+					class="ui-button"
+					data-variant="outline"
+					disabled={loadingMore}
+					onclick={loadMore}
+					type="button"
+				>
+					{loadingMore ? "Loading…" : "Load more ships"}
+				</button>
+			</div>
+		{/if}
 	{/if}
 </section>
 
 <style>
+.more {
+	display: flex;
+	justify-content: center;
+	padding-top: var(--space-2);
+}
+
 .page-head {
 	display: flex;
 	flex-wrap: wrap;

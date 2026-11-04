@@ -72,9 +72,10 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	case queueFilterAll:
 	}
 
-	query += ` order by s.priority desc, s.ingested_at asc, s.id asc limit ?`
+	query += ` order by s.priority desc, s.ingested_at asc, s.id asc limit ? offset ?`
 
-	args = append(args, defaultLimit)
+	limit := parseLimit(r)
+	args = append(args, limit+1, parseOffset(r))
 
 	rows, err := a.store.Query(r.Context(), query, args...)
 	if err != nil {
@@ -85,8 +86,9 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	response := contract.QueueResponse{
-		Counts: contract.QueueCounts{Checking: 0, Ready: 0, Claimed: 0, NeedsAttention: 0, Stage2Hold: 0},
-		Items:  []contract.QueueItem{},
+		Counts:  contract.QueueCounts{Checking: 0, Ready: 0, Claimed: 0, NeedsAttention: 0, Stage2Hold: 0},
+		HasMore: false,
+		Items:   []contract.QueueItem{},
 	}
 
 	for rows.Next() {
@@ -140,6 +142,11 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response.Items = append(response.Items, item)
+	}
+
+	if len(response.Items) > limit {
+		response.Items = response.Items[:limit]
+		response.HasMore = true
 	}
 
 	checks, err := a.queueChecks(r.Context(), response.Items)
