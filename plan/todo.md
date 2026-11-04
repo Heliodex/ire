@@ -247,7 +247,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [ ] Port the remaining group: theme requirements.
 - [ ] Add Hackatime span overlap against timelapses and the reviewer override path.
 - [ ] Scope Hackatime totals to the phase week instead of the all-time project total.
-- [ ] Add tests for rate limit, timeout, malformed JSON, oversized tree, BOM parsing, commit windows and the job runner.
+- [x] Tests cover rate limits, a dropped forge connection, malformed JSON, an oversized tree, BOM parsing and matching, commit windows and the check job runner.
 - [ ] Add a fixture parity suite and a sample run over real `.projects.csv` rows (not committed).
 - [ ] Document every check key, severity, blocking rule and the porting map.
 
@@ -298,7 +298,7 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] Tests cover inactive membership, an expired login flow and session replacement.
 - [ ] Store the Hack Club `slack_id` claim again; the shared OAuth identity does not expose it.
 - [ ] Test provider timeout and duplicate identity binding end to end.
-- [ ] Test outbound retry on 5xx/timeout and permanent failure on 4xx.
+- [x] Outbound tests cover a 5xx retry, a dropped connection retry and permanent failure on 4xx.
 - [ ] Send one approved, one changes and one rejected event to staging; verify Half Life applies each.
 - [ ] Add a shadow or dry-run mode for the first pilot days.
 - [ ] Write the cutover, rollback and replay runbook (`reviews?since`, `events?since`).
@@ -337,7 +337,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [x] Render README Markdown through parsed blocks; raw HTML, images and link targets never reach the page.
 - [ ] Add a file-tree depth filter and a commit search for large repositories.
 - [x] The review rail shows a stale notice and a rerun action when the head SHA has moved since the snapshot.
-- [x] Parsed Markdown never keeps raw HTML or image syntax; oversized README/tree, paginated commit and refresh failure tests remain.
+- [x] Parsed Markdown never keeps raw HTML or image syntax; an oversized tree is capped and marked truncated. Oversized README, paginated commit and refresh failure tests remain.
 - [ ] Document what is stored, what is linked, retention and privacy.
 
 **Done when:** opening a ship shows its README, file tree, commits, journals and clips without leaving Review, the data is cached for the version, and a new version refreshes it.
