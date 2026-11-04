@@ -140,7 +140,11 @@ onMount((): (() => void) => {
 	}, 60000)
 
 	function onKeydown(event: KeyboardEvent): void {
-		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+		if (
+			event.target instanceof HTMLInputElement
+			|| event.target instanceof HTMLTextAreaElement
+			|| event.target instanceof HTMLSelectElement
+		) {
 			if (event.key === "Escape") (event.target as HTMLElement).blur()
 			return
 		}
@@ -148,6 +152,20 @@ onMount((): (() => void) => {
 		if (event.key === "Escape") {
 			event.preventDefault()
 			void goto("/queue")
+			return
+		}
+
+		if (
+			(event.key === "ArrowLeft" || event.key === "ArrowRight")
+			&& !event.shiftKey
+			&& !event.altKey
+			&& !event.ctrlKey
+			&& !event.metaKey
+		) {
+			event.preventDefault()
+			const current = tabKeys.indexOf(tab)
+			const step = event.key === "ArrowRight" ? 1 : -1
+			selectTab(tabKeys[(current + step + tabKeys.length) % tabKeys.length])
 			return
 		}
 
@@ -543,6 +561,7 @@ async function saveDraftNow(): Promise<void> {
 				<span><kbd class="ui-kbd">C</kbd> focus the note</span>
 				<span><kbd class="ui-kbd">R</kbd> reject</span>
 			{/if}
+			<span><kbd class="ui-kbd">← →</kbd> sections</span>
 			<span><kbd class="ui-kbd">Esc</kbd> back to queue</span>
 		</div>
 	{/if}
