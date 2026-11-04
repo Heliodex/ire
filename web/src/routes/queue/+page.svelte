@@ -4,6 +4,7 @@ import { SvelteMap } from "svelte/reactivity"
 import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
+import { checkTone } from "../../lib/checks"
 import { formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -112,14 +113,6 @@ async function boot(): Promise<void> {
 }
 
 // checkTone maps a check result to a dot tone. A failure with warning severity stays orange, matching the review screen.
-function checkTone(check: QueueItem["checks"][number]): string {
-	if (check.status === "pass") return "approved"
-	if (check.status === "warn") return "pending"
-	if (check.status === "fail" && check.severity === "warn") return "changes"
-	if (check.status === "fail" || check.status === "error") return "rejected"
-	return "neutral"
-}
-
 async function load(target = filter, targetStage = stage): Promise<void> {
 	const key = `${targetStage}:${target}`
 

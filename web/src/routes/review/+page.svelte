@@ -18,6 +18,10 @@ import {
 } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
+import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
+import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
+import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
+import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
 import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -59,7 +63,6 @@ const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const canApprove = $derived(blocking.length === 0 && (secondPass || missingAcks.length === 0))
-const groups = $derived(groupChecks(bundle?.checks ?? []))
 
 afterNavigate((): void => {
 	const next = page.url.searchParams.get("id") ?? ""
@@ -224,33 +227,6 @@ function hourInit(): void {
 	const seconds = bundle.submission.hoursApprovedSeconds ?? bundle.submission.hoursClaimedSeconds
 	hours = Math.round((seconds / 3600) * 100) / 100
 	acknowledgements = [...bundle.acknowledgements]
-}
-
-function isWarning(check: Check): boolean {
-	return check.status === "warn" || (check.status === "fail" && check.severity === "warn")
-}
-
-function isBlocking(check: Check): boolean {
-	return check.severity === "block" && (check.status === "fail" || check.status === "error")
-}
-
-function overall(checks: Check[]): string {
-	if (checks.some(isBlocking)) return "fail"
-	if (checks.some(isWarning)) return "warn"
-	return "pass"
-}
-
-function groupChecks(checks: Check[]): { group: string; items: Check[] }[] {
-	const order = ["repo", "evidence", "demo", "identity", "duplicate", "fraud"]
-	const map = new Map<string, Check[]>()
-	for (const check of checks) {
-		const list = map.get(check.group) ?? []
-		list.push(check)
-		map.set(check.group, list)
-	}
-	return [...map.entries()]
-		.toSorted(([a], [b]) => order.indexOf(a) - order.indexOf(b))
-		.map(([group, items]) => ({ group, items }))
 }
 
 function toggleAck(key: string): void {
@@ -584,60 +560,12 @@ async function saveDraftNow(): Promise<void> {
 					</div>
 				</article>
 			{:else if tab === "checks"}
-				{#if blocking.length > 0}
-					<div class="ui-notice" data-tone="bad" role="alert">
-						<strong>Approval is blocked</strong>
-						{blocking[0].summary}. Ask the maker for changes or reject with a note.
-					</div>
-				{/if}
-
-				{#if warnings.length > 0}
-					<div class="ui-notice warn-box" data-tone="warn">
-						<div>
-							<strong>{warnings.length} warning{warnings.length === 1 ? "" : "s"}</strong>
-							Acknowledge each one before approving. Warnings are held for the second pass.
-						</div>
-						{#if missingAcks.length > 0}
-							<button class="ui-button sm" onclick={acknowledgeAll} type="button">Acknowledge all</button>
-						{/if}
-					</div>
-				{/if}
-
-				<div class="ui-card checks">
-					{#each groups as group (group.group)}
-						<div class="group">
-							<h2>{group.group}</h2>
-							{#each group.items as check (check.key)}
-								<div class="check">
-									<span class="ui-badge check-status" data-tone={statusTone(check.status)}
-										>{check.status}</span
-									>
-									<span class="check-label">{check.label}</span>
-									<code class="check-key ui-mono" title={check.key}>{check.key}</code>
-									{#if isWarning(check)}
-										<label class="ack" title="Acknowledge this warning">
-											<input
-												aria-label={`Acknowledge ${check.label}`}
-												checked={acknowledgements.includes(check.key)}
-												onchange={(): void => toggleAck(check.key)}
-												type="checkbox"
-											>
-											<span>Ack</span>
-										</label>
-									{:else}
-										<span class="ack-empty"></span>
-									{/if}
-									<span class="check-detail">
-										<span class="check-summary">{check.summary}</span>
-										{#if check.detail}
-											<span class="check-note">{check.detail}</span>
-										{/if}
-									</span>
-								</div>
-							{/each}
-						</div>
-					{/each}
-				</div>
+				<ChecksTab
+					{acknowledgements}
+					checks={bundle.checks}
+					onAcknowledgeAll={acknowledgeAll}
+					onToggle={toggleAck}
+				/>
 			{:else if tab === "journal"}
 				{#if bundle.journals.length === 0}
 					<div class="ui-card ui-empty">
@@ -713,131 +641,15 @@ async function saveDraftNow(): Promise<void> {
 					</div>
 				{/if}
 			{:else if tab === "evidence"}
-				{#if !bundle.evidence}
-					<div class="ui-card ui-empty">
-						<strong>No repository snapshot</strong>
-						<span
-							>Evidence is fetched for GitHub ships on ingest. Fixtures keep their prescribed
-							checks.</span
-						>
-					</div>
-				{:else}
-					<div class="evidence-meta">
-						<div>
-							<strong>{bundle.evidence.fullName}</strong>
-							<span>
-								{bundle.evidence.files.length}
-								files · {bundle.evidence.commits.length} commits · fetched
-								{formatDateTime(bundle.evidence.fetchedAt)}
-							</span>
-						</div>
-						{#if canSecondPass}
-							<button
-								class="ui-button secondary"
-								disabled={refreshingEvidence}
-								onclick={refreshEvidenceNow}
-								type="button"
-							>
-								{refreshingEvidence ? "Refreshing…" : "Refresh"}
-							</button>
-						{/if}
-					</div>
-
-					{#if evidenceError}
-						<div class="ui-notice" data-tone="bad">{evidenceError}</div>
-					{/if}
-
-					<div class="evidence-grid">
-						<section class="ui-card padded">
-							<h3>Files</h3>
-							{#if bundle.evidence.files.length === 0}
-								<p class="muted">The file tree was not fetched.</p>
-							{:else}
-								<ul class="file-tree">
-									{#each bundle.evidence.files.slice(0, 80) as file (file.path)}
-										<li><span class="file-kind">{file.kind}</span><code>{file.path}</code></li>
-									{/each}
-								</ul>
-								{#if bundle.evidence.files.length > 80}
-									<p class="muted">and {bundle.evidence.files.length - 80} more files</p>
-								{/if}
-							{/if}
-						</section>
-
-						<section class="ui-card padded">
-							<h3>Commits</h3>
-							{#if bundle.evidence.commits.length === 0}
-								<p class="muted">No commits were fetched.</p>
-							{:else}
-								<ul class="commit-list">
-									{#each bundle.evidence.commits.slice(0, 30) as commit (commit.sha)}
-										<li>
-											<strong>{commit.message || "(no message)"}</strong>
-											<span
-												>{commit.author}
-												· {commit.date.slice(0, 10)} ·
-												<code>{commit.sha.slice(0, 7)}</code></span
-											>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						</section>
-					</div>
-
-					{#if bundle.evidence.readme}
-						<section class="ui-card padded readme">
-							<h3>README</h3>
-							<pre class="readme-body">{bundle.evidence.readme}</pre>
-						</section>
-					{/if}
-				{/if}
+				<EvidenceTab
+					canRefresh={canSecondPass}
+					error={evidenceError}
+					evidence={bundle.evidence}
+					onRefresh={refreshEvidenceNow}
+					refreshing={refreshingEvidence}
+				/>
 			{:else if tab === "history"}
-				{#if bundle.reviews.length === 0}
-					<div class="ui-card ui-empty">
-						<strong>No decisions yet</strong>
-						<span>Stage 1 and the second pass will appear here.</span>
-					</div>
-				{:else}
-					<ol class="history">
-						{#each bundle.reviews as review (review.id)}
-							<li class="ui-card padded" class:invalidated={review.invalidatedAt}>
-								<div class="history-head">
-									<span class="ui-badge">Stage {review.stage}</span>
-									<strong>{review.decision}</strong>
-									{#if review.held === 1}
-										<span class="ui-badge" data-tone="secondpass">Held</span>
-									{/if}
-									{#if review.invalidatedAt}
-										<span class="ui-badge" data-tone="warn">Invalidated</span>
-									{/if}
-									<span class="history-when">
-										{review.reviewerEmail}
-										· {formatDateTime(review.createdAt)}
-									</span>
-								</div>
-								{#if review.hoursApprovedSeconds !== undefined}
-									<p>{formatHours(review.hoursApprovedSeconds)} approved</p>
-								{/if}
-								{#if review.heldReason}
-									<p class="muted">Held because {review.heldReason}.</p>
-								{/if}
-								{#if review.noteToMaker}
-									<p>{review.noteToMaker}</p>
-								{/if}
-								{#if review.overrideReason}
-									<p class="muted">Override: {review.overrideReason}</p>
-								{/if}
-								{#if review.acknowledgements.length > 0}
-									<p class="muted">Acknowledged: {review.acknowledgements.join(", ")}</p>
-								{/if}
-								{#if review.invalidatedAt}
-									<p class="muted">Sent back {formatDateTime(review.invalidatedAt)}.</p>
-								{/if}
-							</li>
-						{/each}
-					</ol>
-				{/if}
+				<HistoryTab reviews={bundle.reviews} />
 			{/if}
 		</section>
 
@@ -847,9 +659,9 @@ async function saveDraftNow(): Promise<void> {
 					<h2>Checks</h2>
 					<span
 						class="ui-badge"
-						data-tone={statusTone(bundle.checks.length > 0 ? overall(bundle.checks) : "pass")}
+						data-tone={statusTone(bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass")}
 					>
-						{bundle.checks.length > 0 ? overall(bundle.checks) : "pass"}
+						{bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass"}
 					</span>
 				</div>
 				<div class="summary-counts">
@@ -1160,36 +972,6 @@ h1 {
 	overflow-x: visible;
 }
 
-.history {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-2);
-	margin-top: var(--space-3);
-	list-style: none;
-}
-
-.history-head {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-	align-items: baseline;
-	padding-bottom: var(--space-1);
-}
-
-.history-when {
-	font-size: var(--text-xs);
-	color: var(--text-3);
-}
-
-.history p {
-	padding-bottom: var(--space-1);
-	font-size: var(--text-sm);
-}
-
-.history .invalidated {
-	opacity: 0.72;
-}
-
 .acks {
 	font-size: var(--text-xs);
 	color: var(--text-3);
@@ -1211,124 +993,6 @@ h1 {
 .send-back p {
 	font-size: var(--text-xs);
 	color: var(--text-3);
-}
-
-.evidence-meta {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--space-2) var(--space-3);
-	margin-top: var(--space-3);
-	background: var(--surface-2);
-	border-radius: var(--radius-md);
-}
-
-.evidence-meta div {
-	display: flex;
-	flex-direction: column;
-	font-size: var(--text-sm);
-}
-
-.evidence-meta span {
-	color: var(--text-3);
-}
-
-.evidence-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-	gap: var(--space-3);
-	margin-top: var(--space-3);
-}
-
-.evidence-grid h3,
-.readme h3 {
-	font-size: var(--text-xs);
-	font-weight: 700;
-	color: var(--text-3);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-
-.file-tree,
-.commit-list {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-1);
-	max-height: 320px;
-	margin-top: var(--space-2);
-	overflow: auto;
-	list-style: none;
-}
-
-.file-tree li {
-	display: flex;
-	gap: var(--space-2);
-	align-items: baseline;
-	min-width: 0;
-	font-size: var(--text-sm);
-}
-
-.file-tree code {
-	overflow-wrap: anywhere;
-}
-
-.file-kind {
-	flex: 0 0 3.5rem;
-	font-size: var(--text-xs);
-	color: var(--text-3);
-	text-transform: uppercase;
-}
-
-.commit-list li {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	padding: var(--space-1) 0;
-	font-size: var(--text-sm);
-}
-
-.commit-list span {
-	font-size: var(--text-xs);
-	color: var(--text-3);
-}
-
-.readme {
-	margin-top: var(--space-3);
-}
-
-.readme-body {
-	max-height: 420px;
-	margin-top: var(--space-2);
-	overflow: auto;
-	font-size: var(--text-sm);
-	line-height: 1.6;
-}
-
-.readme-body :global(h1),
-.readme-body :global(h2),
-.readme-body :global(h3) {
-	padding: var(--space-2) 0 var(--space-1);
-	font-size: var(--text-base);
-}
-
-.readme-body :global(p),
-.readme-body :global(ul) {
-	padding-bottom: var(--space-2);
-}
-
-.readme-body :global(ul) {
-	padding-left: var(--space-4);
-	list-style: disc;
-}
-
-.readme-body :global(pre) {
-	padding: var(--space-2);
-	margin-bottom: var(--space-2);
-	overflow: auto;
-	background: var(--surface-2);
-	border-radius: var(--radius-sm);
 }
 
 .shortcuts {
@@ -1364,8 +1028,7 @@ h1 {
 }
 
 .content > .ui-card,
-.content > .journals,
-.content > .ui-notice {
+.content > .journals {
 	margin-top: var(--space-3);
 }
 
@@ -1375,8 +1038,7 @@ h1 {
 
 .overview h2,
 .decision h2,
-.summary h2,
-.group h2 {
+.summary h2 {
 	font-size: var(--text-md);
 	font-weight: 700;
 }
@@ -1474,93 +1136,6 @@ h1 {
 	display: block;
 	font-size: var(--text-xs);
 	color: var(--text-3);
-}
-
-.warn-box {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-3);
-	align-items: center;
-	justify-content: space-between;
-}
-
-.checks {
-	overflow: hidden;
-}
-
-.group + .group {
-	border-top: 1px solid var(--border);
-}
-
-.group h2 {
-	padding: var(--space-2) var(--space-4);
-	font-size: var(--text-xs);
-	color: var(--text-3);
-	background: var(--surface-2);
-}
-
-.check {
-	display: grid;
-	grid-template-columns: 58px 190px minmax(0, 1fr) 64px;
-	row-gap: var(--space-1);
-	column-gap: var(--space-3);
-	align-items: start;
-	padding: var(--space-2) var(--space-4);
-	border-top: 1px solid var(--border);
-}
-
-.group h2 + .check {
-	border-top: 0;
-}
-
-.check-status {
-	justify-self: start;
-}
-
-.check-label {
-	font-size: var(--text-sm);
-	font-weight: 700;
-}
-
-.check-key {
-	padding-top: 2px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	font-size: var(--text-xs);
-	color: var(--text-3);
-	white-space: nowrap;
-}
-
-.check-detail {
-	display: flex;
-	flex-direction: column;
-	grid-column: 1 / -1;
-	gap: 1px;
-}
-
-.check-summary {
-	font-size: var(--text-sm);
-	color: var(--text-2);
-}
-
-.check-note {
-	font-size: var(--text-xs);
-	color: var(--text-3);
-}
-
-.ack {
-	display: flex;
-	gap: var(--space-1);
-	align-items: center;
-	justify-self: end;
-	font-size: var(--text-xs);
-	font-weight: 700;
-	color: var(--status-pending);
-	cursor: pointer;
-}
-
-.ack input {
-	accent-color: var(--primary);
 }
 
 .journal-head {
@@ -1737,48 +1312,6 @@ h1 {
 	}
 }
 
-@media (max-width: 760px) {
-	.check {
-		grid-template-areas:
-			"status label key"
-			"detail detail ack";
-		grid-template-columns: 54px minmax(0, 1fr) minmax(90px, 150px);
-		row-gap: var(--space-1);
-	}
-
-	.check-status {
-		grid-area: status;
-	}
-
-	.check-label {
-		grid-area: label;
-	}
-
-	.check-key {
-		grid-area: key;
-	}
-
-	.check-detail {
-		grid-area: detail;
-	}
-
-	.ack,
-	.ack-empty {
-		grid-area: ack;
-		justify-self: end;
-	}
-}
-
-@media (max-width: 500px) {
-	.check {
-		grid-template-areas:
-			"status label ack"
-			"key key key"
-			"detail detail detail";
-		grid-template-columns: 54px minmax(0, 1fr) 56px;
-	}
-}
-
 @media (max-width: 640px) {
 	.stats {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1787,11 +1320,6 @@ h1 {
 	.ship-head {
 		flex-direction: column;
 		align-items: flex-start;
-	}
-
-	.check,
-	.group h2 {
-		padding-inline: var(--space-3);
 	}
 }
 </style>
