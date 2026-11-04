@@ -27,6 +27,8 @@ func fakeGitHub(t *testing.T) *httptest.Server {
 			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"example/queued","private":false}`)
 		case "/repos/example/queued/readme":
 			_, _ = io.WriteString(w, strings.Repeat("Build notes and wiring details. ", 12)+`\n![board](https://example.com/board.jpg)\n![schematic](https://example.com/schematic.png)`)
+		case "/repos/example/queued/contents/BOM.csv":
+			_, _ = io.WriteString(w, "Part,Qty,Unit Price,Vendor\nXIAO,1,4.99,Seeed\n")
 		case "/repos/example/queued/git/trees/main":
 			_, _ = io.WriteString(w, `{"sha":"head1","tree":[{"path":"README.md","type":"blob"},{"path":"BOM.csv","type":"blob"},{"path":"board.kicad_pcb","type":"blob"}]}`)
 		case "/repos/example/queued/commits":

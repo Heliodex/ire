@@ -200,8 +200,8 @@ func (a *reviewApp) programFor(w http.ResponseWriter, r *http.Request) (programR
 
 	row.Slug = slug
 
-	if err := a.store.QueryRow(r.Context(), `select id, slug, name, outbound_url, coalesce(policy_version, 1) from program where slug = ? and active = 1`, slug).
-		Scan(&row.ID, &row.Slug, &row.Name, &row.OutboundURL, &row.PolicyVersion); err != nil {
+	if err := a.store.QueryRow(r.Context(), `select id, slug, name, outbound_url, created_at, coalesce(policy_version, 1) from program where slug = ? and active = 1`, slug).
+		Scan(&row.ID, &row.Slug, &row.Name, &row.OutboundURL, &row.CreatedAt, &row.PolicyVersion); err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			app.WriteError(w, http.StatusNotFound, "unknown program")
 			return programRow{}, false
@@ -221,8 +221,8 @@ func (a *reviewApp) programByID(ctx context.Context, id string) (programRow, err
 
 	row.ID = id
 
-	err := a.store.QueryRow(ctx, `select id, slug, name, outbound_url, coalesce(policy_version, 1) from program where id = ?`, id).
-		Scan(&row.ID, &row.Slug, &row.Name, &row.OutboundURL, &row.PolicyVersion)
+	err := a.store.QueryRow(ctx, `select id, slug, name, outbound_url, created_at, coalesce(policy_version, 1) from program where id = ?`, id).
+		Scan(&row.ID, &row.Slug, &row.Name, &row.OutboundURL, &row.CreatedAt, &row.PolicyVersion)
 	if err != nil {
 		return programRow{}, err
 	}
@@ -288,5 +288,6 @@ type programRow struct {
 	Slug          string
 	Name          string
 	OutboundURL   string
+	CreatedAt     string
 	PolicyVersion int
 }

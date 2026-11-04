@@ -52,6 +52,16 @@ func (a *reviewApp) loadEvidence(ctx context.Context, submissionID string, versi
 	return evidence, true, nil
 }
 
+// programStart returns the programme start used as the commit window.
+func (a *reviewApp) programStart(ctx context.Context, programID string) string {
+	program, err := a.programByID(ctx, programID)
+	if err != nil {
+		return ""
+	}
+
+	return program.CreatedAt
+}
+
 // saveEvidence replaces the snapshot for a submission version, so a refresh never leaves two copies.
 func (a *reviewApp) saveEvidence(ctx context.Context, submissionID string, version int, evidence contract.Evidence) error {
 	files, err := json.Marshal(evidence.Files)
@@ -108,7 +118,7 @@ func (a *reviewApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	_, evidence := a.repoChecks(r.Context(), ship.RepoURL, a.now())
+	_, evidence := a.repoChecks(r.Context(), ship.RepoURL, a.programStart(r.Context(), ship.ProgramID), a.now())
 	if evidence == nil {
 		app.WriteError(w, http.StatusUnprocessableEntity, "only public GitHub repositories can be refreshed")
 		return

@@ -224,14 +224,17 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] The queue, review bundle and status feed expose the check run; the queue shows a Checking count and label.
 - [x] The review screen shows the running attempt and reloads itself when checks finish.
 - [x] A failed run records its error; after five failed attempts the ship moves to `needs_attention` immediately.
+- [x] The BOM check parses CSV, TSV, semicolon and Markdown tables for part, quantity, unit price and vendor.
+- [x] The BOM summary reports part count and total, warns on missing prices or vendors, and ignores subtotal/tax rows.
+- [x] Commits are fetched since the programme start, with a fallback to full history for repositories older than the programme record.
 
 ### Remaining
 
 - [ ] Add `source` to check results (`fixture`, `forge`, `payload`, `manual`).
 - [ ] Add a rerun action and a "checks outdated" notice.
 - [ ] Cache by repo and head SHA with ETag and a short unavailable cache.
-- [ ] Parse BOM tables for parts, quantities, prices and vendors instead of only finding the file.
-- [ ] Use the commit window from programme start or the previous approval, not the latest page of commits.
+- [ ] Combine the BOM parse with the maker's submitted BOM lines and flag mismatched prices.
+- [ ] Use the previous approval as the commit window for resubmissions, not only the programme start.
 - [ ] Add GitLab behind the same forge interface.
 - [ ] Port the remaining groups: Hackatime, clips, demo probe, identity, duplicate and theme requirements.
 - [ ] Show the check-run error and attempt count in the review rail, not only the banner.

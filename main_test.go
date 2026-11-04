@@ -194,6 +194,8 @@ func TestIngestIsSignedAndIdempotent(t *testing.T) {
 
 // TestIngestRunsGitHubChecks covers the real repository checks against a fake GitHub API.
 func TestIngestRunsGitHubChecks(t *testing.T) {
+	var commitSince atomic.Value
+
 	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -202,9 +204,13 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"example/line-follower","private":false}`)
 		case "/repos/example/line-follower/readme":
 			_, _ = io.WriteString(w, strings.Repeat("Build notes and wiring details. ", 12)+`\n![board](https://example.com/board.jpg)\n<img src="https://example.com/schematic.png">`)
+		case "/repos/example/line-follower/contents/BOM.csv":
+			_, _ = io.WriteString(w, "Part,Qty,Unit Price,Vendor\nXIAO,1,4.99,Seeed\nResistor,10,0.02,DigiKey\n")
 		case "/repos/example/line-follower/git/trees/main":
 			_, _ = io.WriteString(w, `{"sha":"head1","tree":[{"path":"README.md","type":"blob"},{"path":"BOM.csv","type":"blob"},{"path":"hardware/board.kicad_pcb","type":"blob"},{"path":"hardware/gerbers.zip","type":"blob"},{"path":"hardware","type":"tree"}]}`)
 		case "/repos/example/line-follower/commits":
+			commitSince.Store(r.URL.Query().Get("since"))
+
 			_, _ = io.WriteString(w, `[{"sha":"sha1","commit":{"author":{"name":"Maker","date":"2026-11-01T10:00:00Z"},"message":"a"}},{"sha":"sha2","commit":{"author":{"name":"Maker","date":"2026-11-02T10:00:00Z"},"message":"b"}},{"sha":"sha3","commit":{"author":{"name":"Maker","date":"2026-11-03T10:00:00Z"},"message":"c"}}]`)
 		default:
 			http.NotFound(w, r)
@@ -238,6 +244,15 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 
 	if bundle.Evidence == nil {
 		t.Fatal("bundle has no evidence snapshot")
+	}
+
+	programme, err := application.programByID(t.Context(), programID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if since, _ := commitSince.Load().(string); since == "" || since != programme.CreatedAt {
+		t.Errorf("commit since = %q, want %q", since, programme.CreatedAt)
 	}
 
 	if bundle.Evidence.FullName != "example/line-follower" || len(bundle.Evidence.Files) != 4 || len(bundle.Evidence.Commits) != 3 {
@@ -280,6 +295,8 @@ func TestEvidenceRefresh(t *testing.T) {
 			reads.Add(1)
 
 			_, _ = io.WriteString(w, strings.Repeat("Build notes and wiring details. ", 12)+`\n![board](https://example.com/board.jpg)`)
+		case "/repos/example/line-follower/contents/BOM.csv":
+			_, _ = io.WriteString(w, "Part,Qty,Unit Price,Vendor\nXIAO,1,4.99,Seeed\nResistor,10,0.02,DigiKey\n")
 		case "/repos/example/line-follower/git/trees/main":
 			_, _ = io.WriteString(w, `{"sha":"head1","tree":[{"path":"README.md","type":"blob"},{"path":"BOM.csv","type":"blob"}]}`)
 		case "/repos/example/line-follower/commits":

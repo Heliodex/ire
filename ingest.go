@@ -250,7 +250,7 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 		if a.config.EnableJobs && a.config.Enqueue != nil {
 			queuedChecks = true
 		} else {
-			remote, snapshot := a.repoChecks(ctx, *request.RepoURL, nowTime)
+			remote, snapshot := a.repoChecks(ctx, *request.RepoURL, program.CreatedAt, nowTime)
 			checks = mergeChecks(checks, remote)
 			evidence = snapshot
 		}
