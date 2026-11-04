@@ -441,9 +441,10 @@ async function open(item: QueueItem): Promise<void> {
 							</svg>
 						{/if}
 					</span>
-					<span class="ship-title" title={item.title}
-						>{item.title}<span class="maker inline-maker">{item.makerName}</span></span
-					>
+					<span class="ship-title" title={item.title}>
+						<span class="ship-name">{item.title}</span>
+						<span class="maker inline-maker">{item.makerName}</span>
+					</span>
 					<span class="badges">
 						<span
 							class="ui-badge status"
@@ -994,8 +995,22 @@ h1 {
 }
 
 @media (max-width: 700px) {
+	.ship-title {
+		display: grid;
+		grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
+		gap: var(--space-2);
+		align-items: baseline;
+	}
+
+	.ship-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
 	.inline-maker {
-		display: inline;
+		display: block;
+		padding-left: 0;
 	}
 
 	.fact-maker {
