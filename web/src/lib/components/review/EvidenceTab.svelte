@@ -343,7 +343,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 
 .evidence-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(16.25rem, 1fr));
 	gap: var(--space-3);
 	margin-top: var(--space-3);
 }
@@ -377,7 +377,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-1);
-	max-height: 320px;
+	max-height: 20rem;
 	padding: 0;
 	margin: var(--space-2) 0 0;
 	overflow: auto;
@@ -411,7 +411,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 .commit-list li {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 0.125rem;
 	padding: var(--space-1) 0;
 	font-size: var(--text-sm);
 }
@@ -443,7 +443,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 }
 
 .readme-body {
-	max-height: 420px;
+	max-height: 26.25rem;
 	margin-top: var(--space-2);
 	overflow: auto;
 }

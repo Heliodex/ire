@@ -455,13 +455,13 @@ function targetLink(entry: AuditEntry): string | null {
 }
 
 .search {
-	flex: 1 1 240px;
-	max-width: 360px;
+	flex: 1 1 15rem;
+	max-width: 22.5rem;
 }
 
 .select {
 	width: auto;
-	min-width: 140px;
+	min-width: 8.75rem;
 }
 
 .count {
@@ -479,7 +479,7 @@ function targetLink(entry: AuditEntry): string | null {
 	flex-direction: column;
 	gap: var(--space-2);
 	padding: var(--space-3) var(--space-4);
-	border-bottom: 1px solid var(--border);
+	border-bottom: 0.0625rem solid var(--border);
 }
 
 .entry:last-child {
@@ -545,7 +545,7 @@ a.target:hover {
 	display: inline-flex;
 	gap: var(--space-2);
 	align-items: baseline;
-	padding: 4px var(--space-2);
+	padding: 0.25rem var(--space-2);
 	font-size: var(--text-xs);
 	background: var(--surface-2);
 	border-radius: var(--radius-sm);
@@ -559,7 +559,7 @@ a.target:hover {
 
 .changes dd {
 	display: inline-flex;
-	gap: 4px;
+	gap: 0.25rem;
 	align-items: baseline;
 	margin: 0;
 	font-size: var(--text-xs);

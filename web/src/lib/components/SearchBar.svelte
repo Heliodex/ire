@@ -255,28 +255,28 @@ function openResult(result: SearchResult): void {
 <style>
 .search {
 	position: relative;
-	flex: 0 1 320px;
+	flex: 0 1 20rem;
 	min-width: 0;
 }
 
 .icon {
 	position: absolute;
 	top: 50%;
-	left: 10px;
+	left: 0.625rem;
 	color: var(--text-3);
 	pointer-events: none;
 	transform: translateY(-50%);
 }
 
 .search :global(input) {
-	padding-right: 34px;
-	padding-left: 31px;
+	padding-right: 2.125rem;
+	padding-left: 1.9375rem;
 }
 
 .shortcut {
 	position: absolute;
 	top: 50%;
-	right: 8px;
+	right: 0.5rem;
 	pointer-events: none;
 	transform: translateY(-50%);
 }
@@ -304,7 +304,7 @@ function openResult(result: SearchResult): void {
 	text-align: left;
 	background: transparent;
 	border: 0;
-	border-bottom: 1px solid var(--border);
+	border-bottom: 0.0625rem solid var(--border);
 }
 
 .result:hover,
@@ -316,12 +316,12 @@ function openResult(result: SearchResult): void {
 	display: grid;
 	flex: none;
 	place-items: center;
-	width: 40px;
-	height: 30px;
+	width: 2.5rem;
+	height: 1.875rem;
 	overflow: hidden;
 	color: var(--text-3);
 	background: var(--surface-2);
-	border: 1px solid var(--border);
+	border: 0.0625rem solid var(--border);
 	border-radius: var(--radius-sm);
 }
 
@@ -373,7 +373,7 @@ function openResult(result: SearchResult): void {
 	background: var(--surface-2);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 40rem) {
 	.search {
 		flex: 1 1 100%;
 		order: 5;
@@ -388,7 +388,7 @@ function openResult(result: SearchResult): void {
 	}
 
 	.search :global(input) {
-		padding-right: 12px;
+		padding-right: 0.75rem;
 	}
 }
 </style>

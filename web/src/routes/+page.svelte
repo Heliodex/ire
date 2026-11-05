@@ -155,7 +155,7 @@ async function signIn(address: string): Promise<void> {
 	flex-direction: column;
 	gap: var(--space-4);
 	width: 100%;
-	max-width: 360px;
+	max-width: 22.5rem;
 }
 
 .intro {
@@ -167,10 +167,10 @@ async function signIn(address: string): Promise<void> {
 .mark {
 	display: grid;
 	place-items: center;
-	width: 34px;
-	height: 34px;
+	width: 2.125rem;
+	height: 2.125rem;
 	margin-bottom: var(--space-1);
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-weight: 800;
 	color: var(--on-primary);
 	background: var(--primary);
@@ -234,7 +234,7 @@ form {
 .divider::before,
 .divider::after {
 	flex: 1;
-	height: 1px;
+	height: 0.0625rem;
 	content: "";
 	background: var(--border);
 }
@@ -254,7 +254,7 @@ form {
 	padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
 	text-align: left;
 	background: transparent;
-	border: 1px solid var(--border);
+	border: 0.0625rem solid var(--border);
 	border-radius: var(--radius-sm);
 }
 

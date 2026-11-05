@@ -343,7 +343,7 @@ async function invite(): Promise<void> {
 	flex: 1;
 	flex-direction: column;
 	gap: var(--space-1);
-	min-width: 180px;
+	min-width: 11.25rem;
 }
 
 .field span {
@@ -353,12 +353,12 @@ async function invite(): Promise<void> {
 }
 
 .role-field {
-	flex: 0 0 160px;
+	flex: 0 0 10rem;
 }
 
 .roster {
 	padding-top: var(--space-2);
-	border-top: 1px solid var(--border);
+	border-top: 0.0625rem solid var(--border);
 }
 
 .roster th:nth-child(1) {
@@ -366,15 +366,15 @@ async function invite(): Promise<void> {
 }
 
 .roster th:nth-child(2) {
-	width: 220px;
+	width: 13.75rem;
 }
 
 .roster th:nth-child(3) {
-	width: 88px;
+	width: 5.5rem;
 }
 
 .roster th:nth-child(4) {
-	width: 190px;
+	width: 11.875rem;
 }
 
 .roster td strong {
@@ -409,10 +409,10 @@ code {
 	font-size: var(--text-xs);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 47.5rem) {
 	.roster table,
 	.audit table {
-		min-width: 640px;
+		min-width: 40rem;
 	}
 }
 </style>

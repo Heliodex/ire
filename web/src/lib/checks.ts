@@ -70,7 +70,7 @@ export function overallChecks(checks: CheckLike[]): string {
 	return "pass"
 }
 
-// checkDotMode selects the dot cap from the viewport: full above 1400px, wide above 1280px, compact below.
+// checkDotMode selects the dot cap from the viewport: full above 87.5rem, wide above 80rem, compact below.
 export type CheckDotMode = "compact" | "wide" | "full"
 
 export const maxCheckDots = 11

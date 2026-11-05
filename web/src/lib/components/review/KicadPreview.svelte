@@ -102,14 +102,14 @@ $effect((): (() => void) => {
 .board :global(kicanvas-embed) {
 	display: block;
 	width: 100%;
-	height: 480px;
-	border: 1px solid var(--border);
+	height: 30rem;
+	border: 0.0625rem solid var(--border);
 	border-radius: var(--radius-md);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 40rem) {
 	.board :global(kicanvas-embed) {
-		height: 320px;
+		height: 20rem;
 	}
 }
 </style>

@@ -56,7 +56,7 @@ const blocks = $derived(parseMarkdown(text))
 .markdown blockquote {
 	padding-left: var(--space-3);
 	color: var(--text-2);
-	border-left: 2px solid var(--border);
+	border-left: 0.125rem solid var(--border);
 }
 
 .markdown pre {

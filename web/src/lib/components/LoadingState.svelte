@@ -24,9 +24,9 @@ let { message = "Loading…" }: Props = $props()
 
 .spinner {
 	flex: none;
-	width: 18px;
-	height: 18px;
-	border: 2px solid var(--border-2);
+	width: 1.125rem;
+	height: 1.125rem;
+	border: 0.125rem solid var(--border-2);
 	border-top-color: var(--primary);
 	border-radius: 50%;
 	animation: spin 0.8s linear infinite;

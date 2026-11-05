@@ -50,8 +50,8 @@ let { segments }: Props = $props()
 
 .time-bar {
 	display: flex;
-	gap: 2px;
-	height: 10px;
+	gap: 0.125rem;
+	height: 0.625rem;
 	overflow: hidden;
 	background: var(--surface-3);
 	border-radius: var(--radius-full);
@@ -59,7 +59,7 @@ let { segments }: Props = $props()
 
 .time-segment {
 	flex-basis: 0;
-	min-width: 2px;
+	min-width: 0.125rem;
 }
 
 .time-segment[data-tone="journals"],
@@ -95,15 +95,15 @@ let { segments }: Props = $props()
 
 .time-legend li {
 	display: inline-flex;
-	gap: 4px;
+	gap: 0.25rem;
 	align-items: center;
 }
 
 .time-dot {
 	flex: none;
-	width: 7px;
-	height: 7px;
-	border-radius: 2px;
+	width: 0.4375rem;
+	height: 0.4375rem;
+	border-radius: 0.125rem;
 }
 
 .time-legend strong {

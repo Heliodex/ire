@@ -147,7 +147,7 @@ async function save(keepalive = false): Promise<void> {
 	gap: var(--space-2);
 	align-items: end;
 	padding-top: var(--space-2);
-	border-top: 1px solid var(--border);
+	border-top: 0.0625rem solid var(--border);
 }
 
 .journal-time .field {

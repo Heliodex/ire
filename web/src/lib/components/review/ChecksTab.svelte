@@ -143,7 +143,7 @@ function toggleGroup(group: string): void {
 }
 
 .group + .group {
-	border-top: 1px solid var(--border);
+	border-top: 0.0625rem solid var(--border);
 }
 
 .group-heading {
@@ -192,12 +192,12 @@ function toggleGroup(group: string): void {
 
 .check {
 	display: grid;
-	grid-template-columns: 58px 190px minmax(0, 1fr) 64px;
+	grid-template-columns: 3.625rem 11.875rem minmax(0, 1fr) 4rem;
 	row-gap: var(--space-1);
 	column-gap: var(--space-3);
 	align-items: start;
 	padding: var(--space-2) var(--space-4);
-	border-top: 1px solid var(--border);
+	border-top: 0.0625rem solid var(--border);
 }
 
 .group h2 + .check {
@@ -214,7 +214,7 @@ function toggleGroup(group: string): void {
 }
 
 .check-key {
-	padding-top: 2px;
+	padding-top: 0.125rem;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-size: var(--text-xs);
@@ -226,7 +226,7 @@ function toggleGroup(group: string): void {
 	display: flex;
 	flex-direction: column;
 	grid-column: 1 / -1;
-	gap: 1px;
+	gap: 0.0625rem;
 }
 
 .check-summary {
@@ -244,13 +244,13 @@ function toggleGroup(group: string): void {
 	gap: var(--space-1);
 	align-items: center;
 	justify-self: end;
-	padding: 2px 8px 2px 5px;
+	padding: 0.125rem 0.5rem 0.125rem 0.3125rem;
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--status-pending);
 	cursor: pointer;
 	background: color-mix(in srgb, var(--status-pending) 10%, var(--surface));
-	border: 1px solid color-mix(in srgb, var(--status-pending) 35%, transparent);
+	border: 0.0625rem solid color-mix(in srgb, var(--status-pending) 35%, transparent);
 	border-radius: var(--radius-full);
 }
 
@@ -265,12 +265,12 @@ function toggleGroup(group: string): void {
 	accent-color: var(--primary);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 47.5rem) {
 	.check {
 		grid-template-areas:
 			"status label key ack"
 			"detail detail detail detail";
-		grid-template-columns: 54px minmax(0, 1fr) minmax(90px, 150px) 56px;
+		grid-template-columns: 3.375rem minmax(0, 1fr) minmax(5.625rem, 9.375rem) 3.5rem;
 		row-gap: var(--space-1);
 	}
 
@@ -297,17 +297,17 @@ function toggleGroup(group: string): void {
 	}
 }
 
-@media (max-width: 500px) {
+@media (max-width: 31.25rem) {
 	.check {
 		grid-template-areas:
 			"status label ack"
 			"key key key"
 			"detail detail detail";
-		grid-template-columns: 54px minmax(0, 1fr) 56px;
+		grid-template-columns: 3.375rem minmax(0, 1fr) 3.5rem;
 	}
 }
 
-@media (max-width: 640px) {
+@media (max-width: 40rem) {
 	.check,
 	.group-toggle {
 		padding-inline: var(--space-3);

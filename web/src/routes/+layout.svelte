@@ -238,7 +238,7 @@ async function signOut(): Promise<void> {
 	padding: var(--space-2) var(--space-4);
 	font-size: var(--text-sm);
 	color: var(--warning);
-	border-top: 1px solid var(--border);
+	border-top: 0.0625rem solid var(--border);
 }
 
 .shell {
@@ -258,7 +258,7 @@ async function signOut(): Promise<void> {
 	color: var(--text);
 	text-decoration: none;
 	background: var(--surface);
-	border: 1px solid var(--border-2);
+	border: 0.0625rem solid var(--border-2);
 	border-radius: var(--radius-md);
 	box-shadow: var(--shadow);
 	transform: translateY(calc(-100% - var(--space-4)));
@@ -300,9 +300,9 @@ nav {
 .mark {
 	display: grid;
 	place-items: center;
-	width: 30px;
-	height: 30px;
-	font-size: 11px;
+	width: 1.875rem;
+	height: 1.875rem;
+	font-size: 0.6875rem;
 	font-weight: 800;
 	color: var(--on-primary);
 	background: var(--primary);
@@ -360,7 +360,7 @@ nav a {
 	font-weight: 600;
 	color: var(--text-2);
 	text-decoration: none;
-	border-bottom: 2px solid transparent;
+	border-bottom: 0.125rem solid transparent;
 }
 
 nav a:hover {
@@ -380,7 +380,7 @@ main {
 	padding: var(--space-5) var(--space-4) var(--space-7);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 40rem) {
 	.top,
 	nav {
 		padding-inline: var(--space-3);

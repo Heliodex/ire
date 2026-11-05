@@ -40,7 +40,7 @@ const detail = $derived(
 	flex-direction: column;
 	gap: var(--space-2);
 	width: 100%;
-	max-width: 460px;
+	max-width: 28.75rem;
 }
 
 .code {

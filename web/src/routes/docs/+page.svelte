@@ -304,7 +304,7 @@ IRE_DEV_AUTH=0</pre>
 <style>
 .docs {
 	width: 100%;
-	max-width: 920px;
+	max-width: 57.5rem;
 	margin-inline: auto;
 }
 
@@ -348,7 +348,7 @@ h1 {
 	line-height: 1.5;
 	color: var(--text-2);
 	background: var(--surface-2);
-	border: 1px solid var(--border);
+	border: 0.0625rem solid var(--border);
 	border-radius: var(--radius-md);
 }
 
@@ -381,7 +381,7 @@ h1 {
 	font-size: 0.92em;
 	color: var(--text);
 	background: var(--code-background);
-	border-radius: 4px;
+	border-radius: 0.25rem;
 }
 
 .code {
@@ -393,7 +393,7 @@ h1 {
 	color: var(--code-foreground);
 	white-space: pre;
 	background: var(--code-background);
-	border: 1px solid var(--border);
+	border: 0.0625rem solid var(--border);
 	border-radius: var(--radius-md);
 }
 
@@ -410,7 +410,7 @@ h1 {
 	color: var(--text-3);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 47.5rem) {
 	.endpoints-table th:nth-child(3),
 	.endpoints-table td:nth-child(3) {
 		display: none;

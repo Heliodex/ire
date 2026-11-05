@@ -41,7 +41,7 @@ const fallbackRowHeight = 48
 
 // wideChecks renders up to twenty check dots at the wide layout, where the checks column has room. Narrower layouts keep eliding at eleven.
 let wideChecks = $state(false)
-// fullChecks renders every dot above 1400px, where the checks column expands to fit them all.
+// fullChecks renders every dot above 87.5rem, where the checks column expands to fit them all.
 let fullChecks = $state(false)
 const dotMode = $derived<CheckDotMode>(fullChecks ? "full" : wideChecks ? "wide" : "compact")
 
@@ -334,7 +334,7 @@ $effect((): void => {
 })
 
 onMount((): (() => void) => {
-	const wideQuery = window.matchMedia("(min-width: 1280px)")
+	const wideQuery = window.matchMedia("(min-width: 80rem)")
 	wideChecks = wideQuery.matches
 
 	function onWideChange(event: MediaQueryListEvent): void {
@@ -343,7 +343,7 @@ onMount((): (() => void) => {
 
 	wideQuery.addEventListener("change", onWideChange)
 
-	const fullQuery = window.matchMedia("(min-width: 1400px)")
+	const fullQuery = window.matchMedia("(min-width: 87.5rem)")
 	fullChecks = fullQuery.matches
 
 	function onFullChange(event: MediaQueryListEvent): void {
@@ -1182,9 +1182,9 @@ h1 {
 }
 
 .stats div {
-	min-width: 84px;
+	min-width: 5.25rem;
 	padding: var(--space-2) var(--space-3);
-	border-left: 1px solid var(--border);
+	border-left: 0.0625rem solid var(--border);
 }
 
 .stats div:first-child {
@@ -1213,7 +1213,7 @@ h1 {
 }
 
 .search {
-	flex: 0 1 260px;
+	flex: 0 1 16.25rem;
 }
 
 .filters {
@@ -1276,7 +1276,10 @@ h1 {
 .row {
 	position: relative;
 	display: grid;
-	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 28px 136px 64px minmax(140px, 190px);
+	grid-template-columns: 4rem minmax(0, 1fr) minmax(6.875rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+			8.75rem,
+			11.875rem
+		);
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
@@ -1284,12 +1287,15 @@ h1 {
 	text-align: left;
 	background: transparent;
 	border: 0;
-	border-bottom: 1px solid var(--border);
+	border-bottom: 0.0625rem solid var(--border);
 }
 
 .column-head {
 	display: grid;
-	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 28px 136px 64px minmax(140px, 190px);
+	grid-template-columns: 4rem minmax(0, 1fr) minmax(6.875rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+			8.75rem,
+			11.875rem
+		);
 	gap: var(--space-3);
 	align-items: center;
 	padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
@@ -1297,7 +1303,7 @@ h1 {
 	font-weight: 700;
 	color: var(--text-3);
 	background: var(--surface-2);
-	border-bottom: 1px solid var(--border);
+	border-bottom: 0.0625rem solid var(--border);
 }
 
 .column-head .sort {
@@ -1319,7 +1325,7 @@ h1 {
 }
 
 .column-head .sort .arrow {
-	padding-left: 4px;
+	padding-left: 0.25rem;
 }
 
 .column-head span:first-child {
@@ -1331,7 +1337,7 @@ h1 {
 	display: grid;
 	place-items: center;
 	align-self: stretch;
-	width: 64px;
+	width: 4rem;
 	margin: calc(-1 * var(--space-1)) 0 calc(-1 * var(--space-1)) calc(-1 * var(--space-3));
 	overflow: hidden;
 	background: var(--surface-2);
@@ -1367,7 +1373,7 @@ h1 {
 	position: absolute;
 	inset: 0 auto 0 0;
 	z-index: 1;
-	width: 3px;
+	width: 0.1875rem;
 	content: "";
 	background: var(--primary);
 }
@@ -1517,7 +1523,7 @@ a.maker-name:hover {
 .dots {
 	display: flex;
 	flex-wrap: nowrap;
-	gap: 3px;
+	gap: 0.1875rem;
 	align-items: center;
 	overflow: hidden;
 }
@@ -1529,8 +1535,8 @@ a.status {
 }
 
 a.checks {
-	padding: 4px 6px;
-	margin: -4px -6px;
+	padding: 0.25rem 0.375rem;
+	margin: -0.25rem -0.375rem;
 }
 
 a.checks:hover {
@@ -1540,8 +1546,8 @@ a.checks:hover {
 
 a.checks:focus-visible,
 a.status:focus-visible {
-	outline: 2px solid var(--accent-blue);
-	outline-offset: 2px;
+	outline: 0.125rem solid var(--accent-blue);
+	outline-offset: 0.125rem;
 }
 
 .tab-count {
@@ -1551,7 +1557,7 @@ a.status:focus-visible {
 
 .dot-more {
 	flex: none;
-	font-size: 10px;
+	font-size: 0.625rem;
 	font-weight: 700;
 	line-height: 1;
 	color: var(--text-3);
@@ -1560,23 +1566,23 @@ a.status:focus-visible {
 
 .dot-group {
 	display: flex;
-	gap: 1px;
+	gap: 0.0625rem;
 }
 
 .dot-group + .dot-group {
-	padding-left: 4px;
-	border-left: 1px solid var(--border-2);
+	padding-left: 0.25rem;
+	border-left: 0.0625rem solid var(--border-2);
 }
 
 .dot {
 	display: grid;
 	flex: none;
 	place-items: center;
-	width: 11px;
-	height: 11px;
+	width: 0.6875rem;
+	height: 0.6875rem;
 	color: var(--text-2);
 	background: var(--border-2);
-	border-radius: 2px;
+	border-radius: 0.125rem;
 }
 
 .dot[data-tone="approved"],
@@ -1607,23 +1613,23 @@ a.status:focus-visible {
 	z-index: var(--layer-toast);
 	display: flex;
 	flex-direction: column;
-	gap: 3px;
+	gap: 0.1875rem;
 	width: max-content;
-	max-width: 264px;
+	max-width: 16.5rem;
 	padding: var(--space-2) var(--space-3);
 	pointer-events: none;
 	background: var(--surface);
-	border: 1px solid var(--border-2);
+	border: 0.0625rem solid var(--border-2);
 	border-radius: var(--radius-md);
 	box-shadow: var(--shadow);
 }
 
 .check-tip.above {
-	transform: translate(-50%, calc(-100% - 6px));
+	transform: translate(-50%, calc(-100% - 0.375rem));
 }
 
 .check-tip.below {
-	transform: translate(-50%, 6px);
+	transform: translate(-50%, 0.375rem);
 }
 
 .tip-head {
@@ -1660,7 +1666,7 @@ a.status:focus-visible {
 }
 
 .preview-veil img {
-	max-width: min(88vw, 1100px);
+	max-width: min(88vw, 68.75rem);
 	max-height: 82vh;
 	object-fit: contain;
 	border-radius: var(--radius-lg);
@@ -1673,13 +1679,13 @@ a.status:focus-visible {
 	color: var(--text);
 }
 
-@media (min-width: 761px) {
+@media (min-width: 47.5625rem) {
 	.checks {
 		align-items: flex-end;
 	}
 }
 
-@media (min-width: 1025px) {
+@media (min-width: 64.0625rem) {
 	.ship-title {
 		grid-row: 1;
 		grid-column: 2;
@@ -1721,35 +1727,41 @@ a.status:focus-visible {
 	}
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 80rem) {
 	.row,
 	.column-head {
-		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(140px, 300px);
+		grid-template-columns: 4rem minmax(0, 1fr) minmax(6.875rem, 11.875rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+				8.75rem,
+				18.75rem
+			);
 	}
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 87.5rem) {
 	.row,
 	.column-head {
-		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(200px, 480px);
+		grid-template-columns: 4rem minmax(0, 1fr) minmax(6.875rem, 11.875rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+				12.5rem,
+				30rem
+			);
 	}
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 64rem) {
 	.column-head {
 		display: none;
 	}
 
 	.dot {
-		width: 9px;
-		height: 9px;
+		width: 0.5625rem;
+		height: 0.5625rem;
 	}
 
 	.row {
 		grid-template-areas:
 			"thumb title badges checks"
 			"thumb facts facts facts";
-		grid-template-columns: 64px minmax(0, 1fr) 170px 160px;
+		grid-template-columns: 4rem minmax(0, 1fr) 10.625rem 10rem;
 		row-gap: var(--space-1);
 		column-gap: var(--space-3);
 	}
@@ -1766,7 +1778,7 @@ a.status:focus-visible {
 	.badges {
 		display: grid;
 		grid-area: badges;
-		grid-template-columns: 96px 64px;
+		grid-template-columns: 6rem 4rem;
 		gap: var(--space-2);
 		align-items: center;
 	}
@@ -1778,7 +1790,7 @@ a.status:focus-visible {
 	.facts {
 		display: grid;
 		grid-area: facts;
-		grid-template-columns: minmax(120px, 1fr) 36px 150px;
+		grid-template-columns: minmax(7.5rem, 1fr) 2.25rem 9.375rem;
 		gap: var(--space-2);
 		align-items: center;
 	}
@@ -1792,12 +1804,12 @@ a.status:focus-visible {
 	}
 }
 
-@media (min-width: 761px) and (max-width: 1024px) {
+@media (min-width: 47.5625rem) and (max-width: 64rem) {
 	.row {
 		grid-template-areas:
 			"thumb name maker badges"
 			"thumb version timing checks";
-		grid-template-columns: 64px minmax(0, 15rem) 13rem minmax(190px, 1fr);
+		grid-template-columns: 4rem minmax(0, 15rem) 13rem minmax(11.875rem, 1fr);
 	}
 
 	.ship-title {
@@ -1848,13 +1860,13 @@ a.status:focus-visible {
 	}
 }
 
-@media (max-width: 980px) {
+@media (max-width: 61.25rem) {
 	.keys {
 		display: none;
 	}
 }
 
-@media (max-width: 760px) {
+@media (max-width: 47.5rem) {
 	.stats {
 		width: 100%;
 	}
@@ -1869,8 +1881,8 @@ a.status:focus-visible {
 	}
 
 	.dot {
-		width: 8px;
-		height: 8px;
+		width: 0.5rem;
+		height: 0.5rem;
 	}
 
 	.row {
@@ -1878,7 +1890,7 @@ a.status:focus-visible {
 			"thumb title title title"
 			"thumb facts facts facts"
 			"thumb status checks checks";
-		grid-template-columns: 64px 96px 44px minmax(0, 1fr);
+		grid-template-columns: 4rem 6rem 2.75rem minmax(0, 1fr);
 		column-gap: var(--space-2);
 	}
 
@@ -1888,7 +1900,7 @@ a.status:focus-visible {
 			"name name"
 			"maker theme";
 		grid-template-columns: minmax(0, 1fr) auto;
-		gap: 2px var(--space-2);
+		gap: 0.125rem var(--space-2);
 		align-items: baseline;
 	}
 
@@ -1946,7 +1958,7 @@ a.status:focus-visible {
 	}
 }
 
-@media (max-width: 640px) {
+@media (max-width: 40rem) {
 	.label-full {
 		display: none;
 	}
@@ -1956,7 +1968,7 @@ a.status:focus-visible {
 	}
 
 	.filters button {
-		height: 32px;
+		height: 2rem;
 	}
 
 	.stats {
@@ -1970,22 +1982,22 @@ a.status:focus-visible {
 	}
 
 	.stats div {
-		flex: 0 0 88px;
+		flex: 0 0 5.5rem;
 		min-width: 0;
 		padding: var(--space-1) var(--space-2);
 	}
 }
 
-@media (max-width: 400px) {
+@media (max-width: 25rem) {
 	.dots {
 		display: none;
 	}
 }
 
-@media (max-width: 370px) {
+@media (max-width: 23.125rem) {
 	.counts {
 		flex-wrap: wrap;
-		gap: 3px;
+		gap: 0.1875rem;
 	}
 
 	.checks .fast {

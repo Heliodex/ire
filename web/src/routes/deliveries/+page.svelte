@@ -230,7 +230,7 @@ h1 {
 }
 
 .head p {
-	max-width: 680px;
+	max-width: 42.5rem;
 	padding-top: var(--space-1);
 	font-size: var(--text-sm);
 	color: var(--text-2);
@@ -242,9 +242,9 @@ h1 {
 }
 
 :where(.stats) div {
-	min-width: 92px;
+	min-width: 5.75rem;
 	padding: var(--space-2) var(--space-3);
-	border-left: 1px solid var(--border);
+	border-left: 0.0625rem solid var(--border);
 }
 
 :where(.stats) div:first-child {
@@ -280,7 +280,7 @@ h1 {
 	align-items: baseline;
 	justify-content: space-between;
 	padding: var(--space-3) var(--space-4);
-	border-bottom: 1px solid var(--border);
+	border-bottom: 0.0625rem solid var(--border);
 }
 
 .card-head h2 {
@@ -294,7 +294,7 @@ h1 {
 }
 
 .row {
-	border-bottom: 1px solid var(--border);
+	border-bottom: 0.0625rem solid var(--border);
 }
 
 .row:last-child {
@@ -357,7 +357,7 @@ h1 {
 }
 
 pre {
-	max-height: 340px;
+	max-height: 21.25rem;
 	padding: var(--space-3);
 	margin: 0 var(--space-3) var(--space-3);
 	overflow: auto;
@@ -366,7 +366,7 @@ pre {
 	overflow-wrap: anywhere;
 	white-space: pre-wrap;
 	background: var(--surface-2);
-	border: 1px solid var(--border);
+	border: 0.0625rem solid var(--border);
 	border-radius: var(--radius-sm);
 }
 
@@ -379,7 +379,7 @@ dl {
 
 dl div {
 	display: grid;
-	grid-template-columns: 80px 1fr;
+	grid-template-columns: 5rem 1fr;
 	gap: var(--space-2);
 }
 
@@ -392,13 +392,13 @@ dd {
 	overflow-wrap: anywhere;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 56.25rem) {
 	.grid {
 		grid-template-columns: 1fr;
 	}
 }
 
-@media (max-width: 760px) {
+@media (max-width: 47.5rem) {
 	.stats {
 		width: 100%;
 	}

@@ -249,7 +249,7 @@ h1 {
 .ship-list > li + li {
 	padding-top: var(--space-3);
 	margin-top: var(--space-3);
-	border-top: 1px solid var(--border);
+	border-top: 0.0625rem solid var(--border);
 }
 
 .ship-head {
