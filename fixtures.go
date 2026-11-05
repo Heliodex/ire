@@ -248,7 +248,7 @@ func (a *ireApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := a.nowText()
-	tables := []string{"draft", "check_ack", "claim", "review_override", "review", "webhook_outbox", "outbox", "submission_event", "journal_entry", "bom_line", "check_result", "submission_version", "ingest_delivery", "submission"}
+	tables := []string{"draft", "check_ack", "claim", "review_override", "review", "webhook_outbox", "outbox", "submission_event", "journal_entry", "bom_line", "check_result", "repo_snapshot", "submission_version", "ingest_delivery", "submission"}
 
 	statements := make([]storage.TransactionStatement, 0, len(tables)+1)
 	for _, table := range tables {
