@@ -74,7 +74,7 @@ func (a *reviewApp) metricsText(ctx context.Context, id string) (string, error) 
 
 	fmt.Fprintf(&out, "# HELP review_stage1_total Stage 1 reviews with a decision.\n# TYPE review_stage1_total counter\nreview_stage1_total %d\n", reviews)
 
-	rate := 0.0
+	var rate float64
 	if reviews > 0 {
 		rate = float64(holds) / float64(reviews)
 	}
