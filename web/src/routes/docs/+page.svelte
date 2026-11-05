@@ -305,6 +305,7 @@ IRE_DEV_AUTH=0</pre>
 .docs {
 	width: 100%;
 	max-width: 920px;
+	margin-inline: auto;
 }
 
 .docs-head {
