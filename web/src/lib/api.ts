@@ -328,7 +328,7 @@ export async function fetchCheckHead(id: string): Promise<CheckHead> {
 	return parseJSON(response, checkHeadSchema)
 }
 
-// fetchSubmissionFile returns the capped text of one snapshot-listed board file for in-app preview.
+// fetchSubmissionFile returns the capped text of one snapshot-listed KiCad file for in-app preview.
 export async function fetchSubmissionFile(id: string, path: string): Promise<SubmissionFile> {
 	const response = await fetch(
 		`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`,

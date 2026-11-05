@@ -45,7 +45,7 @@ function onError(event: ErrorEvent): void {
 	if (!isKicanvasError(event)) return
 
 	event.preventDefault()
-	error = "This board could not be rendered."
+	error = "This file could not be rendered."
 	loading = false
 }
 
@@ -73,7 +73,7 @@ $effect((): (() => void) => {
 		} catch {
 			if (!element.isConnected) return
 
-			error = "The board viewer could not be loaded."
+			error = "The file viewer could not be loaded."
 			loading = false
 		}
 	})()
@@ -87,7 +87,7 @@ $effect((): (() => void) => {
 
 <div class="preview">
 	{#if loading}
-		<LoadingState message="Rendering board…" />
+		<LoadingState message="Rendering file…" />
 	{:else if error}
 		<p class="ui-notice" data-tone="bad" role="alert">{error}</p>
 	{/if}

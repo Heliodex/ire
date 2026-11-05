@@ -14,8 +14,20 @@ import (
 // maxPreviewBytes caps one previewed file so a board file cannot exhaust the tab or the runner.
 const maxPreviewBytes = 2 << 20
 
-// previewableBoardSuffix is the only file kind the review screen previews in this slice: a self-contained KiCad board.
-const previewableBoardSuffix = ".kicad_pcb"
+// previewableKicadSuffixes lists the file kinds the review screen previews in this slice: self-contained KiCad boards, schematics and projects, all rendered by the vendored KiCanvas bundle.
+var previewableKicadSuffixes = []string{".kicad_pcb", ".kicad_sch", ".kicad_pro"}
+
+// isPreviewableKicad reports whether the review screen can render a file in-app. The frontend mirrors the same suffix set.
+func isPreviewableKicad(path string) bool {
+	lowered := strings.ToLower(path)
+	for _, suffix := range previewableKicadSuffixes {
+		if strings.HasSuffix(lowered, suffix) {
+			return true
+		}
+	}
+
+	return false
+}
 
 // handleSubmissionFile returns the capped text of one snapshot-listed board file for in-app preview. The path must appear in the ship's evidence snapshot, so reviewers cannot walk the repository or read unrelated files.
 func (a *reviewApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
@@ -37,8 +49,8 @@ func (a *reviewApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request)
 
 	trimmed := strings.TrimPrefix(path.Clean("/"+requested), "/")
 
-	if !strings.HasSuffix(strings.ToLower(trimmed), previewableBoardSuffix) {
-		app.WriteError(w, http.StatusUnsupportedMediaType, "only KiCad board files can be previewed")
+	if !isPreviewableKicad(trimmed) {
+		app.WriteError(w, http.StatusUnsupportedMediaType, "only KiCad files can be previewed")
 		return
 	}
 

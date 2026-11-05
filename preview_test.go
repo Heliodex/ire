@@ -11,8 +11,10 @@ import (
 )
 
 const previewBoardText = "(kicad_pcb (version 20211014) (generator pcbnew) (general (thickness 1.6)))"
+const previewSchematicText = "(kicad_sch (version 20230101) (generator eeschema) (paper \"A4\"))"
+const previewProjectText = `{"board": {"design_settings": {}}, "meta": {"version": 1}}`
 
-// fakePreviewForge serves one board file and one oversized file for the preview tests.
+// fakePreviewForge serves one board file, one schematic, one project and one oversized file for the preview tests.
 func fakePreviewForge(t *testing.T) *httptest.Server {
 	t.Helper()
 
@@ -22,6 +24,10 @@ func fakePreviewForge(t *testing.T) *httptest.Server {
 		switch r.URL.Path {
 		case "/repos/example/queued/contents/board.kicad_pcb":
 			_, _ = io.WriteString(w, previewBoardText)
+		case "/repos/example/queued/contents/board.kicad_sch":
+			_, _ = io.WriteString(w, previewSchematicText)
+		case "/repos/example/queued/contents/board.kicad_pro":
+			_, _ = io.WriteString(w, previewProjectText)
 		case "/repos/example/queued/contents/big.kicad_pcb":
 			_, _ = io.WriteString(w, "(kicad_pcb (version 20211014)")
 			_, _ = io.WriteString(w, strings.Repeat("x", maxPreviewBytes+1))
@@ -38,7 +44,7 @@ func fakePreviewForge(t *testing.T) *httptest.Server {
 func seedPreviewShip(t *testing.T, application *reviewApp) {
 	t.Helper()
 
-	files := `[{"path":"board.kicad_pcb","kind":"file"},{"path":"big.kicad_pcb","kind":"file"},{"path":"README.md","kind":"file"}]`
+	files := `[{"path":"board.kicad_pcb","kind":"file"},{"path":"board.kicad_sch","kind":"file"},{"path":"board.kicad_pro","kind":"file"},{"path":"big.kicad_pcb","kind":"file"},{"path":"README.md","kind":"file"}]`
 
 	if _, err := application.store.Exec(t.Context(),
 		`update submission set repo_url = 'https://github.com/example/queued' where id = 'sub_fixture_1'`); err != nil {
@@ -47,7 +53,7 @@ func seedPreviewShip(t *testing.T, application *reviewApp) {
 
 	if _, err := application.store.Exec(t.Context(),
 		`insert or replace into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha, file_count, truncated, readme_text, files, commits, fetched_at, error)
-		values ('sub_fixture_1', 1, 'github', 'example/queued', 'main', 'head1', 3, 0, '', ?, '[]', ?, null)`,
+		values ('sub_fixture_1', 1, 'github', 'example/queued', 'main', 'head1', 5, 0, '', ?, '[]', ?, null)`,
 		files, application.nowText()); err != nil {
 		t.Fatal(err)
 	}
@@ -94,6 +100,26 @@ func TestSubmissionFilePreview(t *testing.T) {
 	file := decode[contract.SubmissionFileResponse](t, ok).File
 	if file.Path != "board.kicad_pcb" || file.Text != previewBoardText || file.SizeBytes != len(previewBoardText) || file.Truncated {
 		t.Fatalf("preview file = %+v", file)
+	}
+
+	schematic := preview("board.kicad_sch")
+	if schematic.Code != http.StatusOK {
+		t.Fatalf("schematic preview = %d: %s", schematic.Code, schematic.Body.String())
+	}
+
+	schematicFile := decode[contract.SubmissionFileResponse](t, schematic).File
+	if schematicFile.Path != "board.kicad_sch" || schematicFile.Text != previewSchematicText {
+		t.Fatalf("schematic preview file = %+v", schematicFile)
+	}
+
+	project := preview("board.kicad_pro")
+	if project.Code != http.StatusOK {
+		t.Fatalf("project preview = %d: %s", project.Code, project.Body.String())
+	}
+
+	projectFile := decode[contract.SubmissionFileResponse](t, project).File
+	if projectFile.Path != "board.kicad_pro" || projectFile.Text != previewProjectText {
+		t.Fatalf("project preview file = %+v", projectFile)
 	}
 }
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { type Bundle, fetchSubmissionFile } from "../../api"
 import { formatDateTime } from "../../format"
-import { isPreviewableBoard } from "../../preview"
+import { isPreviewableKicad } from "../../preview"
 import LoadingState from "../LoadingState.svelte"
 import KicadPreview from "./KicadPreview.svelte"
 import Markdown from "./Markdown.svelte"
@@ -53,7 +53,7 @@ async function togglePreview(path: string): Promise<void> {
 	} catch (err) {
 		if (previewPath !== path) return
 
-		previewError = err instanceof Error ? err.message : "Could not load that board file."
+		previewError = err instanceof Error ? err.message : "Could not load that file."
 	} finally {
 		if (previewPath === path) previewLoading = false
 	}
@@ -220,7 +220,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 							>
 								<span class="file-kind">{row.directory ? "dir" : row.kind}</span>
 								<code>{row.name}{row.directory ? "/" : ""}</code>
-								{#if !row.directory && isPreviewableBoard(row.path)}
+								{#if !row.directory && isPreviewableKicad(row.path)}
 									<button
 										class="preview-link"
 										onclick={(): Promise<void> => togglePreview(row.path)}
@@ -283,11 +283,11 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 	{#if previewPath !== ""}
 		<section aria-live="polite" class="ui-card padded preview">
 			<div class="card-head">
-				<h3>Board preview</h3>
+				<h3>File preview</h3>
 				<span class="card-count">{previewPath}</span>
 			</div>
 			{#if previewLoading}
-				<LoadingState message="Loading board…" />
+				<LoadingState message="Loading file…" />
 			{:else if previewError !== ""}
 				<p class="ui-notice" data-tone="bad" role="alert">{previewError}</p>
 			{:else if previewText !== ""}
