@@ -1154,27 +1154,27 @@ h1 {
 @media (min-width: 761px) and (max-width: 1024px) {
 	.row {
 		grid-template-areas:
-			"thumb title title title badges"
-			"thumb version timing timing checks";
-		grid-template-columns: 64px minmax(0, 1fr) 36px 160px 190px;
+			"thumb name maker badges"
+			"thumb version timing checks";
+		grid-template-columns: 64px minmax(0, 15rem) 13rem minmax(190px, 1fr);
 	}
 
 	.ship-title {
-		display: grid;
-		grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
-		gap: var(--space-2);
-		align-items: baseline;
-		min-width: 0;
+		display: contents;
 	}
 
 	.ship-name {
+		grid-area: name;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		font-size: var(--text-md);
+		font-weight: 700;
 		white-space: nowrap;
 	}
 
 	.inline-maker {
 		display: block;
+		grid-area: maker;
 		padding-left: 0;
 	}
 
@@ -1186,6 +1186,10 @@ h1 {
 		display: contents;
 	}
 
+	.badges {
+		justify-content: end;
+	}
+
 	.version {
 		grid-area: version;
 		justify-self: start;
@@ -1194,6 +1198,8 @@ h1 {
 
 	.timing {
 		grid-area: timing;
+		justify-self: start;
+		text-align: left;
 	}
 
 	.checks {
