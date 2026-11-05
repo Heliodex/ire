@@ -930,7 +930,7 @@ h1 {
 
 .row {
 	display: grid;
-	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 136px 64px minmax(140px, 190px);
+	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 28px 136px 64px minmax(140px, 190px);
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
@@ -943,7 +943,7 @@ h1 {
 
 .column-head {
 	display: grid;
-	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 136px 64px minmax(140px, 190px);
+	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 28px 136px 64px minmax(140px, 190px);
 	gap: var(--space-3);
 	align-items: center;
 	padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
@@ -1278,7 +1278,7 @@ h1 {
 @media (min-width: 1280px) {
 	.row,
 	.column-head {
-		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 36px 136px 64px minmax(140px, 190px);
+		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(140px, 190px);
 	}
 }
 
