@@ -192,7 +192,7 @@ function toggleGroup(group: string): void {
 
 .check {
 	display: grid;
-	grid-template-columns: 3.63rem 11.88rem minmax(0, 1fr) 4rem;
+	grid-template-columns: 3.75rem 12rem minmax(0, 1fr) 4rem;
 	row-gap: var(--space-1);
 	column-gap: var(--space-3);
 	align-items: start;
@@ -244,7 +244,7 @@ function toggleGroup(group: string): void {
 	gap: var(--space-1);
 	align-items: center;
 	justify-self: end;
-	padding: 2px 0.5rem 2px 0.31rem;
+	padding: 2px 0.5rem 2px 0.25rem;
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--status-pending);
@@ -270,7 +270,7 @@ function toggleGroup(group: string): void {
 		grid-template-areas:
 			"status label key ack"
 			"detail detail detail detail";
-		grid-template-columns: 3.38rem minmax(0, 1fr) minmax(5.63rem, 9.38rem) 3.5rem;
+		grid-template-columns: 3.5rem minmax(0, 1fr) minmax(5.75rem, 9.5rem) 3.5rem;
 		row-gap: var(--space-1);
 	}
 
@@ -303,7 +303,7 @@ function toggleGroup(group: string): void {
 			"status label ack"
 			"key key key"
 			"detail detail detail";
-		grid-template-columns: 3.38rem minmax(0, 1fr) 3.5rem;
+		grid-template-columns: 3.5rem minmax(0, 1fr) 3.5rem;
 	}
 }
 

@@ -167,8 +167,8 @@ async function signIn(address: string): Promise<void> {
 .mark {
 	display: grid;
 	place-items: center;
-	width: 2.13rem;
-	height: 2.13rem;
+	width: 2.25rem;
+	height: 2.25rem;
 	margin-bottom: var(--space-1);
 	font-size: 0.75rem;
 	font-weight: 800;

@@ -374,7 +374,7 @@ async function invite(): Promise<void> {
 }
 
 .roster th:nth-child(4) {
-	width: 11.88rem;
+	width: 12rem;
 }
 
 .roster td strong {

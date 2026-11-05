@@ -300,9 +300,9 @@ nav {
 .mark {
 	display: grid;
 	place-items: center;
-	width: 1.88rem;
-	height: 1.88rem;
-	font-size: 0.69rem;
+	width: 2rem;
+	height: 2rem;
+	font-size: 0.75rem;
 	font-weight: 800;
 	color: var(--on-primary);
 	background: var(--primary);

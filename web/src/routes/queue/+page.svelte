@@ -1276,10 +1276,7 @@ h1 {
 .row {
 	position: relative;
 	display: grid;
-	grid-template-columns: 4rem minmax(0, 1fr) minmax(6.88rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
-			8.75rem,
-			11.88rem
-		);
+	grid-template-columns: 4rem minmax(0, 1fr) minmax(7rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(8.75rem, 12rem);
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
@@ -1292,10 +1289,7 @@ h1 {
 
 .column-head {
 	display: grid;
-	grid-template-columns: 4rem minmax(0, 1fr) minmax(6.88rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
-			8.75rem,
-			11.88rem
-		);
+	grid-template-columns: 4rem minmax(0, 1fr) minmax(7rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(8.75rem, 12rem);
 	gap: var(--space-3);
 	align-items: center;
 	padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
@@ -1373,7 +1367,7 @@ h1 {
 	position: absolute;
 	inset: 0 auto 0 0;
 	z-index: 1;
-	width: 0.19rem;
+	width: 0.25rem;
 	content: "";
 	background: var(--primary);
 }
@@ -1523,7 +1517,7 @@ a.maker-name:hover {
 .dots {
 	display: flex;
 	flex-wrap: nowrap;
-	gap: 0.19rem;
+	gap: 0.25rem;
 	align-items: center;
 	overflow: hidden;
 }
@@ -1535,8 +1529,8 @@ a.status {
 }
 
 a.checks {
-	padding: 0.25rem 0.38rem;
-	margin: -0.25rem -0.38rem;
+	padding: 0.25rem 0.5rem;
+	margin: -0.25rem -0.5rem;
 }
 
 a.checks:hover {
@@ -1557,7 +1551,7 @@ a.status:focus-visible {
 
 .dot-more {
 	flex: none;
-	font-size: 0.63rem;
+	font-size: 0.75rem;
 	font-weight: 700;
 	line-height: 1;
 	color: var(--text-3);
@@ -1578,8 +1572,8 @@ a.status:focus-visible {
 	display: grid;
 	flex: none;
 	place-items: center;
-	width: 0.69rem;
-	height: 0.69rem;
+	width: 0.75rem;
+	height: 0.75rem;
 	color: var(--text-2);
 	background: var(--border-2);
 	border-radius: 2px;
@@ -1613,7 +1607,7 @@ a.status:focus-visible {
 	z-index: var(--layer-toast);
 	display: flex;
 	flex-direction: column;
-	gap: 0.19rem;
+	gap: 0.25rem;
 	width: max-content;
 	max-width: 16.5rem;
 	padding: var(--space-2) var(--space-3);
@@ -1625,11 +1619,11 @@ a.status:focus-visible {
 }
 
 .check-tip.above {
-	transform: translate(-50%, calc(-100% - 0.38rem));
+	transform: translate(-50%, calc(-100% - 0.5rem));
 }
 
 .check-tip.below {
-	transform: translate(-50%, 0.38rem);
+	transform: translate(-50%, 0.5rem);
 }
 
 .tip-head {
@@ -1730,7 +1724,7 @@ a.status:focus-visible {
 @media (min-width: 80rem) {
 	.row,
 	.column-head {
-		grid-template-columns: 4rem minmax(0, 1fr) minmax(6.88rem, 11.88rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+		grid-template-columns: 4rem minmax(0, 1fr) minmax(7rem, 12rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
 				8.75rem,
 				18.75rem
 			);
@@ -1740,7 +1734,7 @@ a.status:focus-visible {
 @media (min-width: 87.5rem) {
 	.row,
 	.column-head {
-		grid-template-columns: 4rem minmax(0, 1fr) minmax(6.88rem, 11.88rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+		grid-template-columns: 4rem minmax(0, 1fr) minmax(7rem, 12rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
 				12.5rem,
 				30rem
 			);
@@ -1753,15 +1747,15 @@ a.status:focus-visible {
 	}
 
 	.dot {
-		width: 0.56rem;
-		height: 0.56rem;
+		width: 0.5rem;
+		height: 0.5rem;
 	}
 
 	.row {
 		grid-template-areas:
 			"thumb title badges checks"
 			"thumb facts facts facts";
-		grid-template-columns: 4rem minmax(0, 1fr) 10.63rem 10rem;
+		grid-template-columns: 4rem minmax(0, 1fr) 10.75rem 10rem;
 		row-gap: var(--space-1);
 		column-gap: var(--space-3);
 	}
@@ -1790,7 +1784,7 @@ a.status:focus-visible {
 	.facts {
 		display: grid;
 		grid-area: facts;
-		grid-template-columns: minmax(7.5rem, 1fr) 2.25rem 9.38rem;
+		grid-template-columns: minmax(7.5rem, 1fr) 2.25rem 9.5rem;
 		gap: var(--space-2);
 		align-items: center;
 	}
@@ -1809,7 +1803,7 @@ a.status:focus-visible {
 		grid-template-areas:
 			"thumb name maker badges"
 			"thumb version timing checks";
-		grid-template-columns: 4rem minmax(0, 15rem) 13rem minmax(11.88rem, 1fr);
+		grid-template-columns: 4rem minmax(0, 15rem) 13rem minmax(12rem, 1fr);
 	}
 
 	.ship-title {
@@ -1997,7 +1991,7 @@ a.status:focus-visible {
 @media (max-width: 23.13rem) {
 	.counts {
 		flex-wrap: wrap;
-		gap: 0.19rem;
+		gap: 0.25rem;
 	}
 
 	.checks .fast {

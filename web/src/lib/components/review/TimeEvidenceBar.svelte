@@ -51,7 +51,7 @@ let { segments }: Props = $props()
 .time-bar {
 	display: flex;
 	gap: 2px;
-	height: 0.63rem;
+	height: 0.75rem;
 	overflow: hidden;
 	background: var(--surface-3);
 	border-radius: var(--radius-full);
@@ -101,8 +101,8 @@ let { segments }: Props = $props()
 
 .time-dot {
 	flex: none;
-	width: 0.44rem;
-	height: 0.44rem;
+	width: 0.5rem;
+	height: 0.5rem;
 	border-radius: 2px;
 }
 

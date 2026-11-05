@@ -308,7 +308,7 @@ h1 {
 }
 
 .search {
-	flex: 0 1 18.13rem;
+	flex: 0 1 18.25rem;
 }
 
 .error-notice {
@@ -361,7 +361,7 @@ h1 {
 	flex: none;
 	place-items: center;
 	width: 3.5rem;
-	height: 2.63rem;
+	height: 2.75rem;
 	overflow: hidden;
 	color: var(--text-3);
 	background: var(--surface-2);
@@ -404,7 +404,7 @@ h1 {
 	display: flex;
 	flex: none;
 	flex-direction: column;
-	gap: 0.19rem;
+	gap: 0.25rem;
 	align-items: flex-start;
 }
 
@@ -418,7 +418,7 @@ h1 {
 	flex: none;
 	flex-direction: column;
 	align-items: flex-end;
-	min-width: 4.63rem;
+	min-width: 4.75rem;
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }

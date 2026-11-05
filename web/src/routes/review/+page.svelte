@@ -1755,9 +1755,9 @@ h1 {
 
 .event .dot {
 	flex: none;
-	width: 0.38rem;
-	height: 0.38rem;
-	margin-top: 0.44rem;
+	width: 0.5rem;
+	height: 0.5rem;
+	margin-top: 0.5rem;
 	background: var(--primary);
 	border-radius: 50%;
 }
@@ -2026,7 +2026,7 @@ h1 {
 	}
 
 	.toast {
-		bottom: calc(4.63rem + var(--space-3));
+		bottom: calc(4.75rem + var(--space-3));
 	}
 }
 
