@@ -1184,6 +1184,7 @@ async function saveDraftNow(): Promise<void> {
 					evidence={bundle.evidence}
 					onRefresh={refreshEvidenceNow}
 					refreshing={refreshingEvidence}
+					submissionId={bundle.submission.id}
 				/>
 			{:else if tab === "history"}
 				<HistoryTab reviews={bundle.reviews} />

@@ -35,6 +35,7 @@
 			"!**/build",
 			"!**/dist",
 			"!**/.wt-dev.vite.config.ts",
+			"!src/lib/vendor",
 			"!static"
 		]
 	},

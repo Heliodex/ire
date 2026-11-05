@@ -14,7 +14,7 @@
 		"builtin": true,
 		"node": true
 	},
-	"ignorePatterns": ["node_modules/**"],
+	"ignorePatterns": ["node_modules/**", "src/lib/vendor/**"],
 	"options": {
 		"denyWarnings": true,
 		"reportUnusedDisableDirectives": "warn",

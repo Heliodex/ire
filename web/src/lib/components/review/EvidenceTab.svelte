@@ -1,6 +1,9 @@
 <script lang="ts">
-import type { Bundle } from "../../api"
+import { type Bundle, fetchSubmissionFile } from "../../api"
 import { formatDateTime } from "../../format"
+import { isPreviewableBoard } from "../../preview"
+import LoadingState from "../LoadingState.svelte"
+import KicadPreview from "./KicadPreview.svelte"
 import Markdown from "./Markdown.svelte"
 
 let {
@@ -9,17 +12,52 @@ let {
 	refreshing,
 	error,
 	onRefresh,
+	submissionId,
 }: {
 	evidence: Bundle["evidence"]
 	canRefresh: boolean
 	refreshing: boolean
 	error: string
 	onRefresh(): void
+	submissionId: string
 } = $props()
 
 let fileQuery = $state("")
 let commitQuery = $state("")
 let depth = $state("0")
+let previewPath = $state("")
+let previewText = $state("")
+let previewLoading = $state(false)
+let previewError = $state("")
+
+// togglePreview opens one board preview at a time, fetching its text on demand.
+async function togglePreview(path: string): Promise<void> {
+	if (previewPath === path && (previewText !== "" || previewError !== "" || previewLoading)) {
+		previewPath = ""
+		previewText = ""
+		previewError = ""
+
+		return
+	}
+
+	previewPath = path
+	previewText = ""
+	previewError = ""
+	previewLoading = true
+
+	try {
+		const file = await fetchSubmissionFile(submissionId, path)
+		if (previewPath !== path) return
+
+		previewText = file.text
+	} catch (err) {
+		if (previewPath !== path) return
+
+		previewError = err instanceof Error ? err.message : "Could not load that board file."
+	} finally {
+		if (previewPath === path) previewLoading = false
+	}
+}
 
 const filteredFiles = $derived(
 	(evidence?.files ?? []).filter(file => {
@@ -182,6 +220,15 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 							>
 								<span class="file-kind">{row.directory ? "dir" : row.kind}</span>
 								<code>{row.name}{row.directory ? "/" : ""}</code>
+								{#if !row.directory && isPreviewableBoard(row.path)}
+									<button
+										class="preview-link"
+										onclick={(): Promise<void> => togglePreview(row.path)}
+										type="button"
+									>
+										{previewPath === row.path ? "Hide" : "Preview"}
+									</button>
+								{/if}
 							</li>
 						{/each}
 					</ul>
@@ -232,6 +279,22 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 			{/if}
 		</section>
 	</div>
+
+	{#if previewPath !== ""}
+		<section aria-live="polite" class="ui-card padded preview">
+			<div class="card-head">
+				<h3>Board preview</h3>
+				<span class="card-count">{previewPath}</span>
+			</div>
+			{#if previewLoading}
+				<LoadingState message="Loading board…" />
+			{:else if previewError !== ""}
+				<p class="ui-notice" data-tone="bad" role="alert">{previewError}</p>
+			{:else if previewText !== ""}
+				<KicadPreview name={previewPath.split("/").pop() ?? previewPath} text={previewText} />
+			{/if}
+		</section>
+	{/if}
 
 	{#if evidence.readme}
 		<section class="ui-card padded readme">
@@ -360,6 +423,23 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 
 .readme {
 	margin-top: var(--space-3);
+}
+
+.preview {
+	margin-top: var(--space-3);
+}
+
+.preview-link {
+	flex: none;
+	padding: 0;
+	margin-left: auto;
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--primary);
+	text-decoration: underline;
+	cursor: pointer;
+	background: none;
+	border: 0;
 }
 
 .readme-body {

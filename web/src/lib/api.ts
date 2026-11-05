@@ -23,6 +23,7 @@ import {
 	reviewerProfileSchema,
 	searchResponseSchema,
 	sendBackResultSchema,
+	submissionFileResponseSchema,
 } from "./contract"
 import { ValidationError } from "./validation-error"
 
@@ -50,6 +51,7 @@ export interface SendBackRequest {
 	version: number
 }
 export type SendBackResult = InferOutput<typeof sendBackResultSchema>
+export type SubmissionFile = InferOutput<typeof submissionFileResponseSchema>["file"]
 export type OutboxRow = InferOutput<typeof outboxResponseSchema>["deliveries"][number]
 export type FakeDelivery = InferOutput<typeof fakeDeliveriesResponseSchema>["deliveries"][number]
 export type Member = InferOutput<typeof memberSchema>
@@ -324,6 +326,16 @@ export async function fetchAudit(offset = 0, limit = 50, filters: AuditFilters =
 export async function fetchCheckHead(id: string): Promise<CheckHead> {
 	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/checks/head`)
 	return parseJSON(response, checkHeadSchema)
+}
+
+// fetchSubmissionFile returns the capped text of one snapshot-listed board file for in-app preview.
+export async function fetchSubmissionFile(id: string, path: string): Promise<SubmissionFile> {
+	const response = await fetch(
+		`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}`,
+	)
+	const body = await parseJSON(response, submissionFileResponseSchema)
+
+	return body.file
 }
 
 // sendShipBack invalidates a held review and returns the ship to stage 1.
