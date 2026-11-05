@@ -85,7 +85,7 @@ const canCancel = $derived(session.me !== null)
 		<h2>Endpoints</h2>
 		<p class="note">Machine endpoints use the programme slug, not the opaque programme id.</p>
 		<div class="ui-table">
-			<table>
+			<table class="endpoints-table">
 				<thead>
 					<tr>
 						<th scope="col">Method</th>
@@ -97,7 +97,10 @@ const canCancel = $derived(session.me !== null)
 				<tbody>
 					{#each endpoints as endpoint (endpoint.path)}
 						<tr>
-							<td><code>{endpoint.method}</code></td>
+							<td>
+								<code>{endpoint.method}</code>
+								<span class="auth-inline">{endpoint.auth}</span>
+							</td>
 							<td><code>{endpoint.path}</code></td>
 							<td>{endpoint.auth}</td>
 							<td>{endpoint.purpose}</td>
@@ -398,9 +401,22 @@ h1 {
 	color: var(--text-3);
 }
 
+.auth-inline {
+	display: none;
+	margin-left: var(--space-1);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	color: var(--text-3);
+}
+
 @media (max-width: 760px) {
-	.doc-section .ui-table table {
-		min-width: 560px;
+	.endpoints-table th:nth-child(3),
+	.endpoints-table td:nth-child(3) {
+		display: none;
+	}
+
+	.auth-inline {
+		display: inline;
 	}
 }
 </style>
