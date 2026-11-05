@@ -126,6 +126,11 @@ func (a *reviewApp) reviewerProfile(ctx context.Context, programID, key string) 
 		return profile, err
 	}
 
+	// A user with no membership in this programme and no decisions here is not a reviewer of it.
+	if profile.Role == nil && total == 0 {
+		return profile, storage.ErrNoRows
+	}
+
 	profile.ReviewTotal = total
 	profile.Stats = contract.ReviewerStats{
 		Approved:             approved,
