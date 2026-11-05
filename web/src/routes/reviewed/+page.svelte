@@ -495,7 +495,7 @@ h1 {
 	}
 }
 
-@media (max-width: 640px) {
+@media (max-width: 980px) {
 	.keys {
 		display: none;
 	}

@@ -390,7 +390,9 @@ function openResult(result: SearchResult): void {
 	.meta {
 		display: none;
 	}
+}
 
+@media (max-width: 980px) {
 	.shortcut {
 		display: none;
 	}

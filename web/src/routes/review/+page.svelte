@@ -1251,8 +1251,10 @@ h1 {
 .cover {
 	display: block;
 	width: calc(100% + 2 * var(--space-4));
-	height: auto;
+	max-height: 420px;
 	margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
+	object-fit: contain;
+	background: var(--surface-2);
 }
 
 .stats {
@@ -1550,6 +1552,10 @@ h1 {
 		min-width: 0;
 	}
 
+	.shortcuts-button {
+		display: none;
+	}
+
 	.toast {
 		bottom: calc(74px + var(--space-3));
 	}
@@ -1563,6 +1569,17 @@ h1 {
 	.ship-head {
 		flex-direction: column;
 		align-items: flex-start;
+	}
+
+	.ship-tabs {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		overflow: visible;
+	}
+
+	.ship-tabs button {
+		justify-content: center;
+		padding-inline: var(--space-2);
 	}
 
 	.shortcuts-button {
