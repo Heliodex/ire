@@ -846,6 +846,107 @@ async function saveDraftNow(): Promise<void> {
 							</span>
 						</div>
 					{/if}
+					{#if bundle.resubmission}
+						{const diff = bundle.resubmission}
+						<div class="section resubmission">
+							<h3>Since v{diff.previousVersion}</h3>
+							{#if diff.previousDecision || diff.previousNote}
+								<div class="prior-row">
+									{#if diff.previousDecision}
+										<span
+											class="ui-badge"
+											data-tone={statusTone(
+												diff.previousDecision === "approved" ? "approved" : "changes",
+											)}
+											>{decisionLabel(diff.previousDecision)}</span
+										>
+									{/if}
+									{#if diff.previousNote}
+										<p>{diff.previousNote}</p>
+									{/if}
+									{#if diff.previousReviewer || diff.previousReviewedAt}
+										<small>
+											{diff.previousReviewer ?? "Reviewer"}
+											{#if diff.previousReviewedAt}
+												· {formatDateTime(diff.previousReviewedAt)}
+											{/if}
+										</small>
+									{/if}
+								</div>
+							{/if}
+							<div class="stats">
+								<div><span>Commits</span><strong>{diff.commits.length}</strong></div>
+								<div>
+									<span>Files</span><strong
+										>+{diff.addedFiles.length} / -{diff.removedFiles.length}</strong
+									>
+								</div>
+								<div>
+									<span>New entries</span><strong
+										>{diff.newEntries.length}
+										{diff.changedEntries.length > 0
+											? ` · ${diff.changedEntries.length} edited`
+											: ""}</strong
+									>
+								</div>
+								<div>
+									<span>BOM</span><strong
+										>{diff.bomAdded.length} added
+										{diff.bomPriceChanges.length > 0
+											? ` · ${diff.bomPriceChanges.length} repriced`
+											: ""}</strong
+									>
+								</div>
+							</div>
+							{#if diff.commits.length > 0}
+								<details>
+									<summary>{diff.commits.length} new commit{diff.commits.length === 1 ? "" : "s"}</summary>
+									<ul class="change-list">
+										{#each diff.commits.slice(0, 10) as commit (commit.sha)}
+											<li>
+												<code class="ui-mono">{commit.sha.slice(0, 7)}</code>
+												{commit.message}
+											</li>
+										{/each}
+									</ul>
+								</details>
+							{/if}
+							{#if diff.addedFiles.length + diff.removedFiles.length > 0}
+								<details>
+									<summary>
+										{diff.addedFiles.length} added, {diff.removedFiles.length} removed
+									</summary>
+									<ul class="change-list">
+										{#each diff.addedFiles.slice(0, 20) as file (file)}
+											<li class="added">+ {file}</li>
+										{/each}
+										{#each diff.removedFiles.slice(0, 20) as file (file)}
+											<li class="removed">- {file}</li>
+										{/each}
+									</ul>
+								</details>
+							{/if}
+							{#if diff.bomAdded.length + diff.bomRemoved.length + diff.bomPriceChanges.length > 0}
+								<details>
+									<summary>BOM changes</summary>
+									<ul class="change-list">
+										{#each diff.bomAdded as part (part)}
+											<li class="added">+ {part}</li>
+										{/each}
+										{#each diff.bomRemoved as part (part)}
+											<li class="removed">- {part}</li>
+										{/each}
+										{#each diff.bomPriceChanges as change (change.name)}
+											<li>
+												{change.name}: {formatMoneyAmount(change.beforeCents)} →
+												{formatMoneyAmount(change.afterCents)}
+											</li>
+										{/each}
+									</ul>
+								</details>
+							{/if}
+						</div>
+					{/if}
 					<h2>What the maker built</h2>
 					<p class="description">{submission.description || "No description was sent."}</p>
 
@@ -1645,6 +1746,35 @@ h1 {
 .prior-row small {
 	font-size: var(--text-xs);
 	color: var(--text-3);
+}
+
+.resubmission details {
+	padding-top: var(--space-2);
+	font-size: var(--text-sm);
+}
+
+.resubmission summary {
+	cursor: pointer;
+	color: var(--text-2);
+}
+
+.change-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	padding: var(--space-2) 0 0 var(--space-3);
+	margin: 0;
+	font-size: var(--text-sm);
+	color: var(--text-2);
+	list-style: none;
+}
+
+.change-list .added {
+	color: var(--accent-green);
+}
+
+.change-list .removed {
+	color: var(--accent-red);
 }
 
 .event {
