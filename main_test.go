@@ -381,8 +381,11 @@ func TestFixturesAppearInQueue(t *testing.T) {
 	}
 
 	bundle := decode[contract.ReviewBundle](t, bundleRecorder)
-	if bundle.Submission.MakerEmail != "c***@example.com" {
-		t.Errorf("maker email = %q, want redacted", bundle.Submission.MakerEmail)
+	if bundle.Submission.MakerEmail != "c6h@example.com" {
+		t.Errorf("maker email = %q, want full email", bundle.Submission.MakerEmail)
+	}
+	if bundle.Submission.MakerSlackID == nil || *bundle.Submission.MakerSlackID != "U0C6HSTAR" {
+		t.Errorf("maker slack = %+v, want U0C6HSTAR", bundle.Submission.MakerSlackID)
 	}
 
 	if bundle.Policy.HoldOnWarn != 1 || bundle.Policy.FraudMinStage != 2 {

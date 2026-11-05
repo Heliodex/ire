@@ -701,6 +701,9 @@
 				"makerName": {
 					"type": "string"
 				},
+				"makerSlackId": {
+					"type": "string"
+				},
 				"phase": {
 					"type": "string"
 				},

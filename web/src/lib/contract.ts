@@ -368,6 +368,7 @@ export const submissionSchema = pipe(
 		ingestedAt: timestamp,
 		makerEmail: pipe(string(), minLength(1)),
 		makerName: optionalString,
+		makerSlackId: optionalString,
 		phase: optionalString,
 		repoUrl: optionalString,
 		requestedTier: optional(pipe(number(), integer())),

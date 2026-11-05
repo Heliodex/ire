@@ -16,8 +16,8 @@ import (
 
 // A fixture is a real half-life project row reduced to the fields a reviewer needs: the repo and description, the evidence, the claimed hours and a prescribed check outcome. The fixture suite stands in for the network checks until they are ported.
 type fixture struct {
-	externalID, title, description, repoURL, readme, thumbnailURL, theme, makerEmail, makerName string
-	tier, hoursClaimed, hoursJournal, priority                                                  int
+	externalID, title, description, repoURL, readme, thumbnailURL, theme, makerEmail, makerName, makerSlack string
+	tier, hoursClaimed, hoursJournal, priority                                                                 int
 	journals                                                                                    []fixtureJournal
 	bom                                                                                         []fixtureBom
 	checks                                                                                      []fixtureCheck
@@ -105,6 +105,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			theme:        "starbie",
 			makerEmail:   "c6h@example.com",
 			makerName:    "C6-H",
+			makerSlack:   "U0C6HSTAR",
 			tier:         1,
 			// 6.4 hours, matching the approved row in .projects.csv.
 			hoursClaimed: 23040,
@@ -143,6 +144,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			theme:        "pcb",
 			makerEmail:   "opentrace@example.com",
 			makerName:    "Shubhayu-Banerjee",
+			makerSlack:   "U0OPENTRACE",
 			tier:         1,
 			hoursClaimed: 37800,
 			hoursJournal: 37800,
@@ -180,6 +182,7 @@ func (a *reviewApp) seedFixtures(ctx context.Context) error {
 			theme:        "pcb",
 			makerEmail:   "sbdevz@example.com",
 			makerName:    "SBdevz",
+			makerSlack:   "U0SMARTCLOCK",
 			tier:         1,
 			hoursClaimed: 40320,
 			hoursJournal: 40320,
@@ -303,8 +306,9 @@ func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now
 		ThumbnailURL: stringPtr(f.thumbnailURL),
 		Track:        stringPtr("hardware"),
 		Maker: contract.IngestMaker{
-			Email: f.makerEmail,
-			Name:  f.makerName,
+			Email:   f.makerEmail,
+			Name:    f.makerName,
+			SlackID: stringPtr(f.makerSlack),
 		},
 		Meta: &contract.IngestMeta{
 			Phase:         stringPtr("design"),
@@ -339,9 +343,9 @@ func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now
 	}
 
 	tx := []storage.TransactionStatement{
-		{SQL: `insert into submission (id, program_id, external_id, version, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, repo_url, thumbnail_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, ingested_at, created_at, updated_at)
-			values (?, ?, ?, 1, ?, 1, ?, ?, ?, 'hardware', ?, 'design', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
-			Args: []any{id, programID, f.externalID, status, f.priority, f.title, f.description, f.theme, f.makerEmail, f.makerName, f.repoURL, f.thumbnailURL, f.tier, 3000, bomTotal, f.hoursClaimed, f.hoursJournal, string(summaryJSON), ingested.Format(timestampFormat), ingested.Format(timestampFormat), ingested.Format(timestampFormat)}},
+		{SQL: `insert into submission (id, program_id, external_id, version, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, maker_slack_id, repo_url, thumbnail_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, ingested_at, created_at, updated_at)
+			values (?, ?, ?, 1, ?, 1, ?, ?, ?, 'hardware', ?, 'design', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+			Args: []any{id, programID, f.externalID, status, f.priority, f.title, f.description, f.theme, f.makerEmail, f.makerName, f.makerSlack, f.repoURL, f.thumbnailURL, f.tier, 3000, bomTotal, f.hoursClaimed, f.hoursJournal, string(summaryJSON), ingested.Format(timestampFormat), ingested.Format(timestampFormat), ingested.Format(timestampFormat)}},
 		{SQL: `insert into submission_version (submission_id, version, payload, payload_sha256, received_at, delivery_id)
 			values (?, 1, ?, ?, ?, ?)`,
 			Args: []any{id, string(payload), sha256Hex(payload), ingested.Format(timestampFormat), "seed:" + id}},

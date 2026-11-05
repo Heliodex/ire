@@ -4531,6 +4531,9 @@ type Submission struct {
 	// MakerName corresponds to the JSON schema field "makerName".
 	MakerName *string `json:"makerName,omitempty,omitzero" yaml:"makerName,omitempty" mapstructure:"makerName,omitempty"`
 
+	// MakerSlackID corresponds to the JSON schema field "makerSlackId".
+	MakerSlackID *string `json:"makerSlackId,omitempty,omitzero" yaml:"makerSlackId,omitempty" mapstructure:"makerSlackId,omitempty"`
+
 	// Phase corresponds to the JSON schema field "phase".
 	Phase *string `json:"phase,omitempty,omitzero" yaml:"phase,omitempty" mapstructure:"phase,omitempty"`
 

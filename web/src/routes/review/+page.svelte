@@ -761,6 +761,9 @@ async function saveDraftNow(): Promise<void> {
 					·
 				{/if}
 				{submission.makerEmail}
+				{#if submission.makerSlackId}
+					<span>· {submission.makerSlackId}</span>
+				{/if}
 				{#if submission.week}
 					<span>· Week {submission.week}</span>
 				{/if}

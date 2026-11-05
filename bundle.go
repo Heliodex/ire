@@ -63,11 +63,6 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 	policy := a.policyFor(ctx, ship.ProgramID)
 	claim := a.claimFor(ctx, ship.ID, person)
 
-	makerEmail := ship.MakerEmail
-	if person.Role == roleReviewer {
-		makerEmail = redactEmail(makerEmail)
-	}
-
 	submission := contract.Submission{
 		ID:                    ship.ID,
 		ExternalID:            ship.ExternalID,
@@ -79,9 +74,13 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		HoursClaimedSeconds:   ship.HoursClaimed,
 		HoursJournalSeconds:   ship.HoursJournal,
 		HoursHackatimeSeconds: ship.HoursHackatim,
-		MakerEmail:            makerEmail,
+		MakerEmail:            ship.MakerEmail,
 		IngestedAt:            ship.IngestedAt,
 		UpdatedAt:             ship.UpdatedAt,
+	}
+
+	if ship.MakerSlack != "" {
+		submission.MakerSlackID = &ship.MakerSlack
 	}
 
 	if ship.Description != "" {
