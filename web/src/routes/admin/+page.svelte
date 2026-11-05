@@ -185,7 +185,6 @@ async function invite(): Promise<void> {
 						<th scope="col">Role</th>
 						<th scope="col">Active</th>
 						<th scope="col">Last sign-in</th>
-						<th scope="col"><span class="visually-hidden">Save</span></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -194,6 +193,9 @@ async function invite(): Promise<void> {
 							<td>
 								<strong>{member.name ?? member.email}</strong>
 								<span class="muted">{member.email}</span>
+								{#if saving === member.id}
+									<span class="saving">Saving…</span>
+								{/if}
 							</td>
 							<MemberRole
 								busy={saving === member.id}
@@ -213,11 +215,6 @@ async function invite(): Promise<void> {
 								>
 							</td>
 							<td class="muted">{member.lastLoginAt ? formatDateTime(member.lastLoginAt) : "Never"}</td>
-							<td>
-								{#if saving === member.id}
-									<span class="muted">Saving…</span>
-								{/if}
-							</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -321,12 +318,24 @@ async function invite(): Promise<void> {
 	flex: 0 0 160px;
 }
 
+.roster {
+	padding-top: var(--space-2);
+	border-top: 1px solid var(--border);
+}
+
 .roster td strong {
 	display: block;
 }
 
 .roster td .muted {
 	font-size: var(--text-xs);
+}
+
+.saving {
+	display: block;
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--primary);
 }
 
 tr.inactive {

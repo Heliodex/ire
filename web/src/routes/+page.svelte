@@ -104,7 +104,7 @@ async function signIn(address: string): Promise<void> {
 					<span>Email</span>
 					<input autocomplete="email" class="ui-input" required type="email" bind:value={email}>
 				</label>
-				<button class="ui-button primary block" disabled={busy} type="submit">
+				<button class="ui-button block" disabled={busy} type="submit" class:primary={!authConfig?.hca}>
 					{busy ? "Signing in…" : "Sign in"}
 				</button>
 			</form>

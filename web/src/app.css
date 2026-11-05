@@ -55,6 +55,9 @@
 	--text-xl: 22px;
 	--text-2xl: 30px;
 
+	--font-sans: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, monospace;
+
 	--control-sm: 30px;
 	--control-md: 34px;
 	--control-lg: 42px;
@@ -114,7 +117,7 @@ html {
 
 body {
 	margin: 0;
-	font-family: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+	font-family: var(--font-sans);
 	font-size: var(--text-md);
 	-webkit-font-smoothing: antialiased;
 	line-height: 1.5;
@@ -166,7 +169,7 @@ p {
 code,
 pre,
 kbd {
-	font-family: "JetBrains Mono", ui-monospace, monospace;
+	font-family: var(--font-mono);
 }
 
 /* Shared primitives, in the Ari component style. Pages add layout only. */
@@ -340,6 +343,11 @@ kbd {
 .ui-badge[data-tone="pending"] {
 	color: var(--status-pending);
 	background: color-mix(in srgb, var(--status-pending) 16%, var(--surface));
+}
+
+.ui-badge[data-tone="ready"] {
+	color: var(--accent-blue);
+	background: color-mix(in srgb, var(--accent-blue) 16%, var(--surface));
 }
 
 .ui-badge[data-tone="changes"] {
@@ -573,4 +581,13 @@ textarea.ui-input {
 
 .ui-muted {
 	color: var(--text-2);
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	white-space: nowrap;
+	clip: rect(0 0 0 0);
 }
