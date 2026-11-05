@@ -35,11 +35,11 @@ const role = $derived(session.me?.programs.find(item => item.programSlug === pro
 const canSecondPass = $derived(role === "organizer" || role === "admin")
 const readOnly = $derived(session.me?.readOnly ?? false)
 
-const filters: { key: Filter; label: string }[] = [
-	{ key: "all", label: "All open" },
-	{ key: "fast", label: "Fast lane" },
-	{ key: "attention", label: "Needs a look" },
-	{ key: "mine", label: "Mine" },
+const filters: { key: Filter; label: string; short: string }[] = [
+	{ key: "all", label: "All open", short: "All" },
+	{ key: "fast", label: "Fast lane", short: "Fast" },
+	{ key: "attention", label: "Needs a look", short: "Attention" },
+	{ key: "mine", label: "Mine", short: "Mine" },
 ]
 
 const visible = $derived(
@@ -329,7 +329,8 @@ async function open(item: QueueItem): Promise<void> {
 				type="button"
 				class:active={stage === 1 && filter === option.key}
 			>
-				{option.label}
+				<span class="label-full">{option.label}</span>
+				<span class="label-short">{option.short}</span>
 			</button>
 		{/each}
 		{#if canSecondPass}
@@ -340,7 +341,8 @@ async function open(item: QueueItem): Promise<void> {
 				type="button"
 				class:active={stage === 2}
 			>
-				Second pass {queue.counts.stage2Hold}
+				<span class="label-full">Second pass {queue.counts.stage2Hold}</span>
+				<span class="label-short">Pass 2 · {queue.counts.stage2Hold}</span>
 			</button>
 		{/if}
 	</div>
@@ -589,6 +591,10 @@ h1 {
 .filters {
 	flex-wrap: wrap;
 	border-radius: var(--radius-lg);
+}
+
+.label-short {
+	display: none;
 }
 
 .list-head {
@@ -957,22 +963,6 @@ h1 {
 		flex: 1 1 100%;
 	}
 
-	.filters {
-		flex-wrap: nowrap;
-		width: 100%;
-		max-width: 100%;
-		overflow-x: auto;
-		scrollbar-width: none;
-	}
-
-	.filters::-webkit-scrollbar {
-		display: none;
-	}
-
-	.filters button {
-		flex: none;
-	}
-
 	.row {
 		grid-template-areas:
 			"thumb title title title"
@@ -1028,6 +1018,16 @@ h1 {
 	.timing {
 		flex-direction: column;
 		gap: 0;
+	}
+}
+
+@media (max-width: 640px) {
+	.label-full {
+		display: none;
+	}
+
+	.label-short {
+		display: inline;
 	}
 }
 
