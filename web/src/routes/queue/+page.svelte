@@ -1160,7 +1160,8 @@ h1 {
 	}
 
 	.ship-title {
-		display: flex;
+		display: grid;
+		grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
 		gap: var(--space-2);
 		align-items: baseline;
 		min-width: 0;
@@ -1174,7 +1175,6 @@ h1 {
 
 	.inline-maker {
 		display: block;
-		flex: none;
 		padding-left: 0;
 	}
 
