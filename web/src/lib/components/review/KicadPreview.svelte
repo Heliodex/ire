@@ -7,6 +7,33 @@ let host = $state<HTMLDivElement | null>(null)
 let error = $state("")
 let loading = $state(true)
 
+// loadKicanvas injects the vendored KiCanvas bundle once per page, then resolves when its elements are registered.
+async function loadKicanvas(): Promise<void> {
+	if (customElements.get("kicanvas-embed")) return
+
+	const pending = globalThis as unknown as { __kicanvasLoading?: Promise<void> }
+	try {
+		pending.__kicanvasLoading ??= waitForKicanvas()
+		await pending.__kicanvasLoading
+	} catch (err: unknown) {
+		delete pending.__kicanvasLoading
+		throw err
+	}
+}
+
+// waitForKicanvas injects the vendored viewer bundle and resolves once its elements are registered.
+function waitForKicanvas(): Promise<void> {
+	const { promise, resolve, reject } = Promise.withResolvers<void>()
+	const script = document.createElement("script")
+	script.type = "module"
+	script.src = "/vendor/kicanvas.js"
+	script.addEventListener("load", (): void => resolve())
+	script.addEventListener("error", (): void => reject(new Error("Board viewer failed to load")))
+	document.head.append(script)
+
+	return promise
+}
+
 // isKicanvasError reports whether a window error came from the board renderer.
 function isKicanvasError(event: ErrorEvent): boolean {
 	return /kicanvas/i.test(`${event.message ?? ""} ${event.filename ?? ""}`)
@@ -31,7 +58,7 @@ $effect((): (() => void) => {
 
 	void (async (): Promise<void> => {
 		try {
-			await import("../../vendor/kicanvas.js")
+			await loadKicanvas()
 			if (!element.isConnected) return
 
 			const embed = document.createElement("kicanvas-embed")

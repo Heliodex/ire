@@ -3,7 +3,7 @@
 		"strict": true,
 		"types": ["bun", "$app/types"]
 	},
-	"exclude": ["src/service-worker.ts", "src/lib/vendor/kicanvas.js"],
+	"exclude": ["src/service-worker.ts"],
 	"extends": "$app/tsconfig",
 	"include": ["src", "tests", "vite.config.ts"]
 }
