@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
@@ -19,6 +20,18 @@ const (
 // retryableCheckKeys are the GitHub checks worth rerunning: an error here means the forge flaked (rate limit, timeout, outage), while a failure means the repository itself needs work.
 var retryableCheckKeys = []string{"repo.accessible", "repo.tree", "repo.commits", "repo.readme"}
 
+// retryableCheckClause renders the IN clause matching the retryable check keys with its arguments, so the key list lives in one place.
+func retryableCheckClause() (string, []any) {
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(retryableCheckKeys)), ",")
+
+	args := make([]any, len(retryableCheckKeys))
+	for i, key := range retryableCheckKeys {
+		args[i] = key
+	}
+
+	return placeholders, args
+}
+
 // erroredCheck is one open ship with error-status GitHub checks on its current version.
 type erroredCheck struct {
 	submissionID, status, repoURL, errorAt string
@@ -34,14 +47,16 @@ func (a *ireApp) retryErroredChecks(ctx context.Context) {
 
 // erroredChecks lists open ships with error-status GitHub checks on their current version.
 func (a *ireApp) erroredChecks(ctx context.Context) []erroredCheck {
+	placeholders, args := retryableCheckClause()
+
 	rows, err := a.store.Query(ctx, `select s.id, s.version, s.status, s.repo_url, max(c.checked_at)
 		from submission s
 		join check_result c on c.submission_id = s.id and c.version = s.version
 		where s.status in ('needs_attention','ready')
 		  and coalesce(s.repo_url, '') <> ''
 		  and c.status = 'error'
-		  and c.check_key in ('repo.accessible','repo.tree','repo.commits','repo.readme')
-		group by s.id, s.version, s.status, s.repo_url`)
+		  and c.check_key in (`+placeholders+`)
+		group by s.id, s.version, s.status, s.repo_url`, args...)
 	if err != nil {
 		app.Errorf("checks retry candidates: %v", err)
 
@@ -144,10 +159,12 @@ func (a *ireApp) retryCount(ctx context.Context, submissionID, epoch string) int
 
 // errorCheckKeys lists the errored GitHub checks a retry is chasing, for the timeline event.
 func (a *ireApp) errorCheckKeys(ctx context.Context, candidate erroredCheck) []string {
+	placeholders, keyArgs := retryableCheckClause()
+
 	rows, err := a.store.Query(ctx, `select distinct check_key from check_result
 		where submission_id = ? and version = ? and status = 'error'
-		  and check_key in ('repo.accessible','repo.tree','repo.commits','repo.readme')
-		order by check_key`, candidate.submissionID, candidate.version)
+		  and check_key in (`+placeholders+`)
+		order by check_key`, append([]any{candidate.submissionID, candidate.version}, keyArgs...)...)
 	if err != nil {
 		return []string{}
 	}
