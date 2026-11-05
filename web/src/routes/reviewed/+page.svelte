@@ -178,9 +178,11 @@ onMount((): (() => void) => {
 	<div class="list-head">
 		<h2 id="reviewed-title">Decided ships</h2>
 		<span>
-			{visible.length} {visible.length === 1 ? "ship" : "ships"} ·
-			<kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd>
-			filters
+			{visible.length} {visible.length === 1 ? "ship" : "ships"}
+			<span class="keys">
+				· <kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd>
+				filters
+			</span>
 		</span>
 	</div>
 
@@ -490,6 +492,12 @@ h1 {
 	.date {
 		min-width: 0;
 		margin-left: auto;
+	}
+}
+
+@media (max-width: 640px) {
+	.keys {
+		display: none;
 	}
 }
 </style>

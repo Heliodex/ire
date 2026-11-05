@@ -390,5 +390,13 @@ function openResult(result: SearchResult): void {
 	.meta {
 		display: none;
 	}
+
+	.shortcut {
+		display: none;
+	}
+
+	.search :global(input) {
+		padding-right: 12px;
+	}
 }
 </style>

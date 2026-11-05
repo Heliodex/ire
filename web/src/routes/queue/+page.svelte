@@ -375,13 +375,15 @@ async function open(item: QueueItem): Promise<void> {
 	<div class="list-head">
 		<h2 id="list-title">{stage === 2 ? "Second pass" : "Open ships"}</h2>
 		<span>
-			{visible.length} {visible.length === 1 ? "ship" : "ships"} ·
-			<kbd class="ui-kbd">↑</kbd><kbd class="ui-kbd">↓</kbd>
-			to move ·
-			<kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd>
-			filters ·
-			<kbd class="ui-kbd">Enter</kbd>
-			to open
+			{visible.length} {visible.length === 1 ? "ship" : "ships"}
+			<span class="keys">
+				· <kbd class="ui-kbd">↑</kbd><kbd class="ui-kbd">↓</kbd>
+				to move ·
+				<kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd>
+				filters ·
+				<kbd class="ui-kbd">Enter</kbd>
+				to open
+			</span>
 		</span>
 	</div>
 
@@ -1030,6 +1032,32 @@ h1 {
 
 	.label-short {
 		display: inline;
+	}
+
+	.stats {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.stats div {
+		border-top: 1px solid var(--border);
+		border-left: 0;
+	}
+
+	.stats div:nth-child(-n + 2) {
+		border-top: 0;
+	}
+
+	.stats div:nth-child(even) {
+		border-left: 1px solid var(--border);
+	}
+
+	.stats div:last-child:nth-child(odd) {
+		grid-column: 1 / -1;
+	}
+
+	.keys {
+		display: none;
 	}
 }
 
