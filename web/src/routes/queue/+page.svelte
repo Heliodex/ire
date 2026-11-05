@@ -440,7 +440,7 @@ async function open(item: QueueItem): Promise<void> {
 								decoding="async"
 								loading="lazy"
 								onerror={(event): void => {
-									;(event.currentTarget as HTMLImageElement).hidden = true
+									;(event.currentTarget as HTMLImageElement).style.display = "none"
 								}}
 								src={item.thumbnailUrl}
 							>
@@ -679,10 +679,6 @@ h1 {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-}
-
-.thumb img[hidden] {
-	display: none;
 }
 
 .thumb svg {
