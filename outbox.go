@@ -85,6 +85,8 @@ func (a *reviewApp) handleTick(w http.ResponseWriter, r *http.Request) {
 	_, _ = a.store.Exec(r.Context(), `update submission set status = 'needs_attention', updated_at = ?
 		where status = 'checking' and ingested_at < ?`, now, a.later(-checkStaleAfter))
 
+	a.retryErroredChecks(r.Context())
+
 	app.WriteJSON(w, http.StatusOK, map[string]int{"delivered": delivered, "retried": retried, "failed": failed})
 }
 

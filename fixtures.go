@@ -54,7 +54,7 @@ type checkCounts struct {
 	Running int    `json:"running"`
 }
 
-// checkCountsFor summarises a list of checks. A blocking failure outranks a warning, and a warning outranks a pass.
+// checkCountsFor summarises a list of checks. A blocking failure outranks a warning, and a warning outranks a pass. The result does not depend on check order, so checks sharing a timestamp cannot flip the outcome.
 func checkCountsFor(checks []contract.CheckResult) checkCounts {
 	counts := checkCounts{Overall: checkOverallPass}
 
@@ -64,13 +64,16 @@ func checkCountsFor(checks []contract.CheckResult) checkCounts {
 			counts.Pass++
 		case statusWarn:
 			counts.Warn++
-			counts.Overall = checkOverallWarn
+
+			if counts.Overall == checkOverallPass {
+				counts.Overall = checkOverallWarn
+			}
 		case statusFail:
 			counts.Fail++
 
 			if check.Severity == severityBlock {
 				counts.Overall = checkOverallFail
-			} else if counts.Overall != checkOverallFail {
+			} else if counts.Overall == checkOverallPass {
 				counts.Overall = checkOverallWarn
 			}
 		case statusError:
@@ -78,7 +81,7 @@ func checkCountsFor(checks []contract.CheckResult) checkCounts {
 
 			if check.Severity == severityBlock {
 				counts.Overall = checkOverallFail
-			} else if counts.Overall != checkOverallFail {
+			} else if counts.Overall == checkOverallPass {
 				counts.Overall = checkOverallWarn
 			}
 		}

@@ -226,6 +226,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] The queue, review bundle and status feed expose the check run; the queue shows a Checking count and label.
 - [x] The review screen shows the running attempt and reloads itself when checks finish.
 - [x] A failed run records its error; after five failed attempts the ship moves to `needs_attention` immediately.
+- [x] The schedule tick retries error-status GitHub checks (`repo.accessible`, `repo.tree`, `repo.commits`, `repo.readme`) with exponential backoff and five attempts per version; deterministic failures are never retried.
 - [x] The BOM check parses CSV, TSV, semicolon and Markdown tables for part, quantity, unit price and vendor.
 - [x] The BOM summary reports part count and total, warns on missing prices or vendors, and ignores subtotal/tax rows.
 - [x] Commits are fetched since the previous approval for a resubmission, or the programme start for a first version.
