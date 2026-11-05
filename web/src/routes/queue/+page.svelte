@@ -1253,8 +1253,7 @@ h1 {
 	}
 
 	.timing {
-		flex-direction: column;
-		gap: 0;
+		display: contents;
 	}
 }
 
