@@ -5,8 +5,11 @@ import { page } from "$app/state"
 import {
 	type Bundle,
 	type Check,
+	type Note,
 	claimShip,
+	createNote,
 	decideShip,
+	deleteNote,
 	fetchBundle,
 	fetchCheckHead,
 	fetchMe,
@@ -25,6 +28,7 @@ import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
 import JournalTime from "../../lib/components/review/JournalTime.svelte"
+import NotesCard from "../../lib/components/review/NotesCard.svelte"
 import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
 import {
@@ -657,6 +661,25 @@ function entrySaved(seconds: number): void {
 	hours = Math.round((seconds / 3600) * 100) / 100
 }
 
+// addNote stores an internal note and shows it immediately.
+async function addNote(subjectType: string, body: string): Promise<void> {
+	if (!submission) return
+
+	const note = await createNote(submission.id, { body, subjectType })
+	if (bundle) bundle.notes = [note, ...bundle.notes]
+}
+
+// removeNote deletes an internal note and drops it from the list.
+async function removeNote(note: Note): Promise<void> {
+	await deleteNote(note.id)
+	if (bundle) bundle.notes = bundle.notes.filter(item => item.id !== note.id)
+}
+
+// canDeleteNote lets the author or an admin remove a note.
+function canDeleteNote(note: Note): boolean {
+	return session.me?.user.email === note.authorEmail || role === "admin"
+}
+
 async function saveDraftNow(): Promise<void> {
 	if (!bundle) return
 	try {
@@ -1011,6 +1034,16 @@ async function saveDraftNow(): Promise<void> {
 								{showAllEvents ? "Show fewer events" : `Show all ${bundle.events.length} events`}
 							</button>
 						{/if}
+					</div>
+
+					<div class="section">
+						<h3>Internal notes</h3>
+						<NotesCard
+							canDelete={canDeleteNote}
+							notes={bundle.notes}
+							onAdd={addNote}
+							onRemove={removeNote}
+						/>
 					</div>
 				</article>
 			{:else if tab === "checks"}
