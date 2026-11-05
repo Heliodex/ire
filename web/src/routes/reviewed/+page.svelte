@@ -153,7 +153,13 @@ onMount((): (() => void) => {
 	</div>
 	<label class="search">
 		<span class="visually-hidden">Filter reviewed ships</span>
-		<input class="ui-input" placeholder="Filter reviewed ships…" type="search" bind:value={search}>
+		<input
+			aria-label="Filter reviewed ships"
+			class="ui-input"
+			placeholder="Filter reviewed ships…"
+			type="search"
+			bind:value={search}
+		>
 	</label>
 </div>
 

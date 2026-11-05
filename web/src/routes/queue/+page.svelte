@@ -581,7 +581,13 @@ async function open(item: QueueItem): Promise<void> {
 	</div>
 	<label class="search">
 		<span class="visually-hidden">Filter open ships</span>
-		<input class="ui-input" placeholder="Filter open ships…" type="search" bind:value={search}>
+		<input
+			aria-label="Filter open ships"
+			class="ui-input"
+			placeholder="Filter open ships…"
+			type="search"
+			bind:value={search}
+		>
 	</label>
 </div>
 

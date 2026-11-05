@@ -170,6 +170,7 @@ function openResult(result: SearchResult): void {
 		aria-autocomplete="list"
 		aria-controls="project-search-results"
 		aria-expanded={showResults}
+		aria-label="Search all projects"
 		autocomplete="off"
 		class="ui-input"
 		id="project-search"
