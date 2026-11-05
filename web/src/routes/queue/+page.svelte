@@ -11,6 +11,8 @@ import { session } from "../../lib/session.svelte.js"
 
 type Filter = "all" | "fast" | "attention" | "mine"
 
+const maxCheckDots = 11
+
 let queue = $state<Queue>({
 	counts: { checking: 0, claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
 	hasMore: false,
@@ -543,7 +545,7 @@ async function open(item: QueueItem): Promise<void> {
 								class="dots"
 								role="img"
 							>
-								{#each groupChecks(item.checks) as group (group.group)}
+								{#each groupChecks(item.checks.slice(0, maxCheckDots)) as group (group.group)}
 									<span class="dot-group">
 										{#each group.items as check (check.key)}
 											<span
@@ -558,6 +560,15 @@ async function open(item: QueueItem): Promise<void> {
 										{/each}
 									</span>
 								{/each}
+								{#if item.checks.length > maxCheckDots}
+									<span
+										aria-hidden="true"
+										class="dot-more"
+										title={`${item.checks.length - maxCheckDots} more checks`}
+									>
+										+{item.checks.length - maxCheckDots}
+									</span>
+								{/if}
 							</span>
 						{/if}
 					</span>
@@ -893,7 +904,17 @@ h1 {
 	display: flex;
 	flex-wrap: nowrap;
 	gap: 3px;
+	align-items: center;
 	overflow: hidden;
+}
+
+.dot-more {
+	flex: none;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1;
+	color: var(--text-3);
+	white-space: nowrap;
 }
 
 .dot-group {
