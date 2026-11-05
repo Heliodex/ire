@@ -1,13 +1,13 @@
 <script lang="ts">
-import { type Note } from "../../api"
+import type { Note } from "../../api"
 import { maxNote } from "../../contract"
 import { formatDateTime } from "../../format"
 
 interface Props {
-	canDelete: (note: Note) => boolean
+	canDelete(note: Note): boolean
 	notes: Note[]
-	onAdd: (subjectType: string, body: string) => Promise<void>
-	onRemove: (note: Note) => Promise<void>
+	onAdd(subjectType: string, body: string): Promise<void>
+	onRemove(note: Note): Promise<void>
 }
 
 let { canDelete, notes, onAdd, onRemove }: Props = $props()
@@ -73,10 +73,13 @@ async function submit(): Promise<void> {
 		</ul>
 	{/if}
 
-	<form class="note-form" onsubmit={(event): void => {
-		event.preventDefault()
-		void submit()
-	}}>
+	<form
+		class="note-form"
+		onsubmit={(event): void => {
+			event.preventDefault()
+			void submit()
+		}}
+	>
 		<label class="field">
 			<span>On</span>
 			<select class="ui-input" bind:value={subject}>

@@ -5,7 +5,6 @@ import { page } from "$app/state"
 import {
 	type Bundle,
 	type Check,
-	type Note,
 	claimShip,
 	createNote,
 	decideShip,
@@ -15,6 +14,7 @@ import {
 	fetchMe,
 	fetchQueue,
 	heartbeat,
+	type Note,
 	program,
 	refreshRepositoryEvidence,
 	releaseShip,
@@ -702,19 +702,19 @@ function entrySaved(seconds: number): void {
 async function addNote(subjectType: string, body: string): Promise<void> {
 	if (!submission) return
 
-	const note = await createNote(submission.id, { body, subjectType })
-	if (bundle) bundle.notes = [note, ...bundle.notes]
+	const entry = await createNote(submission.id, { body, subjectType })
+	if (bundle) bundle.notes = [entry, ...bundle.notes]
 }
 
 // removeNote deletes an internal note and drops it from the list.
-async function removeNote(note: Note): Promise<void> {
-	await deleteNote(note.id)
-	if (bundle) bundle.notes = bundle.notes.filter(item => item.id !== note.id)
+async function removeNote(entry: Note): Promise<void> {
+	await deleteNote(entry.id)
+	if (bundle) bundle.notes = bundle.notes.filter(item => item.id !== entry.id)
 }
 
 // canDeleteNote lets the author or an admin remove a note.
-function canDeleteNote(note: Note): boolean {
-	return session.me?.user.email === note.authorEmail || role === "admin"
+function canDeleteNote(entry: Note): boolean {
+	return session.me?.user.email === entry.authorEmail || role === "admin"
 }
 
 async function saveDraftNow(): Promise<void> {

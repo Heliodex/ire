@@ -7,7 +7,7 @@ import { formatHours } from "../../format"
 interface Props {
 	editable: boolean
 	entry: Journal
-	onSaved: (seconds: number) => void
+	onSaved(seconds: number): void
 	shipId: string
 	version: number
 }
@@ -75,7 +75,12 @@ async function save(keepalive = false): Promise<void> {
 	error = ""
 
 	try {
-		const result = await reviewJournal(shipId, entry.id, { approvedSeconds, reviewerNote: note, version }, keepalive)
+		const result = await reviewJournal(
+			shipId,
+			entry.id,
+			{ approvedSeconds, reviewerNote: note, version },
+			keepalive,
+		)
 		savedApproved = approvedSeconds
 		savedNote = note
 		onSaved(result.hoursApprovedSeconds)
@@ -101,7 +106,7 @@ async function save(keepalive = false): Promise<void> {
 					step="0.25"
 					type="number"
 					bind:value={approved}
-				/>
+				>
 				<span class="hint">{formatHours(entry.seconds)} claimed</span>
 			</span>
 		</label>
@@ -114,7 +119,7 @@ async function save(keepalive = false): Promise<void> {
 				oninput={schedule}
 				placeholder="Why this entry counts for less"
 				bind:value={note}
-			/>
+			>
 		</label>
 		<p aria-live="polite" class="journal-time-status">
 			{#if status === "saving"}
