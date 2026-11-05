@@ -18,12 +18,7 @@ var reviewSessions = session.New(cookieName, sessionTTL)
 
 // reviewer is the signed-in person and the membership the request acts through.
 type reviewer struct {
-	ID        string
-	Email     string
-	Name      string
-	AvatarURL string
-	Role      string
-	ProgramID string
+	ID, Email, Name, AvatarURL, Role, ProgramID string
 }
 
 // canReviewSecondPass reports whether the role may act on a held second-pass ship. Fraud and final approval are organiser work, never a stage 1 reviewer's.
