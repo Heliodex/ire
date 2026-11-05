@@ -929,6 +929,7 @@ h1 {
 }
 
 .row {
+	position: relative;
 	display: grid;
 	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 28px 136px 64px minmax(140px, 190px);
 	gap: var(--space-3);
@@ -993,6 +994,15 @@ h1 {
 
 .row.selected {
 	background: var(--surface-3);
+}
+
+.row.selected::before {
+	position: absolute;
+	inset: 0 auto 0 0;
+	z-index: 1;
+	width: 3px;
+	content: "";
+	background: var(--primary);
 }
 
 .row:disabled {
@@ -1460,11 +1470,10 @@ h1 {
 	.ship-title {
 		display: grid;
 		grid-template-areas:
-			"name maker"
-			"type type";
-		grid-template-columns: minmax(0, clamp(7rem, 38%, 10rem)) minmax(0, 1fr);
-		gap: var(--space-2);
-		row-gap: 2px;
+			"name name"
+			"maker theme";
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 2px var(--space-2);
 		align-items: baseline;
 	}
 
@@ -1478,12 +1487,14 @@ h1 {
 	.inline-maker {
 		display: flex;
 		grid-area: maker;
+		min-width: 0;
 		padding-left: 0;
 	}
 
 	.inline-theme {
 		display: block;
-		grid-area: type;
+		grid-area: theme;
+		text-align: right;
 	}
 
 	.fact-maker {
