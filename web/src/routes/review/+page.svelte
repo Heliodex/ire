@@ -75,6 +75,7 @@ let rerunning = $state(false)
 let rerunError = $state("")
 let checksOutdated = $state(false)
 let coverFailed = $state(false)
+let showAllEvents = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 
 interface CachedBundle {
@@ -195,6 +196,7 @@ const timeSegments = $derived.by((): TimeSegment[] => {
 })
 const backPath = $derived(page.url.searchParams.get("from") === "reviewed" ? "/reviewed" : "/queue")
 const backLabel = $derived(backPath === "/reviewed" ? "Reviewed" : "Queue")
+const visibleEvents = $derived(showAllEvents ? (bundle?.events ?? []) : (bundle?.events ?? []).slice(-6))
 
 // idFromURL reads the ship id from /review/{id}, keeping the query form for old links.
 function idFromURL(): string {
@@ -240,6 +242,7 @@ afterNavigate((): void => {
 	stopChecks()
 	error = ""
 	acknowledgements = []
+	showAllEvents = false
 	idempotencyKey = ""
 
 	if (previous && previous !== next) ignore(releaseShip(previous))
@@ -872,7 +875,7 @@ async function saveDraftNow(): Promise<void> {
 
 					<div class="section">
 						<h3>Timeline</h3>
-						{#each bundle.events as event (event.id)}
+						{#each visibleEvents as event (event.id)}
 							<div class="event">
 								<span class="dot"></span>
 								<div>
@@ -884,6 +887,17 @@ async function saveDraftNow(): Promise<void> {
 								</div>
 							</div>
 						{/each}
+						{#if bundle.events.length > 6}
+							<button
+								class="link more-events"
+								onclick={(): void => {
+									showAllEvents = !showAllEvents
+								}}
+								type="button"
+							>
+								{showAllEvents ? "Show fewer events" : `Show all ${bundle.events.length} events`}
+							</button>
+						{/if}
 					</div>
 				</article>
 			{:else if tab === "checks"}
@@ -1010,7 +1024,15 @@ async function saveDraftNow(): Promise<void> {
 						<label class="field">
 							<span>Approved hours</span>
 							<span class="hours-row">
-								<input class="ui-input" max="720" min="0" step="0.25" type="number" bind:value={hours}>
+								<input
+									aria-label="Approved hours"
+									class="ui-input"
+									max="720"
+									min="0"
+									step="0.25"
+									type="number"
+									bind:value={hours}
+								>
 								<span class="hours-hint">/ {formatHours(submission.hoursClaimedSeconds)} claimed</span>
 							</span>
 						</label>
@@ -1026,6 +1048,7 @@ async function saveDraftNow(): Promise<void> {
 								<span aria-hidden="true" class="field-count">{note.length} / {maxNote}</span>
 							</span>
 							<textarea
+								aria-label="Note to maker"
 								class="ui-input"
 								maxlength={maxNote}
 								onblur={(): void => void saveDraftNow()}
@@ -1042,6 +1065,7 @@ async function saveDraftNow(): Promise<void> {
 								<span aria-hidden="true" class="field-count">{internalNote.length} / {maxNote}</span>
 							</span>
 							<textarea
+								aria-label="Internal note"
 								class="ui-input"
 								maxlength={maxNote}
 								onblur={(): void => void saveDraftNow()}
@@ -1061,6 +1085,7 @@ async function saveDraftNow(): Promise<void> {
 									>
 								</span>
 								<textarea
+									aria-label="Override reason"
 									class="ui-input"
 									maxlength={maxNote}
 									placeholder="Why the first-pass hours or decision should change."
@@ -1099,6 +1124,7 @@ async function saveDraftNow(): Promise<void> {
 									maker.
 								</p>
 								<textarea
+									aria-label="Reason to send back"
 									class="ui-input"
 									placeholder="What should stage 1 look at again?"
 									rows="2"
