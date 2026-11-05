@@ -555,6 +555,21 @@ export const resubmissionSchema = pipe(
 	title("Resubmission"),
 )
 
+const noteSubject = pipe(string(), regex(/^(submission|project|maker)$/, "Choose a note subject."))
+
+export const noteSchema = pipe(
+	object({
+		authorEmail: pipe(string(), minLength(1)),
+		authorName: optionalString,
+		body: pipe(string(), minLength(1)),
+		createdAt: timestamp,
+		id: pipe(string(), minLength(1)),
+		subjectId: pipe(string(), minLength(1)),
+		subjectType: noteSubject,
+	}),
+	title("Note"),
+)
+
 export const reviewBundleSchema = pipe(
 	object({
 		acknowledgements: array(string()),
@@ -566,6 +581,7 @@ export const reviewBundleSchema = pipe(
 		events: array(eventSchema),
 		evidence: optional(evidenceSchema),
 		journals: array(journalSchema),
+		notes: array(noteSchema),
 		policy: reviewPolicySchema,
 		priorReviews: array(priorReviewSchema),
 		resubmission: optional(resubmissionSchema),
@@ -642,6 +658,16 @@ export const journalReviewResponseSchema = pipe(
 	}),
 	title("JournalAdjustment"),
 )
+
+export const noteRequestSchema = pipe(
+	object({
+		body: pipe(string(), minLength(1), maxLength(maxNote)),
+		subjectType: noteSubject,
+	}),
+	title("NoteRequest"),
+)
+
+export const noteCreatedSchema = pipe(object({ note: noteSchema }), title("NoteCreated"))
 
 export const decisionResultSchema = pipe(
 	object({
@@ -950,6 +976,7 @@ export const requestSchemas = Object.freeze([
 	decisionRequestSchema,
 	sendBackRequestSchema,
 	journalReviewRequestSchema,
+	noteRequestSchema,
 	ingestRequestSchema,
 	inviteMemberSchema,
 	updateMemberSchema,
@@ -972,6 +999,7 @@ export const responseSchemas = Object.freeze([
 	journalReviewResponseSchema,
 	meResponseSchema,
 	membersResponseSchema,
+	noteCreatedSchema,
 	outboxResponseSchema,
 	parityResponseSchema,
 	queueResponseSchema,

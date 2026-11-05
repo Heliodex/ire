@@ -20,6 +20,11 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		return contract.ReviewBundle{}, err
 	}
 
+	notes, err := a.loadNotes(ctx, ship)
+	if err != nil {
+		return contract.ReviewBundle{}, err
+	}
+
 	bom, err := a.loadBom(ctx, ship.ID)
 	if err != nil {
 		return contract.ReviewBundle{}, err
@@ -145,6 +150,7 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		Checks:           checks,
 		Journals:         journals,
 		Bom:              bom,
+		Notes:            notes,
 		Reviews:          reviews,
 		Events:           events,
 		Evidence:         evidence,

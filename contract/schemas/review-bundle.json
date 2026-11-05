@@ -308,6 +308,50 @@
 				"title": "JournalEntry"
 			}
 		},
+		"notes": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"authorEmail": {
+						"type": "string",
+						"minLength": 1
+					},
+					"authorName": {
+						"type": "string"
+					},
+					"body": {
+						"type": "string",
+						"minLength": 1
+					},
+					"createdAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"subjectId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"subjectType": {
+						"type": "string",
+						"pattern": "^(submission|project|maker)$"
+					}
+				},
+				"required": [
+					"authorEmail",
+					"body",
+					"createdAt",
+					"id",
+					"subjectId",
+					"subjectType"
+				],
+				"title": "Note"
+			}
+		},
 		"policy": {
 			"type": "object",
 			"properties": {
@@ -724,6 +768,7 @@
 		"checks",
 		"events",
 		"journals",
+		"notes",
 		"policy",
 		"priorReviews",
 		"reviews",

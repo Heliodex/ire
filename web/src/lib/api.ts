@@ -15,6 +15,7 @@ import {
 	memberSchema,
 	membersResponseSchema,
 	meResponseSchema,
+	noteCreatedSchema,
 	outboxResponseSchema,
 	queueResponseSchema,
 	reviewBundleSchema,
@@ -36,6 +37,7 @@ export type Bundle = InferOutput<typeof reviewBundleSchema>
 export type Check = Bundle["checks"][number]
 export type Journal = Bundle["journals"][number]
 export type JournalAdjustment = InferOutput<typeof journalReviewResponseSchema>
+export type Note = Bundle["notes"][number]
 export type BomLine = Bundle["bom"][number]
 export type Review = Bundle["reviews"][number]
 export type Claim = InferOutput<typeof claimResponseSchema>["claim"]
@@ -219,6 +221,22 @@ export async function reviewJournal(
 		},
 	)
 	return parseJSON(response, journalReviewResponseSchema)
+}
+
+// createNote adds an internal note on the ship, its project or its maker.
+export async function createNote(id: string, request: { body: string; subjectType: string }): Promise<Note> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/notes`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	const result = await parseJSON(response, noteCreatedSchema)
+	return result.note
+}
+
+// deleteNote removes an internal note.
+export async function deleteNote(id: string): Promise<void> {
+	await requestVoid(`/api/v1/programs/${program}/notes/${encodeURIComponent(id)}`, { method: "DELETE" })
 }
 
 // decideShip records the stage 1 decision.

@@ -203,6 +203,8 @@ func (a *reviewApp) routes() {
 	a.mux.HandleFunc("DELETE /api/v1/programs/{program}/submissions/{id}/claim", a.handleRelease)
 	a.mux.HandleFunc("PUT /api/v1/programs/{program}/submissions/{id}/draft", a.handleDraft)
 	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/submissions/{id}/journal/{entry}", a.handleJournalReview)
+	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/notes", a.handleNoteCreate)
+	a.mux.HandleFunc("DELETE /api/v1/programs/{program}/notes/{id}", a.handleNoteDelete)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/decision", a.handleDecision)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/send-back", a.handleSendBack)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/evidence/refresh", a.handleEvidenceRefresh)
