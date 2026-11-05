@@ -2,6 +2,7 @@
 import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { type FakeDelivery, fetchMe, fetchOutbox, fetchReceived, type OutboxRow } from "../../lib/api"
+import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -73,9 +74,19 @@ function eventOf(body: string): string {
 {/if}
 
 {#if loading}
-	<div class="loading">
-		<div class="ui-card"></div>
-		<div class="ui-card"></div>
+	<div class="grid">
+		<section class="ui-card">
+			<div class="card-head">
+				<h2>Outbox</h2>
+			</div>
+			<LoadingState message="Loading outbox…" />
+		</section>
+		<section class="ui-card">
+			<div class="card-head">
+				<h2>Receiver</h2>
+			</div>
+			<LoadingState message="Loading receiver…" />
+		</section>
 	</div>
 {:else}
 	<div class="grid">
@@ -379,16 +390,6 @@ dt {
 dd {
 	margin: 0;
 	overflow-wrap: anywhere;
-}
-
-.loading {
-	display: grid;
-	gap: var(--space-4);
-}
-
-.loading div {
-	height: 180px;
-	animation: pulse 1.4s ease-in-out infinite;
 }
 
 @media (max-width: 900px) {

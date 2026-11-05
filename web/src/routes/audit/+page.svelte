@@ -4,6 +4,7 @@ import { goto } from "$app/navigation"
 import { type AuditEntry, fetchAudit, fetchMe, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import Avatar from "../../lib/components/Avatar.svelte"
+import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatHours, timeAgo } from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
@@ -324,11 +325,8 @@ function targetLink(entry: AuditEntry): string | null {
 	{/if}
 
 	{#if loading}
-		<div class="ui-skeleton ui-card">
-			<div></div>
-			<div></div>
-			<div></div>
-			<div></div>
+		<div class="ui-card audit-list">
+			<LoadingState message="Loading audit log…" />
 		</div>
 	{:else if entries.length === 0}
 		<div class="ui-card ui-empty">

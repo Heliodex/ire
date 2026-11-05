@@ -25,6 +25,7 @@ import {
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
 import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
+import LoadingState from "../../lib/components/LoadingState.svelte"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
@@ -732,9 +733,8 @@ async function saveDraftNow(): Promise<void> {
 </svelte:head>
 
 {#if loading}
-	<div class="loading">
-		<div class="ui-card"></div>
-		<div class="ui-card"></div>
+	<div class="ui-card padded">
+		<LoadingState message="Loading ship…" />
 	</div>
 {:else if error || !bundle || !submission}
 	<section class="missing">
@@ -937,12 +937,12 @@ async function saveDraftNow(): Promise<void> {
 							<div class="stats">
 								<div><span>Commits</span><strong>{diff.commits.length}</strong></div>
 								<div>
-									<span>Files</span><strong
-										>+{diff.addedFiles.length} / -{diff.removedFiles.length}</strong
-									>
+									<span>Files</span
+									><strong>+{diff.addedFiles.length} / -{diff.removedFiles.length}</strong>
 								</div>
 								<div>
-									<span>New entries</span><strong
+									<span>New entries</span
+									><strong
 										>{diff.newEntries.length}
 										{diff.changedEntries.length > 0
 											? ` · ${diff.changedEntries.length} edited`
@@ -950,8 +950,10 @@ async function saveDraftNow(): Promise<void> {
 									>
 								</div>
 								<div>
-									<span>BOM</span><strong
-										>{diff.bomAdded.length} added
+									<span>BOM</span
+									><strong
+										>{diff.bomAdded.length}
+										added
 										{diff.bomPriceChanges.length > 0
 											? ` · ${diff.bomPriceChanges.length} repriced`
 											: ""}</strong
@@ -960,7 +962,10 @@ async function saveDraftNow(): Promise<void> {
 							</div>
 							{#if diff.commits.length > 0}
 								<details>
-									<summary>{diff.commits.length} new commit{diff.commits.length === 1 ? "" : "s"}</summary>
+									<summary>
+										{diff.commits.length}
+										new commit{diff.commits.length === 1 ? "" : "s"}
+									</summary>
 									<ul class="change-list">
 										{#each diff.commits.slice(0, 10) as commit (commit.sha)}
 											<li>
@@ -974,7 +979,8 @@ async function saveDraftNow(): Promise<void> {
 							{#if diff.addedFiles.length + diff.removedFiles.length > 0}
 								<details>
 									<summary>
-										{diff.addedFiles.length} added, {diff.removedFiles.length} removed
+										{diff.addedFiles.length}
+										added, {diff.removedFiles.length} removed
 									</summary>
 									<ul class="change-list">
 										{#each diff.addedFiles.slice(0, 20) as file (file)}
@@ -1499,16 +1505,6 @@ async function saveDraftNow(): Promise<void> {
 {/if}
 
 <style>
-.loading {
-	display: grid;
-	gap: var(--space-3);
-}
-
-.loading div {
-	height: 150px;
-	animation: pulse 1.4s ease-in-out infinite;
-}
-
 h1 {
 	font-size: var(--text-2xl);
 	overflow-wrap: anywhere;
@@ -1824,8 +1820,8 @@ h1 {
 }
 
 .resubmission summary {
-	cursor: pointer;
 	color: var(--text-2);
+	cursor: pointer;
 }
 
 .change-list {

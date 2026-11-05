@@ -4,6 +4,7 @@ import { page } from "$app/state"
 import { fetchReviewerProfile, type ReviewerProfile } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import Avatar from "../../lib/components/Avatar.svelte"
+import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatHours, statusTone } from "../../lib/format"
 
 const roleInfo: { [_: string]: { detail: string; label: string } } = {
@@ -97,10 +98,8 @@ function activeTone(active: boolean | undefined): string {
 </svelte:head>
 
 {#if loading}
-	<div class="ui-skeleton ui-card">
-		<div></div>
-		<div></div>
-		<div></div>
+	<div class="ui-card padded">
+		<LoadingState message="Loading reviewer…" />
 	</div>
 {:else if error || !profile}
 	<div class="ui-card ui-empty">

@@ -8,6 +8,7 @@ import { ApiError } from "../../lib/api-error"
 import { checkGroupLabel, checkStatusLabel, checkTone, groupChecks } from "../../lib/checks"
 import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
+import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -415,7 +416,7 @@ async function choose(next: Filter): Promise<void> {
 
 	const cached = cache.get(`1:${next}`)
 	if (cached) {
-		// Show the last copy immediately and let load() replace it without a skeleton.
+		// Show the last copy immediately and let load() replace it without a placeholder.
 		queue = cached
 		refreshing = false
 		void load(next, stage)
@@ -633,10 +634,8 @@ async function open(item: QueueItem): Promise<void> {
 	</div>
 
 	{#if loading}
-		<div class="ui-skeleton ui-card">
-			<div></div>
-			<div></div>
-			<div></div>
+		<div class="ui-card list">
+			<LoadingState message="Loading open ships…" />
 		</div>
 	{:else if visible.length === 0}
 		<div class="ui-card ui-empty">
@@ -719,10 +718,7 @@ async function open(item: QueueItem): Promise<void> {
 							{item.claimedBy === session.me?.user.email ? "Yours" : humanStatus(item.status)}
 						</span>
 						{#if item.previousReviewer}
-							<span
-								class="ui-badge previous"
-								title={`Previously reviewed by ${item.previousReviewer}`}
-							>
+							<span class="ui-badge previous" title={`Previously reviewed by ${item.previousReviewer}`}>
 								{item.previousReviewer === session.me?.user.email
 									? "Yours to continue"
 									: "Resubmission"}

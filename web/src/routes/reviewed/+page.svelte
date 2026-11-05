@@ -3,6 +3,7 @@ import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { fetchReviewed, type ReviewedItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
+import LoadingState from "../../lib/components/LoadingState.svelte"
 import { decisionLabel, formatDate, formatDateTime, formatHours, statusTone } from "../../lib/format"
 
 type DecisionFilter = "all" | "approved" | "changes" | "rejected"
@@ -180,10 +181,8 @@ onMount((): (() => void) => {
 	</div>
 
 	{#if loading}
-		<div class="ui-skeleton compact ui-card">
-			<div></div>
-			<div></div>
-			<div></div>
+		<div class="ui-card list">
+			<LoadingState message="Loading reviewed ships…" />
 		</div>
 	{:else}
 		{#if visible.length === 0}

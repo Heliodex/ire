@@ -14,6 +14,7 @@ import {
 import { ApiError } from "../../lib/api-error"
 import Avatar from "../../lib/components/Avatar.svelte"
 import MemberRole from "../../lib/components/admin/MemberRole.svelte"
+import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime } from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
@@ -143,11 +144,12 @@ async function invite(): Promise<void> {
 		<a class="ui-button" data-variant="outline" href="/queue">Back to the queue</a>
 	</div>
 {:else if loading}
-	<div class="ui-skeleton ui-card">
-		<div></div>
-		<div></div>
-		<div></div>
-	</div>
+	<section aria-labelledby="roster-title" class="ui-card padded">
+		<div class="section-head">
+			<h2 id="roster-title">Roster</h2>
+		</div>
+		<LoadingState message="Loading roster…" />
+	</section>
 {:else}
 	<section aria-labelledby="roster-title" class="ui-card padded">
 		<div class="section-head">
