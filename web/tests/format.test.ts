@@ -89,7 +89,7 @@ describe("statusTone", () => {
 describe("humanStatus", () => {
 	test("labels known statuses and passes the rest through", () => {
 		expect(humanStatus("ready")).toBe("Ready")
-		expect(humanStatus("needs_attention")).toBe("Needs a look")
+		expect(humanStatus("needs_attention")).toBe("Needs attention")
 		expect(humanStatus("stage2_hold")).toBe("Second pass")
 		expect(humanStatus("custom")).toBe("custom")
 	})

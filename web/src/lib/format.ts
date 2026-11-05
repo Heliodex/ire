@@ -104,7 +104,7 @@ export function humanStatus(status: string): string {
 		case "ready":
 			return "Ready"
 		case "needs_attention":
-			return "Needs a look"
+			return "Needs attention"
 		case "claimed":
 			return "Claimed"
 		case "in_review":

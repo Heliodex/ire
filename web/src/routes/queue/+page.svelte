@@ -101,7 +101,7 @@ const readOnly = $derived(session.me?.readOnly ?? false)
 const filters: { key: Filter; label: string; short: string }[] = [
 	{ key: "all", label: "All open", short: "All" },
 	{ key: "fast", label: "Fast lane", short: "Fast" },
-	{ key: "attention", label: "Needs a look", short: "Attention" },
+	{ key: "attention", label: "Needs attention", short: "Attention" },
 	{ key: "mine", label: "Mine", short: "Mine" },
 ]
 
@@ -627,7 +627,7 @@ async function open(item: QueueItem): Promise<void> {
 		{/if}
 		<div><strong>{queue.counts.ready}</strong><span>Ready</span></div>
 		<div><strong>{queue.counts.claimed}</strong><span>In review</span></div>
-		<div><strong>{queue.counts.needsAttention}</strong><span>Needs a look</span></div>
+		<div><strong>{queue.counts.needsAttention}</strong><span>Needs attention</span></div>
 		<div><strong>{queue.counts.stage2Hold}</strong><span>Second pass</span></div>
 	</div>
 </section>
