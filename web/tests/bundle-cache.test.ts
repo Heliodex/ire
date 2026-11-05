@@ -14,6 +14,7 @@ function memoryStore(): BundleCacheStore & { entries(): [string, string][] } {
 }
 
 function bundle(id: string): Bundle {
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Test fakes only carry the envelope the cache reads.
 	return { submission: { id } } as Bundle
 }
 

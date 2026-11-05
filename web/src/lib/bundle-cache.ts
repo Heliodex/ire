@@ -38,16 +38,37 @@ function indexKeyFor(programSlug: string, owner: string): string {
 	return `review:bundle:${programSlug}:${owner}:index`
 }
 
+// isIndexEntry reports a usable eviction entry.
+function isIndexEntry(value: unknown): value is BundleCacheIndexEntry {
+	if (typeof value !== "object" || value === null) return false
+
+	return "id" in value && typeof value.id === "string" && "savedAt" in value && typeof value.savedAt === "number"
+}
+
+// isCachedBundle reports a copy stored for the same ship. It checks the envelope, not the
+// whole bundle: the version field already invalidates copies from older contract shapes.
+function isCachedBundle(value: unknown, version: number, target: string): value is CachedBundle {
+	if (typeof value !== "object" || value === null) return false
+	if (!("version" in value) || value.version !== version) return false
+	if (!("savedAt" in value) || typeof value.savedAt !== "number") return false
+	if (!("bundle" in value) || typeof value.bundle !== "object" || value.bundle === null) return false
+
+	const bundle: unknown = value.bundle
+	if (!("submission" in bundle) || typeof bundle.submission !== "object" || bundle.submission === null) return false
+
+	return "id" in bundle.submission && bundle.submission.id === target
+}
+
 // readIndex lists cached ships, newest first, so old entries can be evicted.
 function readIndex(store: BundleCacheStore, indexKey: string): BundleCacheIndexEntry[] {
 	try {
 		const raw = store.getItem(indexKey)
 		if (!raw) return []
 
-		const entries = JSON.parse(raw) as BundleCacheIndexEntry[]
-		if (!Array.isArray(entries)) return []
+		const parsed: unknown = JSON.parse(raw)
+		if (!Array.isArray(parsed)) return []
 
-		return entries.filter(entry => entry && typeof entry.id === "string" && typeof entry.savedAt === "number")
+		return parsed.filter(isIndexEntry)
 	} catch {
 		return []
 	}
@@ -64,10 +85,9 @@ export function createBundleCache(programSlug: string, owner: string, store: Bun
 				const raw = store.getItem(keyFor(programSlug, owner, target))
 				if (!raw) return null
 
-				const cached = JSON.parse(raw) as CachedBundle
-				if (cached.version !== cacheVersion) return null
-				if (typeof cached.savedAt !== "number" || Date.now() - cached.savedAt > maxCacheAge) return null
-				if (cached.bundle?.submission?.id !== target) return null
+				const cached: unknown = JSON.parse(raw)
+				if (!isCachedBundle(cached, cacheVersion, target)) return null
+				if (Date.now() - cached.savedAt > maxCacheAge) return null
 
 				return cached.bundle
 			} catch {

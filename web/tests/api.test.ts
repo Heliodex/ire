@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
+import { object, safeParse, string } from "valibot"
 import { fetchAuthConfig, fetchMe, fetchQueue, toValidationError } from "../src/lib/api"
 import { ApiError } from "../src/lib/api-error"
 import { ValidationError } from "../src/lib/validation-error"
@@ -11,10 +12,20 @@ afterEach(() => {
 
 // stubFetch records the requested URL and answers with the given body.
 function stubFetch(status: number, body: unknown, seen: { url: string }): void {
-	globalThis.fetch = ((url: string | URL | Request) => {
-		seen.url = String(url)
-		return Promise.resolve(new Response(JSON.stringify(body), { status }))
-	}) as typeof fetch
+	globalThis.fetch = (input: RequestInfo | URL): Promise<Response> => {
+		seen.url = input instanceof Request ? input.url : input.toString()
+		return Promise.resolve(Response.json(body, { status }))
+	}
+}
+
+// catchError resolves with the rejection reason so failures can be asserted like values.
+async function catchError(promise: Promise<unknown>): Promise<unknown> {
+	try {
+		await promise
+		return null
+	} catch (err: unknown) {
+		return err
+	}
 }
 
 describe("fetchAuthConfig", () => {
@@ -34,37 +45,24 @@ describe("API errors", () => {
 		const seen = { url: "" }
 		stubFetch(401, { code: "unauthorized", error: "No session", field: "" }, seen)
 
-		const failure = fetchMe().then(
-			() => null,
-			(error: unknown) => error,
-		)
-
-		expect(await failure).toMatchObject({ code: "unauthorized", name: "ApiError" })
+		expect(await catchError(fetchMe())).toMatchObject({ code: "unauthorized", name: "ApiError" })
 	})
 
 	test("falls back when the error has no shape", async () => {
 		const seen = { url: "" }
 		stubFetch(500, null, seen)
 
-		const failure = fetchMe().then(
-			() => null,
-			(error: unknown) => error,
-		)
+		const failure = await catchError(fetchMe())
 
-		expect(await failure).toBeInstanceOf(ApiError)
-		expect(((await failure) as ApiError).code).toBe("http_error")
+		expect(failure).toBeInstanceOf(ApiError)
+		expect(failure).toMatchObject({ code: "http_error" })
 	})
 
 	test("rejects a success with an unexpected shape", async () => {
 		const seen = { url: "" }
 		stubFetch(200, { programs: [], readOnly: false }, seen)
 
-		const failure = fetchMe().then(
-			() => null,
-			(error: unknown) => error,
-		)
-
-		expect(await failure).toBeInstanceOf(Error)
+		expect(await catchError(fetchMe())).toBeInstanceOf(Error)
 	})
 })
 
@@ -111,11 +109,16 @@ describe("fetchQueue", () => {
 
 describe("toValidationError", () => {
 	test("keeps the first message per field", () => {
+		const parsed = safeParse(object({ email: string(), role: string() }), { email: 42, role: 43 })
+		expect(parsed.success).toBe(false)
+		if (parsed.success) return
+
+		const [emailIssue, roleIssue] = parsed.issues
 		const error = toValidationError([
-			{ message: "Bad email", path: [{ key: "email" }] },
-			{ message: "Still bad", path: [{ key: "email" }] },
-			{ message: "Bad role", path: [{ key: "role" }] },
-		] as never)
+			{ ...emailIssue, message: "Bad email" },
+			{ ...emailIssue, message: "Still bad" },
+			{ ...roleIssue, message: "Bad role" },
+		])
 
 		expect(error).toBeInstanceOf(ValidationError)
 		expect(error.fields).toEqual({ email: "Bad email", role: "Bad role" })
