@@ -1,5 +1,6 @@
 /static/
 web/build/
+.openchamber/
 web/.svelte-kit/
 web/node_modules/
 web/.wt-dev.vite.config.ts
