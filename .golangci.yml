@@ -59,7 +59,7 @@ linters:
             max-complexity: 40
         funlen:
             lines: 130
-            statements: 100
+            statements: 80
         gocognit:
             min-complexity: 45
         dogsled:
