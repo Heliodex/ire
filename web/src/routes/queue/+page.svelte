@@ -4,7 +4,7 @@ import { SvelteMap } from "svelte/reactivity"
 import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import { checkTone } from "../../lib/checks"
+import { checkGlyph, checkTone } from "../../lib/checks"
 import { formatDateTime, formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -509,10 +509,13 @@ async function open(item: QueueItem): Promise<void> {
 							>
 								{#each item.checks as check (check.key)}
 									<span
+										aria-hidden="true"
 										class="dot"
 										data-tone={checkTone(check)}
 										title={`${check.label}: ${check.status}`}
-									></span>
+									>
+										{checkGlyph(check)}
+									</span>
 								{/each}
 							</span>
 						{/if}
@@ -833,15 +836,29 @@ h1 {
 .dots {
 	display: flex;
 	flex-wrap: nowrap;
-	gap: 4px;
+	gap: 2px;
 	overflow: hidden;
 }
 
 .dot {
-	width: 8px;
-	height: 8px;
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 10px;
+	height: 10px;
+	font-size: 7px;
+	font-weight: 700;
+	line-height: 1;
+	color: var(--text-2);
 	background: var(--border-2);
 	border-radius: 2px;
+}
+
+.dot[data-tone="approved"],
+.dot[data-tone="pending"],
+.dot[data-tone="changes"],
+.dot[data-tone="rejected"] {
+	color: var(--on-ok);
 }
 
 .dot[data-tone="approved"] {

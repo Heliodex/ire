@@ -14,6 +14,22 @@ export function checkTone(check: CheckLike): string {
 	return "neutral"
 }
 
+// checkGlyph gives each check status a shape that does not rely on colour.
+export function checkGlyph(check: CheckLike): string {
+	switch (check.status) {
+		case "pass":
+			return "✓"
+		case "warn":
+			return "!"
+		case "fail":
+			return "-"
+		case "error":
+			return "X"
+		default:
+			return "·"
+	}
+}
+
 // isWarning reports a check the reviewer must acknowledge before approving.
 export function isWarning(check: CheckLike): boolean {
 	return check.status === "warn" || (check.status === "fail" && check.severity === "warn")
