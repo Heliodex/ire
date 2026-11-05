@@ -14,6 +14,8 @@
 - Put function declarations above their usage in the same file, never below
 - If multiple function parameters have the same type, group them like `func foo(a, b int)` instead of `func foo(a int, b int)`
 - If multiple struct fields have the same type, group them like `type Foo struct { a, b int }` instead of `type Foo struct { a int; b int }`
+- Declare zero-value variables with `var` over direct assignement, so use `var x int` instead of `x := 0`
+- Prefer declaring nil-value variables with `var` over direct assignment where the difference between the nil and empty value is not significant, so prefer `var x []string` over `x := []string{}`
 - Keep functions and files short, split them along clear lines if they get too large
 
 ## JS
