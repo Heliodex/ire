@@ -498,6 +498,7 @@ async function open(item: QueueItem): Promise<void> {
 					<span class="ship-title" title={item.title}>
 						<span class="ship-name">{item.title}</span>
 						<span class="maker inline-maker">{item.makerName}</span>
+						<span class="inline-theme">{item.theme ?? ""}</span>
 					</span>
 					<span class="badges">
 						<span
@@ -856,6 +857,16 @@ h1 {
 	font-weight: 400;
 }
 
+.inline-theme {
+	display: none;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: var(--text-xs);
+	font-weight: 400;
+	color: var(--text-3);
+	white-space: nowrap;
+}
+
 .version,
 .age {
 	font-size: var(--text-xs);
@@ -1144,20 +1155,41 @@ h1 {
 	.row {
 		grid-template-areas:
 			"thumb title title title badges"
-			"thumb maker version timing checks";
+			"thumb version timing timing checks";
 		grid-template-columns: 64px minmax(0, 1fr) 36px 160px 190px;
+	}
+
+	.ship-title {
+		display: flex;
+		gap: var(--space-2);
+		align-items: baseline;
+		min-width: 0;
+	}
+
+	.ship-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.inline-maker {
+		display: block;
+		flex: none;
+		padding-left: 0;
+	}
+
+	.fact-maker {
+		display: none;
 	}
 
 	.facts {
 		display: contents;
 	}
 
-	.maker {
-		grid-area: maker;
-	}
-
 	.version {
 		grid-area: version;
+		justify-self: start;
+		text-align: left;
 	}
 
 	.timing {
@@ -1198,19 +1230,24 @@ h1 {
 		grid-template-areas:
 			"thumb title title title"
 			"thumb facts facts facts"
-			"thumb status theme checks";
+			"thumb status checks checks";
 		grid-template-columns: 64px 96px 44px minmax(0, 1fr);
 		column-gap: var(--space-2);
 	}
 
 	.ship-title {
 		display: grid;
+		grid-template-areas:
+			"name maker"
+			"type type";
 		grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
 		gap: var(--space-2);
+		row-gap: 2px;
 		align-items: baseline;
 	}
 
 	.ship-name {
+		grid-area: name;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -1218,7 +1255,13 @@ h1 {
 
 	.inline-maker {
 		display: block;
+		grid-area: maker;
 		padding-left: 0;
+	}
+
+	.inline-theme {
+		display: block;
+		grid-area: type;
 	}
 
 	.fact-maker {
@@ -1246,10 +1289,8 @@ h1 {
 		grid-area: status;
 	}
 
-	.theme {
-		grid-area: theme;
-		overflow: hidden;
-		text-overflow: ellipsis;
+	.badges .theme {
+		display: none;
 	}
 
 	.timing {
