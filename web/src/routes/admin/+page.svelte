@@ -194,7 +194,7 @@ async function invite(): Promise<void> {
 					{#each members as member (member.id)}
 						<tr class:inactive={!member.active}>
 							<td>
-								<a class="member-link" href={reviewerHref(member.id) ?? "#"}>
+								<a class="member-link" data-sveltekit-reload href={reviewerHref(member.id) ?? "#"}>
 									<strong>{member.name ?? member.email}</strong>
 									<span class="muted">{member.email}</span>
 								</a>

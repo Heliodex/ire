@@ -27,7 +27,9 @@ let { reviews }: { reviews: Review[] } = $props()
 					{/if}
 					<span class="history-when">
 						{#if href}
-							<a {href} title={review.reviewerEmail}>{review.reviewerName ?? review.reviewerEmail}</a>
+							<a data-sveltekit-reload {href} title={review.reviewerEmail}
+								>{review.reviewerName ?? review.reviewerEmail}</a
+							>
 						{:else}
 							{review.reviewerName ?? review.reviewerEmail}
 						{/if}

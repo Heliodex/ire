@@ -31,7 +31,10 @@ let error = $state("")
 let request = 0
 
 $effect((): void => {
-	const next = page.url.searchParams.get("reviewer")?.trim() ?? ""
+	const path = page.url.pathname
+	const next = path.startsWith("/reviewers/")
+		? decodeURIComponent(path.slice("/reviewers/".length)).replace(/\/$/, "")
+		: ""
 	if (next === "") {
 		void goto("/queue")
 		return

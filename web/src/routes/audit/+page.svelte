@@ -352,6 +352,7 @@ function targetLink(entry: AuditEntry): string | null {
 						{#if reviewerHref(entry.actorEmail)}
 							<a
 								class="actor"
+								data-sveltekit-reload
 								href={reviewerHref(entry.actorEmail) ?? "#"}
 								title={entry.actorEmail ?? ""}
 							>
@@ -364,7 +365,7 @@ function targetLink(entry: AuditEntry): string | null {
 							<a class="target" href={targetLink(entry)}>{entry.targetLabel ?? entry.targetId}</a>
 						{:else if entry.targetId
 							&& (entry.action.startsWith("member.") || entry.action.startsWith("user."))}
-							<a class="target" href={reviewerHref(entry.targetId) ?? "#"}>
+							<a class="target" data-sveltekit-reload href={reviewerHref(entry.targetId) ?? "#"}>
 								{entry.targetLabel ?? entry.targetId}
 							</a>
 						{:else if entry.targetLabel || entry.targetId}

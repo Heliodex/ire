@@ -727,7 +727,7 @@ async function saveDraftNow(): Promise<void> {
 				<strong>
 					First pass ·
 					{#if heldHref}
-						<a href={heldHref}>{heldReview.reviewerEmail}</a>
+						<a data-sveltekit-reload href={heldHref}>{heldReview.reviewerEmail}</a>
 					{:else}
 						{heldReview.reviewerEmail}
 					{/if}
@@ -841,7 +841,7 @@ async function saveDraftNow(): Promise<void> {
 									<p>{prior.feedback}</p>
 									<small>
 										{#if priorHref}
-											<a href={priorHref}>{prior.reviewer}</a>
+											<a data-sveltekit-reload href={priorHref}>{prior.reviewer}</a>
 										{:else}
 											{prior.reviewer ?? "Reviewer"}
 										{/if}
@@ -1189,7 +1189,7 @@ async function saveDraftNow(): Promise<void> {
 						<p class="claim">
 							Claimed by
 							{#if claimHref}
-								<a href={claimHref}>{bundle.claim.reviewerEmail}</a>
+								<a data-sveltekit-reload href={claimHref}>{bundle.claim.reviewerEmail}</a>
 							{:else}
 								{bundle.claim.reviewerEmail}
 							{/if}
