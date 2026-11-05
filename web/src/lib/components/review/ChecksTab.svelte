@@ -237,13 +237,24 @@ function toggleGroup(group: string): void {
 	gap: var(--space-1);
 	align-items: center;
 	justify-self: end;
+	padding: 2px 8px 2px 5px;
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--status-pending);
 	cursor: pointer;
+	background: color-mix(in srgb, var(--status-pending) 10%, var(--surface));
+	border: 1px solid color-mix(in srgb, var(--status-pending) 35%, transparent);
+	border-radius: var(--radius-full);
+}
+
+.ack:has(input:checked) {
+	color: var(--status-approved);
+	background: color-mix(in srgb, var(--status-approved) 12%, var(--surface));
+	border-color: color-mix(in srgb, var(--status-approved) 35%, transparent);
 }
 
 .ack input {
+	margin: 0;
 	accent-color: var(--primary);
 }
 
