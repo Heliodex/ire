@@ -147,6 +147,10 @@
 					"makerAvatarUrl": {
 						"type": "string"
 					},
+					"makerEmail": {
+						"type": "string",
+						"minLength": 1
+					},
 					"makerName": {
 						"type": "string",
 						"minLength": 1
@@ -191,6 +195,7 @@
 					"hoursClaimedSeconds",
 					"id",
 					"ingestedAt",
+					"makerEmail",
 					"makerName",
 					"priority",
 					"stage",

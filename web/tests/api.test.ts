@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { object, safeParse, string } from "valibot"
-import { fetchAuthConfig, fetchMe, fetchQueue, toValidationError } from "../src/lib/api"
+import { fetchAuthConfig, fetchMakerProfile, fetchMe, fetchQueue, toValidationError } from "../src/lib/api"
 import { ApiError } from "../src/lib/api-error"
 import { ValidationError } from "../src/lib/validation-error"
 
@@ -38,6 +38,38 @@ describe("fetchAuthConfig", () => {
 
 		expect(seen.url).toBe("/api/v1/auth/config")
 		expect(config).toEqual({ dev: true, hca: false })
+	})
+})
+
+describe("fetchMakerProfile", () => {
+	test("calls the maker endpoint and parses the profile", async () => {
+		const seen = { url: "" }
+		stubFetch(
+			200,
+			{
+				email: "maker@example.com",
+				name: "Maker",
+				submissions: [
+					{
+						externalId: "fix-clean:design",
+						hoursClaimedSeconds: 3600,
+						id: "sub_1",
+						stage: 1,
+						status: "ready",
+						title: "Board",
+						updatedAt: "2026-01-01T00:00:00Z",
+						version: 1,
+					},
+				],
+			},
+			seen,
+		)
+
+		const profile = await fetchMakerProfile("maker@example.com")
+
+		expect(seen.url).toBe("/api/v1/programs/half-life/makers/maker%40example.com")
+		expect(profile.email).toBe("maker@example.com")
+		expect(profile.submissions).toHaveLength(1)
 	})
 })
 

@@ -95,6 +95,7 @@ function item(id: string, claimedBy?: string): QueueItem {
 		hoursClaimedSeconds: 3600,
 		id,
 		ingestedAt: "2026-01-01T00:00:00Z",
+		makerEmail: "maker@example.com",
 		makerName: "Maker",
 		priority: 0,
 		stage: 1,

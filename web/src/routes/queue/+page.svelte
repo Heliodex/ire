@@ -26,6 +26,7 @@ import {
 	type SavedQueueState,
 	type QueueSortKey as SortKey,
 } from "../../lib/queue-state"
+import { makerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
 const sortKeys: SortKey[] = ["ship", "maker", "status", "type", "version", "claimed", "age", "checks"]
@@ -902,7 +903,14 @@ function filterByStatus(item: QueueItem, event: MouseEvent): void {
 						<span class="ship-name">{item.title}</span>
 						<span class="maker inline-maker">
 							<Avatar name={item.makerName} size="xs" url={item.makerAvatarUrl} />
-							<span class="maker-name">{item.makerName}</span>
+							<a
+								class="maker-name"
+								data-sveltekit-reload
+								href={makerHref(item.makerEmail) ?? "#"}
+								onclick={(event: MouseEvent): void => event.stopPropagation()}
+							>
+								{item.makerName}
+							</a>
 						</span>
 						<span class="inline-theme">{item.theme ?? ""}</span>
 					</span>
@@ -929,7 +937,14 @@ function filterByStatus(item: QueueItem, event: MouseEvent): void {
 					<div class="facts">
 						<span class="maker fact-maker">
 							<Avatar name={item.makerName} size="xs" url={item.makerAvatarUrl} />
-							<span class="maker-name">{item.makerName}</span>
+							<a
+								class="maker-name"
+								data-sveltekit-reload
+								href={makerHref(item.makerEmail) ?? "#"}
+								onclick={(event: MouseEvent): void => event.stopPropagation()}
+							>
+								{item.makerName}
+							</a>
 						</span>
 						<span class="version">v{item.version}</span>
 						<span class="timing">
@@ -1325,6 +1340,15 @@ h1 {
 .maker-name {
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+a.maker-name {
+	color: inherit;
+	text-decoration: none;
+}
+
+a.maker-name:hover {
+	text-decoration: underline;
 }
 
 .inline-maker {

@@ -12,6 +12,7 @@ import {
 	evidenceSchema,
 	fakeDeliveriesResponseSchema,
 	journalReviewResponseSchema,
+	makerProfileSchema,
 	memberSchema,
 	membersResponseSchema,
 	meResponseSchema,
@@ -58,6 +59,8 @@ export type Member = InferOutput<typeof memberSchema>
 export type AuditEntry = InferOutput<typeof auditResponseSchema>["entries"][number]
 export type Audit = InferOutput<typeof auditResponseSchema>
 export type ReviewerProfile = InferOutput<typeof reviewerProfileSchema>
+export type MakerProfile = InferOutput<typeof makerProfileSchema>
+export type MakerSubmission = MakerProfile["submissions"][number]
 
 export const program = "half-life"
 
@@ -316,6 +319,12 @@ export interface AuditFilters {
 export async function fetchReviewerProfile(key: string): Promise<ReviewerProfile> {
 	const response = await fetch(`/api/v1/programs/${program}/reviewers/${encodeURIComponent(key)}`)
 	return parseJSON(response, reviewerProfileSchema)
+}
+
+// fetchMakerProfile returns one maker's identity and their latest ship per project.
+export async function fetchMakerProfile(email: string): Promise<MakerProfile> {
+	const response = await fetch(`/api/v1/programs/${program}/makers/${encodeURIComponent(email)}`)
+	return parseJSON(response, makerProfileSchema)
 }
 
 // fetchAudit lists audit entries, optionally narrowed by action, age or a search term.

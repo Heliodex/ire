@@ -1,0 +1,88 @@
+{
+	"type": "object",
+	"properties": {
+		"avatarUrl": {
+			"type": "string"
+		},
+		"email": {
+			"type": "string",
+			"minLength": 1
+		},
+		"name": {
+			"type": "string"
+		},
+		"submissions": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"decidedAt": {
+						"type": "string"
+					},
+					"decision": {
+						"type": "string"
+					},
+					"externalId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"hoursApprovedSeconds": {
+						"type": "integer"
+					},
+					"hoursClaimedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"status": {
+						"type": "string",
+						"minLength": 1
+					},
+					"theme": {
+						"type": "string"
+					},
+					"thumbnailUrl": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string",
+						"minLength": 1
+					},
+					"updatedAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"version": {
+						"type": "integer",
+						"minimum": 0
+					}
+				},
+				"required": [
+					"externalId",
+					"hoursClaimedSeconds",
+					"id",
+					"stage",
+					"status",
+					"title",
+					"updatedAt",
+					"version"
+				],
+				"title": "MakerSubmission"
+			}
+		}
+	},
+	"required": [
+		"email",
+		"submissions"
+	],
+	"title": "MakerProfile",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/maker-profile.json"
+}

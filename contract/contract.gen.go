@@ -1819,6 +1819,149 @@ func (j *LoginRequest) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type MakerProfile struct {
+	// AvatarURL corresponds to the JSON schema field "avatarUrl".
+	AvatarURL *string `json:"avatarUrl,omitempty,omitzero" yaml:"avatarUrl,omitempty" mapstructure:"avatarUrl,omitempty"`
+
+	// Email corresponds to the JSON schema field "email".
+	Email string `json:"email" yaml:"email" mapstructure:"email"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name *string `json:"name,omitempty,omitzero" yaml:"name,omitempty" mapstructure:"name,omitempty"`
+
+	// Submissions corresponds to the JSON schema field "submissions".
+	Submissions []MakerSubmission `json:"submissions" yaml:"submissions" mapstructure:"submissions"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *MakerProfile) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["email"]; raw != nil && !ok {
+		return fmt.Errorf("field email in MakerProfile: required")
+	}
+	if _, ok := raw["submissions"]; raw != nil && !ok {
+		return fmt.Errorf("field submissions in MakerProfile: required")
+	}
+	type Plain MakerProfile
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Email)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "email", 1)
+	}
+	*j = MakerProfile(plain)
+	return nil
+}
+
+type MakerSubmission struct {
+	// DecidedAt corresponds to the JSON schema field "decidedAt".
+	DecidedAt *string `json:"decidedAt,omitempty,omitzero" yaml:"decidedAt,omitempty" mapstructure:"decidedAt,omitempty"`
+
+	// Decision corresponds to the JSON schema field "decision".
+	Decision *string `json:"decision,omitempty,omitzero" yaml:"decision,omitempty" mapstructure:"decision,omitempty"`
+
+	// ExternalID corresponds to the JSON schema field "externalId".
+	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
+
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hoursApprovedSeconds".
+	HoursApprovedSeconds *int `json:"hoursApprovedSeconds,omitempty,omitzero" yaml:"hoursApprovedSeconds,omitempty" mapstructure:"hoursApprovedSeconds,omitempty"`
+
+	// HoursClaimedSeconds corresponds to the JSON schema field "hoursClaimedSeconds".
+	HoursClaimedSeconds int `json:"hoursClaimedSeconds" yaml:"hoursClaimedSeconds" mapstructure:"hoursClaimedSeconds"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Theme corresponds to the JSON schema field "theme".
+	Theme *string `json:"theme,omitempty,omitzero" yaml:"theme,omitempty" mapstructure:"theme,omitempty"`
+
+	// ThumbnailURL corresponds to the JSON schema field "thumbnailUrl".
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty,omitzero" yaml:"thumbnailUrl,omitempty" mapstructure:"thumbnailUrl,omitempty"`
+
+	// Title corresponds to the JSON schema field "title".
+	Title string `json:"title" yaml:"title" mapstructure:"title"`
+
+	// UpdatedAt corresponds to the JSON schema field "updatedAt".
+	UpdatedAt string `json:"updatedAt" yaml:"updatedAt" mapstructure:"updatedAt"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *MakerSubmission) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["externalId"]; raw != nil && !ok {
+		return fmt.Errorf("field externalId in MakerSubmission: required")
+	}
+	if _, ok := raw["hoursClaimedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursClaimedSeconds in MakerSubmission: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in MakerSubmission: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in MakerSubmission: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in MakerSubmission: required")
+	}
+	if _, ok := raw["title"]; raw != nil && !ok {
+		return fmt.Errorf("field title in MakerSubmission: required")
+	}
+	if _, ok := raw["updatedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field updatedAt in MakerSubmission: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in MakerSubmission: required")
+	}
+	type Plain MakerSubmission
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
+	}
+	if 0 > plain.HoursClaimedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if 0 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
+	}
+	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = MakerSubmission(plain)
+	return nil
+}
+
 type MeResponse struct {
 	// Programs corresponds to the JSON schema field "programs".
 	Programs []Membership `json:"programs" yaml:"programs" mapstructure:"programs"`
@@ -2625,6 +2768,9 @@ type QueueItem struct {
 	// MakerAvatarURL corresponds to the JSON schema field "makerAvatarUrl".
 	MakerAvatarURL *string `json:"makerAvatarUrl,omitempty,omitzero" yaml:"makerAvatarUrl,omitempty" mapstructure:"makerAvatarUrl,omitempty"`
 
+	// MakerEmail corresponds to the JSON schema field "makerEmail".
+	MakerEmail string `json:"makerEmail" yaml:"makerEmail" mapstructure:"makerEmail"`
+
 	// MakerName corresponds to the JSON schema field "makerName".
 	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
 
@@ -2680,6 +2826,9 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["ingestedAt"]; raw != nil && !ok {
 		return fmt.Errorf("field ingestedAt in QueueItem: required")
 	}
+	if _, ok := raw["makerEmail"]; raw != nil && !ok {
+		return fmt.Errorf("field makerEmail in QueueItem: required")
+	}
 	if _, ok := raw["makerName"]; raw != nil && !ok {
 		return fmt.Errorf("field makerName in QueueItem: required")
 	}
@@ -2714,6 +2863,9 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	}
 	if utf8.RuneCountInString(string(plain.IngestedAt)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "ingestedAt", 1)
+	}
+	if utf8.RuneCountInString(string(plain.MakerEmail)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "makerEmail", 1)
 	}
 	if utf8.RuneCountInString(string(plain.MakerName)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerName", 1)

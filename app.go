@@ -201,6 +201,7 @@ func (a *ireApp) routes() {
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/members", a.handleInviteMember)
 	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/members/{id}", a.handleUpdateMember)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/reviewers/{key}", a.handleReviewerProfile)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/makers/{email}", a.handleMakerProfile)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/audit", a.handleAudit)
 	a.mux.HandleFunc("GET /api/v1/dev/outbox/received", a.handleFakeDeliveries)
 

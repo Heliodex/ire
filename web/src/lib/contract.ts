@@ -169,6 +169,35 @@ export const reviewerProfileSchema = pipe(
 	title("ReviewerProfile"),
 )
 
+export const makerSubmissionSchema = pipe(
+	object({
+		decidedAt: optionalString,
+		decision: optionalString,
+		externalId: pipe(string(), minLength(1)),
+		hoursApprovedSeconds: optional(pipe(number(), integer())),
+		hoursClaimedSeconds: nonNegative,
+		id: pipe(string(), minLength(1)),
+		stage: nonNegative,
+		status: pipe(string(), minLength(1)),
+		theme: optionalString,
+		thumbnailUrl: optionalString,
+		title: pipe(string(), minLength(1)),
+		updatedAt: timestamp,
+		version: nonNegative,
+	}),
+	title("MakerSubmission"),
+)
+
+export const makerProfileSchema = pipe(
+	object({
+		avatarUrl: optionalString,
+		email: pipe(string(), minLength(1)),
+		name: optionalString,
+		submissions: array(makerSubmissionSchema),
+	}),
+	title("MakerProfile"),
+)
+
 export const inviteMemberSchema = pipe(
 	object({
 		email: pipe(string(), minLength(3), maxLength(320), nonBlank),
@@ -266,6 +295,7 @@ export const queueItemSchema = pipe(
 		id: pipe(string(), minLength(1)),
 		ingestedAt: timestamp,
 		makerAvatarUrl: optionalString,
+		makerEmail: pipe(string(), minLength(1)),
 		makerName: pipe(string(), minLength(1)),
 		previousReviewer: optionalString,
 		priority: nonNegative,
@@ -1017,6 +1047,7 @@ export const responseSchemas = Object.freeze([
 	fakeDeliveriesResponseSchema,
 	ingestResponseSchema,
 	journalReviewResponseSchema,
+	makerProfileSchema,
 	meResponseSchema,
 	membersResponseSchema,
 	noteCreatedSchema,

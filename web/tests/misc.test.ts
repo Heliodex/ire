@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { ApiError } from "../src/lib/api-error"
 import { ignore, sleep } from "../src/lib/async"
-import { reviewerHref } from "../src/lib/reviewer"
+import { makerHref, reviewerHref } from "../src/lib/reviewer"
 import { ValidationError } from "../src/lib/validation-error"
 
 describe("reviewerHref", () => {
@@ -14,6 +14,19 @@ describe("reviewerHref", () => {
 		expect(reviewerHref(null)).toBeNull()
 		expect(reviewerHref(undefined)).toBeNull()
 		expect(reviewerHref("   ")).toBeNull()
+	})
+})
+
+describe("makerHref", () => {
+	test("links emails to the maker page", () => {
+		expect(makerHref("maker@example.com")).toBe("/makers/maker%40example.com")
+		expect(makerHref("  maker@example.com  ")).toBe("/makers/maker%40example.com")
+	})
+
+	test("returns null for missing emails", () => {
+		expect(makerHref(null)).toBeNull()
+		expect(makerHref(undefined)).toBeNull()
+		expect(makerHref("")).toBeNull()
 	})
 })
 
