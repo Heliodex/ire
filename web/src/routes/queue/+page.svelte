@@ -6,8 +6,8 @@ import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { checkGroupLabel, checkStatusLabel, checkTone, groupChecks } from "../../lib/checks"
+import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
-import MakerAvatar from "../../lib/components/MakerAvatar.svelte"
 import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -697,7 +697,7 @@ async function open(item: QueueItem): Promise<void> {
 					<span class="ship-title" title={item.title}>
 						<span class="ship-name">{item.title}</span>
 						<span class="maker inline-maker">
-							<MakerAvatar name={item.makerName} url={item.makerAvatarUrl} />
+							<Avatar name={item.makerName} size="xs" url={item.makerAvatarUrl} />
 							<span class="maker-name">{item.makerName}</span>
 						</span>
 						<span class="inline-theme">{item.theme ?? ""}</span>
@@ -714,7 +714,7 @@ async function open(item: QueueItem): Promise<void> {
 					</span>
 					<div class="facts">
 						<span class="maker fact-maker">
-							<MakerAvatar name={item.makerName} url={item.makerAvatarUrl} />
+							<Avatar name={item.makerName} size="xs" url={item.makerAvatarUrl} />
 							<span class="maker-name">{item.makerName}</span>
 						</span>
 						<span class="version">v{item.version}</span>

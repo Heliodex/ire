@@ -3,7 +3,7 @@ import { goto } from "$app/navigation"
 import { page } from "$app/state"
 import { fetchReviewerProfile, type ReviewerProfile } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import ProfileAvatar from "../../lib/components/ProfileAvatar.svelte"
+import Avatar from "../../lib/components/Avatar.svelte"
 import { formatDateTime, formatHours, statusTone } from "../../lib/format"
 
 const roleInfo: { [_: string]: { detail: string; label: string } } = {
@@ -113,7 +113,7 @@ function activeTone(active: boolean | undefined): string {
 		<div>
 			<p class="crumbs"><a href="/queue">Queue</a> / Reviewer</p>
 			<div class="identity-summary">
-				<ProfileAvatar email={profile.email} name={profile.name} size="lg" url={profile.avatarUrl} />
+				<Avatar email={profile.email} name={profile.name} size="lg" url={profile.avatarUrl} />
 				<div>
 					<div class="title-line">
 						<h1>{profile.name ?? profile.email}</h1>

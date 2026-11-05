@@ -12,8 +12,8 @@ import {
 	updateMember,
 } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
+import Avatar from "../../lib/components/Avatar.svelte"
 import MemberRole from "../../lib/components/admin/MemberRole.svelte"
-import ProfileAvatar from "../../lib/components/ProfileAvatar.svelte"
 import { formatDateTime } from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
@@ -196,12 +196,7 @@ async function invite(): Promise<void> {
 						<tr class:inactive={!member.active}>
 							<td>
 								<a class="member-link" data-sveltekit-reload href={reviewerHref(member.id) ?? "#"}>
-									<ProfileAvatar
-										email={member.email}
-										name={member.name}
-										size="md"
-										url={member.avatarUrl}
-									/>
+									<Avatar email={member.email} name={member.name} size="md" url={member.avatarUrl} />
 									<span class="member-copy">
 										<strong>{member.name ?? member.email}</strong>
 										<span class="muted">{member.email}</span>

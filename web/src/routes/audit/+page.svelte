@@ -3,7 +3,7 @@ import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { type AuditEntry, fetchAudit, fetchMe, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import ProfileAvatar from "../../lib/components/ProfileAvatar.svelte"
+import Avatar from "../../lib/components/Avatar.svelte"
 import { formatDateTime, formatHours, timeAgo } from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
@@ -357,7 +357,7 @@ function targetLink(entry: AuditEntry): string | null {
 								href={reviewerHref(entry.actorEmail) ?? "#"}
 								title={entry.actorEmail ?? ""}
 							>
-								<ProfileAvatar
+								<Avatar
 									email={entry.actorEmail}
 									name={entry.actorName}
 									size="xs"
@@ -367,7 +367,7 @@ function targetLink(entry: AuditEntry): string | null {
 							</a>
 						{:else}
 							<span class="actor">
-								<ProfileAvatar
+								<Avatar
 									email={entry.actorEmail}
 									name={entry.actorName}
 									size="xs"

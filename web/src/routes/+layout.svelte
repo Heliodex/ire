@@ -4,7 +4,7 @@ import { goto } from "$app/navigation"
 import { page } from "$app/state"
 import { fetchMe, logout } from "../lib/api"
 import { ApiError } from "../lib/api-error"
-import ProfileAvatar from "../lib/components/ProfileAvatar.svelte"
+import Avatar from "../lib/components/Avatar.svelte"
 import SearchBar from "../lib/components/SearchBar.svelte"
 import { session } from "../lib/session.svelte.js"
 import { theme } from "../lib/theme.svelte.js"
@@ -159,7 +159,7 @@ async function signOut(): Promise<void> {
 					href={accountProfileHref}
 					title="Your profile"
 				>
-					<ProfileAvatar
+					<Avatar
 						email={accountEmail}
 						name={session.me.user.name}
 						size="sm"
