@@ -87,7 +87,7 @@ function eventOf(body: string): string {
 			{#if outbox.length === 0}
 				<div class="ui-empty">
 					<strong>Nothing sent yet</strong>
-					<span>Approve a clean fixture ship to write the first delivery.</span>
+					<span>A final decision will write the first delivery here.</span>
 				</div>
 			{:else}
 				{#each outbox as row (row.id)}
