@@ -518,6 +518,43 @@ export const evidenceSchema = pipe(
 	title("Evidence"),
 )
 
+export const resubmissionEntrySchema = pipe(
+	object({
+		at: timestamp,
+		seconds: nonNegative,
+		title: optionalString,
+	}),
+	title("ResubmissionEntry"),
+)
+
+export const resubmissionPriceSchema = pipe(
+	object({
+		afterCents: nonNegative,
+		beforeCents: nonNegative,
+		name: pipe(string(), minLength(1)),
+	}),
+	title("ResubmissionPrice"),
+)
+
+export const resubmissionSchema = pipe(
+	object({
+		addedFiles: array(string()),
+		bomAdded: array(string()),
+		bomPriceChanges: array(resubmissionPriceSchema),
+		bomRemoved: array(string()),
+		changedEntries: array(resubmissionEntrySchema),
+		commits: array(evidenceCommitSchema),
+		newEntries: array(resubmissionEntrySchema),
+		previousDecision: optionalString,
+		previousNote: optionalString,
+		previousReviewedAt: optionalString,
+		previousReviewer: optionalString,
+		previousVersion: nonNegative,
+		removedFiles: array(string()),
+	}),
+	title("Resubmission"),
+)
+
 export const reviewBundleSchema = pipe(
 	object({
 		acknowledgements: array(string()),
@@ -531,6 +568,7 @@ export const reviewBundleSchema = pipe(
 		journals: array(journalSchema),
 		policy: reviewPolicySchema,
 		priorReviews: array(priorReviewSchema),
+		resubmission: optional(resubmissionSchema),
 		reviews: array(reviewSchema),
 		submission: submissionSchema,
 	}),

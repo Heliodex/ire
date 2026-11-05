@@ -2616,6 +2616,174 @@ func (j *QueueResponse) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type Resubmission struct {
+	// AddedFiles corresponds to the JSON schema field "addedFiles".
+	AddedFiles []string `json:"addedFiles" yaml:"addedFiles" mapstructure:"addedFiles"`
+
+	// BomAdded corresponds to the JSON schema field "bomAdded".
+	BomAdded []string `json:"bomAdded" yaml:"bomAdded" mapstructure:"bomAdded"`
+
+	// BomPriceChanges corresponds to the JSON schema field "bomPriceChanges".
+	BomPriceChanges []ResubmissionPrice `json:"bomPriceChanges" yaml:"bomPriceChanges" mapstructure:"bomPriceChanges"`
+
+	// BomRemoved corresponds to the JSON schema field "bomRemoved".
+	BomRemoved []string `json:"bomRemoved" yaml:"bomRemoved" mapstructure:"bomRemoved"`
+
+	// ChangedEntries corresponds to the JSON schema field "changedEntries".
+	ChangedEntries []ResubmissionEntry `json:"changedEntries" yaml:"changedEntries" mapstructure:"changedEntries"`
+
+	// Commits corresponds to the JSON schema field "commits".
+	Commits []EvidenceCommit `json:"commits" yaml:"commits" mapstructure:"commits"`
+
+	// NewEntries corresponds to the JSON schema field "newEntries".
+	NewEntries []ResubmissionEntry `json:"newEntries" yaml:"newEntries" mapstructure:"newEntries"`
+
+	// PreviousDecision corresponds to the JSON schema field "previousDecision".
+	PreviousDecision *string `json:"previousDecision,omitempty,omitzero" yaml:"previousDecision,omitempty" mapstructure:"previousDecision,omitempty"`
+
+	// PreviousNote corresponds to the JSON schema field "previousNote".
+	PreviousNote *string `json:"previousNote,omitempty,omitzero" yaml:"previousNote,omitempty" mapstructure:"previousNote,omitempty"`
+
+	// PreviousReviewedAt corresponds to the JSON schema field "previousReviewedAt".
+	PreviousReviewedAt *string `json:"previousReviewedAt,omitempty,omitzero" yaml:"previousReviewedAt,omitempty" mapstructure:"previousReviewedAt,omitempty"`
+
+	// PreviousReviewer corresponds to the JSON schema field "previousReviewer".
+	PreviousReviewer *string `json:"previousReviewer,omitempty,omitzero" yaml:"previousReviewer,omitempty" mapstructure:"previousReviewer,omitempty"`
+
+	// PreviousVersion corresponds to the JSON schema field "previousVersion".
+	PreviousVersion int `json:"previousVersion" yaml:"previousVersion" mapstructure:"previousVersion"`
+
+	// RemovedFiles corresponds to the JSON schema field "removedFiles".
+	RemovedFiles []string `json:"removedFiles" yaml:"removedFiles" mapstructure:"removedFiles"`
+}
+
+type ResubmissionEntry struct {
+	// At corresponds to the JSON schema field "at".
+	At string `json:"at" yaml:"at" mapstructure:"at"`
+
+	// Seconds corresponds to the JSON schema field "seconds".
+	Seconds int `json:"seconds" yaml:"seconds" mapstructure:"seconds"`
+
+	// Title corresponds to the JSON schema field "title".
+	Title *string `json:"title,omitempty,omitzero" yaml:"title,omitempty" mapstructure:"title,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ResubmissionEntry) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["at"]; raw != nil && !ok {
+		return fmt.Errorf("field at in ResubmissionEntry: required")
+	}
+	if _, ok := raw["seconds"]; raw != nil && !ok {
+		return fmt.Errorf("field seconds in ResubmissionEntry: required")
+	}
+	type Plain ResubmissionEntry
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.At)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "at", 1)
+	}
+	if 0 > plain.Seconds {
+		return fmt.Errorf("field %s: must be >= %v", "seconds", 0)
+	}
+	*j = ResubmissionEntry(plain)
+	return nil
+}
+
+type ResubmissionPrice struct {
+	// AfterCents corresponds to the JSON schema field "afterCents".
+	AfterCents int `json:"afterCents" yaml:"afterCents" mapstructure:"afterCents"`
+
+	// BeforeCents corresponds to the JSON schema field "beforeCents".
+	BeforeCents int `json:"beforeCents" yaml:"beforeCents" mapstructure:"beforeCents"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name string `json:"name" yaml:"name" mapstructure:"name"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ResubmissionPrice) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["afterCents"]; raw != nil && !ok {
+		return fmt.Errorf("field afterCents in ResubmissionPrice: required")
+	}
+	if _, ok := raw["beforeCents"]; raw != nil && !ok {
+		return fmt.Errorf("field beforeCents in ResubmissionPrice: required")
+	}
+	if _, ok := raw["name"]; raw != nil && !ok {
+		return fmt.Errorf("field name in ResubmissionPrice: required")
+	}
+	type Plain ResubmissionPrice
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.AfterCents {
+		return fmt.Errorf("field %s: must be >= %v", "afterCents", 0)
+	}
+	if 0 > plain.BeforeCents {
+		return fmt.Errorf("field %s: must be >= %v", "beforeCents", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Name)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "name", 1)
+	}
+	*j = ResubmissionPrice(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Resubmission) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["addedFiles"]; raw != nil && !ok {
+		return fmt.Errorf("field addedFiles in Resubmission: required")
+	}
+	if _, ok := raw["bomAdded"]; raw != nil && !ok {
+		return fmt.Errorf("field bomAdded in Resubmission: required")
+	}
+	if _, ok := raw["bomPriceChanges"]; raw != nil && !ok {
+		return fmt.Errorf("field bomPriceChanges in Resubmission: required")
+	}
+	if _, ok := raw["bomRemoved"]; raw != nil && !ok {
+		return fmt.Errorf("field bomRemoved in Resubmission: required")
+	}
+	if _, ok := raw["changedEntries"]; raw != nil && !ok {
+		return fmt.Errorf("field changedEntries in Resubmission: required")
+	}
+	if _, ok := raw["commits"]; raw != nil && !ok {
+		return fmt.Errorf("field commits in Resubmission: required")
+	}
+	if _, ok := raw["newEntries"]; raw != nil && !ok {
+		return fmt.Errorf("field newEntries in Resubmission: required")
+	}
+	if _, ok := raw["previousVersion"]; raw != nil && !ok {
+		return fmt.Errorf("field previousVersion in Resubmission: required")
+	}
+	if _, ok := raw["removedFiles"]; raw != nil && !ok {
+		return fmt.Errorf("field removedFiles in Resubmission: required")
+	}
+	type Plain Resubmission
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.PreviousVersion {
+		return fmt.Errorf("field %s: must be >= %v", "previousVersion", 0)
+	}
+	*j = Resubmission(plain)
+	return nil
+}
+
 type Review struct {
 	// Acknowledgements corresponds to the JSON schema field "acknowledgements".
 	Acknowledgements []string `json:"acknowledgements" yaml:"acknowledgements" mapstructure:"acknowledgements"`
@@ -2694,6 +2862,9 @@ type ReviewBundle struct {
 
 	// PriorReviews corresponds to the JSON schema field "priorReviews".
 	PriorReviews []PriorReview `json:"priorReviews" yaml:"priorReviews" mapstructure:"priorReviews"`
+
+	// Resubmission corresponds to the JSON schema field "resubmission".
+	Resubmission *Resubmission `json:"resubmission,omitempty,omitzero" yaml:"resubmission,omitempty" mapstructure:"resubmission,omitempty"`
 
 	// Reviews corresponds to the JSON schema field "reviews".
 	Reviews []Review `json:"reviews" yaml:"reviews" mapstructure:"reviews"`
