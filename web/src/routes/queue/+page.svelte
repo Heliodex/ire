@@ -180,6 +180,7 @@ function scheduleSave(): void {
 
 // restorePosition scrolls back after the router and browser have settled on the new page.
 async function restorePosition(top: number): Promise<void> {
+	restoring = true
 	await tick()
 
 	window.scrollTo(0, top)
@@ -307,6 +308,8 @@ async function boot(): Promise<void> {
 	}
 
 	await load(filter, stage, savedQueue !== null)
+
+	if (savedQueue) await restorePosition(savedQueue.scrollY)
 }
 
 // checkTone maps a check result to a dot tone. A failure with warning severity stays orange, matching the review screen.
