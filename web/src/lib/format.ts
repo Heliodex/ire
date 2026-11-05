@@ -132,6 +132,27 @@ export function humanStatus(status: string): string {
 	}
 }
 
+// decisionLabel turns an internal decision or prior review result into a sentence label.
+export function decisionLabel(decision: string): string {
+	switch (decision.toLowerCase()) {
+		case "approved":
+			return "Approved"
+		case "changes":
+		case "changes_requested":
+			return "Changes requested"
+		case "rejected":
+			return "Rejected"
+		default:
+			return humanEvent(decision)
+	}
+}
+
+// humanEvent turns a machine event or reason into a readable phrase.
+export function humanEvent(kind: string): string {
+	const spaced = kind.replaceAll("_", " ").trim()
+	return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
 // greeting picks a short line for the queue header.
 export function greeting(name: string | null | undefined): string {
 	return name ? `Signed in as ${name}` : "Signed in"

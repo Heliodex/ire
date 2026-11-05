@@ -26,7 +26,16 @@ import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
 import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
-import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
+import {
+	decisionLabel,
+	formatDateTime,
+	formatHours,
+	formatMoney,
+	formatMoneyAmount,
+	humanEvent,
+	humanStatus,
+	statusTone,
+} from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
@@ -659,7 +668,11 @@ async function saveDraftNow(): Promise<void> {
 			<p class="crumbs"><a href={backPath}>{backLabel}</a></p>
 			<div class="title-line">
 				<h1>{submission.title}</h1>
-				<span class="ui-badge" data-tone={statusTone(submission.status)}>{humanStatus(submission.status)}</span>
+				<span class="ui-badge" data-tone={statusTone(submission.status)}
+					>{bundle.claim?.isMine === 1 && submission.status === "claimed"
+						? "Yours"
+						: humanStatus(submission.status)}</span
+				>
 				<span class="version">v{submission.version}</span>
 			</div>
 			<p class="maker">
@@ -836,7 +849,7 @@ async function saveDraftNow(): Promise<void> {
 										data-tone={statusTone(
 											prior.result.toLowerCase().includes("approved") ? "approved" : "changes",
 										)}
-										>{prior.result}</span
+										>{decisionLabel(prior.result)}</span
 									>
 									<p>{prior.feedback}</p>
 									<small>
@@ -858,7 +871,7 @@ async function saveDraftNow(): Promise<void> {
 							<div class="event">
 								<span class="dot"></span>
 								<div>
-									<strong>{event.kind}</strong>
+									<strong>{humanEvent(event.kind)}</strong>
 									{#if event.actorEmail}
 										<span> · {event.actorEmail}</span>
 									{/if}
@@ -963,60 +976,6 @@ async function saveDraftNow(): Promise<void> {
 		</section>
 
 		<aside class="rail">
-			<section class="ui-card padded summary">
-				<div class="summary-head">
-					<h2>Checks</h2>
-					<div class="summary-actions">
-						{#if canSecondPass && submission.status !== "checking"}
-							<button class="link" disabled={rerunning} onclick={rerunChecksNow} type="button">
-								{rerunning ? "Rerunning…" : "Rerun checks"}
-							</button>
-						{/if}
-						<span
-							class="ui-badge"
-							data-tone={statusTone(bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass")}
-						>
-							{bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass"}
-						</span>
-					</div>
-				</div>
-				<div class="summary-counts">
-					<span><strong>{bundle.checks.filter(check => check.status === "pass").length}</strong> pass</span>
-					<span><strong>{warnings.length}</strong> warn</span>
-					<span><strong>{blocking.length}</strong> block</span>
-				</div>
-				{#if bundle.checkRun?.error}
-					<div class="ui-notice" data-tone="bad">
-						<strong>Check attempt {bundle.checkRun.attempts} failed</strong>
-						{bundle.checkRun.error}
-					</div>
-				{/if}
-				{#if checksOutdated}
-					<div class="ui-notice" data-tone="warn">
-						<strong>Checks are out of date</strong>
-						The repository moved after the last check.
-						{#if canSecondPass}
-							<button class="link" disabled={rerunning} onclick={rerunChecksNow} type="button">
-								Rerun checks
-							</button>
-						{:else}
-							Ask an organiser to rerun the checks.
-						{/if}
-					</div>
-				{/if}
-				{#if rerunError}
-					<p class="ui-notice" data-tone="bad" role="alert">{rerunError}</p>
-				{/if}
-				<p class="policy">
-					{#if bundle.policy.holdOnWarn === 1}
-						Approvals with warnings are held for the second pass.
-					{:else}
-						Warnings can be approved with an acknowledgement.
-					{/if}
-					Fraud runs at stage {bundle.policy.fraudMinStage} only.
-				</p>
-			</section>
-
 			{#if reviewed}
 				<section class="ui-card padded decision">
 					<h2>{submission.status === "withdrawn" ? "Withdrawn" : "Final decision"}</h2>
@@ -1198,6 +1157,60 @@ async function saveDraftNow(): Promise<void> {
 					{/if}
 				</section>
 			{/if}
+
+			<section class="ui-card padded summary">
+				<div class="summary-head">
+					<h2>Checks</h2>
+					<div class="summary-actions">
+						{#if canSecondPass && submission.status !== "checking"}
+							<button class="link" disabled={rerunning} onclick={rerunChecksNow} type="button">
+								{rerunning ? "Rerunning…" : "Rerun checks"}
+							</button>
+						{/if}
+						<span
+							class="ui-badge"
+							data-tone={statusTone(bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass")}
+						>
+							{bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass"}
+						</span>
+					</div>
+				</div>
+				<div class="summary-counts">
+					<span><strong>{bundle.checks.filter(check => check.status === "pass").length}</strong> pass</span>
+					<span><strong>{warnings.length}</strong> warn</span>
+					<span><strong>{blocking.length}</strong> block</span>
+				</div>
+				{#if bundle.checkRun?.error}
+					<div class="ui-notice" data-tone="bad">
+						<strong>Check attempt {bundle.checkRun.attempts} failed</strong>
+						{bundle.checkRun.error}
+					</div>
+				{/if}
+				{#if checksOutdated}
+					<div class="ui-notice" data-tone="warn">
+						<strong>Checks are out of date</strong>
+						The repository moved after the last check.
+						{#if canSecondPass}
+							<button class="link" disabled={rerunning} onclick={rerunChecksNow} type="button">
+								Rerun checks
+							</button>
+						{:else}
+							Ask an organiser to rerun the checks.
+						{/if}
+					</div>
+				{/if}
+				{#if rerunError}
+					<p class="ui-notice" data-tone="bad" role="alert">{rerunError}</p>
+				{/if}
+				<p class="policy">
+					{#if bundle.policy.holdOnWarn === 1}
+						Approvals with warnings are held for the second pass.
+					{:else}
+						Warnings can be approved with an acknowledgement.
+					{/if}
+					Fraud runs at stage {bundle.policy.fraudMinStage} only.
+				</p>
+			</section>
 		</aside>
 	</div>
 
@@ -1618,7 +1631,11 @@ h1 {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-3);
+	max-height: calc(100dvh - 108px);
 	padding-top: var(--space-4);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: thin;
 }
 
 .summary-actions {
@@ -1725,9 +1742,18 @@ h1 {
 }
 
 .buttons {
+	position: sticky;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	z-index: 2;
 	display: grid;
 	gap: var(--space-2);
-	padding-top: var(--space-4);
+	padding: var(--space-3) var(--space-4) var(--space-4);
+	margin: var(--space-3) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+	background: var(--surface);
+	border-top: 1px solid var(--border);
+	border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .secondary {
@@ -1788,7 +1814,13 @@ h1 {
 
 	.rail {
 		position: static;
+		max-height: none;
 		padding-top: 0;
+		overflow: visible;
+	}
+
+	.buttons {
+		display: none;
 	}
 
 	.mobile-actions {

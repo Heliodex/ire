@@ -3,7 +3,7 @@ import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { fetchReviewed, type ReviewedItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import { formatDate, formatDateTime, formatHours, statusTone } from "../../lib/format"
+import { decisionLabel, formatDate, formatDateTime, formatHours, statusTone } from "../../lib/format"
 
 type DecisionFilter = "all" | "approved" | "changes" | "rejected"
 
@@ -83,19 +83,6 @@ async function loadMore(): Promise<void> {
 
 	loadingMore = true
 	await load(filter, true)
-}
-
-function decisionLabel(decision: string): string {
-	switch (decision) {
-		case "approved":
-			return "Approved"
-		case "changes":
-			return "Changes requested"
-		case "rejected":
-			return "Rejected"
-		default:
-			return decision
-	}
 }
 
 function stageLabel(stage: number): string {
