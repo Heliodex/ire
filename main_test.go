@@ -193,6 +193,52 @@ func TestIngestIsSignedAndIdempotent(t *testing.T) {
 	}
 }
 
+// TestIngestWritesLargeShipsInBatches covers ships whose journals and BOM lines exceed one storage transaction: every row lands and the ship is accepted.
+func TestIngestWritesLargeShipsInBatches(t *testing.T) {
+	application := newTestApp(t)
+
+	var request contract.IngestRequest
+	if err := json.Unmarshal(ingestBody("big:design"), &request); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range 45 {
+		request.Journals = append(request.Journals, contract.IngestJournal{
+			At:      "2026-11-02T10:00:00Z",
+			Seconds: new(3600),
+			Text:    "Work session number " + strconv.Itoa(i) + " with enough words to read as a real entry about routing the board and testing the firmware.",
+		})
+	}
+
+	for i := range 30 {
+		request.Meta.Bom = append(request.Meta.Bom, contract.IngestBomLine{Name: "Part " + strconv.Itoa(i), Qty: new(1), UnitUsd: new(1.0)})
+	}
+
+	body, _ := json.Marshal(request)
+
+	recorder := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	})
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("big ingest = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	created := decode[contract.IngestAccepted](t, recorder)
+
+	var journals, bom int
+	if err := application.store.QueryRow(context.Background(), `select count(*) from journal_entry where submission_id = ?`, created.ID).Scan(&journals); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := application.store.QueryRow(context.Background(), `select count(*) from bom_line where submission_id = ?`, created.ID).Scan(&bom); err != nil {
+		t.Fatal(err)
+	}
+
+	if journals != len(request.Journals) || bom != len(request.Meta.Bom) {
+		t.Errorf("rows = %d journals %d bom, want %d %d", journals, bom, len(request.Journals), len(request.Meta.Bom))
+	}
+}
+
 // TestIngestRunsGitHubChecks covers the real repository checks against a fake GitHub API.
 func TestIngestRunsGitHubChecks(t *testing.T) {
 	var commitSince atomic.Value

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -166,6 +167,22 @@ func (a *ireApp) allowLegacySignature(ctx context.Context, programID string) boo
 	return strings.TrimSpace(value) == "true"
 }
 
+// maxIngestStatements caps one storage transaction below the service limit, so a ship with many journals or BOM lines still ingests.
+const maxIngestStatements = 62
+
+// transactShip writes one ingested version in batches that fit the storage service limit. On failure it removes the partial rows, so a retry replays the ship instead of conflicting with a half-written copy.
+func (a *ireApp) transactShip(ctx context.Context, submissionID string, statements []storage.TransactionStatement) error {
+	for chunk := range slices.Chunk(statements, maxIngestStatements) {
+		if _, err := a.store.Transaction(ctx, chunk...); err != nil {
+			_, _ = a.store.Exec(ctx, `delete from submission where id = ?`, submissionID)
+
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ingestShip writes a new version, or reports the existing delivery or open ship. response is the API body; status is the HTTP status.
 func (a *ireApp) ingestShip(ctx context.Context, program programRow, request contract.IngestRequest, deliveryID, rawBody string) (contract.IngestAccepted, int, error) {
 	now := a.nowText()
@@ -259,9 +276,6 @@ func (a *ireApp) ingestShip(ctx context.Context, program programRow, request con
 			Args: []any{newID("evt"), id, `{"source":"ingest"}`, now}},
 		{SQL: `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'checks_ready', ?, ?)`,
 			Args: []any{newID("evt"), id, string(summaryJSON), now}},
-		{SQL: `insert into ingest_delivery (delivery_id, program_id, external_id, version, submission_id, status, http_status, payload_sha256, received_at, processed_at)
-			values (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, ?)`,
-			Args: []any{deliveryID, program.ID, request.ExternalID, version, id, http.StatusCreated, sha256Hex([]byte(rawBody)), now, now}},
 	}
 
 	statements = append(statements, journalStatements(id, request.Journals)...)
@@ -286,7 +300,14 @@ func (a *ireApp) ingestShip(ctx context.Context, program programRow, request con
 		statements = append(statements, snapshot)
 	}
 
-	if _, err := a.store.Transaction(ctx, statements...); err != nil {
+	// The delivery receipt goes last: a failed batch leaves no receipt, so a retry replays the whole ship instead of adopting a half-written one.
+	statements = append(statements, storage.TransactionStatement{
+		SQL: `insert into ingest_delivery (delivery_id, program_id, external_id, version, submission_id, status, http_status, payload_sha256, received_at, processed_at)
+			values (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, ?)`,
+		Args: []any{deliveryID, program.ID, request.ExternalID, version, id, http.StatusCreated, sha256Hex([]byte(rawBody)), now, now},
+	})
+
+	if err := a.transactShip(ctx, id, statements); err != nil {
 		return contract.IngestAccepted{}, 0, err
 	}
 
