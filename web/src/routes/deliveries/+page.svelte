@@ -61,9 +61,10 @@ function eventOf(body: string): string {
 			signature Half Life's Ari handler checks.
 		</p>
 	</div>
-	<div class="counts">
-		<span><strong>{outbox.filter(row => row.status === "delivered").length}</strong> delivered</span>
-		<span><strong>{outbox.filter(row => row.status !== "delivered").length}</strong> pending</span>
+	<div class="stats ui-card">
+		<div><strong>{outbox.filter(row => row.status === "delivered").length}</strong><span>Delivered</span></div>
+		<div><strong>{outbox.filter(row => row.status !== "delivered").length}</strong><span>Pending</span></div>
+		<div><strong>{received.length}</strong><span>Verified</span></div>
 	</div>
 </section>
 
@@ -91,7 +92,12 @@ function eventOf(body: string): string {
 			{:else}
 				{#each outbox as row (row.id)}
 					<article class="row">
-						<button class="row-head" onclick={(): void => toggle(row.id)} type="button">
+						<button
+							aria-expanded={open === row.id}
+							class="row-head"
+							onclick={(): void => toggle(row.id)}
+							type="button"
+						>
 							<div class="row-title">
 								<strong>{row.event}</strong>
 								<span class="ui-badge" data-tone={statusTone(row.status)}>{row.status}</span>
@@ -99,7 +105,26 @@ function eventOf(body: string): string {
 									<span class="muted">attempt {row.attempts}</span>
 								{/if}
 							</div>
-							<small>{formatDateTime(row.createdAt)}</small>
+							<span class="row-meta">
+								<small>{formatDateTime(row.createdAt)}</small>
+								<svg
+									aria-hidden="true"
+									class="chevron"
+									fill="none"
+									height="16"
+									viewBox="0 0 24 24"
+									width="16"
+									class:open={open === row.id}
+								>
+									<path
+										d="m6 9 6 6 6-6"
+										stroke="currentColor"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+									/>
+								</svg>
+							</span>
 						</button>
 						{#if open === row.id && row.payload}
 							<pre>{row.payload}</pre>
@@ -122,14 +147,38 @@ function eventOf(body: string): string {
 			{:else}
 				{#each received as delivery (delivery.id)}
 					<article class="row">
-						<button class="row-head" onclick={(): void => toggle(delivery.id)} type="button">
+						<button
+							aria-expanded={open === delivery.id}
+							class="row-head"
+							onclick={(): void => toggle(delivery.id)}
+							type="button"
+						>
 							<div class="row-title">
 								<strong>{eventOf(delivery.body)}</strong>
 								<span class="ui-badge" data-tone={delivery.verified === 1 ? "approved" : "rejected"}>
 									{delivery.verified === 1 ? "verified" : "rejected"}
 								</span>
 							</div>
-							<small>{formatDateTime(delivery.receivedAt)}</small>
+							<span class="row-meta">
+								<small>{formatDateTime(delivery.receivedAt)}</small>
+								<svg
+									aria-hidden="true"
+									class="chevron"
+									fill="none"
+									height="16"
+									viewBox="0 0 24 24"
+									width="16"
+									class:open={open === delivery.id}
+								>
+									<path
+										d="m6 9 6 6 6-6"
+										stroke="currentColor"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+									/>
+								</svg>
+							</span>
 						</button>
 						{#if open === delivery.id}
 							<dl>
@@ -176,16 +225,31 @@ h1 {
 	color: var(--text-2);
 }
 
-.counts {
+.stats {
 	display: flex;
-	gap: var(--space-4);
-	font-size: var(--text-sm);
-	color: var(--text-3);
+	overflow: hidden;
 }
 
-.counts strong {
+:where(.stats) div {
+	min-width: 92px;
+	padding: var(--space-2) var(--space-3);
+	border-left: 1px solid var(--border);
+}
+
+:where(.stats) div:first-child {
+	border-left: 0;
+}
+
+:where(.stats) strong {
+	display: block;
+	font-size: var(--text-lg);
+	font-weight: 800;
 	font-variant-numeric: tabular-nums;
-	color: var(--text);
+}
+
+:where(.stats) span {
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .grid {
@@ -258,6 +322,24 @@ h1 {
 	color: var(--text-3);
 }
 
+.row-meta {
+	display: flex;
+	flex: none;
+	gap: var(--space-2);
+	align-items: center;
+	color: var(--text-3);
+}
+
+.chevron {
+	flex: none;
+	color: var(--text-3);
+	transition: transform 0.15s;
+}
+
+.chevron.open {
+	transform: rotate(180deg);
+}
+
 .muted {
 	font-size: var(--text-xs);
 	color: var(--text-3);
@@ -318,6 +400,17 @@ dd {
 @media (max-width: 900px) {
 	.grid {
 		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 760px) {
+	.stats {
+		width: 100%;
+	}
+
+	.stats div {
+		flex: 1;
+		min-width: 0;
 	}
 }
 </style>
