@@ -534,20 +534,24 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 
 	if (!canDecide) {
 		actionError = "Only organisers can decide the second pass."
+		flash(actionError)
 		return
 	}
 
 	if (decision === "approved") {
 		if (blocking.length > 0) {
 			actionError = "Approval is blocked. Read the blocking check, then ask for changes or reject."
+			flash("Approval is blocked by a failing check.")
 			return
 		}
 		if (!secondPass && missingAcks.length > 0) {
 			actionError = `Acknowledge ${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} before approving.`
+			flash(actionError)
 			return
 		}
 	} else if (note.trim() === "") {
 		actionError = "Write a note to the maker before returning or rejecting."
+		flash("Write a note to the maker first.")
 		noteElement?.focus()
 		return
 	}
@@ -559,6 +563,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		&& overrideReason.trim() === ""
 	) {
 		actionError = "Explain why the second pass changes the first-pass decision or hours."
+		flash("Explain the override before deciding.")
 		overrideElement?.focus()
 		return
 	}
