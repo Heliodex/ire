@@ -1,4 +1,4 @@
-import type { Bundle } from "./api"
+import { type Bundle, fetchBundle, fetchQueue } from "./api"
 
 export interface CachedBundle {
 	bundle: Bundle
@@ -127,5 +127,25 @@ export function createBundleCache(programSlug: string, owner: string, store: Bun
 				// Storage can be unavailable or full; the page still works without a cache.
 			}
 		},
+	}
+}
+
+// prefetchNextBundle fetches the first unclaimed ship after this one and keeps it in the tab cache.
+export async function prefetchNextBundle(
+	currentID: string,
+	stage: number,
+	owner: string | undefined,
+	cache: BundleCache,
+): Promise<void> {
+	try {
+		const queue = await fetchQueue("all", stage, 0, 5)
+		const next = queue.items.find(
+			item => item.id !== currentID && (!item.claimedBy || item.claimedBy === owner) && !cache.read(item.id),
+		)
+		if (!next) return
+
+		cache.write(next.id, await fetchBundle(next.id))
+	} catch {
+		// Prefetching is best effort; opening the ship still loads it normally.
 	}
 }

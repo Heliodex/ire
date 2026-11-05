@@ -24,7 +24,7 @@ import {
 } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
-import { type BundleCache, createBundleCache } from "../../lib/bundle-cache"
+import { type BundleCache, createBundleCache, prefetchNextBundle } from "../../lib/bundle-cache"
 import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
@@ -339,26 +339,8 @@ function schedulePrefetch(ship: Bundle["submission"]): void {
 
 	prefetchTimer = setTimeout(() => {
 		prefetchTimer = null
-		void prefetchNext(ship.id, ship.stage)
+		void prefetchNextBundle(ship.id, ship.stage, session.me?.user.email, bundleCache())
 	}, 2500)
-}
-
-// prefetchNext fetches the first unclaimed ship after this one and keeps it in the tab cache.
-async function prefetchNext(currentID: string, stage: number): Promise<void> {
-	try {
-		const queue = await fetchQueue("all", stage, 0, 5)
-		const next = queue.items.find(
-			item =>
-				item.id !== currentID
-				&& (!item.claimedBy || item.claimedBy === session.me?.user.email)
-				&& !bundleCache().read(item.id),
-		)
-		if (!next) return
-
-		bundleCache().write(next.id, await fetchBundle(next.id))
-	} catch {
-		// Prefetching is best effort; opening the ship still loads it normally.
-	}
 }
 
 async function load(target = id): Promise<void> {
