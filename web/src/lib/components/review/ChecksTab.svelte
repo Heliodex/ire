@@ -49,70 +49,77 @@ function toggleGroup(group: string): void {
 	{/if}
 
 	<div class="ui-card checks">
-		{#each groups as group (group.group)}
-			<div class="group">
-				<h2 class="group-heading">
-					<button
-						aria-expanded={!collapsed.has(group.group)}
-						class="group-toggle"
-						onclick={(): void => toggleGroup(group.group)}
-						type="button"
-					>
-						<span class="group-name">{checkGroupLabel(group.group)}</span>
-						<span class="group-count"
-							>{group.items.length} {group.items.length === 1 ? "check" : "checks"}</span
-						>
-						<svg
-							aria-hidden="true"
-							class="chevron"
-							fill="none"
-							height="14"
-							viewBox="0 0 24 24"
-							width="14"
-							class:collapsed={collapsed.has(group.group)}
-						>
-							<path
-								d="m6 9 6 6 6-6"
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-							/>
-						</svg>
-					</button>
-				</h2>
-				{#if !collapsed.has(group.group)}
-					{#each group.items as check (check.key)}
-						<div class="check">
-							<span class="ui-badge check-status" data-tone={statusTone(check.status)}
-								>{check.status}</span
-							>
-							<span class="check-label">{check.label}</span>
-							<code class="check-key ui-mono" title={check.key}>{check.key}</code>
-							{#if isWarning(check)}
-								<label class="ack" title="Acknowledge this warning">
-									<input
-										aria-label={`Acknowledge ${check.label}`}
-										checked={acknowledgements.includes(check.key)}
-										onchange={(): void => onToggle(check.key)}
-										type="checkbox"
-									>
-									<span>Ack</span>
-								</label>
-							{:else}
-								<span class="ack-empty"></span>
-							{/if}
-							<span class="check-detail">
-								<span class="check-summary">{check.summary}</span>
-								{#if check.detail}
-									<span class="check-note">{check.detail}</span>
-								{/if}
-							</span>
-						</div>
-					{/each}
-				{/if}
+		{#if checks.length === 0}
+			<div class="ui-empty">
+				<strong>No checks yet</strong>
+				<span>Repository and evidence checks will appear here when they run.</span>
 			</div>
-		{/each}
+		{:else}
+			{#each groups as group (group.group)}
+				<div class="group">
+					<h2 class="group-heading">
+						<button
+							aria-expanded={!collapsed.has(group.group)}
+							class="group-toggle"
+							onclick={(): void => toggleGroup(group.group)}
+							type="button"
+						>
+							<span class="group-name">{checkGroupLabel(group.group)}</span>
+							<span class="group-count"
+								>{group.items.length} {group.items.length === 1 ? "check" : "checks"}</span
+							>
+							<svg
+								aria-hidden="true"
+								class="chevron"
+								fill="none"
+								height="14"
+								viewBox="0 0 24 24"
+								width="14"
+								class:collapsed={collapsed.has(group.group)}
+							>
+								<path
+									d="m6 9 6 6 6-6"
+									stroke="currentColor"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+								/>
+							</svg>
+						</button>
+					</h2>
+					{#if !collapsed.has(group.group)}
+						{#each group.items as check (check.key)}
+							<div class="check">
+								<span class="ui-badge check-status" data-tone={statusTone(check.status)}
+									>{check.status}</span
+								>
+								<span class="check-label">{check.label}</span>
+								<code class="check-key ui-mono" title={check.key}>{check.key}</code>
+								{#if isWarning(check)}
+									<label class="ack" title="Acknowledge this warning">
+										<input
+											aria-label={`Acknowledge ${check.label}`}
+											checked={acknowledgements.includes(check.key)}
+											onchange={(): void => onToggle(check.key)}
+											type="checkbox"
+										>
+										<span>Ack</span>
+									</label>
+								{:else}
+									<span class="ack-empty"></span>
+								{/if}
+								<span class="check-detail">
+									<span class="check-summary">{check.summary}</span>
+									{#if check.detail}
+										<span class="check-note">{check.detail}</span>
+									{/if}
+								</span>
+							</div>
+						{/each}
+					{/if}
+				</div>
+			{/each}
+		{/if}
 	</div>
 </div>
 

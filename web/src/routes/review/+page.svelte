@@ -1175,9 +1175,17 @@ async function saveDraftNow(): Promise<void> {
 							{/if}
 							<span
 								class="ui-badge"
-								data-tone={statusTone(bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass")}
+								data-tone={bundle.checks.length > 0
+									? statusTone(overallChecks(bundle.checks))
+									: checking
+										? "pending"
+										: "neutral"}
 							>
-								{bundle.checks.length > 0 ? overallChecks(bundle.checks) : "pass"}
+								{bundle.checks.length > 0
+									? overallChecks(bundle.checks)
+									: checking
+										? "checking"
+										: "none"}
 							</span>
 						</div>
 					</div>
@@ -1226,13 +1234,15 @@ async function saveDraftNow(): Promise<void> {
 				<div class="rail-actions">
 					{#if actionError}
 						<p class="ui-notice" data-tone="bad" role="alert">{actionError}</p>
+					{:else if checking}
+						<p class="rail-hint">Waiting for the repository checks to finish.</p>
 					{:else if blocking.length > 0}
 						<p class="rail-hint">Approval is blocked by a failing check.</p>
 					{:else if !secondPass && missingAcks.length > 0}
 						<p class="rail-hint">
 							{`${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} left to acknowledge.`}
 						</p>
-					{:else if !canDecide}
+					{:else if secondPass && !canSecondPass}
 						<p class="rail-hint">Only organisers can decide the second pass.</p>
 					{/if}
 
