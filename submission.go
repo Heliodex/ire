@@ -250,10 +250,7 @@ func (a *reviewApp) loadEvents(ctx context.Context, submissionID string) ([]cont
 
 // claimFor returns the live claim on a ship, if any.
 func (a *reviewApp) claimFor(ctx context.Context, submissionID string, me reviewer) *contract.ClaimState {
-	var (
-		email, name, expiresAt string
-		reviewerID             string
-	)
+	var email, name, expiresAt, reviewerID string
 
 	err := a.store.QueryRow(ctx, `select c.reviewer_id, u.email, coalesce(u.name, ''), c.expires_at
 		from claim c join user u on u.id = c.reviewer_id
