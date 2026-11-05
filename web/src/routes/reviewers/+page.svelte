@@ -331,15 +331,13 @@ h1 {
 	color: var(--text-2);
 }
 
-.permissions,
-.stats {
+.permissions {
 	display: grid;
 	gap: var(--space-2);
 	padding-top: var(--space-3);
 }
 
-.permissions div,
-.stats div {
+.permissions div {
 	display: flex;
 	gap: var(--space-3);
 	align-items: baseline;
@@ -348,19 +346,16 @@ h1 {
 	border-bottom: 1px solid var(--border);
 }
 
-.permissions div:last-child,
-.stats div:last-child {
+.permissions div:last-child {
 	border-bottom: 0;
 }
 
-.permissions dt,
-.stats dt {
+.permissions dt {
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }
 
-.permissions dd,
-.stats dd {
+.permissions dd {
 	font-size: var(--text-sm);
 	font-weight: 600;
 	color: var(--text);
@@ -368,7 +363,32 @@ h1 {
 }
 
 .stats {
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--space-2);
+	padding-top: var(--space-3);
+}
+
+.stats div {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: var(--space-2) var(--space-3);
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
+}
+
+.stats dt {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.stats dd {
+	margin: 0;
+	font-size: var(--text-md);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: var(--text);
 }
 
 .reviews {
@@ -464,6 +484,10 @@ h1 {
 @media (max-width: 760px) {
 	.grid {
 		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.identity {
