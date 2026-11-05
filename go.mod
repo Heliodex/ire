@@ -2,7 +2,7 @@ module ire
 
 go 1.27.1
 
-require github.com/heliodex/better-deploy/wt/packages/v2 v2.0.1-0.20261104051217-e9fe6d7cba27
+require github.com/heliodex/better-deploy/wt/packages/v2 v2.0.1
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -23,7 +23,7 @@ require (
 	github.com/sosodev/duration v1.4.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	go.bytecodealliance.org/pkg v0.4.0 // indirect
+	go.bytecodealliance.org/pkg v0.4.1 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
