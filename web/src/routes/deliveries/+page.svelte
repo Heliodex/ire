@@ -117,7 +117,7 @@ function eventOf(body: string): string {
 			{#if received.length === 0}
 				<div class="ui-empty">
 					<strong>No deliveries received</strong>
-					<span>The fake receiver stores the body and signature it checked.</span>
+					<span>The local receiver stores the verified body and signature.</span>
 				</div>
 			{:else}
 				{#each received as delivery (delivery.id)}

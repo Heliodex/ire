@@ -506,14 +506,7 @@ async function saveDraftNow(): Promise<void> {
 {:else}
 	<header class="ship-head">
 		<div class="head-main">
-			<p class="crumbs">
-				<a href={backPath}>{backLabel}</a>
-				<span>/</span>
-				{humanStatus(submission.status)}
-				{#if submission.theme}
-					<span>/</span>{submission.theme}
-				{/if}
-			</p>
+			<p class="crumbs"><a href={backPath}>{backLabel}</a></p>
 			<div class="title-line">
 				<h1>{submission.title}</h1>
 				<span class="ui-badge" data-tone={statusTone(submission.status)}>{humanStatus(submission.status)}</span>
@@ -543,7 +536,7 @@ async function saveDraftNow(): Promise<void> {
 				<a class="ui-button ghost sm" href={submission.demoUrl} rel="noreferrer" target="_blank">Demo ↗</a>
 			{/if}
 			<button
-				class="ui-button ghost sm"
+				class="ui-button ghost sm shortcuts-button"
 				onclick={(): void => {
 					showShortcuts = !showShortcuts
 				}}
@@ -599,7 +592,7 @@ async function saveDraftNow(): Promise<void> {
 					{ count: bundle.checks.length, key: "checks", label: "Checks" },
 					{ count: bundle.journals.length, key: "journal", label: "Journal" },
 					{ count: bundle.bom.length, key: "bom", label: "BOM" },
-					{ count: undefined, key: "evidence", label: "Evidence" },
+					{ count: bundle.evidence?.files.length, key: "evidence", label: "Evidence" },
 					{ count: bundle.reviews.length, key: "history", label: "History" },
 				] as item (item.key)}
 					<button
@@ -957,6 +950,7 @@ async function saveDraftNow(): Promise<void> {
 								type="button"
 							>
 								Reject
+								<kbd class="ui-kbd">R</kbd>
 							</button>
 						</div>
 					</div>
@@ -1013,7 +1007,7 @@ async function saveDraftNow(): Promise<void> {
 				onclick={(): Promise<void> => decide("changes")}
 				type="button"
 			>
-				Changes
+				Request changes
 			</button>
 			<button
 				class="ui-button danger"
@@ -1087,11 +1081,6 @@ h1 {
 
 .crumbs a:hover {
 	color: var(--primary);
-}
-
-.crumbs span {
-	padding: 0 var(--space-1);
-	color: var(--border-2);
 }
 
 .title-line {
@@ -1549,7 +1538,7 @@ h1 {
 		left: 0;
 		z-index: var(--layer-dialog);
 		display: grid;
-		grid-template-columns: 1.15fr 1fr 0.85fr;
+		grid-template-columns: 1.1fr 1.3fr 0.8fr;
 		gap: var(--space-2);
 		padding: var(--space-2) var(--space-3) max(var(--space-2), env(safe-area-inset-bottom));
 		background: var(--surface);
@@ -1574,6 +1563,10 @@ h1 {
 	.ship-head {
 		flex-direction: column;
 		align-items: flex-start;
+	}
+
+	.shortcuts-button {
+		display: none;
 	}
 }
 </style>
