@@ -423,28 +423,27 @@ async function open(item: QueueItem): Promise<void> {
 					class:unavailable={!isSelectable(item)}
 				>
 					<span class="thumb">
+						<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
+							<rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="4" />
+							<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
+							<path
+								d="m4 17 4.5-4.5 3 3L15 12l5 5"
+								stroke="currentColor"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="1.6"
+							/>
+						</svg>
 						{#if item.thumbnailUrl}
-							<img alt="" decoding="async" loading="lazy" src={item.thumbnailUrl}>
-						{:else}
-							<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
-								<rect
-									height="16"
-									rx="2"
-									stroke="currentColor"
-									stroke-width="1.6"
-									width="18"
-									x="3"
-									y="4"
-								/>
-								<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
-								<path
-									d="m4 17 4.5-4.5 3 3L15 12l5 5"
-									stroke="currentColor"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="1.6"
-								/>
-							</svg>
+							<img
+								alt=""
+								decoding="async"
+								loading="lazy"
+								onerror={(event): void => {
+									;(event.currentTarget as HTMLImageElement).hidden = true
+								}}
+								src={item.thumbnailUrl}
+							>
 						{/if}
 					</span>
 					<span class="ship-title" title={item.title}>
@@ -663,6 +662,7 @@ h1 {
 }
 
 .thumb {
+	position: relative;
 	display: block;
 	width: 64px;
 	height: 48px;
@@ -673,10 +673,16 @@ h1 {
 }
 
 .thumb img {
+	position: absolute;
+	inset: 0;
 	display: block;
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+}
+
+.thumb img[hidden] {
+	display: none;
 }
 
 .thumb svg {
@@ -802,8 +808,9 @@ h1 {
 
 .dots {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 5px;
+	flex-wrap: nowrap;
+	gap: 4px;
+	overflow: hidden;
 }
 
 .dot {
@@ -953,6 +960,12 @@ h1 {
 	}
 }
 
+@media (max-width: 980px) {
+	.keys {
+		display: none;
+	}
+}
+
 @media (max-width: 760px) {
 	.stats {
 		width: 100%;
@@ -1035,29 +1048,19 @@ h1 {
 	}
 
 	.stats {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		overflow-x: auto;
+		overflow-y: hidden;
+		scrollbar-width: none;
+	}
+
+	.stats::-webkit-scrollbar {
+		display: none;
 	}
 
 	.stats div {
-		border-top: 1px solid var(--border);
-		border-left: 0;
-	}
-
-	.stats div:nth-child(-n + 2) {
-		border-top: 0;
-	}
-
-	.stats div:nth-child(even) {
-		border-left: 1px solid var(--border);
-	}
-
-	.stats div:last-child:nth-child(odd) {
-		grid-column: 1 / -1;
-	}
-
-	.keys {
-		display: none;
+		flex: 0 0 88px;
+		min-width: 0;
+		padding: var(--space-1) var(--space-2);
 	}
 }
 
