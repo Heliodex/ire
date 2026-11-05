@@ -48,8 +48,17 @@ const emptyQueue: Queue = {
 }
 const savedQueue = browser ? queueState().read() : null
 
+const filters: { key: Filter; label: string; short: string }[] = [
+	{ key: "all", label: "All open", short: "All" },
+	{ key: "fast", label: "Fast lane", short: "Fast" },
+	{ key: "mine", label: "Mine", short: "Mine" },
+]
+
 let queue = $state<Queue>(savedQueue?.queue ?? emptyQueue)
-let filter = $state<Filter>(savedQueue?.filter ?? "all")
+// A stored visit can still name the retired attention tab; fall back to the full list.
+let filter = $state<Filter>(
+	savedQueue && filters.some(option => option.key === savedQueue.filter) ? savedQueue.filter : "all",
+)
 let stage = $state(savedQueue?.stage ?? 1)
 let loading = $state(!savedQueue)
 let refreshing = $state(false)
@@ -98,13 +107,6 @@ if (savedQueue)
 const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
 const readOnly = $derived(session.me?.readOnly ?? false)
-
-const filters: { key: Filter; label: string; short: string }[] = [
-	{ key: "all", label: "All open", short: "All" },
-	{ key: "fast", label: "Fast lane", short: "Fast" },
-	{ key: "attention", label: "Needs attention", short: "Attention" },
-	{ key: "mine", label: "Mine", short: "Mine" },
-]
 
 const visible = $derived(
 	queue.items.filter(item => {
@@ -756,13 +758,7 @@ function filterByStatus(item: QueueItem, event: MouseEvent): void {
 						? "No held ships."
 						: "Nothing in this filter."}</strong
 			>
-			<span
-				>{stage === 2
-					? "Nothing is waiting for a second pass."
-					: filter === "attention"
-						? "The checks found nothing blocking."
-						: "Check back after the next ingest."}</span
-			>
+			<span>{stage === 2 ? "Nothing is waiting for a second pass." : "Check back after the next ingest."}</span>
 		</div>
 	{:else}
 		<div class="ui-card list" bind:this={listElement} class:refreshing>
@@ -1398,9 +1394,19 @@ h1 {
 
 a.checks,
 a.status {
-	color: inherit;
 	text-decoration: none;
 	cursor: pointer;
+}
+
+a.checks:hover {
+	background: color-mix(in srgb, var(--text) 8%, transparent);
+	border-radius: var(--radius-sm);
+}
+
+a.checks:focus-visible,
+a.status:focus-visible {
+	outline: 2px solid var(--accent-blue);
+	outline-offset: 2px;
 }
 
 .dot-more {
