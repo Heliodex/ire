@@ -26,6 +26,9 @@ interface SavedQueueState {
 }
 
 const maxCheckDots = 11
+
+// wideChecks renders every check dot without the +N badge at the widest layout, where the checks column has room. Narrower layouts keep eliding.
+let wideChecks = $state(false)
 const queueStateKey = `review:queue:${program}`
 const queueStateVersion = 1
 
@@ -218,6 +221,15 @@ $effect((): void => {
 })
 
 onMount((): (() => void) => {
+	const wideQuery = window.matchMedia("(min-width: 1280px)")
+	wideChecks = wideQuery.matches
+
+	function onWideChange(event: MediaQueryListEvent): void {
+		wideChecks = event.matches
+	}
+
+	wideQuery.addEventListener("change", onWideChange)
+
 	if (savedQueue) void restorePosition(savedQueue.scrollY)
 	void boot()
 
@@ -288,6 +300,7 @@ onMount((): (() => void) => {
 		window.removeEventListener("keydown", onKeydown)
 		window.removeEventListener("pagehide", onPageHide)
 		document.removeEventListener("visibilitychange", onVisibilityChange)
+		wideQuery.removeEventListener("change", onWideChange)
 	}
 })
 
@@ -765,7 +778,7 @@ async function open(item: QueueItem): Promise<void> {
 								class="dots"
 								role="img"
 							>
-								{#each groupChecks(item.checks.slice(0, maxCheckDots)) as group (group.group)}
+								{#each groupChecks(wideChecks ? item.checks : item.checks.slice(0, maxCheckDots)) as group (group.group)}
 									<span class="dot-group">
 										{#each group.items as check (check.key)}
 											<span
@@ -780,7 +793,7 @@ async function open(item: QueueItem): Promise<void> {
 										{/each}
 									</span>
 								{/each}
-								{#if item.checks.length > maxCheckDots}
+								{#if !wideChecks && item.checks.length > maxCheckDots}
 									<span
 										aria-hidden="true"
 										class="dot-more"
@@ -1317,6 +1330,11 @@ h1 {
 	.row,
 	.column-head {
 		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(140px, 190px);
+	}
+
+	.dots {
+		flex-wrap: wrap;
+		overflow: visible;
 	}
 }
 
