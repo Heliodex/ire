@@ -124,6 +124,8 @@ async function signOut(): Promise<void> {
 
 <svelte:window onkeydown={onKeydown} />
 
+<a class="skip-link" href="#main-content">Skip to content</a>
+
 <div class="shell">
 	<header>
 		<div class="top">
@@ -234,7 +236,7 @@ async function signOut(): Promise<void> {
 		{/if}
 	</header>
 
-	<main>
+	<main id="main-content" tabindex="-1">
 		{@render children()}
 	</main>
 </div>
@@ -255,6 +257,28 @@ async function signOut(): Promise<void> {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
+}
+
+.skip-link {
+	position: fixed;
+	top: var(--space-2);
+	left: var(--space-2);
+	z-index: var(--layer-toast);
+	padding: var(--space-2) var(--space-3);
+	font-size: var(--text-sm);
+	font-weight: 700;
+	color: var(--text);
+	text-decoration: none;
+	background: var(--surface);
+	border: 1px solid var(--border-2);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow);
+	transform: translateY(calc(-100% - var(--space-4)));
+	transition: transform 0.15s;
+}
+
+.skip-link:focus-visible {
+	transform: translateY(0);
 }
 
 header {
