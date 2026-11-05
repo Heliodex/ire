@@ -4,7 +4,8 @@ import { SvelteMap } from "svelte/reactivity"
 import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import { checkGlyph, checkTone } from "../../lib/checks"
+import { checkTone } from "../../lib/checks"
+import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import { formatDateTime, formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
@@ -514,7 +515,7 @@ async function open(item: QueueItem): Promise<void> {
 										data-tone={checkTone(check)}
 										title={`${check.label}: ${check.status}`}
 									>
-										{checkGlyph(check)}
+										<CheckIcon status={check.status} />
 									</span>
 								{/each}
 							</span>
@@ -836,7 +837,7 @@ h1 {
 .dots {
 	display: flex;
 	flex-wrap: nowrap;
-	gap: 2px;
+	gap: 1px;
 	overflow: hidden;
 }
 
@@ -844,11 +845,8 @@ h1 {
 	display: grid;
 	flex: none;
 	place-items: center;
-	width: 10px;
-	height: 10px;
-	font-size: 7px;
-	font-weight: 700;
-	line-height: 1;
+	width: 11px;
+	height: 11px;
 	color: var(--text-2);
 	background: var(--border-2);
 	border-radius: 2px;
@@ -955,6 +953,10 @@ h1 {
 
 @media (max-width: 1024px) {
 	.column-head {
+		display: none;
+	}
+
+	.dots {
 		display: none;
 	}
 
