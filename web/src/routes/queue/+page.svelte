@@ -115,7 +115,7 @@ onMount((): (() => void) => {
 
 		pending = setTimeout((): void => {
 			pending = null
-			void load()
+			void load(filter, stage, true)
 		}, 250)
 	}
 
@@ -370,7 +370,7 @@ async function open(item: QueueItem): Promise<void> {
 		window.location.assign(`/review/${encodeURIComponent(item.id)}`)
 	} catch (err) {
 		actionError = claimError(err)
-		await load()
+		await load(filter, stage, true)
 	} finally {
 		opening = ""
 	}
