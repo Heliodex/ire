@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount, tick } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
+import { browser } from "$app/env"
 import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
@@ -12,26 +13,75 @@ import { session } from "../../lib/session.svelte.js"
 
 type Filter = "all" | "fast" | "attention" | "mine"
 
-const maxCheckDots = 11
+interface SavedQueueState {
+	filter: Filter
+	queue: Queue
+	savedAt: number
+	scrollY: number
+	search: string
+	selectedId: string
+	stage: number
+	version: number
+}
 
-let queue = $state<Queue>({
+const maxCheckDots = 11
+const queueStateKey = `review:queue:${program}`
+const queueStateVersion = 1
+
+// isFilter narrows a cached filter value.
+function isFilter(value: string): value is Filter {
+	return value === "all" || value === "fast" || value === "attention" || value === "mine"
+}
+
+// readQueueState restores the last visit from session storage, ignoring stale or malformed copies.
+function readQueueState(): SavedQueueState | null {
+	try {
+		const raw = sessionStorage.getItem(queueStateKey)
+		if (!raw) return null
+
+		const state = JSON.parse(raw) as SavedQueueState
+		if (state.version !== queueStateVersion) return null
+		if (!isFilter(state.filter)) return null
+		if (state.stage !== 1 && state.stage !== 2) return null
+		if (!state.queue || !Array.isArray(state.queue.items) || typeof state.queue.counts !== "object") return null
+		if (typeof state.search !== "string" || typeof state.scrollY !== "number") return null
+		if (typeof state.savedAt !== "number" || Date.now() - state.savedAt > 24 * 60 * 60 * 1000) return null
+
+		return state
+	} catch {
+		return null
+	}
+}
+
+const emptyQueue: Queue = {
 	counts: { checking: 0, claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
 	hasMore: false,
 	items: [],
-})
-let filter = $state<Filter>("all")
-let stage = $state(1)
-let loading = $state(true)
+}
+const savedQueue = browser ? readQueueState() : null
+
+let queue = $state<Queue>(savedQueue?.queue ?? emptyQueue)
+let filter = $state<Filter>(savedQueue?.filter ?? "all")
+let stage = $state(savedQueue?.stage ?? 1)
+let loading = $state(!savedQueue)
 let refreshing = $state(false)
 let opening = $state("")
 let error = $state("")
 let actionError = $state("")
-let selected = $state(0)
-let search = $state("")
+let selected = $state(
+	savedQueue
+		? Math.max(
+				0,
+				savedQueue.queue.items.findIndex(item => item.id === savedQueue.selectedId),
+			)
+		: 0,
+)
+let search = $state(savedQueue?.search ?? "")
 let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
 let loadingMore = $state(false)
 let checkTip = $state<CheckTip | null>(null)
+let restoring = savedQueue !== null
 
 interface CheckTip {
 	above: boolean
@@ -45,6 +95,8 @@ interface CheckTip {
 
 // cache keeps each filter and stage response for this visit, so switching back is instant while a fresh copy loads behind it.
 const cache = new SvelteMap<string, Queue>()
+
+if (savedQueue) cache.set(`${savedQueue.stage}:${savedQueue.filter}`, savedQueue.queue)
 
 const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
@@ -92,6 +144,68 @@ function hideCheckTip(): void {
 	checkTip = null
 }
 
+// saveQueueState keeps the loaded rows, filter and scroll position for reloads and returns from a review.
+function saveQueueState(): void {
+	if (restoring) return
+
+	try {
+		const state: SavedQueueState = {
+			filter,
+			queue,
+			savedAt: Date.now(),
+			scrollY: window.scrollY,
+			search,
+			selectedId: visible[selected]?.id ?? "",
+			stage,
+			version: queueStateVersion,
+		}
+
+		sessionStorage.setItem(queueStateKey, JSON.stringify(state))
+	} catch {
+		// Storage can be unavailable or full; the queue still works without a cache.
+	}
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+
+// scheduleSave batches scroll and data updates into one storage write.
+function scheduleSave(): void {
+	if (restoring || saveTimer) return
+
+	saveTimer = setTimeout((): void => {
+		saveTimer = null
+		saveQueueState()
+	}, 200)
+}
+
+// restorePosition scrolls back after the router and browser have settled on the new page.
+async function restorePosition(top: number): Promise<void> {
+	await tick()
+
+	window.scrollTo(0, top)
+	requestAnimationFrame((): void => {
+		window.scrollTo(0, top)
+		setTimeout((): void => {
+			window.scrollTo(0, top)
+			restoring = false
+			scheduleSave()
+		}, 80)
+	})
+}
+
+function onQueueScroll(): void {
+	hideCheckTip()
+	scheduleSave()
+}
+
+$effect((): void => {
+	void queue
+	void filter
+	void stage
+	void search
+	scheduleSave()
+})
+
 $effect((): void => {
 	const next =
 		selected >= 0 && visible[selected] && isSelectable(visible[selected])
@@ -102,7 +216,19 @@ $effect((): void => {
 })
 
 onMount((): (() => void) => {
+	if (savedQueue) void restorePosition(savedQueue.scrollY)
 	void boot()
+
+	function onPageHide(): void {
+		saveQueueState()
+	}
+
+	function onVisibilityChange(): void {
+		if (document.visibilityState === "hidden") saveQueueState()
+	}
+
+	window.addEventListener("pagehide", onPageHide)
+	document.addEventListener("visibilitychange", onVisibilityChange)
 
 	const timer = setInterval((): void => void load(filter, stage, true), 10000)
 
@@ -153,7 +279,13 @@ onMount((): (() => void) => {
 		clearInterval(timer)
 		stream?.close()
 		if (pending) clearTimeout(pending)
+		if (saveTimer) {
+			clearTimeout(saveTimer)
+			saveTimer = null
+		}
 		window.removeEventListener("keydown", onKeydown)
+		window.removeEventListener("pagehide", onPageHide)
+		document.removeEventListener("visibilitychange", onVisibilityChange)
 	}
 })
 
@@ -164,7 +296,17 @@ async function boot(): Promise<void> {
 		void goto("/")
 		return
 	}
-	await load()
+
+	if (stage === 2 && !canSecondPass) {
+		stage = 1
+		filter = "all"
+		queue = emptyQueue
+		loading = true
+		await load(filter, stage, false)
+		return
+	}
+
+	await load(filter, stage, savedQueue !== null)
 }
 
 // checkTone maps a check result to a dot tone. A failure with warning severity stays orange, matching the review screen.
@@ -367,6 +509,11 @@ async function open(item: QueueItem): Promise<void> {
 	try {
 		if (!session.me?.readOnly && (!item.claimedBy || item.claimedBy !== session.me?.user.email))
 			await claimShip(item.id)
+
+		const index = visible.indexOf(item)
+		if (index !== -1) selected = index
+
+		saveQueueState()
 		window.location.assign(`/review/${encodeURIComponent(item.id)}`)
 	} catch (err) {
 		actionError = claimError(err)
@@ -381,7 +528,7 @@ async function open(item: QueueItem): Promise<void> {
 	<title>Queue · Half Life Review</title>
 </svelte:head>
 
-<svelte:window onscroll={hideCheckTip} />
+<svelte:window onscroll={onQueueScroll} />
 
 <section class="page-head">
 	<div>
