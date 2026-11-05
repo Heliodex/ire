@@ -30,6 +30,7 @@ let search = $state("")
 let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
 let loadingMore = $state(false)
+let mediumLayout = $state(false)
 let checkTip = $state<CheckTip | null>(null)
 
 interface CheckTip {
@@ -48,6 +49,20 @@ const cache = new SvelteMap<string, Queue>()
 const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
 const readOnly = $derived(session.me?.readOnly ?? false)
+const maxDots = $derived(mediumLayout ? 17 : maxCheckDots)
+
+$effect((): (() => void) => {
+	const query = window.matchMedia("(min-width: 761px) and (max-width: 1024px)")
+
+	function update(): void {
+		mediumLayout = query.matches
+	}
+
+	update()
+	query.addEventListener("change", update)
+
+	return (): void => query.removeEventListener("change", update)
+})
 
 const filters: { key: Filter; label: string; short: string }[] = [
 	{ key: "all", label: "All open", short: "All" },
@@ -545,7 +560,7 @@ async function open(item: QueueItem): Promise<void> {
 								class="dots"
 								role="img"
 							>
-								{#each groupChecks(item.checks.slice(0, maxCheckDots)) as group (group.group)}
+								{#each groupChecks(item.checks.slice(0, maxDots)) as group (group.group)}
 									<span class="dot-group">
 										{#each group.items as check (check.key)}
 											<span
@@ -560,13 +575,13 @@ async function open(item: QueueItem): Promise<void> {
 										{/each}
 									</span>
 								{/each}
-								{#if item.checks.length > maxCheckDots}
+								{#if item.checks.length > maxDots}
 									<span
 										aria-hidden="true"
 										class="dot-more"
-										title={`${item.checks.length - maxCheckDots} more checks`}
+										title={`${item.checks.length - maxDots} more checks`}
 									>
-										+{item.checks.length - maxCheckDots}
+										+{item.checks.length - maxDots}
 									</span>
 								{/if}
 							</span>
@@ -1137,6 +1152,36 @@ h1 {
 		align-items: baseline;
 		justify-self: end;
 		text-align: right;
+	}
+}
+
+@media (min-width: 761px) and (max-width: 1024px) {
+	.row {
+		grid-template-areas:
+			"thumb title title badges badges"
+			"thumb maker checks version timing";
+		grid-template-columns: 64px 200px minmax(0, 1fr) 36px 160px;
+	}
+
+	.facts {
+		display: contents;
+	}
+
+	.maker {
+		grid-area: maker;
+	}
+
+	.checks {
+		grid-area: checks;
+		align-items: flex-start;
+	}
+
+	.version {
+		grid-area: version;
+	}
+
+	.timing {
+		grid-area: timing;
 	}
 }
 
