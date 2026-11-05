@@ -2,8 +2,10 @@
 import { onMount } from "svelte"
 import { type SearchResult, searchProjects } from "../api"
 import { humanStatus, statusTone } from "../format"
+import { createSearchCache } from "../search-cache"
 
 const debounceMs = 160
+const cache = createSearchCache()
 
 let query = $state("")
 let results = $state<SearchResult[]>([])
@@ -56,45 +58,59 @@ function onPointerDown(event: PointerEvent): void {
 	open = false
 }
 
-// onInput debounces the request and ignores responses for an older query.
+// onInput shows a cached query immediately, then refreshes it in the background.
 function onInput(): void {
 	if (timer) clearTimeout(timer)
 
 	const text = query.trim()
 	const id = ++sequence
+	const cached = cache.get(text)
 
-	selected = -1
 	error = ""
 
 	if (text === "") {
 		results = []
+		selected = -1
 		loading = false
 		return
 	}
 
-	results = []
 	open = true
-	loading = true
+
+	if (cached !== undefined) {
+		results = cached
+		selected = cached.length > 0 ? 0 : -1
+		loading = false
+	} else {
+		results = []
+		selected = -1
+		loading = true
+	}
+
 	timer = setTimeout((): void => {
 		timer = null
-		void search(text, id)
+		void search(text, id, cached !== undefined)
 	}, debounceMs)
 }
 
-async function search(text: string, id: number): Promise<void> {
+async function search(text: string, id: number, revalidating: boolean): Promise<void> {
 	try {
 		const found = await searchProjects(text)
 		if (id !== sequence) return
 
+		cache.set(text, found)
 		results = found
-		selected = found.length > 0 ? 0 : -1
+
+		if (revalidating) selected = found.length > 0 ? Math.min(Math.max(selected, 0), found.length - 1) : -1
+		else selected = found.length > 0 ? 0 : -1
 	} catch (err) {
 		if (id !== sequence) return
+		if (revalidating) return
 
 		results = []
 		error = err instanceof Error ? err.message : "Could not search projects."
 	} finally {
-		if (id === sequence) loading = false
+		if (id === sequence && !revalidating) loading = false
 	}
 }
 

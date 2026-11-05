@@ -15,6 +15,7 @@ A review service for Half Life hardware ships. This is the working vertical slic
 - Signed HTTP outbound delivery to a real receiver; the in-process receiver is only the default development target.
 - A signed outbox written in the decision transaction, an in-process receiver that verifies `timestamp.delivery_id.body`, retries on a schedule and keeps the exact payload.
 - The queue refreshes from the supervisor storage event stream, with polling as a fallback.
+- A Reviewed tab lists final decisions across both passes, with decision filters, search and read-only review screens.
 - Three fixture ships extracted from real `.projects.csv` rows: clean, warned and blocked.
 
 ## Look
@@ -101,6 +102,7 @@ The check job stores a snapshot in `repo_snapshot`: the README (capped at 200 KB
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/evidence/refresh` | Organiser or admin |
 | `POST` | `/api/v1/dev/login` | Development only |
 | `GET` | `/api/v1/programs/{program}/queue?stage=1\|2` | Session; stage 2 needs organiser/admin |
+| `GET` | `/api/v1/programs/{program}/reviewed?decision=...` | Session |
 | `GET` | `/api/v1/programs/{program}/search?q=...` | Session |
 | `GET` | `/api/v1/programs/{program}/submissions/{id}` | Session |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/claim` | Session |

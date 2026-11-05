@@ -60,17 +60,20 @@ let checksOutdated = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 
 const submission = $derived(bundle?.submission ?? null)
-const secondPass = $derived(submission?.stage === 2 || submission?.status === "stage2_hold")
+const reviewed = $derived(submission?.status === "decided" || submission?.status === "withdrawn")
+const secondPass = $derived(!reviewed && (submission?.stage === 2 || submission?.status === "stage2_hold"))
 const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
 const checking = $derived(submission?.status === "checking")
 const readOnly = $derived(session.me?.readOnly ?? false)
-const canDecide = $derived(!readOnly && !checking && (!secondPass || canSecondPass))
+const canDecide = $derived(!readOnly && !reviewed && !checking && (!secondPass || canSecondPass))
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
-const canApprove = $derived(blocking.length === 0 && (secondPass || missingAcks.length === 0))
+const canApprove = $derived(!reviewed && blocking.length === 0 && (secondPass || missingAcks.length === 0))
+const backPath = $derived(page.url.searchParams.get("from") === "reviewed" ? "/reviewed" : "/queue")
+const backLabel = $derived(backPath === "/reviewed" ? "Reviewed" : "Queue")
 
 // idFromURL reads the ship id from /review/{id}, keeping the query form for old links.
 function idFromURL(): string {
@@ -151,7 +154,7 @@ onMount((): (() => void) => {
 
 		if (event.key === "Escape") {
 			event.preventDefault()
-			void goto("/queue")
+			void goto(backPath)
 			return
 		}
 
@@ -169,7 +172,7 @@ onMount((): (() => void) => {
 			return
 		}
 
-		if (readOnly) {
+		if (readOnly || reviewed) {
 			if (event.key === "?") showShortcuts = !showShortcuts
 			return
 		}
@@ -265,8 +268,12 @@ async function load(target = id): Promise<void> {
 		if (target !== id) return
 
 		let next = fetched
+		const closed = fetched.submission.status === "decided" || fetched.submission.status === "withdrawn"
 		const canClaim =
-			!readOnly && fetched.submission.status !== "checking" && (fetched.submission.stage !== 2 || canSecondPass)
+			!readOnly
+			&& !closed
+			&& fetched.submission.status !== "checking"
+			&& (fetched.submission.stage !== 2 || canSecondPass)
 		if (canClaim && fetched.claim?.isMine !== 1) {
 			await claimShip(target)
 			next = await fetchBundle(target)
@@ -274,7 +281,7 @@ async function load(target = id): Promise<void> {
 		}
 
 		bundle = next
-		claimedId = target
+		claimedId = canClaim ? target : ""
 
 		// Restore the server-side draft so a refresh or another device does not lose typed notes.
 		if (next.draft) ({ note, internalNote } = next.draft)
@@ -494,13 +501,13 @@ async function saveDraftNow(): Promise<void> {
 	<section class="missing">
 		<h1>Cannot open this ship</h1>
 		<p>{error || "This ship does not exist or is not yours to review."}</p>
-		<a class="ui-button" href="/queue">Return to queue</a>
+		<a class="ui-button" href={backPath}>Return to {backLabel.toLowerCase()}</a>
 	</section>
 {:else}
 	<header class="ship-head">
 		<div class="head-main">
 			<p class="crumbs">
-				<a href="/queue">Queue</a>
+				<a href={backPath}>{backLabel}</a>
 				<span>/</span>
 				{humanStatus(submission.status)}
 				{#if submission.theme}
@@ -556,13 +563,13 @@ async function saveDraftNow(): Promise<void> {
 
 	{#if showShortcuts}
 		<div class="shortcuts">
-			{#if !readOnly}
+			{#if !readOnly && !reviewed}
 				<span><kbd class="ui-kbd">A</kbd> approve</span>
 				<span><kbd class="ui-kbd">C</kbd> focus the note</span>
 				<span><kbd class="ui-kbd">R</kbd> reject</span>
 			{/if}
 			<span><kbd class="ui-kbd">← →</kbd> sections</span>
-			<span><kbd class="ui-kbd">Esc</kbd> back to queue</span>
+			<span><kbd class="ui-kbd">Esc</kbd> back to {backLabel.toLowerCase()}</span>
 		</div>
 	{/if}
 
@@ -818,7 +825,16 @@ async function saveDraftNow(): Promise<void> {
 				</p>
 			</section>
 
-			{#if readOnly}
+			{#if reviewed}
+				<section class="ui-card padded decision">
+					<h2>{submission.status === "withdrawn" ? "Withdrawn" : "Final decision"}</h2>
+					<p class="policy">
+						{submission.status === "withdrawn"
+							? "This ship was withdrawn before a final decision."
+							: "This ship has been reviewed. The History tab has the note, approved hours and acknowledgements."}
+					</p>
+				</section>
+			{:else if readOnly}
 				<section class="ui-card padded decision">
 					<h2>Read-only shadow</h2>
 					<p class="policy">

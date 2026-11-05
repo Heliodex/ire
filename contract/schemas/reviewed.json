@@ -1,0 +1,77 @@
+{
+	"type": "object",
+	"properties": {
+		"hasMore": {
+			"type": "boolean"
+		},
+		"items": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"decidedAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"decision": {
+						"type": "string",
+						"pattern": "^(approved|changes|rejected)$"
+					},
+					"externalId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"hoursApprovedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"hoursClaimedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"makerName": {
+						"type": "string",
+						"minLength": 1
+					},
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"theme": {
+						"type": "string"
+					},
+					"thumbnailUrl": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"decidedAt",
+					"decision",
+					"externalId",
+					"hoursApprovedSeconds",
+					"hoursClaimedSeconds",
+					"id",
+					"makerName",
+					"stage",
+					"title"
+				],
+				"title": "ReviewedItem"
+			}
+		}
+	},
+	"required": [
+		"hasMore",
+		"items"
+	],
+	"title": "ReviewedResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/reviewed.json"
+}

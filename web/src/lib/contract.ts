@@ -241,6 +241,30 @@ export const searchResultSchema = pipe(
 
 export const searchResponseSchema = pipe(object({ results: array(searchResultSchema) }), title("SearchResponse"))
 
+// ─── Reviewed ───────────────────────────────────────────────────────────────
+
+export const reviewedItemSchema = pipe(
+	object({
+		decidedAt: timestamp,
+		decision: decisionValues,
+		externalId: pipe(string(), minLength(1)),
+		hoursApprovedSeconds: nonNegative,
+		hoursClaimedSeconds: nonNegative,
+		id: pipe(string(), minLength(1)),
+		makerName: pipe(string(), minLength(1)),
+		stage: nonNegative,
+		theme: optionalString,
+		thumbnailUrl: optionalString,
+		title: pipe(string(), minLength(1)),
+	}),
+	title("ReviewedItem"),
+)
+
+export const reviewedResponseSchema = pipe(
+	object({ hasMore: boolean(), items: array(reviewedItemSchema) }),
+	title("ReviewedResponse"),
+)
+
 // ─── Parity ─────────────────────────────────────────────────────────────────
 
 export const parityShipSchema = pipe(
@@ -835,6 +859,7 @@ export const responseSchemas = Object.freeze([
 	queueResponseSchema,
 	reviewBundleSchema,
 	reviewEventSchema,
+	reviewedResponseSchema,
 	reviewsResponseSchema,
 	searchResponseSchema,
 	sendBackResultSchema,

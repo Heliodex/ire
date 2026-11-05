@@ -17,13 +17,23 @@ let signingOut = $state(false)
 
 const readOnly = $derived(session.me?.readOnly ?? false)
 const showAdmin = $derived(session.me?.programs.some(item => item.role === "admin") ?? false)
-const navRoutes = $derived(["/queue", "/deliveries", ...(showAdmin ? ["/admin"] : [])])
+const navRoutes = $derived(["/queue", "/reviewed", "/deliveries", ...(showAdmin ? ["/admin"] : [])])
+
+// isQueueRoute keeps the review screen under the queue tab without catching /reviewed.
+function isQueueRoute(path: string): boolean {
+	return path.startsWith("/queue") || path === "/review" || path.startsWith("/review/")
+}
+
+function isReviewedRoute(path: string): boolean {
+	return path === "/reviewed" || path.startsWith("/reviewed/")
+}
 
 // tabIndex maps the current route onto the navigation tabs; review counts as part of the queue.
 function tabIndex(path: string): number {
-	if (path.startsWith("/queue") || path.startsWith("/review")) return 0
-	if (path.startsWith("/deliveries")) return 1
-	if (showAdmin && path.startsWith("/admin")) return 2
+	if (isQueueRoute(path)) return 0
+	if (isReviewedRoute(path)) return 1
+	if (path.startsWith("/deliveries")) return 2
+	if (showAdmin && path.startsWith("/admin")) return 3
 
 	return -1
 }
@@ -157,12 +167,8 @@ async function signOut(): Promise<void> {
 			{/if}
 
 			<nav aria-label="Sections">
-				<a
-					href="/queue"
-					class:active={page.url.pathname.startsWith("/queue") || page.url.pathname.startsWith("/review")}
-				>
-					Queue
-				</a>
+				<a href="/queue" class:active={isQueueRoute(page.url.pathname)}>Queue</a>
+				<a href="/reviewed" class:active={isReviewedRoute(page.url.pathname)}>Reviewed</a>
 				<a href="/deliveries" class:active={page.url.pathname.startsWith("/deliveries")}>Deliveries</a>
 				{#if showAdmin}
 					<a href="/admin" class:active={page.url.pathname.startsWith("/admin")}>Admin</a>
@@ -182,9 +188,7 @@ async function signOut(): Promise<void> {
 	gap: var(--space-2);
 	align-items: center;
 	width: 100%;
-	max-width: 1240px;
 	padding: var(--space-2) var(--space-4);
-	margin: 0 auto;
 	font-size: var(--text-sm);
 	color: var(--warning);
 	border-top: 1px solid var(--border);
@@ -206,9 +210,7 @@ header {
 .top,
 nav {
 	width: 100%;
-	max-width: 1240px;
 	padding-inline: var(--space-4);
-	margin: 0 auto;
 }
 
 .top {

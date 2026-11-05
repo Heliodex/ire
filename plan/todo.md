@@ -75,6 +75,7 @@ wt build --dir .
 - [x] Per-filter cache with stale-while-revalidate, no skeleton flash after first load.
 - [x] Client-side search.
 - [x] Header project search with a `/` focus shortcut and a result dropdown.
+- [x] Reviewed tab for final decisions, with decision filters, search and read-only reviews.
 - [x] Responsive layouts for wide, medium and thin widths.
 - [x] Wide order: thumbnail, project, maker, status, type, version, hours, age, checks.
 - [x] Medium order: title, badges/checks, maker/version plus right-aligned timing.

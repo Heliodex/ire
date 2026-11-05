@@ -17,6 +17,7 @@ import {
 	outboxResponseSchema,
 	queueResponseSchema,
 	reviewBundleSchema,
+	reviewedResponseSchema,
 	searchResponseSchema,
 	sendBackResultSchema,
 } from "./contract"
@@ -26,6 +27,8 @@ export type AuthConfig = InferOutput<typeof authConfigSchema>
 export type Me = InferOutput<typeof meResponseSchema>
 export type Queue = InferOutput<typeof queueResponseSchema>
 export type QueueItem = Queue["items"][number]
+export type Reviewed = InferOutput<typeof reviewedResponseSchema>
+export type ReviewedItem = Reviewed["items"][number]
 export type SearchResult = InferOutput<typeof searchResponseSchema>["results"][number]
 export type Bundle = InferOutput<typeof reviewBundleSchema>
 export type Check = Bundle["checks"][number]
@@ -121,6 +124,14 @@ export async function fetchQueue(filter = "all", stage = 1, offset = 0, limit = 
 		`/api/v1/programs/${program}/queue?stage=${stage}&filter=${encodeURIComponent(filter)}&offset=${offset}&limit=${limit}`,
 	)
 	return parseJSON(response, queueResponseSchema)
+}
+
+// fetchReviewed returns a page of decided ships, newest first.
+export async function fetchReviewed(decision = "all", offset = 0, limit = 50): Promise<Reviewed> {
+	const response = await fetch(
+		`/api/v1/programs/${program}/reviewed?decision=${encodeURIComponent(decision)}&offset=${offset}&limit=${limit}`,
+	)
+	return parseJSON(response, reviewedResponseSchema)
 }
 
 // searchProjects finds open ships by title, maker, external id or theme for the header search.

@@ -3013,6 +3013,140 @@ func (j *Review) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type ReviewedItem struct {
+	// DecidedAt corresponds to the JSON schema field "decidedAt".
+	DecidedAt string `json:"decidedAt" yaml:"decidedAt" mapstructure:"decidedAt"`
+
+	// Decision corresponds to the JSON schema field "decision".
+	Decision string `json:"decision" yaml:"decision" mapstructure:"decision"`
+
+	// ExternalID corresponds to the JSON schema field "externalId".
+	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
+
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hoursApprovedSeconds".
+	HoursApprovedSeconds int `json:"hoursApprovedSeconds" yaml:"hoursApprovedSeconds" mapstructure:"hoursApprovedSeconds"`
+
+	// HoursClaimedSeconds corresponds to the JSON schema field "hoursClaimedSeconds".
+	HoursClaimedSeconds int `json:"hoursClaimedSeconds" yaml:"hoursClaimedSeconds" mapstructure:"hoursClaimedSeconds"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// MakerName corresponds to the JSON schema field "makerName".
+	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+
+	// Theme corresponds to the JSON schema field "theme".
+	Theme *string `json:"theme,omitempty,omitzero" yaml:"theme,omitempty" mapstructure:"theme,omitempty"`
+
+	// ThumbnailURL corresponds to the JSON schema field "thumbnailUrl".
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty,omitzero" yaml:"thumbnailUrl,omitempty" mapstructure:"thumbnailUrl,omitempty"`
+
+	// Title corresponds to the JSON schema field "title".
+	Title string `json:"title" yaml:"title" mapstructure:"title"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ReviewedItem) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["decidedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field decidedAt in ReviewedItem: required")
+	}
+	if _, ok := raw["decision"]; raw != nil && !ok {
+		return fmt.Errorf("field decision in ReviewedItem: required")
+	}
+	if _, ok := raw["externalId"]; raw != nil && !ok {
+		return fmt.Errorf("field externalId in ReviewedItem: required")
+	}
+	if _, ok := raw["hoursApprovedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursApprovedSeconds in ReviewedItem: required")
+	}
+	if _, ok := raw["hoursClaimedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursClaimedSeconds in ReviewedItem: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in ReviewedItem: required")
+	}
+	if _, ok := raw["makerName"]; raw != nil && !ok {
+		return fmt.Errorf("field makerName in ReviewedItem: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in ReviewedItem: required")
+	}
+	if _, ok := raw["title"]; raw != nil && !ok {
+		return fmt.Errorf("field title in ReviewedItem: required")
+	}
+	type Plain ReviewedItem
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.DecidedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "decidedAt", 1)
+	}
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
+	}
+	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
+	}
+	if 0 > plain.HoursApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursApprovedSeconds", 0)
+	}
+	if 0 > plain.HoursClaimedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if utf8.RuneCountInString(string(plain.MakerName)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "makerName", 1)
+	}
+	if 0 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
+	}
+	*j = ReviewedItem(plain)
+	return nil
+}
+
+type ReviewedResponse struct {
+	// HasMore corresponds to the JSON schema field "hasMore".
+	HasMore bool `json:"hasMore" yaml:"hasMore" mapstructure:"hasMore"`
+
+	// Items corresponds to the JSON schema field "items".
+	Items []ReviewedItem `json:"items" yaml:"items" mapstructure:"items"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ReviewedResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["hasMore"]; raw != nil && !ok {
+		return fmt.Errorf("field hasMore in ReviewedResponse: required")
+	}
+	if _, ok := raw["items"]; raw != nil && !ok {
+		return fmt.Errorf("field items in ReviewedResponse: required")
+	}
+	type Plain ReviewedResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = ReviewedResponse(plain)
+	return nil
+}
+
 type ReviewsResponse struct {
 	// Cursor corresponds to the JSON schema field "cursor".
 	Cursor *string `json:"cursor,omitempty,omitzero" yaml:"cursor,omitempty" mapstructure:"cursor,omitempty"`
