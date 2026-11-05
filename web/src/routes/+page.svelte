@@ -135,6 +135,8 @@ async function signIn(address: string): Promise<void> {
 		{#if authError || error}
 			<p class="error" role="alert">{authError || error}</p>
 		{/if}
+
+		<a class="docs-link" href="/docs">Integration docs</a>
 	</div>
 </section>
 
@@ -207,6 +209,17 @@ form {
 	color: var(--primary);
 	background: var(--primary-soft);
 	border-radius: var(--radius-sm);
+}
+
+.docs-link {
+	align-self: center;
+	font-size: var(--text-xs);
+	color: var(--text-3);
+	text-decoration: none;
+}
+
+.docs-link:hover {
+	color: var(--text);
 }
 
 .divider {

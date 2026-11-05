@@ -328,6 +328,7 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] Review is deployed to `https://review-wt-demo.k.hackclub.dev` with shadow on, an empty DB and machine ingest verified by the Half Life client.
 - [ ] `review-parity` is committed but has not run against a Half Life DB with real open hand-ins; the staging smoke and fixtures validated the feed.
 - [x] The staging callback is allowed; `lewin@hackclub.com` signs in as the only member and the admin roster shows one active admin.
+- [x] A public `/docs` page documents the ingest endpoints, signing, status phases, parity feed, reconciliation, outbound events and troubleshooting.
 - [x] Unauthenticated queue, review, deliveries, admin and API requests are rejected; dev sign-in and fixtures are off.
 - [x] Half Life's shadow webhook verifies the `timestamp.delivery_id.body` envelope, records every event as ignored and never applies it; Review sends nothing while shadow.
 

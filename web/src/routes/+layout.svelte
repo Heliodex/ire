@@ -82,7 +82,7 @@ onMount(async (): Promise<void> => {
 })
 
 $effect((): void => {
-	if (ready && !session.me && page.url.pathname !== "/") void goto("/")
+	if (ready && !session.me && page.url.pathname !== "/" && page.url.pathname !== "/docs") void goto("/")
 })
 
 async function signOut(): Promise<void> {
@@ -173,6 +173,7 @@ async function signOut(): Promise<void> {
 				{#if showAdmin}
 					<a href="/admin" class:active={page.url.pathname.startsWith("/admin")}>Admin</a>
 				{/if}
+				<a href="/docs" class:active={page.url.pathname.startsWith("/docs")}>Docs</a>
 			</nav>
 		{/if}
 	</header>
