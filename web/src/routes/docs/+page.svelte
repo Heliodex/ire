@@ -254,11 +254,11 @@ curl -X POST "$REVIEW_API_URL/api/ingest/{program}" \
 	<section class="ui-card padded doc-section">
 		<h2>Half Life configuration</h2>
 		<p>Keep Ari untouched and add a separate Ire provider:</p>
-		<pre class="code">REVIEW_API_URL=https://ire-wt-demo.k.hackclub.dev
+		<pre class="code">REVIEW_API_URL=https://ire.k.hackclub.dev
 REVIEW_PROGRAM=half-life
 REVIEW_SIGNING_SECRET=&lt;Ire's IRE_INGEST_SECRET&gt;
 REVIEW_MODE=shadow
-REVIEW_BASE=https://ire-wt-demo.k.hackclub.dev
+REVIEW_BASE=https://ire.k.hackclub.dev
 
 # Ire itself
 IRE_SHADOW=1

@@ -58,19 +58,19 @@ This runbook covers the review service as deployed through `wt`. Half Life stays
 
 ## Staging deployment
 
-The read-only staging instance runs on the shared `wt-demo` supervisor:
+The read-only staging instance runs on the shared `wt` supervisor:
 
-- Supervisor: `https://wt-demo.k.hackclub.dev`
-- App host: `https://ire-wt-demo.k.hackclub.dev`
+- Supervisor: `https://wt.k.hackclub.dev`
+- App host: `https://ire.k.hackclub.dev`
 - App name: `review`
-- Ingress: `ire-wt-demo.k.hackclub.dev` on the `wt-demo` deployment, service port 8080
+- Ingress: `ire.k.hackclub.dev` on the `wt` deployment, service port 8080
 
 Current staging posture:
 
 - `IRE_SHADOW=1` and outbound `fake://receiver`
 - `IRE_SEED_FIXTURES=0` and `IRE_DEV_AUTH=0`, so the queue starts empty and only Hack Club Auth can sign in
 - Secrets: `HC_CLIENT_ID`, `HC_CLIENT_SECRET`, `HC_REDIRECT_URI`, `IRE_BOOTSTRAP_EMAIL`, `IRE_INGEST_SECRET`, `IRE_OUTBOUND_SECRET`
-- The Hack Club Auth application must allow `https://ire-wt-demo.k.hackclub.dev/auth/callback`; the deployed client sends that exact URI
+- The Hack Club Auth application must allow `https://ire.k.hackclub.dev/auth/callback`; the deployed client sends that exact URI
 - The bootstrap email is the first admin; invite the rest at `/admin` after signing in
 
 Deploy from a clean `main` with the staging env temporarily applied to `app.json`:
@@ -88,13 +88,13 @@ Then:
 
 ```sh
 wt deploy --dir . \
-  --host https://wt-demo.k.hackclub.dev \
-  --app-host ire-wt-demo.k.hackclub.dev
+  --host https://wt.k.hackclub.dev \
+  --app-host ire.k.hackclub.dev
 ```
 
 The first deploy needed `--skip-route-check` because the ingress existed before the app did; later deploys do not. `wt route check review` and `wt doctor review` should both pass.
 
-Do not deploy the development `app.json` unchanged: it defaults to `IRE_SHADOW=0`, fixtures on and development sign-in on, which would turn the public staging host into an open demo. The staging overrides above must be applied for every deploy until a separate production manifest exists.
+Do not deploy with `IRE_SHADOW=0`, fixtures on or development sign-in on: that would turn the public staging host into an open demo. The staging overrides above must be applied for every deploy until a separate production manifest exists.
 
 ### Access model
 
@@ -110,4 +110,4 @@ To keep the production shadow locked down:
 
 The first staging smoke used the committed Half Life client and the staging ingest secret: design create v1, same-submission replay duplicate v1, build create v1, design withdraw, design recreate v2, and parity with both ships. Both ships were withdrawn; parity is empty again. The fake repository produced the expected check warnings and errors. The staging callback is now allowed: `lewin@hackclub.com` signs in as the only member, sees the shadow banner and the empty queue, and the admin roster shows one active admin.
 
-Half Life needs `REVIEW_SIGNING_SECRET` equal to Ire's `IRE_INGEST_SECRET`, `REVIEW_PROGRAM=half-life`, `REVIEW_API_URL=https://ire-wt-demo.k.hackclub.dev` and `REVIEW_MODE=shadow`. Deliver the ingest secret out of band; `wt secrets` lists names only.
+Half Life needs `REVIEW_SIGNING_SECRET` equal to Ire's `IRE_INGEST_SECRET`, `REVIEW_PROGRAM=half-life`, `REVIEW_API_URL=https://ire.k.hackclub.dev` and `REVIEW_MODE=shadow`. Deliver the ingest secret out of band; `wt secrets` lists names only.
