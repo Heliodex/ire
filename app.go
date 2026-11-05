@@ -34,6 +34,9 @@ const (
 
 	claimTTL = 30 * time.Minute
 
+	// reviewerHold keeps a fresh resubmission with its previous reviewer before other reviewers can take it.
+	reviewerHold = 5 * 24 * time.Hour
+
 	checkStaleAfter = 10 * time.Minute
 
 	outboundTimeout = 15 * time.Second

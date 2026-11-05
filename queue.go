@@ -58,6 +58,11 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		left join claim c on c.submission_id = s.id and c.expires_at > ?
 		left join user u on u.id = c.reviewer_id
 		left join check_run r on r.submission_id = s.id and r.version = s.version
+		left join review prev_review on prev_review.id = (
+			select pr.id from review pr
+			where pr.submission_id = s.previous_submission_id and pr.stage = 1 and pr.is_final = 1 and pr.invalidated_at is null
+			order by pr.created_at desc, pr.id desc limit 1
+		)
 		where s.program_id = ? and s.stage = ?
 		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`
 
@@ -75,7 +80,20 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	case queueFilterAll:
 	}
 
-	query += ` order by s.priority desc, s.ingested_at asc, s.id asc limit ? offset ?`
+	order := ` order by s.priority desc, s.ingested_at asc, s.id asc`
+	if stage == stageOne {
+		// The previous reviewer keeps a resubmission first, and other reviewers only see a fresh one behind the rest of the queue.
+		order = ` order by s.priority desc,
+			case
+				when prev_review.reviewer_id = ? then 0
+				when prev_review.reviewer_id is not null and s.ingested_at > ? then 2
+				else 1
+			end asc, s.ingested_at asc, s.id asc`
+
+		args = append(args, person.ID, a.later(-reviewerHold))
+	}
+
+	query += order + ` limit ? offset ?`
 
 	limit := parseLimit(r)
 	args = append(args, limit+1, parseOffset(r))
