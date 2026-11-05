@@ -24,6 +24,7 @@ import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
+import JournalTime from "../../lib/components/review/JournalTime.svelte"
 import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
 import {
@@ -176,6 +177,7 @@ const canSecondPass = $derived(role === "organizer" || role === "admin")
 const checking = $derived(submission?.status === "checking")
 const readOnly = $derived(session.me?.readOnly ?? false)
 const canDecide = $derived(!readOnly && !reviewed && !checking && (!secondPass || canSecondPass))
+const canAdjustEntries = $derived(canDecide && bundle?.claim?.isMine === 1)
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
@@ -650,6 +652,11 @@ function flash(message: string): void {
 	}, 3500)
 }
 
+// entrySaved keeps the rail total in step with the per-entry adjudication.
+function entrySaved(seconds: number): void {
+	hours = Math.round((seconds / 3600) * 100) / 100
+}
+
 async function saveDraftNow(): Promise<void> {
 	if (!bundle) return
 	try {
@@ -937,6 +944,13 @@ async function saveDraftNow(): Promise<void> {
 								{#if entry.mediaCount > 0}
 									<small>{entry.mediaCount} image{entry.mediaCount === 1 ? "" : "s"} attached</small>
 								{/if}
+								<JournalTime
+									editable={canAdjustEntries}
+									{entry}
+									onSaved={entrySaved}
+									shipId={submission.id}
+									version={submission.version}
+								/>
 							</article>
 						{/each}
 					</div>
