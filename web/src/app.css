@@ -555,6 +555,7 @@ textarea.ui-input {
 
 .ui-table {
 	width: 100%;
+	overflow-x: auto;
 	font-size: var(--text-sm);
 	border-collapse: collapse;
 }

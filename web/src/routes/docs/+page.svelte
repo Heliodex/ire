@@ -62,59 +62,61 @@ const canCancel = $derived(session.me !== null)
 	<meta content="Review ingest, status, parity and outbound integration guide" name="description">
 </svelte:head>
 
-<section class="docs-head">
-	<div>
-		<p class="crumbs"><a href={canCancel ? "/queue" : "/"}>{canCancel ? "Queue" : "Sign in"}</a></p>
-		<h1>Integration docs</h1>
-		<p class="lead">
-			Review accepts Ari-compatible ships, runs its own checks and shows the queue. Half Life can send a shadow
-			copy while Ari keeps deciding, then switch ownership later without changing the wire format.
-		</p>
+<div class="docs">
+	<section class="docs-head">
+		<div>
+			<p class="crumbs"><a href={canCancel ? "/queue" : "/"}>{canCancel ? "Queue" : "Sign in"}</a></p>
+			<h1>Integration docs</h1>
+			<p class="lead">
+				Review accepts Ari-compatible ships, runs its own checks and shows the queue. Half Life can send a
+				shadow copy while Ari keeps deciding, then switch ownership later without changing the wire format.
+			</p>
+		</div>
+	</section>
+
+	<div class="callout" role="note">
+		<strong>Live and shadow deployments</strong>
+		A deployment runs either live or in shadow mode. In shadow mode ships and checks flow, but reviewers cannot
+		claim or decide and Review writes no deliveries; the header marks it. In live mode a final decision is written
+		to the outbox and delivered with the signature below.
 	</div>
-</section>
 
-<div class="callout" role="note">
-	<strong>Current deployment</strong>
-	Review runs in shadow mode: ships arrive and checks run, but reviewers cannot claim or decide, and Review writes no
-	outbound deliveries. Ari remains the only decision path.
-</div>
-
-<section class="ui-card padded doc-section">
-	<h2>Endpoints</h2>
-	<p class="note">Machine endpoints use the programme slug, not the opaque programme id.</p>
-	<div class="ui-table">
-		<table>
-			<thead>
-				<tr>
-					<th scope="col">Method</th>
-					<th scope="col">Path</th>
-					<th scope="col">Auth</th>
-					<th scope="col">Purpose</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each endpoints as endpoint (endpoint.path)}
+	<section class="ui-card padded doc-section">
+		<h2>Endpoints</h2>
+		<p class="note">Machine endpoints use the programme slug, not the opaque programme id.</p>
+		<div class="ui-table">
+			<table>
+				<thead>
 					<tr>
-						<td><code>{endpoint.method}</code></td>
-						<td><code>{endpoint.path}</code></td>
-						<td>{endpoint.auth}</td>
-						<td>{endpoint.purpose}</td>
+						<th scope="col">Method</th>
+						<th scope="col">Path</th>
+						<th scope="col">Auth</th>
+						<th scope="col">Purpose</th>
 					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
-</section>
+				</thead>
+				<tbody>
+					{#each endpoints as endpoint (endpoint.path)}
+						<tr>
+							<td><code>{endpoint.method}</code></td>
+							<td><code>{endpoint.path}</code></td>
+							<td>{endpoint.auth}</td>
+							<td>{endpoint.purpose}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	</section>
 
-<section class="ui-card padded doc-section">
-	<h2>Signing an ingest</h2>
-	<p>
-		Send <code>X-Ari-Timestamp</code> and <code>X-Ari-Signature</code>, where the signature is the lowercase hex
-		HMAC-SHA256 of <code>timestamp.body</code> with the programme's ingest secret. Timestamps outside a five-minute
-		window are rejected. Send a stable <code>X-Ari-Delivery-Id</code> so a retry of the same body is a duplicate
-		rather than a second ship.
-	</p>
-	<pre class="code">BODY='&#123;"external_id":"proj_abc:design", ...&#125;'
+	<section class="ui-card padded doc-section">
+		<h2>Signing an ingest</h2>
+		<p>
+			Send <code>X-Ari-Timestamp</code> and <code>X-Ari-Signature</code>, where the signature is the lowercase hex
+			HMAC-SHA256 of <code>timestamp.body</code> with the programme's ingest secret. Timestamps outside a
+			five-minute window are rejected. Send a stable <code>X-Ari-Delivery-Id</code> so a retry of the same body is
+			a duplicate rather than a second ship.
+		</p>
+		<pre class="code">BODY='&#123;"external_id":"proj_abc:design", ...&#125;'
 TS=$(date +%s)
 SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$REVIEW_INGEST_SECRET" -hex | cut -d' ' -f2)
 
@@ -124,21 +126,21 @@ curl -X POST "$REVIEW_API_URL/api/ingest/{program}" \
   -H "X-Ari-Signature: $SIG" \
   -H "X-Ari-Delivery-Id: hl-$SUBMISSION_ID" \
   --data-binary "$BODY"</pre>
-	<p class="note">
-		The legacy body-only signature remains available only where the programme setting allows it. New senders should
-		use <code>timestamp.body</code>.
-	</p>
-</section>
+		<p class="note">
+			The legacy body-only signature remains available only where the programme setting allows it. New senders
+			should use <code>timestamp.body</code>.
+		</p>
+	</section>
 
-<section class="ui-card padded doc-section">
-	<h2>What to send</h2>
-	<p>
-		The required fields are <code>external_id</code>, <code>title</code>, <code>description</code>,
-		<code>maker.email</code>
-		and <code>maker.name</code>. A hand-in may also carry the repo and demo URLs, a thumbnail, journals, evidence
-		links, Hackatime projects and a nested <code>meta</code> block.
-	</p>
-	<pre class="code">{`{
+	<section class="ui-card padded doc-section">
+		<h2>What to send</h2>
+		<p>
+			The required fields are <code>external_id</code>, <code>title</code>, <code>description</code>,
+			<code>maker.email</code>
+			and <code>maker.name</code>. A hand-in may also carry the repo and demo URLs, a thumbnail, journals,
+			evidence links, Hackatime projects and a nested <code>meta</code> block.
+		</p>
+		<pre class="code">{`{
   "external_id": "proj_abc:design",
   "title": "Starbie",
   "description": "A motion-controlled digital pet on a star-shaped PCB.",
@@ -175,81 +177,81 @@ curl -X POST "$REVIEW_API_URL/api/ingest/{program}" \
     ]
   }
 }`}</pre>
-	<p class="note">
-		The nested <code>meta.bom</code>, <code>meta.hours</code> and <code>meta.prior_reviews</code> are the Review
-		additions. Flatten or drop them when sending the same ship to Ari.
-	</p>
-</section>
+		<p class="note">
+			The nested <code>meta.bom</code>, <code>meta.hours</code> and <code>meta.prior_reviews</code> are the Review
+			additions. Flatten or drop them when sending the same ship to Ari.
+		</p>
+	</section>
 
-<section class="ui-card padded doc-section">
-	<h2>Responses and phases</h2>
-	<p>
-		A create returns <code>201</code> with <code>&#123; id, status, version &#125;</code>; a repeated delivery
-		returns
-		<code>200</code>
-		with <code>status: "duplicate"</code>. An open ship returns
-		<code>409 &#123; error: "already_queued", id, version &#125;</code>. Withdraw returns
-		<code>&#123; id, status: "withdrawn" &#125;</code>
-		and is idempotent.
-	</p>
-	<div class="ui-table">
-		<table>
-			<thead>
-				<tr>
-					<th scope="col">Ari phase</th>
-					<th scope="col">Review status</th>
-					<th scope="col">Meaning</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each phases as [phase, status, meaning] (phase)}
+	<section class="ui-card padded doc-section">
+		<h2>Responses and phases</h2>
+		<p>
+			A create returns <code>201</code> with <code>&#123; id, status, version &#125;</code>; a repeated delivery
+			returns
+			<code>200</code>
+			with <code>status: "duplicate"</code>. An open ship returns
+			<code>409 &#123; error: "already_queued", id, version &#125;</code>. Withdraw returns
+			<code>&#123; id, status: "withdrawn" &#125;</code>
+			and is idempotent.
+		</p>
+		<div class="ui-table">
+			<table>
+				<thead>
 					<tr>
-						<td><code>{phase}</code></td>
-						<td><code>{status}</code></td>
-						<td>{meaning}</td>
+						<th scope="col">Ari phase</th>
+						<th scope="col">Review status</th>
+						<th scope="col">Meaning</th>
 					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
-</section>
+				</thead>
+				<tbody>
+					{#each phases as [phase, status, meaning] (phase)}
+						<tr>
+							<td><code>{phase}</code></td>
+							<td><code>{status}</code></td>
+							<td>{meaning}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+	</section>
 
-<section class="ui-card padded doc-section">
-	<h2>Parity and reconciliation</h2>
-	<p>
-		The parity feed returns every open ship with the external id, version, claimed and approved seconds, BOM total,
-		check summary and phase. It is read-only and answers the same question Half Life's
-		<code>review:parity</code>
-		script asks, so the two queues can be compared without applying anything.
-	</p>
-	<p>
-		After a live decision, <code>GET /api/v1/reviews/{program}?since=…</code> pages through the final outbound
-		events. The response carries <code>next_cursor</code>; apply each event idempotently and store its time as the
-		next <code>since</code>.
-	</p>
-</section>
+	<section class="ui-card padded doc-section">
+		<h2>Parity and reconciliation</h2>
+		<p>
+			The parity feed returns every open ship with the external id, version, claimed and approved seconds, BOM
+			total, check summary and phase. It is read-only and answers the same question Half Life's
+			<code>review:parity</code>
+			script asks, so the two queues can be compared without applying anything.
+		</p>
+		<p>
+			After a live decision, <code>GET /api/v1/reviews/{program}?since=…</code> pages through the final outbound
+			events. The response carries <code>next_cursor</code>; apply each event idempotently and store its time as
+			the next <code>since</code>.
+		</p>
+	</section>
 
-<section class="ui-card padded doc-section">
-	<h2>Outbound events</h2>
-	<p>
-		In live mode Review posts <code>review.approved</code>, <code>review.changes</code> or
-		<code>review.rejected</code>
-		to the programme's outbound URL. The signature covers
-		<code>timestamp.delivery_id.body</code>
-		with the outbound secret, and the same envelope carries
-		<code>X-Ari-Timestamp</code>, <code>X-Ari-Signature</code> and <code>X-Ari-Delivery-Id</code>. Held second-pass
-		decisions write no event until the final decision.
-	</p>
-	<p class="note">
-		Retries use a 30 second to 24 hour ladder. A 4xx is permanent. The deliveries page shows stored events and the
-		in-process receiver's verified bodies.
-	</p>
-</section>
+	<section class="ui-card padded doc-section">
+		<h2>Outbound events</h2>
+		<p>
+			In live mode Review posts <code>review.approved</code>, <code>review.changes</code> or
+			<code>review.rejected</code>
+			to the programme's outbound URL. The signature covers
+			<code>timestamp.delivery_id.body</code>
+			with the outbound secret, and the same envelope carries
+			<code>X-Ari-Timestamp</code>, <code>X-Ari-Signature</code> and <code>X-Ari-Delivery-Id</code>. Held
+			second-pass decisions write no event until the final decision.
+		</p>
+		<p class="note">
+			Retries use a 30 second to 24 hour ladder. A 4xx is permanent. The deliveries page shows stored events and
+			the in-process receiver's verified bodies.
+		</p>
+	</section>
 
-<section class="ui-card padded doc-section">
-	<h2>Half Life configuration</h2>
-	<p>Keep Ari untouched and add a separate Review provider:</p>
-	<pre class="code">REVIEW_API_URL=https://review-wt-demo.k.hackclub.dev
+	<section class="ui-card padded doc-section">
+		<h2>Half Life configuration</h2>
+		<p>Keep Ari untouched and add a separate Review provider:</p>
+		<pre class="code">REVIEW_API_URL=https://review-wt-demo.k.hackclub.dev
 REVIEW_PROGRAM=half-life
 REVIEW_SIGNING_SECRET=&lt;Review's REVIEW_INGEST_SECRET&gt;
 REVIEW_MODE=shadow
@@ -261,41 +263,47 @@ REVIEW_INGEST_SECRET=&lt;same secret&gt;
 REVIEW_OUTBOUND_URL=fake://receiver
 REVIEW_SEED_FIXTURES=0
 REVIEW_DEV_AUTH=0</pre>
-	<p>
-		<code>REVIEW_MODE=shadow</code>
-		labels Half Life's side only. Review's own
-		<code>REVIEW_SHADOW=1</code>
-		is what makes the API read-only and suppresses deliveries.
-	</p>
-</section>
+		<p>
+			<code>REVIEW_MODE=shadow</code>
+			labels Half Life's side only. Review's own
+			<code>REVIEW_SHADOW=1</code>
+			is what makes the API read-only and suppresses deliveries.
+		</p>
+	</section>
 
-<section class="ui-card padded doc-section">
-	<h2>Troubleshooting</h2>
-	<div class="ui-table">
-		<table>
-			<thead>
-				<tr>
-					<th scope="col">Response</th>
-					<th scope="col">What to check</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each errors as [error, fix] (error)}
+	<section class="ui-card padded doc-section">
+		<h2>Troubleshooting</h2>
+		<div class="ui-table">
+			<table>
+				<thead>
 					<tr>
-						<td><code>{error}</code></td>
-						<td>{fix}</td>
+						<th scope="col">Response</th>
+						<th scope="col">What to check</th>
 					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
-	<p class="note">
-		If a create returns <code>already_queued</code> for a ship you thought was closed, withdraw the old external id
-		and retry once. A stale copy after a resubmission is the usual cause.
-	</p>
-</section>
+				</thead>
+				<tbody>
+					{#each errors as [error, fix] (error)}
+						<tr>
+							<td><code>{error}</code></td>
+							<td>{fix}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+		<p class="note">
+			If a create returns <code>already_queued</code> for a ship you thought was closed, withdraw the old external
+			id and retry once. A stale copy after a resubmission is the usual cause.
+		</p>
+	</section>
+</div>
 
 <style>
+.docs {
+	width: 100%;
+	max-width: 920px;
+}
+
 .docs-head {
 	padding-bottom: var(--space-4);
 }
