@@ -70,12 +70,12 @@
 }
 
 .dark {
-	--bg: #121217;
-	--surface: #18181f;
-	--surface-2: #23232e;
-	--surface-3: #2b2b38;
-	--border: #31313d;
-	--border-2: #3c3c4a;
+	--bg: #0c0c10;
+	--surface: #131318;
+	--surface-2: #1b1b23;
+	--surface-3: #24242d;
+	--border: #292934;
+	--border-2: #363644;
 	--text: #f4f4f8;
 	--text-2: #b6b6c6;
 	--text-3: #9494a8;
