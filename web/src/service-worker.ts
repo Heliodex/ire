@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- service workers use a separate global type
-const worker = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self))
+// SvelteKit excludes the service worker from the app tsconfig because it has its own global scope.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the file targets the service worker global, not Window
+const worker = self as unknown as ServiceWorkerGlobalScope
 
 const cacheName = "project-covers-v1"
 const maxEntries = 400
@@ -9,8 +10,7 @@ const cachePrefix = "project-covers-"
 
 // cachesProjectCover keeps project images across navigations, where the asset host does not
 // reliably reuse the browser HTTP cache. Only the cover host and local fixture images are matched.
-/** @param {URL} url */
-function cachesProjectCover(url) {
+function cachesProjectCover(url: URL): boolean {
 	if (url.origin === worker.location.origin) return url.pathname.startsWith("/projects/")
 
 	return (
@@ -19,14 +19,12 @@ function cachesProjectCover(url) {
 	)
 }
 
-/** @param {Cache} cache */
-async function trim(cache) {
+async function trim(cache: Cache): Promise<void> {
 	const keys = await cache.keys()
 	for (const key of keys.slice(0, Math.max(0, keys.length - maxEntries))) await cache.delete(key)
 }
 
-/** @param {Request} request */
-async function respondWithCache(request) {
+async function respondWithCache(request: Request): Promise<Response> {
 	const cache = await caches.open(cacheName)
 	const cached = await cache.match(request)
 	if (cached) return cached
@@ -44,11 +42,11 @@ async function respondWithCache(request) {
 	return response
 }
 
-worker.addEventListener("install", () => {
+worker.addEventListener("install", (): void => {
 	void worker.skipWaiting()
 })
 
-worker.addEventListener("activate", event => {
+worker.addEventListener("activate", (event: ExtendableEvent): void => {
 	event.waitUntil(
 		(async () => {
 			const names = await caches.keys()
@@ -62,7 +60,7 @@ worker.addEventListener("activate", event => {
 	)
 })
 
-worker.addEventListener("fetch", event => {
+worker.addEventListener("fetch", (event: FetchEvent): void => {
 	const url = new URL(event.request.url)
 	if (event.request.destination !== "image" || !cachesProjectCover(url)) return
 
