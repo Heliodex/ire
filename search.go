@@ -40,7 +40,8 @@ func (a *reviewApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	needle := "%" + likeEscaper.Replace(strings.ToLower(query)) + "%"
 	prefix := likeEscaper.Replace(strings.ToLower(query)) + "%"
-	stageClause := ""
+
+	var stageClause string
 
 	if !canReviewSecondPass(person.Role) {
 		stageClause = " and s.stage = 1"

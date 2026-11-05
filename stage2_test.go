@@ -223,7 +223,7 @@ func TestStageTwoSendBack(t *testing.T) {
 		t.Error("the held review was not invalidated")
 	}
 
-	seen := false
+	var seen bool
 
 	for _, event := range bundle.Events {
 		if event.Kind == "sent_back" {

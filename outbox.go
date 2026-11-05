@@ -59,7 +59,7 @@ func (a *reviewApp) handleTick(w http.ResponseWriter, r *http.Request) {
 
 	claimRows, _ := a.store.Query(r.Context(), `select submission_id from claim where expires_at <= ? limit 200`, now)
 	if claimRows != nil {
-		expired := []string{}
+		var expired []string
 
 		for claimRows.Next() {
 			var id string
@@ -129,7 +129,7 @@ func normalizeOutboxStatus(status string) string {
 func (a *reviewApp) receiveFake(ctx context.Context, delivery outbox.Delivery) (int, error) {
 	signer := a.signer(a.config.OutboundSecret)
 
-	verified := 0
+	var verified int
 	if signer.Verify(delivery.Timestamp, delivery.DeliveryID, delivery.Signature, delivery.Payload) == nil {
 		verified = 1
 	}

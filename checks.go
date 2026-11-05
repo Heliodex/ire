@@ -405,7 +405,7 @@ func readmeCheck(body []byte, status int, err error, checkedAt string) contract.
 
 // imageCheck reports the README image count.
 func imageCheck(readme []byte, status int, err error, checkedAt string) contract.CheckResult {
-	count := 0
+	var count int
 	if err == nil && status == http.StatusOK {
 		count = imageCount(readme)
 	}

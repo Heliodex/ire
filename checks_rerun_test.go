@@ -39,7 +39,8 @@ func TestChecksRerun(t *testing.T) {
 	application.config.GitHubAPIBase = github.URL
 	application.config.EnableJobs = true
 
-	jobs := []app.JobRequest{}
+	var jobs []app.JobRequest
+
 	application.config.Enqueue = func(_ context.Context, request app.JobRequest) (bool, error) {
 		jobs = append(jobs, request)
 		return true, nil

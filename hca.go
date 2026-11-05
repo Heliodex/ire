@@ -427,7 +427,7 @@ func validBootstrapRole(role string) bool {
 
 // bootstrapMember creates the configured bootstrap account and its programme membership once.
 func (a *reviewApp) bootstrapMember(ctx context.Context, email, name string) (reviewer, bool, error) {
-	userID := ""
+	var userID string
 
 	err := a.store.QueryRow(ctx, `select id from user where lower(email) = ?`, email).Scan(&userID)
 	if err != nil && !errors.Is(err, storage.ErrNoRows) {

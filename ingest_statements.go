@@ -47,7 +47,7 @@ func buildSubmissionFields(request contract.IngestRequest) submissionFields {
 				quantity = max(*line.Qty, 0)
 			}
 
-			unit := 0
+			var unit int
 			if line.UnitUsd != nil {
 				unit = int(math.Round(*line.UnitUsd * 100))
 			}
@@ -145,7 +145,7 @@ func bomStatements(id string, meta *contract.IngestMeta) []storage.TransactionSt
 			quantity = max(*line.Qty, 0)
 		}
 
-		unit := 0
+		var unit int
 		if line.UnitUsd != nil {
 			unit = int(math.Round(*line.UnitUsd * 100))
 		}

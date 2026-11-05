@@ -51,7 +51,8 @@ func TestIngestQueuesRepositoryChecks(t *testing.T) {
 	application.config.GitHubAPIBase = github.URL
 	application.config.EnableJobs = true
 
-	jobs := []app.JobRequest{}
+	var jobs []app.JobRequest
+
 	application.config.Enqueue = func(_ context.Context, request app.JobRequest) (bool, error) {
 		jobs = append(jobs, request)
 		return true, nil
@@ -81,7 +82,7 @@ func TestIngestQueuesRepositoryChecks(t *testing.T) {
 		t.Errorf("checking count = %d, want 1", queue.Counts.Checking)
 	}
 
-	found := false
+	var found bool
 
 	for _, item := range queue.Items {
 		if item.ID == created.ID {

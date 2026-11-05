@@ -60,7 +60,7 @@ func (d designFiles) all() []string {
 
 // summary names the kinds present, such as "2 PCB, 1 CAD and 4 firmware files".
 func (d designFiles) summary() string {
-	parts := []string{}
+	var parts []string
 
 	for _, group := range []struct {
 		label string
@@ -102,8 +102,10 @@ func designKindCheck(key, label string, files, extra []string, kind, absent stri
 
 // emptyFilesCheck warns about placeholder files a maker committed instead of the real design.
 func emptyFilesCheck(tree githubTree, checkedAt string) contract.CheckResult {
-	empty := []string{}
-	known := false
+	var (
+		empty []string
+		known bool
+	)
 
 	for _, file := range tree.Tree {
 		if file.Type != "blob" || file.Size == nil || file.Mode == "120000" {

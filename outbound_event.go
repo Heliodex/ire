@@ -159,7 +159,7 @@ func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks 
 
 // stageHistory builds the stage list including the decision being made.
 func (a *reviewApp) stageHistory(ctx context.Context, submissionID string, person reviewer, decision, now string, stage int) []outboundStage {
-	out := []outboundStage{}
+	var out []outboundStage
 
 	reviews, err := a.loadReviews(ctx, submissionID)
 	if err == nil {

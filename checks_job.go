@@ -275,7 +275,7 @@ func (a *reviewApp) loadCheckResults(ctx context.Context, submissionID string, v
 	}
 	defer rows.Close()
 
-	checks := []contract.CheckResult{}
+	var checks []contract.CheckResult
 
 	for rows.Next() {
 		var (

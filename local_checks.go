@@ -15,7 +15,7 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 	checkedAt := now.Format(timestampFormat)
 	checks := make([]contract.CheckResult, 0, 7)
 
-	repo := ""
+	var repo string
 	if request.RepoURL != nil {
 		repo = strings.TrimSpace(*request.RepoURL)
 	}
@@ -33,13 +33,15 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 		checks = append(checks, check("repo.description", "Project description", "repo", statusWarn, severityWarn, "Short description", descriptionLength(len(description)), checkedAt))
 	}
 
-	images := 0
+	var images int
 	if request.ThumbnailURL != nil && strings.TrimSpace(*request.ThumbnailURL) != "" {
 		images++
 	}
 
-	shortEntries, wordless, clips, clipLinks, coveredSeconds, journalTime := 0, 0, 0, 0, 0, 0
-	invalidClips := []string{}
+	var (
+		shortEntries, wordless, clips, clipLinks, coveredSeconds, journalTime int
+		invalidClips                                                          []string
+	)
 
 	for _, entry := range request.Journals {
 		images += len(entry.Media)
@@ -80,7 +82,7 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 		checks = append(checks, check("repo.readme.images", "README images", "repo", statusWarn, severityWarn, "No images", "The payload carries no cover or journal images.", checkedAt))
 	}
 
-	bomLines := 0
+	var bomLines int
 	if request.Meta != nil {
 		bomLines = len(request.Meta.Bom)
 	}
@@ -100,7 +102,7 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 		checks = append(checks, check("evidence.journals", "Journal evidence", "evidence", statusPass, severityInfo, strconv.Itoa(len(request.Journals))+" entries", "Every entry has enough detail for a first pass.", checkedAt))
 	}
 
-	claimed := 0
+	var claimed int
 	if request.Meta != nil && request.Meta.Hours != nil {
 		claimed = request.Meta.Hours.ClaimedSeconds
 	}
@@ -123,7 +125,7 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 
 // journalChecks reports the written evidence and how its time compares with the claim.
 func journalChecks(entries []contract.IngestJournal, journalTime, claimed, wordless int, checkedAt string) []contract.CheckResult {
-	checks := []contract.CheckResult{}
+	var checks []contract.CheckResult
 
 	if len(entries) == 0 {
 		checks = append(checks, check("journal.present", "Journal entries", "evidence", statusFail, severityWarn, "No journal entries", "There is no written evidence to read.", checkedAt))

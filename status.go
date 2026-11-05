@@ -42,7 +42,8 @@ func (a *reviewApp) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	externalID := strings.TrimSpace(r.URL.Query().Get("external_id"))
 	id := strings.TrimSpace(r.URL.Query().Get("id"))
-	version := 0
+
+	var version int
 
 	if value := strings.TrimSpace(r.URL.Query().Get("version")); value != "" {
 		parsed, err := strconv.Atoi(value)

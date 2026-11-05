@@ -76,7 +76,7 @@ func (a *reviewApp) duplicateChecks(ctx context.Context, programID string, reque
 
 // duplicateProjectCheck reports reused repository or demo links.
 func duplicateProjectCheck(repos, demos []string, checkedAt string) contract.CheckResult {
-	details := []string{}
+	var details []string
 
 	if len(repos) > 0 {
 		details = append(details, "Repository also used by "+strings.Join(capStrings(repos, 3), ", "))
@@ -102,7 +102,7 @@ func duplicateProjectCheck(repos, demos []string, checkedAt string) contract.Che
 
 // identityMatchCheck reports a Hackatime or Slack identity used by another maker email.
 func identityMatchCheck(hackatime, slack []string, checkedAt string) contract.CheckResult {
-	details := []string{}
+	var details []string
 
 	if len(hackatime) > 0 {
 		details = append(details, "Hackatime identity also used by "+strings.Join(capStrings(hackatime, 3), ", "))

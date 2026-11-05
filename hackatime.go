@@ -103,7 +103,7 @@ func (a *reviewApp) loadHackatimeLinks(ctx context.Context, submissionID string)
 	}
 	defer rows.Close()
 
-	links := []hackatimeLink{}
+	var links []hackatimeLink
 
 	for rows.Next() {
 		var link hackatimeLink
@@ -119,9 +119,11 @@ func (a *reviewApp) loadHackatimeLinks(ctx context.Context, submissionID string)
 
 // refreshHackatimeLinks refreshes each project, returning the total, stale projects and their errors.
 func (a *reviewApp) refreshHackatimeLinks(ctx context.Context, ship submissionRow, links []hackatimeLink) (int, []string, []string) {
-	total := 0
-	stale := []string{}
-	failures := []string{}
+	var (
+		total    int
+		stale    []string
+		failures []string
+	)
 
 	for i := range links {
 		link := &links[i]

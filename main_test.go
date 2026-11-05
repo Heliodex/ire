@@ -1343,7 +1343,7 @@ func queueCheckStatuses(checks []contract.QueueCheck) map[string]string {
 
 // warningKeys returns the keys that need acknowledgement.
 func warningKeys(checks []contract.CheckResult) []string {
-	out := []string{}
+	var out []string
 
 	for _, check := range checks {
 		if isWarning(check) {

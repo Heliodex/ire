@@ -144,7 +144,7 @@ func (a *reviewApp) journalApprovedTotal(ctx context.Context, submissionID, entr
 	}
 	defer rows.Close()
 
-	total := 0
+	var total int
 
 	for rows.Next() {
 		var (

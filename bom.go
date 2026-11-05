@@ -110,8 +110,10 @@ func bomMatchCheck(bom bomSummary, maker []contract.BomLine, checkedAt string) c
 		return check("repo.bom.prices", "BOM prices match", "repo", statusSkip, severityInfo, "Not compared", "The repository BOM or the submitted BOM is missing.", checkedAt)
 	}
 
-	matched := 0
-	mismatches := []string{}
+	var (
+		matched    int
+		mismatches []string
+	)
 
 	for _, line := range maker {
 		if line.UnitCostCents <= 0 {
@@ -261,7 +263,7 @@ func bomDelimiter(text string) rune {
 // bomRows parses the table, using a small Markdown splitter for pipe tables.
 func bomRows(text string, delimiter rune) [][]string {
 	if delimiter == '|' {
-		rows := [][]string{}
+		var rows [][]string
 
 		for line := range strings.SplitSeq(text, "\n") {
 			if !strings.Contains(line, "|") {
@@ -410,7 +412,7 @@ func submittedBom(meta *contract.IngestMeta) []contract.BomLine {
 			quantity = max(*line.Qty, 0)
 		}
 
-		unit := 0
+		var unit int
 		if line.UnitUsd != nil {
 			unit = int(math.Round(*line.UnitUsd * 100))
 		}

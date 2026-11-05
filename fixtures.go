@@ -333,7 +333,7 @@ func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now
 		return err
 	}
 
-	bomTotal := 0
+	var bomTotal int
 	for _, line := range f.bom {
 		bomTotal += line.qty * line.cents
 	}

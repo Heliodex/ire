@@ -37,7 +37,7 @@ func (a *reviewApp) metricsText(ctx context.Context, id string) (string, error) 
 		return "", err
 	}
 
-	open := 0
+	var open int
 
 	for rows.Next() {
 		var stage, count int

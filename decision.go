@@ -61,7 +61,11 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hours := ship.HoursClaimed
-	supersedes, heldDecision, heldHours := "", "", 0
+
+	var (
+		supersedes, heldDecision string
+		heldHours                int
+	)
 
 	if secondPass {
 		base, problem := a.secondPassBase(r.Context(), ship, person, request, note)
@@ -123,7 +127,7 @@ func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deliveryStatus := ""
+	var deliveryStatus string
 	if outboxID != "" {
 		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
 	}
@@ -202,7 +206,7 @@ func (a *reviewApp) decisionStatements(ctx context.Context, record decisionRecor
 		}
 	}
 
-	outboxID := ""
+	var outboxID string
 
 	if !record.held && a.outboundEnabled(ctx, record.ship.ProgramID) {
 		message, statement, err := a.outboxStore().PrepareTransaction(outbox.Message{

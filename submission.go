@@ -260,7 +260,7 @@ func (a *reviewApp) claimFor(ctx context.Context, submissionID string, me review
 		return nil
 	}
 
-	mine := 0
+	var mine int
 	if reviewerID == me.ID {
 		mine = 1
 	}
@@ -367,7 +367,7 @@ func jsonCoveredSeconds(value string) int {
 		return 0
 	}
 
-	total := 0
+	var total int
 	for _, item := range items {
 		total += item.CoveredSeconds
 	}
@@ -477,7 +477,7 @@ func missingAcknowledgements(checks []contract.CheckResult, acknowledged []strin
 		acked[key] = struct{}{}
 	}
 
-	missing := []string{}
+	var missing []string
 
 	for _, check := range checks {
 		if !isWarning(check) {
@@ -494,7 +494,7 @@ func missingAcknowledgements(checks []contract.CheckResult, acknowledged []strin
 
 // blockedChecks returns the checks that forbid an approval.
 func blockedChecks(checks []contract.CheckResult) []contract.CheckResult {
-	out := []contract.CheckResult{}
+	var out []contract.CheckResult
 
 	for _, check := range checks {
 		if isBlocked(check) {
