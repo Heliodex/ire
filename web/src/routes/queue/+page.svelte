@@ -841,7 +841,7 @@ h1 {
 	width: 8px;
 	height: 8px;
 	background: var(--border-2);
-	border-radius: 50%;
+	border-radius: 2px;
 }
 
 .dot[data-tone="approved"] {
