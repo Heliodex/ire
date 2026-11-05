@@ -444,7 +444,7 @@ func (a *ireApp) migrate(ctx context.Context) error {
 	return a.seed(ctx)
 }
 
-// seed creates the Half Life programme, its dev reviewers and, when missing, the three fixture ships. Every write is idempotent, so a partial seed is repaired on the next start.
+// seed creates the Half Life programme and, when explicitly enabled, its dev reviewers and fixture ships. Every write is idempotent, so a partial seed is repaired on the next start. When dev accounts or fixtures are disabled, any leftover placeholder rows are removed so a production copy holds only invited reviewers and real Half Life ingests.
 func (a *ireApp) seed(ctx context.Context) error {
 	now := a.nowText()
 
@@ -465,6 +465,8 @@ func (a *ireApp) seed(ctx context.Context) error {
 		if err := a.seedPeople(ctx, now); err != nil {
 			return err
 		}
+	} else if err := a.removePlaceholderAccounts(ctx); err != nil {
+		return err
 	}
 
 	settings := map[string]string{
@@ -480,10 +482,24 @@ func (a *ireApp) seed(ctx context.Context) error {
 	}
 
 	if !a.config.SeedFixtures {
-		return nil
+		return a.removeFixtureShips(ctx)
 	}
 
 	return a.seedFixtures(ctx)
+}
+
+// removePlaceholderAccounts deletes the three development accounts and their memberships, sessions and identities. Memberships, sessions and identities cascade from the user rows; the login form no longer offers them once AllowDevAccounts is off.
+func (a *ireApp) removePlaceholderAccounts(ctx context.Context) error {
+	_, err := a.store.Exec(ctx, `delete from user where email in ('reviewer@example.com', 'organiser@example.com', 'admin@example.com')`)
+
+	return err
+}
+
+// removeFixtureShips deletes the three demo ships reseeded by seedFixtures, so disabling fixtures leaves an empty queue ready for real Half Life ingests. Real submissions never use these ids or external ids.
+func (a *ireApp) removeFixtureShips(ctx context.Context) error {
+	_, err := a.store.Exec(ctx, `delete from submission where id in ('sub_fixture_1', 'sub_fixture_2', 'sub_fixture_3') or external_id in ('fix-clean:design', 'fix-warned:design', 'fix-blocked:design')`)
+
+	return err
 }
 
 // seedPeople creates the three development accounts. They are placeholders for Hack Club Auth and must not survive a real deployment.

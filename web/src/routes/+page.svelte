@@ -6,12 +6,13 @@ import { type AuthConfig, fetchAuthConfig, login } from "../lib/api"
 import { ApiError } from "../lib/api-error"
 import { session } from "../lib/session.svelte.js"
 
-let email = $state("reviewer@example.com")
+let email = $state("")
 let busy = $state(false)
 let error = $state("")
 let authError = $state("")
 let authConfig = $state<AuthConfig | null>(null)
 
+// Local development shortcuts. They only render when IRE_DEV_AUTH=1 enables the dev endpoint; production serves Hack Club Auth only.
 const accounts = [
 	{ email: "reviewer@example.com", label: "Rae", note: "Reviewer" },
 	{ email: "organiser@example.com", label: "Oli", note: "Organiser" },
@@ -30,12 +31,12 @@ onMount((): void => {
 	void loadAuthConfig()
 })
 
-// loadAuthConfig falls back to development sign-in when method discovery fails.
+// loadAuthConfig hides all sign-in methods when method discovery fails, so a failed fetch never offers development sign-in.
 async function loadAuthConfig(): Promise<void> {
 	try {
 		authConfig = await fetchAuthConfig()
 	} catch {
-		authConfig = { dev: true, hca: false }
+		authConfig = { dev: false, hca: false }
 	}
 }
 

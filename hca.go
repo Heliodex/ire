@@ -401,15 +401,10 @@ func (a *ireApp) bindIdentity(ctx context.Context, userID, provider, subject str
 	return err
 }
 
-// canBootstrap reports whether this sign-in may create the first membership.
+// canBootstrap reports whether this sign-in may create the first membership. Only one explicitly configured email may bootstrap; there is no wildcard, so unknown accounts can never create their own membership.
 func (a *ireApp) canBootstrap(email string) bool {
 	if !validBootstrapRole(a.config.BootstrapRole) || a.config.BootstrapEmail == "" {
 		return false
-	}
-
-	// "*" is a local-only shortcut: it never applies when development accounts are disabled.
-	if a.config.BootstrapEmail == "*" {
-		return a.config.AllowDevAccounts
 	}
 
 	return strings.EqualFold(strings.TrimSpace(email), a.config.BootstrapEmail)

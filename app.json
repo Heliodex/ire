@@ -36,6 +36,8 @@
 		"HC_REDIRECT_URI": "secret://HC_REDIRECT_URI",
 		"IRE_BOOTSTRAP_EMAIL": "secret://IRE_BOOTSTRAP_EMAIL",
 		"IRE_BOOTSTRAP_ROLE": "admin",
+		"IRE_DEV_AUTH": "0",
+		"IRE_SEED_FIXTURES": "0",
 		"IRE_SHADOW": "0"
 	},
 	"server_paths": [

@@ -148,7 +148,7 @@ func (a *ireApp) meResponse(ctx context.Context, person reviewer) contract.MeRes
 	return response
 }
 
-// handleDevLogin is the placeholder for Hack Club Auth. It issues a session for a seeded account so the queue can be demonstrated without an OAuth app; IRE_DEV_AUTH=0 removes it.
+// handleDevLogin is the placeholder for Hack Club Auth. It issues a session for a seeded account so the queue can be demonstrated without an OAuth app; it is opt-in via IRE_DEV_AUTH=1 and never creates memberships.
 func (a *ireApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 	if !session.SameOrigin(r) {
 		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")

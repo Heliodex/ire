@@ -13,9 +13,9 @@ import (
 	wasihttp "github.com/heliodex/better-deploy/wt/packages/v2/wasihttp"
 )
 
-// loadConfig reads the prototype's configuration. Missing secrets fall back to documented development values; production must set both.
+// loadConfig reads the prototype's configuration. Both development fixtures and development sign-in are opt-in (set to "1" locally); production deploys leave them unset or "0" so only Hack Club Auth for roster members can sign in.
 func loadConfig() config {
-	seed := os.Getenv("IRE_SEED_FIXTURES") != "0"
+	seed := os.Getenv("IRE_SEED_FIXTURES") == "1"
 
 	return config{
 		IngestSecret:      envOr("IRE_INGEST_SECRET", "dev-ingest-secret"),
@@ -31,7 +31,7 @@ func loadConfig() config {
 		BootstrapEmail:    strings.ToLower(strings.TrimSpace(os.Getenv("IRE_BOOTSTRAP_EMAIL"))),
 		BootstrapRole:     envOr("IRE_BOOTSTRAP_ROLE", roleAdmin),
 		SeedFixtures:      seed,
-		AllowDevAccounts:  os.Getenv("IRE_DEV_AUTH") != "0",
+		AllowDevAccounts:  os.Getenv("IRE_DEV_AUTH") == "1",
 		DisableRepoChecks: os.Getenv("IRE_DISABLE_REPO_CHECKS") == "1",
 		EnableJobs:        os.Getenv("IRE_DISABLE_JOBS") != "1",
 		OutboundDryRun:    os.Getenv("IRE_OUTBOUND_DRY_RUN") == "1",

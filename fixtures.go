@@ -236,7 +236,7 @@ func fixtureID(index int) string {
 	return fmt.Sprintf("sub_fixture_%d", index+1)
 }
 
-// handleDevReset clears the demo ships and reseeds them. It exists so a rehearsal can start from the same three rows; IRE_DEV_AUTH=0 removes it.
+// handleDevReset clears the demo ships and reseeds them. It exists so a rehearsal can start from the same three rows; it is opt-in via IRE_DEV_AUTH=1.
 func (a *ireApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
 	if !a.config.AllowDevAccounts {
 		app.WriteError(w, http.StatusNotFound, "development reset is disabled")
