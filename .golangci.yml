@@ -81,7 +81,7 @@ linters:
                         - modernc.org/sqlite/lib
                         - wt.example
                         - github.com/heliodex/better-deploy/wt/packages
-                        - review/contract
+                        - ire/contract
         canonicalheader:
             exclusions:
                 - X-WT-App-Body-SHA256
