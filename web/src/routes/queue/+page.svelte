@@ -176,6 +176,12 @@ async function load(target = filter, targetStage = stage, keepRows = false): Pro
 		const next = await fetchQueue(target, targetStage, 0, limit)
 		if (target !== filter || targetStage !== stage) return
 
+		// Keep rows loaded past the refresh limit so polling cannot shrink the list.
+		if (keepRows && queue.items.length > next.items.length) {
+			const seen = new Set(next.items.map(item => item.id))
+			next.items = [...next.items, ...queue.items.slice(next.items.length).filter(item => !seen.has(item.id))]
+		}
+
 		cache.set(key, next)
 		queue = next
 		selected = Math.min(selected, Math.max(queue.items.length - 1, 0))
@@ -216,6 +222,32 @@ async function loadMore(): Promise<void> {
 	} finally {
 		loadingMore = false
 	}
+}
+
+// autoLoad fills the next pages while the sentinel is near the viewport.
+function autoLoad(node: HTMLElement): { destroy(): void } {
+	async function fill(): Promise<void> {
+		while (queue.hasMore && !loadingMore) {
+			if (node.getBoundingClientRect().top > window.innerHeight + 400) return
+
+			const before = queue.items.length
+			await loadMore()
+			await tick()
+
+			if (queue.items.length === before) return
+		}
+	}
+
+	const observer = new IntersectionObserver(
+		entries => {
+			if (entries.some(entry => entry.isIntersecting)) void fill()
+		},
+		{ rootMargin: "0px 0px 400px 0px" },
+	)
+
+	observer.observe(node)
+
+	return { destroy: () => observer.disconnect() }
 }
 
 // refreshCache keeps the cache in step with the rows currently visible.
@@ -299,7 +331,17 @@ async function moveSelection(step: number): Promise<void> {
 		break
 	}
 
-	if (next === -1) return
+	if (next === -1) {
+		if (step < 0 || !queue.hasMore) return
+
+		const before = queue.items.length
+		await loadMore()
+		await tick()
+
+		if (queue.items.length === before) return
+
+		return moveSelection(step)
+	}
 
 	selected = next
 
@@ -584,16 +626,10 @@ async function open(item: QueueItem): Promise<void> {
 			{/each}
 		</div>
 		{#if queue.hasMore}
-			<div class="more">
-				<button
-					class="ui-button"
-					data-variant="outline"
-					disabled={loadingMore}
-					onclick={loadMore}
-					type="button"
-				>
-					{loadingMore ? "Loading…" : "Load more ships"}
-				</button>
+			<div aria-live="polite" class="more" use:autoLoad>
+				{#if loadingMore}
+					<span>Loading more ships…</span>
+				{/if}
 			</div>
 		{/if}
 	{/if}
@@ -618,8 +654,12 @@ async function open(item: QueueItem): Promise<void> {
 <style>
 .more {
 	display: flex;
+	align-items: center;
 	justify-content: center;
+	min-height: 2.5rem;
 	padding-top: var(--space-2);
+	font-size: var(--text-sm);
+	color: var(--text-3);
 }
 
 .page-head {
