@@ -111,7 +111,11 @@ interface CheckTip {
 // cache keeps each filter and stage response for this visit, so switching back is instant while a fresh copy loads behind it.
 const cache = new SvelteMap<string, Queue>()
 
-if (savedQueue) cache.set(`${savedQueue.stage}:${savedQueue.filter}`, savedQueue.queue)
+if (savedQueue)
+	cache.set(
+		`${savedQueue.stage}:${savedQueue.filter}:${savedQueue.sortKey ?? ""}:${savedQueue.sortDir ?? 1}`,
+		savedQueue.queue,
+	)
 
 const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
 const canSecondPass = $derived(role === "organizer" || role === "admin")
@@ -125,61 +129,14 @@ const filters: { key: Filter; label: string; short: string }[] = [
 ]
 
 const visible = $derived(
-	queue.items
-		.filter(item => {
-			if (search.trim() === "") return true
-			const needle = search.trim().toLowerCase()
-			return item.title.toLowerCase().includes(needle) || item.makerName.toLowerCase().includes(needle)
-		})
-		// toSorted keeps the cached rows untouched while sorting the filtered copy.
-		.toSorted(compareItems),
+	queue.items.filter(item => {
+		if (search.trim() === "") return true
+		const needle = search.trim().toLowerCase()
+		return item.title.toLowerCase().includes(needle) || item.makerName.toLowerCase().includes(needle)
+	}),
 )
 
-// checkScore ranks a ship by how much attention its checks need: blocking failures first, then warnings, then clean ships.
-function checkScore(item: QueueItem): number {
-	return (
-		(item.checkSummary.fail + item.checkSummary.error) * 100 + item.checkSummary.warn * 10 - item.checkSummary.pass
-	)
-}
-
-// compareItems orders two rows by the active sort header, keeping the server order when nothing is sorted.
-function compareItems(a: QueueItem, b: QueueItem): number {
-	if (!sortKey) return 0
-
-	let result = 0
-	switch (sortKey) {
-		case "ship":
-			result = a.title.localeCompare(b.title)
-			break
-		case "maker":
-			result = a.makerName.localeCompare(b.makerName)
-			break
-		case "status":
-			result = a.status.localeCompare(b.status)
-			break
-		case "type":
-			result = (a.theme ?? "").localeCompare(b.theme ?? "")
-			break
-		case "version":
-			result = a.version - b.version
-			break
-		case "claimed":
-			result = a.hoursClaimedSeconds - b.hoursClaimedSeconds
-			break
-		case "age":
-			result = Date.parse(a.ingestedAt) - Date.parse(b.ingestedAt)
-			break
-		case "checks":
-			result = checkScore(a) - checkScore(b)
-			break
-		default:
-			break
-	}
-
-	return result * sortDir
-}
-
-// toggleSort cycles a column through ascending, descending and unsorted. Picking another column restarts at ascending.
+// toggleSort cycles a column through ascending, descending and unsorted, reloading every page server-side so appended rows keep arriving at the end.
 function toggleSort(key: SortKey): void {
 	if (sortKey !== key) {
 		sortKey = key
@@ -191,6 +148,7 @@ function toggleSort(key: SortKey): void {
 	}
 
 	selected = 0
+	void load(filter, stage)
 }
 
 // sortLabel describes what activating a column header will do next.
@@ -442,14 +400,21 @@ async function boot(): Promise<void> {
 	if (savedQueue) await restorePosition(savedQueue.scrollY)
 }
 
+// cacheKey scopes cached rows by stage, filter and sort, so a sorted view never shows rows fetched for another order.
+function cacheKey(targetStage: number, targetFilter: Filter): string {
+	return `${targetStage}:${targetFilter}:${sortKey ?? ""}:${sortDir}`
+}
+
 // checkTone maps a check result to a dot tone. A failure with warning severity stays orange, matching the review screen.
 async function load(target = filter, targetStage = stage, keepRows = false): Promise<void> {
-	const key = `${targetStage}:${target}`
+	const key = cacheKey(targetStage, target)
+	const wantSort = sortKey
+	const wantDir = sortDir
 	const limit = keepRows ? Math.min(Math.max(queue.items.length, 50), 100) : 50
 
 	try {
-		const next = await fetchQueue(target, targetStage, 0, limit)
-		if (target !== filter || targetStage !== stage) return
+		const next = await fetchQueue(target, targetStage, 0, limit, wantSort, wantDir)
+		if (target !== filter || targetStage !== stage || wantSort !== sortKey || wantDir !== sortDir) return
 
 		// Keep rows loaded past the refresh limit so polling cannot shrink the list.
 		if (keepRows && queue.items.length > next.items.length) {
@@ -484,7 +449,7 @@ async function loadMore(): Promise<void> {
 	error = ""
 
 	try {
-		const next = await fetchQueue(filter, stage, queue.items.length)
+		const next = await fetchQueue(filter, stage, queue.items.length, 50, sortKey, sortDir)
 
 		const seen = new Set(queue.items.map(item => item.id))
 		queue = {
@@ -527,7 +492,7 @@ function autoLoad(node: HTMLElement): { destroy(): void } {
 
 // refreshCache keeps the cache in step with the rows currently visible.
 function refreshCache(): void {
-	cache.set(`${stage}:${filter}`, queue)
+	cache.set(cacheKey(stage, filter), queue)
 }
 
 async function choose(next: Filter): Promise<void> {
@@ -543,7 +508,7 @@ async function choose(next: Filter): Promise<void> {
 	error = ""
 	actionError = ""
 
-	const cached = cache.get(`1:${next}`)
+	const cached = cache.get(cacheKey(1, next))
 	if (cached) {
 		// Show the last copy immediately and let load() replace it without a placeholder.
 		queue = cached
@@ -560,7 +525,7 @@ async function choose(next: Filter): Promise<void> {
 async function chooseSecondPass(): Promise<void> {
 	if (!canSecondPass) return
 
-	const cached = cache.get("2:all")
+	const cached = cache.get(cacheKey(2, "all"))
 	stage = 2
 	filter = "all"
 	selected = 0

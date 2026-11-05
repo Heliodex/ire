@@ -104,7 +104,7 @@ The check job stores a snapshot in `repo_snapshot`: the README (capped at 200 KB
 | `POST` | `/api/v1/logout` | Session |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/evidence/refresh` | Organiser or admin |
 | `POST` | `/api/v1/dev/login` | Development only |
-| `GET` | `/api/v1/programs/{program}/queue?stage=1\|2` | Session; stage 2 needs organiser/admin |
+| `GET` | `/api/v1/programs/{program}/queue?stage=1\|2&sort=&dir=` | Session; stage 2 needs organiser/admin; `sort` is one of ship, maker, status, type, version, claimed, age or checks, `dir` is asc or desc |
 | `GET` | `/api/v1/programs/{program}/reviewed?decision=...` | Session |
 | `GET` | `/api/v1/programs/{program}/search?q=...` | Session |
 | `GET` | `/api/v1/programs/{program}/submissions/{id}` | Session |

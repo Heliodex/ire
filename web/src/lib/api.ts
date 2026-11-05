@@ -126,11 +126,18 @@ export async function logout(): Promise<void> {
 	await requestVoid("/api/v1/logout", { method: "POST" })
 }
 
-// fetchQueue returns one page of the stage 1 work list.
-export async function fetchQueue(filter = "all", stage = 1, offset = 0, limit = 50): Promise<Queue> {
-	const response = await fetch(
-		`/api/v1/programs/${program}/queue?stage=${stage}&filter=${encodeURIComponent(filter)}&offset=${offset}&limit=${limit}`,
-	)
+// fetchQueue returns one page of the stage 1 work list. A sort key orders every page server-side so appended rows keep arriving at the end.
+export async function fetchQueue(
+	filter = "all",
+	stage = 1,
+	offset = 0,
+	limit = 50,
+	sort: string | null = null,
+	dir: 1 | -1 = 1,
+): Promise<Queue> {
+	let params = `stage=${stage}&filter=${encodeURIComponent(filter)}&offset=${offset}&limit=${limit}`
+	if (sort) params += `&sort=${encodeURIComponent(sort)}&dir=${dir === -1 ? "desc" : "asc"}`
+	const response = await fetch(`/api/v1/programs/${program}/queue?${params}`)
 	return parseJSON(response, queueResponseSchema)
 }
 

@@ -164,6 +164,7 @@ wt build --dir .
 - [ ] The queue refreshes from storage events and keeps a 10-second poll as a fallback.
 - [ ] No settings UI, analytics or secret rotation UI; the admin roster and audit browser now exist alongside the retention job.
 - [x] The queue pages with `limit` (up to 100) and `offset` (up to 10000) and reports `hasMore`; the recovery feeds page with a stable `since` cursor.
+- [x] The queue sorts server-side by ship, maker, status, type, version, claimed hours, age or checks, so appended pages keep arriving at the end.
 - [x] A sliding-window limiter caps browser mutations at 120/min per session and machine mutations at 240/min per address; reads are unaffected.
 - [ ] Duplicate, identity and demo checks exist; fraud is still a future provider.
 - [ ] Roster sync is still missing; roles and active state are managed from the admin page, and identities are bound by the HCA subject.

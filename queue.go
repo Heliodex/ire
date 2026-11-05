@@ -17,6 +17,18 @@ import (
 
 const makerAvatarBase = "https://cachet.dunkirk.sh/users"
 
+// queueSortColumns maps the queue's sortable headers to their ordering, so the sort parameter only selects a key. The checks score mirrors the client's old badness order: blocking results first, then warnings, then clean ships.
+var queueSortColumns = map[string]string{
+	"ship":   "s.title collate nocase",
+	"maker":  "coalesce(s.maker_name, '') collate nocase",
+	"status": "s.status",
+	"type":   "coalesce(s.theme, '') collate nocase",
+	"version": "s.version",
+	"claimed": "s.hours_claimed_seconds",
+	"age":     "s.ingested_at",
+	"checks": "(coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.fail'), 0) + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.error'), 0)) * 100 + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.warn'), 0) * 10 - coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.pass'), 0)",
+}
+
 // handleQueue returns the stage 1 work list, counts and claim state in one response.
 //
 //nolint:funlen // The query, row mapping and check join belong together.
@@ -46,6 +58,32 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	filter := strings.TrimSpace(r.URL.Query().Get("filter"))
 	if filter == "" {
 		filter = queueFilterAll
+	}
+
+	sortKey := strings.TrimSpace(r.URL.Query().Get("sort"))
+	sortDir := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("dir")))
+
+	if sortDir == "" {
+		sortDir = "asc"
+	}
+
+	if sortDir != "asc" && sortDir != "desc" {
+		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "dir", "dir must be asc or desc")
+
+		return
+	}
+
+	var sortColumn string
+
+	if sortKey != "" {
+		column, ok := queueSortColumns[sortKey]
+		if !ok {
+			app.WriteErrorField(w, http.StatusBadRequest, "invalid", "sort", "sort must be ship, maker, status, type, version, claimed, age or checks")
+
+			return
+		}
+
+		sortColumn = column
 	}
 
 	now := a.nowText()
@@ -81,7 +119,7 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	order := ` order by s.priority desc, s.ingested_at asc, s.id asc`
-	if stage == stageOne {
+	if stage == stageOne && sortColumn == "" {
 		// The previous reviewer keeps a resubmission first, and other reviewers only see a fresh one behind the rest of the queue.
 		order = ` order by s.priority desc,
 			case
@@ -91,6 +129,11 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 			end asc, s.ingested_at asc, s.id asc`
 
 		args = append(args, person.ID, a.later(-reviewerHold))
+	}
+
+	if sortColumn != "" {
+		// An explicit sort spans pages, so appended rows keep arriving at the end.
+		order = ` order by ` + sortColumn + ` ` + sortDir + `, s.id asc`
 	}
 
 	query += order + ` limit ? offset ?`
