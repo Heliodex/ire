@@ -412,6 +412,17 @@ async function open(item: QueueItem): Promise<void> {
 		</div>
 	{:else}
 		<div class="ui-card list" bind:this={listElement} class:refreshing>
+			<div aria-hidden="true" class="column-head">
+				<span></span>
+				<span>Ship</span>
+				<span>Maker</span>
+				<span>Status</span>
+				<span>Type</span>
+				<span>Ver</span>
+				<span>Claimed</span>
+				<span>Age</span>
+				<span>Checks</span>
+			</div>
 			{#each visible as item, index (item.id)}
 				<button
 					aria-current={index === selected}
@@ -661,6 +672,23 @@ h1 {
 	border-bottom: 1px solid var(--border);
 }
 
+.column-head {
+	display: grid;
+	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 96px 64px minmax(140px, 190px);
+	gap: var(--space-3);
+	align-items: center;
+	padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-3);
+	background: var(--surface-2);
+	border-bottom: 1px solid var(--border);
+}
+
+.column-head span:first-child {
+	min-width: 0;
+}
+
 .thumb {
 	position: relative;
 	display: block;
@@ -762,7 +790,7 @@ h1 {
 .age {
 	font-size: var(--text-xs);
 	font-variant-numeric: tabular-nums;
-	color: var(--text-3);
+	color: var(--text-2);
 }
 
 .version {
@@ -909,6 +937,10 @@ h1 {
 }
 
 @media (max-width: 1024px) {
+	.column-head {
+		display: none;
+	}
+
 	.row {
 		grid-template-areas:
 			"thumb title badges checks"
@@ -1041,6 +1073,10 @@ h1 {
 
 	.label-short {
 		display: inline;
+	}
+
+	.filters button {
+		height: 32px;
 	}
 
 	.stats {
