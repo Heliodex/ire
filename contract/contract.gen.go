@@ -4618,6 +4618,76 @@ func (j *SubmissionEvent) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type SubmissionFile struct {
+	// Path corresponds to the JSON schema field "path".
+	Path string `json:"path" yaml:"path" mapstructure:"path"`
+
+	// SizeBytes corresponds to the JSON schema field "sizeBytes".
+	SizeBytes int `json:"sizeBytes" yaml:"sizeBytes" mapstructure:"sizeBytes"`
+
+	// Text corresponds to the JSON schema field "text".
+	Text string `json:"text" yaml:"text" mapstructure:"text"`
+
+	// Truncated corresponds to the JSON schema field "truncated".
+	Truncated bool `json:"truncated" yaml:"truncated" mapstructure:"truncated"`
+}
+
+type SubmissionFileResponse struct {
+	// File corresponds to the JSON schema field "file".
+	File SubmissionFile `json:"file" yaml:"file" mapstructure:"file"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *SubmissionFileResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["file"]; raw != nil && !ok {
+		return fmt.Errorf("field file in SubmissionFileResponse: required")
+	}
+	type Plain SubmissionFileResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = SubmissionFileResponse(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *SubmissionFile) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["path"]; raw != nil && !ok {
+		return fmt.Errorf("field path in SubmissionFile: required")
+	}
+	if _, ok := raw["sizeBytes"]; raw != nil && !ok {
+		return fmt.Errorf("field sizeBytes in SubmissionFile: required")
+	}
+	if _, ok := raw["text"]; raw != nil && !ok {
+		return fmt.Errorf("field text in SubmissionFile: required")
+	}
+	if _, ok := raw["truncated"]; raw != nil && !ok {
+		return fmt.Errorf("field truncated in SubmissionFile: required")
+	}
+	type Plain SubmissionFile
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Path)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "path", 1)
+	}
+	if 0 > plain.SizeBytes {
+		return fmt.Errorf("field %s: must be >= %v", "sizeBytes", 0)
+	}
+	*j = SubmissionFile(plain)
+	return nil
+}
+
 // UnmarshalJSON implements json.Unmarshaler.
 func (j *Submission) UnmarshalJSON(value []byte) error {
 	var raw map[string]interface{}

@@ -493,6 +493,22 @@ export const evidenceFileSchema = pipe(
 	title("EvidenceFile"),
 )
 
+// submissionFileSchema is one snapshot-listed text file fetched for in-app preview. The text is capped server-side so a board file cannot exhaust the tab.
+export const submissionFileSchema = pipe(
+	object({
+		path: pipe(string(), minLength(1)),
+		sizeBytes: nonNegative,
+		text: string(),
+		truncated: boolean(),
+	}),
+	title("SubmissionFile"),
+)
+
+export const submissionFileResponseSchema = pipe(
+	object({ file: submissionFileSchema }),
+	title("SubmissionFileResponse"),
+)
+
 export const evidenceCommitSchema = pipe(
 	object({
 		author: string(),
@@ -1011,6 +1027,7 @@ export const responseSchemas = Object.freeze([
 	reviewsResponseSchema,
 	searchResponseSchema,
 	sendBackResultSchema,
+	submissionFileResponseSchema,
 	statusResponseSchema,
 	withdrawResponseSchema,
 ])
