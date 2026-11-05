@@ -10,57 +10,25 @@ import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
+import {
+	createQueueState,
+	type QueueFilter as Filter,
+	type QueueState,
+	type SavedQueueState,
+	type QueueSortKey as SortKey,
+} from "../../lib/queue-state"
 import { session } from "../../lib/session.svelte.js"
 
-type Filter = "all" | "fast" | "attention" | "mine"
-
-type SortKey = "ship" | "maker" | "status" | "type" | "version" | "claimed" | "age" | "checks"
-
 const sortKeys: SortKey[] = ["ship", "maker", "status", "type", "version", "claimed", "age", "checks"]
-
-interface SavedQueueState {
-	filter: Filter
-	queue: Queue
-	savedAt: number
-	scrollY: number
-	search: string
-	selectedId: string
-	sortDir: 1 | -1
-	sortKey: SortKey | null
-	stage: number
-	version: number
-}
 
 const maxCheckDots = 11
 
 // wideChecks renders every check dot without the +N badge at the widest layout, where the checks column has room. Narrower layouts keep eliding.
 let wideChecks = $state(false)
-const queueStateKey = `review:queue:${program}`
-const queueStateVersion = 1
 
-// isFilter narrows a cached filter value.
-function isFilter(value: string): value is Filter {
-	return value === "all" || value === "fast" || value === "attention" || value === "mine"
-}
-
-// readQueueState restores the last visit from session storage, ignoring stale or malformed copies.
-function readQueueState(): SavedQueueState | null {
-	try {
-		const raw = sessionStorage.getItem(queueStateKey)
-		if (!raw) return null
-
-		const state = JSON.parse(raw) as SavedQueueState
-		if (state.version !== queueStateVersion) return null
-		if (!isFilter(state.filter)) return null
-		if (state.stage !== 1 && state.stage !== 2) return null
-		if (!state.queue || !Array.isArray(state.queue.items) || typeof state.queue.counts !== "object") return null
-		if (typeof state.search !== "string" || typeof state.scrollY !== "number") return null
-		if (typeof state.savedAt !== "number" || Date.now() - state.savedAt > 24 * 60 * 60 * 1000) return null
-
-		return state
-	} catch {
-		return null
-	}
+// queueState persists the visit in tab storage. It is built per call so sessionStorage is only touched on the client.
+function queueState(): QueueState {
+	return createQueueState(program, sessionStorage)
 }
 
 const emptyQueue: Queue = {
@@ -68,7 +36,7 @@ const emptyQueue: Queue = {
 	hasMore: false,
 	items: [],
 }
-const savedQueue = browser ? readQueueState() : null
+const savedQueue = browser ? queueState().read() : null
 
 let queue = $state<Queue>(savedQueue?.queue ?? emptyQueue)
 let filter = $state<Filter>(savedQueue?.filter ?? "all")
@@ -192,24 +160,16 @@ function hideCheckTip(): void {
 function saveQueueState(): void {
 	if (restoring) return
 
-	try {
-		const state: SavedQueueState = {
-			filter,
-			queue,
-			savedAt: Date.now(),
-			scrollY: window.scrollY,
-			search,
-			selectedId: visible[selected]?.id ?? "",
-			sortDir,
-			sortKey,
-			stage,
-			version: queueStateVersion,
-		}
-
-		sessionStorage.setItem(queueStateKey, JSON.stringify(state))
-	} catch {
-		// Storage can be unavailable or full; the queue still works without a cache.
-	}
+	queueState().write({
+		filter,
+		queue,
+		scrollY: window.scrollY,
+		search,
+		selectedId: visible[selected]?.id ?? "",
+		sortDir,
+		sortKey,
+		stage,
+	})
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
