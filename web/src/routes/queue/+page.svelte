@@ -751,13 +751,13 @@ h1 {
 
 .thumb {
 	position: relative;
-	display: block;
+	display: grid;
+	place-items: center;
+	align-self: stretch;
 	width: 64px;
-	height: 48px;
+	margin: calc(-1 * var(--space-1)) 0 calc(-1 * var(--space-1)) calc(-1 * var(--space-3));
 	overflow: hidden;
 	background: var(--surface-2);
-	border: 1px solid var(--border);
-	border-radius: var(--radius-sm);
 }
 
 .thumb img {
@@ -771,7 +771,6 @@ h1 {
 
 .thumb svg {
 	display: block;
-	margin: 16px auto;
 	color: var(--text-3);
 }
 
@@ -1084,7 +1083,7 @@ h1 {
 
 	.thumb {
 		grid-area: thumb;
-		align-self: center;
+		align-self: stretch;
 	}
 
 	.ship-title {
