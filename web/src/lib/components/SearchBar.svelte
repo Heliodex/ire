@@ -160,7 +160,7 @@ function openResult(result: SearchResult): void {
 <svelte:window onkeydown={onHotkey} onpointerdown={onPointerDown} />
 
 <div class="search" bind:this={box}>
-	<label class="visually-hidden" for="project-search">Search projects</label>
+	<label class="visually-hidden" for="project-search">Search all projects</label>
 	<svg aria-hidden="true" class="icon" fill="none" height="15" viewBox="0 0 24 24" width="15">
 		<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
 		<path d="m20 20-4-4" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
@@ -176,7 +176,7 @@ function openResult(result: SearchResult): void {
 		onfocus={onFocus}
 		oninput={onInput}
 		onkeydown={onKeydown}
-		placeholder="Search projects…"
+		placeholder="Search all projects…"
 		role="combobox"
 		spellcheck="false"
 		type="search"
