@@ -57,14 +57,12 @@ const filters: { key: Exclude<Filter, "attention">; label: string; short: string
 // tabCount totals the server badges behind one filter tab.
 function tabCount(key: Exclude<Filter, "attention">): number {
 	const { counts } = queue
-	switch (key) {
-		case "all":
-			return counts.checking + counts.ready + counts.claimed + counts.needsAttention
-		case "fast":
-			return counts.fast
-		case "mine":
-			return counts.mine
-	}
+
+	return {
+		all: counts.checking + counts.ready + counts.claimed + counts.needsAttention,
+		fast: counts.fast,
+		mine: counts.mine,
+	}[key]
 }
 
 let queue = $state<Queue>(savedQueue?.queue ?? emptyQueue)
@@ -1409,6 +1407,11 @@ a.checks,
 a.status {
 	text-decoration: none;
 	cursor: pointer;
+}
+
+a.checks {
+	padding: 4px 6px;
+	margin: -4px -6px;
 }
 
 a.checks:hover {
