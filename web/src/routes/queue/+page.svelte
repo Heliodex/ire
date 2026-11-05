@@ -14,6 +14,10 @@ import { session } from "../../lib/session.svelte.js"
 
 type Filter = "all" | "fast" | "attention" | "mine"
 
+type SortKey = "ship" | "maker" | "status" | "type" | "version" | "claimed" | "age" | "checks"
+
+const sortKeys: SortKey[] = ["ship", "maker", "status", "type", "version", "claimed", "age", "checks"]
+
 interface SavedQueueState {
 	filter: Filter
 	queue: Queue
@@ -21,6 +25,8 @@ interface SavedQueueState {
 	scrollY: number
 	search: string
 	selectedId: string
+	sortDir: 1 | -1
+	sortKey: SortKey | null
 	stage: number
 	version: number
 }
@@ -81,6 +87,10 @@ let selected = $state(
 		: 0,
 )
 let search = $state(savedQueue?.search ?? "")
+let sortKey = $state<SortKey | null>(
+	savedQueue && sortKeys.includes(savedQueue.sortKey as SortKey) ? (savedQueue.sortKey as SortKey) : null,
+)
+let sortDir = $state<1 | -1>(savedQueue?.sortDir === -1 ? -1 : 1)
 let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
 let loadingMore = $state(false)
@@ -114,12 +124,76 @@ const filters: { key: Filter; label: string; short: string }[] = [
 ]
 
 const visible = $derived(
-	queue.items.filter(item => {
-		if (search.trim() === "") return true
-		const needle = search.trim().toLowerCase()
-		return item.title.toLowerCase().includes(needle) || item.makerName.toLowerCase().includes(needle)
-	}),
+	queue.items
+		.filter(item => {
+			if (search.trim() === "") return true
+			const needle = search.trim().toLowerCase()
+			return item.title.toLowerCase().includes(needle) || item.makerName.toLowerCase().includes(needle)
+		})
+		.sort(compareItems),
 )
+
+// checkScore ranks a ship by how much attention its checks need: blocking failures first, then warnings, then clean ships.
+function checkScore(item: QueueItem): number {
+	return (item.checkSummary.fail + item.checkSummary.error) * 100 + item.checkSummary.warn * 10 - item.checkSummary.pass
+}
+
+// compareItems orders two rows by the active sort header, keeping the server order when nothing is sorted.
+function compareItems(a: QueueItem, b: QueueItem): number {
+	if (!sortKey) return 0
+
+	let result = 0
+	switch (sortKey) {
+		case "ship":
+			result = a.title.localeCompare(b.title)
+			break
+		case "maker":
+			result = a.makerName.localeCompare(b.makerName)
+			break
+		case "status":
+			result = a.status.localeCompare(b.status)
+			break
+		case "type":
+			result = (a.theme ?? "").localeCompare(b.theme ?? "")
+			break
+		case "version":
+			result = a.version - b.version
+			break
+		case "claimed":
+			result = a.hoursClaimedSeconds - b.hoursClaimedSeconds
+			break
+		case "age":
+			result = Date.parse(a.ingestedAt) - Date.parse(b.ingestedAt)
+			break
+		case "checks":
+			result = checkScore(a) - checkScore(b)
+			break
+	}
+
+	return result * sortDir
+}
+
+// toggleSort cycles a column through ascending, descending and unsorted. Picking another column restarts at ascending.
+function toggleSort(key: SortKey): void {
+	if (sortKey !== key) {
+		sortKey = key
+		sortDir = 1
+	} else if (sortDir === 1) {
+		sortDir = -1
+	} else {
+		sortKey = null
+		sortDir = 1
+	}
+
+	selected = 0
+}
+
+// sortLabel describes what activating a column header will do next.
+function sortLabel(key: SortKey, name: string): string {
+	if (sortKey !== key) return `Sort by ${name}`
+	if (sortDir === 1) return `Sorted by ${name}, ascending. Activate to sort descending.`
+	return `Sorted by ${name}, descending. Activate to clear sorting.`
+}
 
 // isSelectable keeps ships claimed by another reviewer out of the keyboard cursor.
 function isSelectable(item: QueueItem): boolean {
@@ -160,6 +234,8 @@ function saveQueueState(): void {
 			scrollY: window.scrollY,
 			search,
 			selectedId: visible[selected]?.id ?? "",
+			sortDir,
+			sortKey,
 			stage,
 			version: queueStateVersion,
 		}
@@ -208,6 +284,8 @@ $effect((): void => {
 	void filter
 	void stage
 	void search
+	void sortKey
+	void sortDir
 	scheduleSave()
 })
 
@@ -669,16 +747,32 @@ async function open(item: QueueItem): Promise<void> {
 		</div>
 	{:else}
 		<div class="ui-card list" bind:this={listElement} class:refreshing>
-			<div aria-hidden="true" class="column-head">
+			<div class="column-head">
 				<span></span>
-				<span>Ship</span>
-				<span>Maker</span>
-				<span>Status</span>
-				<span>Type</span>
-				<span>Ver</span>
-				<span>Claimed</span>
-				<span>Age</span>
-				<span>Checks</span>
+				<button aria-label={sortLabel("ship", "Ship")} class="sort" onclick={() => toggleSort("ship")} type="button"
+					>Ship{#if sortKey === "ship"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				>
+				<button aria-label={sortLabel("maker", "Maker")} class="sort" onclick={() => toggleSort("maker")} type="button"
+					>Maker{#if sortKey === "maker"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				>
+				<button aria-label={sortLabel("status", "Status")} class="sort" onclick={() => toggleSort("status")} type="button"
+					>Status{#if sortKey === "status"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				>
+				<button aria-label={sortLabel("type", "Type")} class="sort" onclick={() => toggleSort("type")} type="button"
+					>Type{#if sortKey === "type"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				>
+				<button aria-label={sortLabel("version", "Version")} class="sort" onclick={() => toggleSort("version")} type="button"
+					>Ver{#if sortKey === "version"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				>
+				<button aria-label={sortLabel("claimed", "Claimed hours")} class="sort" onclick={() => toggleSort("claimed")} type="button"
+					>Claimed{#if sortKey === "claimed"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				>
+				<button aria-label={sortLabel("age", "Age")} class="sort" onclick={() => toggleSort("age")} type="button"
+					>Age{#if sortKey === "age"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				>
+				<button aria-label={sortLabel("checks", "Checks")} class="sort" onclick={() => toggleSort("checks")} type="button"
+					>Checks{#if sortKey === "checks"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				>
 			</div>
 			{#each visible as item, index (item.id)}
 				<button
@@ -986,6 +1080,28 @@ h1 {
 	color: var(--text-3);
 	background: var(--surface-2);
 	border-bottom: 1px solid var(--border);
+}
+
+.column-head .sort {
+	min-width: 0;
+	padding: 0;
+	overflow: hidden;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+	background: none;
+	border: 0;
+}
+
+.column-head .sort:hover {
+	color: var(--text);
+}
+
+.column-head .sort .arrow {
+	padding-left: 4px;
 }
 
 .column-head span:first-child {
