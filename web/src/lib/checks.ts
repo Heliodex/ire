@@ -14,6 +14,44 @@ export function checkTone(check: CheckLike): string {
 	return "neutral"
 }
 
+// checkGroupLabel turns a stored group key into a readable label.
+export function checkGroupLabel(group: string): string {
+	switch (group) {
+		case "repo":
+			return "Repository"
+		case "evidence":
+			return "Evidence"
+		case "demo":
+			return "Demo"
+		case "identity":
+			return "Identity"
+		case "duplicate":
+			return "Duplicates"
+		case "fraud":
+			return "Fraud"
+		default:
+			return group
+	}
+}
+
+// checkStatusLabel turns a check status into the wording shown in the tooltip.
+export function checkStatusLabel(status: string): string {
+	switch (status) {
+		case "pass":
+			return "Passed"
+		case "warn":
+			return "Warning"
+		case "fail":
+			return "Failed"
+		case "error":
+			return "Error"
+		case "skip":
+			return "Skipped"
+		default:
+			return status
+	}
+}
+
 // isWarning reports a check the reviewer must acknowledge before approving.
 export function isWarning(check: CheckLike): boolean {
 	return check.status === "warn" || (check.status === "fail" && check.severity === "warn")

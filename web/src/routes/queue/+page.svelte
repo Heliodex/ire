@@ -4,7 +4,7 @@ import { SvelteMap } from "svelte/reactivity"
 import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import { checkTone, groupChecks } from "../../lib/checks"
+import { checkGroupLabel, checkStatusLabel, checkTone, groupChecks } from "../../lib/checks"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import { formatDateTime, formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
@@ -28,6 +28,17 @@ let search = $state("")
 let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
 let loadingMore = $state(false)
+let checkTip = $state<CheckTip | null>(null)
+
+interface CheckTip {
+	above: boolean
+	group: string
+	label: string
+	status: string
+	tone: string
+	x: number
+	y: number
+}
 
 // cache keeps each filter and stage response for this visit, so switching back is instant while a fresh copy loads behind it.
 const cache = new SvelteMap<string, Queue>()
@@ -54,6 +65,28 @@ const visible = $derived(
 // isSelectable keeps ships claimed by another reviewer out of the keyboard cursor.
 function isSelectable(item: QueueItem): boolean {
 	return readOnly || !item.claimedBy || item.claimedBy === session.me?.user.email
+}
+
+// showCheckTip anchors the custom check popover to the hovered square.
+function showCheckTip(event: MouseEvent, group: string, check: QueueItem["checks"][number]): void {
+	const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+	const center = rect.left + rect.width / 2
+	const half = Math.min(132, window.innerWidth / 2 - 8)
+	const above = rect.top > 100
+
+	checkTip = {
+		above,
+		group: checkGroupLabel(group),
+		label: check.label,
+		status: checkStatusLabel(check.status),
+		tone: checkTone(check),
+		x: Math.min(window.innerWidth - half - 8, Math.max(half + 8, center)),
+		y: above ? rect.top : rect.bottom,
+	}
+}
+
+function hideCheckTip(): void {
+	checkTip = null
 }
 
 $effect((): void => {
@@ -303,6 +336,8 @@ async function open(item: QueueItem): Promise<void> {
 	<title>Queue · Half Life Review</title>
 </svelte:head>
 
+<svelte:window onscroll={hideCheckTip} />
+
 <section class="page-head">
 	<div>
 		<h1>Queue</h1>
@@ -515,7 +550,8 @@ async function open(item: QueueItem): Promise<void> {
 												aria-hidden="true"
 												class="dot"
 												data-tone={checkTone(check)}
-												title={`${check.label}: ${check.status}`}
+												onmouseenter={(event): void => showCheckTip(event, group.group, check)}
+												onmouseleave={hideCheckTip}
 											>
 												<CheckIcon status={check.status} />
 											</span>
@@ -543,6 +579,22 @@ async function open(item: QueueItem): Promise<void> {
 		{/if}
 	{/if}
 </section>
+
+{#if checkTip}
+	<div
+		class="check-tip"
+		role="tooltip"
+		style={`left:${checkTip.x}px; top:${checkTip.y}px`}
+		class:above={checkTip.above}
+		class:below={!checkTip.above}
+	>
+		<div class="tip-head">
+			<span class="tip-group">{checkTip.group}</span>
+			<span class="ui-badge" data-tone={checkTip.tone}>{checkTip.status}</span>
+		</div>
+		<span class="tip-label">{checkTip.label}</span>
+	</div>
+{/if}
 
 <style>
 .more {
@@ -887,6 +939,52 @@ h1 {
 
 .dot[data-tone="rejected"] {
 	background: var(--status-rejected);
+}
+
+.check-tip {
+	position: fixed;
+	z-index: var(--layer-toast);
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	width: max-content;
+	max-width: 264px;
+	padding: var(--space-2) var(--space-3);
+	pointer-events: none;
+	background: var(--surface);
+	border: 1px solid var(--border-2);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow);
+}
+
+.check-tip.above {
+	transform: translate(-50%, calc(-100% - 6px));
+}
+
+.check-tip.below {
+	transform: translate(-50%, 6px);
+}
+
+.tip-head {
+	display: flex;
+	gap: var(--space-3);
+	align-items: center;
+	justify-content: space-between;
+}
+
+.tip-group {
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-3);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.tip-label {
+	font-size: var(--text-sm);
+	font-weight: 600;
+	line-height: 1.35;
+	color: var(--text);
 }
 
 @media (min-width: 761px) {
