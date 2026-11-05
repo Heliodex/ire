@@ -13,6 +13,7 @@ import {
 } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import MemberRole from "../../lib/components/admin/MemberRole.svelte"
+import ProfileAvatar from "../../lib/components/ProfileAvatar.svelte"
 import { formatDateTime } from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
@@ -195,8 +196,16 @@ async function invite(): Promise<void> {
 						<tr class:inactive={!member.active}>
 							<td>
 								<a class="member-link" data-sveltekit-reload href={reviewerHref(member.id) ?? "#"}>
-									<strong>{member.name ?? member.email}</strong>
-									<span class="muted">{member.email}</span>
+									<ProfileAvatar
+										email={member.email}
+										name={member.name}
+										size="md"
+										url={member.avatarUrl}
+									/>
+									<span class="member-copy">
+										<strong>{member.name ?? member.email}</strong>
+										<span class="muted">{member.email}</span>
+									</span>
 								</a>
 								{#if saving === member.id}
 									<span class="saving">Saving…</span>
@@ -291,13 +300,17 @@ async function invite(): Promise<void> {
 }
 
 .member-link {
-	display: block;
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
 	color: var(--text);
 	text-decoration: none;
 }
 
-.member-link:hover {
-	text-decoration: underline;
+.member-copy {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .section-head {
@@ -373,6 +386,10 @@ async function invite(): Promise<void> {
 
 .roster td .muted {
 	font-size: var(--text-xs);
+}
+
+.member-link:hover strong {
+	text-decoration: underline;
 }
 
 .saving {

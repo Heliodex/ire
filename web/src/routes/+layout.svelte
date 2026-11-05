@@ -4,6 +4,7 @@ import { goto } from "$app/navigation"
 import { page } from "$app/state"
 import { fetchMe, logout } from "../lib/api"
 import { ApiError } from "../lib/api-error"
+import ProfileAvatar from "../lib/components/ProfileAvatar.svelte"
 import SearchBar from "../lib/components/SearchBar.svelte"
 import { session } from "../lib/session.svelte.js"
 import { theme } from "../lib/theme.svelte.js"
@@ -20,16 +21,8 @@ const showAdmin = $derived(session.me?.programs.some(item => item.role === "admi
 const showAudit = $derived(session.me?.programs.some(item => item.role === "admin" || item.role === "auditor") ?? false)
 const accountEmail = $derived(session.me?.user.email ?? "")
 const accountName = $derived(session.me?.user.name ?? accountEmail)
+const accountProfileHref = $derived(session.me ? `/reviewers/${encodeURIComponent(session.me.user.id)}` : "/")
 
-// initials makes a short avatar label from the display name, falling back to the email local part.
-function initials(value: string): string {
-	const parts = value
-		.split(/[\s@._-]+/)
-		.filter(Boolean)
-		.slice(0, 2)
-
-	return parts.map(part => part.charAt(0).toUpperCase()).join("") || "?"
-}
 const navRoutes = $derived([
 	"/queue",
 	"/reviewed",
@@ -141,10 +134,21 @@ async function signOut(): Promise<void> {
 
 			{#if session.me}
 				<SearchBar />
-				<span class="account" title={accountEmail}>
-					<span aria-hidden="true" class="avatar">{initials(accountName)}</span>
+				<a
+					aria-label={`Your profile, ${accountName}`}
+					class="account"
+					data-sveltekit-reload
+					href={accountProfileHref}
+					title="Your profile"
+				>
+					<ProfileAvatar
+						email={accountEmail}
+						name={session.me.user.name}
+						size="sm"
+						url={session.me.user.avatarUrl}
+					/>
 					<span class="account-name">{accountName}</span>
-				</span>
+				</a>
 			{/if}
 
 			<button
@@ -343,20 +347,9 @@ nav {
 	gap: var(--space-2);
 	align-items: center;
 	min-width: 0;
-}
-
-.avatar {
-	display: grid;
-	flex: none;
-	place-items: center;
-	width: 26px;
-	height: 26px;
-	font-size: 10px;
-	font-weight: 800;
-	color: var(--text-2);
-	background: var(--surface-2);
-	border: 1px solid var(--border);
-	border-radius: 50%;
+	color: inherit;
+	text-decoration: none;
+	border-radius: var(--radius-sm);
 }
 
 .account-name {
@@ -365,6 +358,10 @@ nav {
 	font-size: var(--text-sm);
 	color: var(--text-2);
 	white-space: nowrap;
+}
+
+.account:hover .account-name {
+	color: var(--text);
 }
 
 nav {

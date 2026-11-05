@@ -3,6 +3,7 @@ import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { type AuditEntry, fetchAudit, fetchMe, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
+import ProfileAvatar from "../../lib/components/ProfileAvatar.svelte"
 import { formatDateTime, formatHours, timeAgo } from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
@@ -356,10 +357,24 @@ function targetLink(entry: AuditEntry): string | null {
 								href={reviewerHref(entry.actorEmail) ?? "#"}
 								title={entry.actorEmail ?? ""}
 							>
-								{actor(entry)}
+								<ProfileAvatar
+									email={entry.actorEmail}
+									name={entry.actorName}
+									size="xs"
+									url={entry.actorAvatarUrl}
+								/>
+								<span>{actor(entry)}</span>
 							</a>
 						{:else}
-							<span class="actor">{actor(entry)}</span>
+							<span class="actor">
+								<ProfileAvatar
+									email={entry.actorEmail}
+									name={entry.actorName}
+									size="xs"
+									url={entry.actorAvatarUrl}
+								/>
+								<span>{actor(entry)}</span>
+							</span>
 						{/if}
 						{#if targetLink(entry)}
 							<a class="target" href={targetLink(entry)}>{entry.targetLabel ?? entry.targetId}</a>
@@ -482,6 +497,9 @@ function targetLink(entry: AuditEntry): string | null {
 }
 
 .actor {
+	display: inline-flex;
+	gap: var(--space-2);
+	align-items: center;
 	font-weight: 600;
 	color: var(--text);
 	text-decoration: none;

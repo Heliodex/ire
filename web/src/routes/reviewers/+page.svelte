@@ -3,6 +3,7 @@ import { goto } from "$app/navigation"
 import { page } from "$app/state"
 import { fetchReviewerProfile, type ReviewerProfile } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
+import ProfileAvatar from "../../lib/components/ProfileAvatar.svelte"
 import { formatDateTime, formatHours, statusTone } from "../../lib/format"
 
 const roleInfo: { [_: string]: { detail: string; label: string } } = {
@@ -111,11 +112,18 @@ function activeTone(active: boolean | undefined): string {
 	<section class="profile-head">
 		<div>
 			<p class="crumbs"><a href="/queue">Queue</a> / Reviewer</p>
-			<div class="title-line">
-				<h1>{profile.name ?? profile.email}</h1>
-				<span class="ui-badge" data-tone={activeTone(profile.active)}>{activeLabel(profile.active)}</span>
+			<div class="identity-summary">
+				<ProfileAvatar email={profile.email} name={profile.name} size="lg" url={profile.avatarUrl} />
+				<div>
+					<div class="title-line">
+						<h1>{profile.name ?? profile.email}</h1>
+						<span class="ui-badge" data-tone={activeTone(profile.active)}
+							>{activeLabel(profile.active)}</span
+						>
+					</div>
+					<p class="email">{profile.email}</p>
+				</div>
 			</div>
-			<p class="email">{profile.email}</p>
 		</div>
 		<div class="identity">
 			<div>
@@ -271,12 +279,23 @@ function activeTone(active: boolean | undefined): string {
 	color: var(--text);
 }
 
+.identity-summary {
+	display: flex;
+	gap: var(--space-3);
+	align-items: center;
+	padding-top: var(--space-2);
+}
+
 .title-line {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-2);
 	align-items: baseline;
 	padding-top: var(--space-1);
+}
+
+.identity-summary .title-line {
+	padding-top: 0;
 }
 
 h1 {
