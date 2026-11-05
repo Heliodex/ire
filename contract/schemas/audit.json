@@ -13,6 +13,15 @@
 					"actorEmail": {
 						"type": "string"
 					},
+					"actorName": {
+						"type": "string"
+					},
+					"afterJson": {
+						"type": "string"
+					},
+					"beforeJson": {
+						"type": "string"
+					},
 					"createdAt": {
 						"type": "string",
 						"minLength": 1
@@ -25,6 +34,9 @@
 						"type": "string"
 					},
 					"targetId": {
+						"type": "string"
+					},
+					"targetLabel": {
 						"type": "string"
 					},
 					"targetType": {

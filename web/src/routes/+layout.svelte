@@ -17,7 +17,14 @@ let signingOut = $state(false)
 
 const readOnly = $derived(session.me?.readOnly ?? false)
 const showAdmin = $derived(session.me?.programs.some(item => item.role === "admin") ?? false)
-const navRoutes = $derived(["/queue", "/reviewed", "/deliveries", ...(showAdmin ? ["/admin"] : [])])
+const showAudit = $derived(session.me?.programs.some(item => item.role === "admin" || item.role === "auditor") ?? false)
+const navRoutes = $derived([
+	"/queue",
+	"/reviewed",
+	"/deliveries",
+	...(showAdmin ? ["/admin"] : []),
+	...(showAudit ? ["/audit"] : []),
+])
 
 // isQueueRoute keeps the review screen under the queue tab without catching /reviewed.
 function isQueueRoute(path: string): boolean {
@@ -34,6 +41,7 @@ function tabIndex(path: string): number {
 	if (isReviewedRoute(path)) return 1
 	if (path.startsWith("/deliveries")) return 2
 	if (showAdmin && path.startsWith("/admin")) return 3
+	if (showAudit && path.startsWith("/audit")) return showAdmin ? 4 : 3
 
 	return -1
 }
@@ -172,6 +180,9 @@ async function signOut(): Promise<void> {
 				<a href="/deliveries" class:active={page.url.pathname.startsWith("/deliveries")}>Deliveries</a>
 				{#if showAdmin}
 					<a href="/admin" class:active={page.url.pathname.startsWith("/admin")}>Admin</a>
+				{/if}
+				{#if showAudit}
+					<a href="/audit" class:active={page.url.pathname.startsWith("/audit")}>Audit</a>
 				{/if}
 				<a href="/docs" class:active={page.url.pathname.startsWith("/docs")}>Docs</a>
 			</nav>

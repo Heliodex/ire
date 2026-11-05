@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"review/contract"
@@ -174,9 +175,24 @@ func (a *reviewApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 	app.WriteJSON(w, http.StatusOK, updated)
 }
 
+// requireAuditReader allows admins and auditors to read the programme audit log.
+func (a *reviewApp) requireAuditReader(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+	person, ok := a.requireReviewer(w, r)
+	if !ok {
+		return reviewer{}, false
+	}
+
+	if person.Role != roleAdmin && person.Role != roleAuditor {
+		app.WriteError(w, http.StatusForbidden, "only admins and auditors can read the audit log")
+		return reviewer{}, false
+	}
+
+	return person, true
+}
+
 // handleAudit lists recent audit entries for the programme.
 func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireAdmin(w, r)
+	person, ok := a.requireAuditReader(w, r)
 	if !ok {
 		return
 	}
@@ -184,10 +200,46 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 	limit := parseLimit(r)
 	offset := parseOffset(r)
 
-	rows, err := a.store.Query(r.Context(), `select id, coalesce(actor_email, ''), action, coalesce(target_type, ''),
-			coalesce(target_id, ''), coalesce(reason, ''), created_at
-		from audit_log where program_id = ? order by created_at desc, id desc limit ? offset ?`,
-		person.ProgramID, limit+1, offset)
+	conditions := []string{"a.program_id = ?"}
+	args := []any{person.ProgramID}
+
+	if action := strings.TrimSpace(r.URL.Query().Get("action")); action != "" {
+		conditions = append(conditions, "a.action = ?")
+		args = append(args, action)
+	}
+
+	if query := strings.TrimSpace(r.URL.Query().Get("q")); query != "" {
+		like := "%" + strings.ToLower(query) + "%"
+		conditions = append(conditions, `(lower(a.action) like ? or lower(coalesce(a.actor_email, '')) like ?
+			or lower(coalesce(au.name, '')) like ? or lower(coalesce(a.target_type, '')) like ?
+			or lower(coalesce(a.target_id, '')) like ? or lower(coalesce(tu.email, ts.title, '')) like ?
+			or lower(coalesce(a.reason, '')) like ?)`)
+		args = append(args, like, like, like, like, like, like, like)
+	}
+
+	if value := strings.TrimSpace(r.URL.Query().Get("days")); value != "" {
+		days, err := strconv.Atoi(value)
+		if err != nil || days < 1 || days > 3650 {
+			app.WriteErrorField(w, http.StatusBadRequest, "invalid", "days", "days must be between 1 and 3650")
+			return
+		}
+
+		conditions = append(conditions, "a.created_at >= ?")
+		args = append(args, a.now().AddDate(0, 0, -days).Format(timestampFormat))
+	}
+
+	query := `select a.id, coalesce(a.actor_email, ''), coalesce(au.name, ''), a.action, coalesce(a.target_type, ''),
+			coalesce(a.target_id, ''), coalesce(tu.email, ts.title, ''), coalesce(a.before_json, ''),
+			coalesce(a.after_json, ''), coalesce(a.reason, ''), a.created_at
+		from audit_log a
+		left join user au on au.id = a.actor_id
+		left join user tu on a.target_type = 'user' and tu.id = a.target_id
+		left join submission ts on a.target_type = 'submission' and ts.id = a.target_id
+		where ` + strings.Join(conditions, " and ") + `
+		order by a.created_at desc, a.id desc limit ? offset ?`
+	args = append(args, limit+1, offset)
+
+	rows, err := a.store.Query(r.Context(), query, args...)
 	if err != nil {
 		writeStorage(w, err)
 
@@ -200,17 +252,22 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var entry contract.AuditEntry
 
-		var actor, targetType, targetID, reason string
+		var actor, actorName, targetType, targetID, targetLabel, before, after, reason string
 
-		if err := rows.Scan(&entry.ID, &actor, &entry.Action, &targetType, &targetID, &reason, &entry.CreatedAt); err != nil {
+		if err := rows.Scan(&entry.ID, &actor, &actorName, &entry.Action, &targetType, &targetID, &targetLabel,
+			&before, &after, &reason, &entry.CreatedAt); err != nil {
 			writeStorage(w, err)
 
 			return
 		}
 
 		entry.ActorEmail = optionalText(actor)
+		entry.ActorName = optionalText(actorName)
 		entry.TargetType = optionalText(targetType)
 		entry.TargetID = optionalText(targetID)
+		entry.TargetLabel = optionalText(targetLabel)
+		entry.BeforeJson = optionalText(before)
+		entry.AfterJson = optionalText(after)
 		entry.Reason = optionalText(reason)
 		response.Entries = append(response.Entries, entry)
 	}

@@ -227,7 +227,10 @@ async function invite(): Promise<void> {
 	<section aria-labelledby="audit-title" class="ui-card padded audit">
 		<div class="section-head">
 			<h2 id="audit-title">Recent actions</h2>
-			<button class="ui-button quiet sm" onclick={refresh} type="button">Refresh</button>
+			<div class="audit-actions">
+				<a class="ui-button quiet sm" href="/audit">Full log</a>
+				<button class="ui-button quiet sm" onclick={refresh} type="button">Refresh</button>
+			</div>
 		</div>
 
 		{#if audit.length === 0}
@@ -290,6 +293,12 @@ async function invite(): Promise<void> {
 	align-items: baseline;
 	justify-content: space-between;
 	margin-bottom: var(--space-3);
+}
+
+.audit-actions {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
 }
 
 .invite-title {

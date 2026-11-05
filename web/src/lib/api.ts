@@ -256,9 +256,20 @@ export async function updateMember(id: string, role: string, active: boolean): P
 	return parseJSON(response, memberSchema)
 }
 
-// fetchAudit lists recent admin actions.
-export async function fetchAudit(offset = 0, limit = 50): Promise<Audit> {
-	const response = await fetch(`/api/v1/programs/${program}/audit?offset=${offset}&limit=${limit}`)
+export interface AuditFilters {
+	action?: string
+	days?: number
+	q?: string
+}
+
+// fetchAudit lists audit entries, optionally narrowed by action, age or a search term.
+export async function fetchAudit(offset = 0, limit = 50, filters: AuditFilters = {}): Promise<Audit> {
+	const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+	if (filters.action) params.set("action", filters.action)
+	if (filters.days) params.set("days", String(filters.days))
+	if (filters.q?.trim()) params.set("q", filters.q.trim())
+
+	const response = await fetch(`/api/v1/programs/${program}/audit?${params}`)
 	return parseJSON(response, auditResponseSchema)
 }
 

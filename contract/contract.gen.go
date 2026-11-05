@@ -14,6 +14,15 @@ type AuditEntry struct {
 	// ActorEmail corresponds to the JSON schema field "actorEmail".
 	ActorEmail *string `json:"actorEmail,omitempty,omitzero" yaml:"actorEmail,omitempty" mapstructure:"actorEmail,omitempty"`
 
+	// ActorName corresponds to the JSON schema field "actorName".
+	ActorName *string `json:"actorName,omitempty,omitzero" yaml:"actorName,omitempty" mapstructure:"actorName,omitempty"`
+
+	// AfterJson corresponds to the JSON schema field "afterJson".
+	AfterJson *string `json:"afterJson,omitempty,omitzero" yaml:"afterJson,omitempty" mapstructure:"afterJson,omitempty"`
+
+	// BeforeJson corresponds to the JSON schema field "beforeJson".
+	BeforeJson *string `json:"beforeJson,omitempty,omitzero" yaml:"beforeJson,omitempty" mapstructure:"beforeJson,omitempty"`
+
 	// CreatedAt corresponds to the JSON schema field "createdAt".
 	CreatedAt string `json:"createdAt" yaml:"createdAt" mapstructure:"createdAt"`
 
@@ -25,6 +34,9 @@ type AuditEntry struct {
 
 	// TargetID corresponds to the JSON schema field "targetId".
 	TargetID *string `json:"targetId,omitempty,omitzero" yaml:"targetId,omitempty" mapstructure:"targetId,omitempty"`
+
+	// TargetLabel corresponds to the JSON schema field "targetLabel".
+	TargetLabel *string `json:"targetLabel,omitempty,omitzero" yaml:"targetLabel,omitempty" mapstructure:"targetLabel,omitempty"`
 
 	// TargetType corresponds to the JSON schema field "targetType".
 	TargetType *string `json:"targetType,omitempty,omitzero" yaml:"targetType,omitempty" mapstructure:"targetType,omitempty"`

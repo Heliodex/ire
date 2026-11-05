@@ -376,6 +376,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [x] Enforce same-origin checks on state-changing browser routes.
 - [x] Request bodies are bounded on ingest, withdraw and JSON routes; browser and machine mutations are rate limited.
 - [x] `/admin` lists recent audit entries; a review History tab already shows both stages, holds, overrides and invalidations.
+- [x] `/audit` is a global log of review decisions, sends-back, roster changes, session revocations and bootstrap actions, with search, action/age filters, before/after detail and load-more. Admins and auditors can read it; reviewers cannot.
 - [x] `/admin` manages the roster, roles (including organizers), active state and session revocation.
 - [x] `GET /metrics` exposes queue depth, active claims, stage 1 hold rate, time to first review, check duration and delivery counts in Prometheus text.
 - [x] The scheduled tick prunes login flows, ingest deliveries, closed-ship snapshots, audit records and fake receipts on fixed windows.
