@@ -95,6 +95,7 @@ let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
 let loadingMore = $state(false)
 let checkTip = $state<CheckTip | null>(null)
+let spaceHeld = $state(false)
 let restoring = savedQueue !== null
 
 interface CheckTip {
@@ -194,6 +195,9 @@ function sortLabel(key: SortKey, name: string): string {
 	if (sortDir === 1) return `Sorted by ${name}, ascending. Activate to sort descending.`
 	return `Sorted by ${name}, descending. Activate to clear sorting.`
 }
+
+// previewItem is the selected ship shown large while the spacebar is held.
+const previewItem = $derived(spaceHeld ? (visible[selected] ?? null) : null)
 
 // isSelectable keeps ships claimed by another reviewer out of the keyboard cursor.
 function isSelectable(item: QueueItem): boolean {
@@ -347,6 +351,18 @@ onMount((): (() => void) => {
 	function onKeydown(event: KeyboardEvent): void {
 		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
 
+		if (event.key === " ") {
+			// Holding space previews the selected cover image; releasing it dismisses the overlay.
+			event.preventDefault()
+
+			if (visible[selected]) {
+				hideCheckTip()
+				spaceHeld = true
+			}
+
+			return
+		}
+
 		if (event.key === "ArrowDown") {
 			event.preventDefault()
 			void moveSelection(1)
@@ -367,6 +383,22 @@ onMount((): (() => void) => {
 
 	window.addEventListener("keydown", onKeydown)
 
+	function onKeyup(event: KeyboardEvent): void {
+		if (event.key !== " ") return
+
+		// Releasing space dismisses the preview and swallows the keypress so a focused row does not activate.
+		event.preventDefault()
+		spaceHeld = false
+	}
+
+	window.addEventListener("keyup", onKeyup)
+
+	function onBlur(): void {
+		spaceHeld = false
+	}
+
+	window.addEventListener("blur", onBlur)
+
 	return (): void => {
 		clearInterval(timer)
 		stream?.close()
@@ -376,6 +408,8 @@ onMount((): (() => void) => {
 			saveTimer = null
 		}
 		window.removeEventListener("keydown", onKeydown)
+		window.removeEventListener("keyup", onKeyup)
+		window.removeEventListener("blur", onBlur)
 		window.removeEventListener("pagehide", onPageHide)
 		document.removeEventListener("visibilitychange", onVisibilityChange)
 		wideQuery.removeEventListener("change", onWideChange)
@@ -719,7 +753,9 @@ async function open(item: QueueItem): Promise<void> {
 				<kbd class="ui-kbd">←</kbd><kbd class="ui-kbd">→</kbd>
 				filters ·
 				<kbd class="ui-kbd">Enter</kbd>
-				to open
+				to open · hold
+				<kbd class="ui-kbd">Space</kbd>
+				to preview
 			</span>
 		</span>
 	</div>
@@ -925,6 +961,16 @@ async function open(item: QueueItem): Promise<void> {
 			<span class="ui-badge" data-tone={checkTip.tone}>{checkTip.status}</span>
 		</div>
 		<span class="tip-label">{checkTip.label}</span>
+	</div>
+{/if}
+
+{#if previewItem}
+	<div aria-hidden="true" class="preview-veil">
+		{#if previewItem.thumbnailUrl}
+			<img alt="" draggable="false" src={previewItem.thumbnailUrl} />
+		{:else}
+			<span class="preview-empty">No project image</span>
+		{/if}
 	</div>
 {/if}
 
@@ -1391,6 +1437,31 @@ h1 {
 	font-size: var(--text-sm);
 	font-weight: 600;
 	line-height: 1.35;
+	color: var(--text);
+}
+
+.preview-veil {
+	position: fixed;
+	inset: 0;
+	z-index: var(--layer-toast);
+	display: grid;
+	place-items: center;
+	padding: 6vh 6vw;
+	pointer-events: none;
+	background: rgba(0, 0, 0, 0.82);
+}
+
+.preview-veil img {
+	max-width: min(88vw, 1100px);
+	max-height: 82vh;
+	object-fit: contain;
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow);
+}
+
+.preview-empty {
+	font-size: var(--text-lg);
+	font-weight: 700;
 	color: var(--text);
 }
 
