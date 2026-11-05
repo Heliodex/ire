@@ -6,16 +6,6 @@ export function formatHours(seconds: number): string {
 	return `${hours.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}h`
 }
 
-// formatMinutes renders seconds as hours and minutes, e.g. 6h 24m.
-export function formatMinutes(seconds: number): string {
-	const total = Math.round(seconds / 60)
-	const hours = Math.floor(total / 60)
-	const minutes = total % 60
-	if (hours === 0) return `${minutes}m`
-	if (minutes === 0) return `${hours}h`
-	return `${hours}h ${minutes}m`
-}
-
 // formatDuration renders integer seconds as hours, minutes and seconds, e.g. 6h 24m 36s.
 export function formatDuration(seconds: number): string {
 	const total = Math.max(0, Math.round(seconds))
@@ -151,9 +141,4 @@ export function decisionLabel(decision: string): string {
 export function humanEvent(kind: string): string {
 	const spaced = kind.replaceAll("_", " ").trim()
 	return spaced.charAt(0).toUpperCase() + spaced.slice(1)
-}
-
-// greeting picks a short line for the queue header.
-export function greeting(name: string | null | undefined): string {
-	return name ? `Signed in as ${name}` : "Signed in"
 }

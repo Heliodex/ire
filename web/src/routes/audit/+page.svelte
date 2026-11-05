@@ -324,7 +324,7 @@ function targetLink(entry: AuditEntry): string | null {
 	{/if}
 
 	{#if loading}
-		<div class="skeleton ui-card">
+		<div class="ui-skeleton ui-card">
 			<div></div>
 			<div></div>
 			<div></div>
@@ -586,24 +586,5 @@ a.target:hover {
 	display: flex;
 	justify-content: center;
 	padding-top: var(--space-3);
-}
-
-.skeleton {
-	display: grid;
-	gap: 1px;
-	overflow: hidden;
-	background: var(--border);
-}
-
-.skeleton div {
-	height: 84px;
-	background: var(--surface);
-	animation: pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes pulse {
-	50% {
-		opacity: 0.55;
-	}
 }
 </style>

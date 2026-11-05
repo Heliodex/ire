@@ -1874,12 +1874,6 @@ h1 {
 	transform: translateX(-50%);
 }
 
-@keyframes pulse {
-	50% {
-		opacity: 0.55;
-	}
-}
-
 @media (max-width: 980px) {
 	.layout {
 		grid-template-columns: 1fr;

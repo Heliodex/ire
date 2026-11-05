@@ -391,12 +391,6 @@ dd {
 	animation: pulse 1.4s ease-in-out infinite;
 }
 
-@keyframes pulse {
-	50% {
-		opacity: 0.55;
-	}
-}
-
 @media (max-width: 900px) {
 	.grid {
 		grid-template-columns: 1fr;

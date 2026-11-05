@@ -143,7 +143,7 @@ async function invite(): Promise<void> {
 		<a class="ui-button" data-variant="outline" href="/queue">Back to the queue</a>
 	</div>
 {:else if loading}
-	<div class="skeleton ui-card">
+	<div class="ui-skeleton ui-card">
 		<div></div>
 		<div></div>
 		<div></div>

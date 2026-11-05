@@ -625,7 +625,7 @@ async function open(item: QueueItem): Promise<void> {
 	</div>
 
 	{#if loading}
-		<div class="skeleton ui-card">
+		<div class="ui-skeleton ui-card">
 			<div></div>
 			<div></div>
 			<div></div>
@@ -1296,34 +1296,6 @@ h1 {
 	.column-head {
 		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(140px, 190px);
 	}
-}
-
-.skeleton {
-	display: grid;
-	gap: 1px;
-	overflow: hidden;
-	background: var(--border);
-}
-
-.skeleton div {
-	height: 84px;
-	background: var(--surface);
-	animation: pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes pulse {
-	50% {
-		opacity: 0.55;
-	}
-}
-
-.visually-hidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	white-space: nowrap;
-	clip: rect(0 0 0 0);
 }
 
 @media (max-width: 1024px) {

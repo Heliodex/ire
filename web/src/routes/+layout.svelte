@@ -380,15 +380,6 @@ main {
 	padding: var(--space-5) var(--space-4) var(--space-7);
 }
 
-.visually-hidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	white-space: nowrap;
-	clip: rect(0 0 0 0);
-}
-
 @media (max-width: 640px) {
 	.top,
 	nav {

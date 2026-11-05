@@ -373,15 +373,6 @@ function openResult(result: SearchResult): void {
 	background: var(--surface-2);
 }
 
-.visually-hidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	white-space: nowrap;
-	clip: rect(0 0 0 0);
-}
-
 @media (max-width: 640px) {
 	.search {
 		flex: 1 1 100%;

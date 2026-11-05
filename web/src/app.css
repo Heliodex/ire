@@ -553,6 +553,29 @@ textarea.ui-input {
 	margin-top: var(--space-3);
 }
 
+.ui-skeleton {
+	display: grid;
+	gap: 1px;
+	overflow: hidden;
+	background: var(--border);
+}
+
+.ui-skeleton > div {
+	height: 84px;
+	background: var(--surface);
+	animation: pulse 1.4s ease-in-out infinite;
+}
+
+.ui-skeleton.compact > div {
+	height: 68px;
+}
+
+@keyframes pulse {
+	50% {
+		opacity: 0.55;
+	}
+}
+
 .ui-table {
 	width: 100%;
 	overflow-x: auto;
