@@ -56,12 +56,12 @@ linters:
               path: _test\.go
     settings:
         cyclop:
-            max-complexity: 50
+            max-complexity: 40
         funlen:
             lines: 130
             statements: 100
         gocognit:
-            min-complexity: 50
+            min-complexity: 45
         dogsled:
             max-blank-identifiers: 3
         gocyclo:
