@@ -38,7 +38,8 @@
 		"IRE_BOOTSTRAP_ROLE": "admin",
 		"IRE_DEV_AUTH": "0",
 		"IRE_SEED_FIXTURES": "0",
-		"IRE_SHADOW": "0"
+		"IRE_SHADOW": "0",
+		"IRE_GITHUB_TOKEN": "secret://IRE_GITHUB_TOKEN"
 	},
 	"server_paths": [
 		"/auth"
