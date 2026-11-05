@@ -52,24 +52,31 @@ func TestResubmissionDiffShowsWhatChanged(t *testing.T) {
 	}
 
 	diff := bundle.Resubmission
+
 	if diff.PreviousDecision == nil || *diff.PreviousDecision != "changes" {
 		t.Errorf("previous decision = %v", diff.PreviousDecision)
 	}
+
 	if diff.PreviousNote == nil || *diff.PreviousNote == "" {
 		t.Errorf("previous note = %v", diff.PreviousNote)
 	}
+
 	if len(diff.Commits) != 1 || diff.Commits[0].Sha != "abc123" {
 		t.Errorf("commits = %+v", diff.Commits)
 	}
+
 	if !slices.Contains(diff.AddedFiles, "firmware/main.ino") {
 		t.Errorf("added files = %v", diff.AddedFiles)
 	}
+
 	if !slices.Contains(diff.RemovedFiles, "board.kicad_pcb") {
 		t.Errorf("removed files = %v", diff.RemovedFiles)
 	}
+
 	if len(diff.NewEntries) == 0 {
 		t.Errorf("new entries = %+v", diff.NewEntries)
 	}
+
 	if len(diff.BomAdded) == 0 || len(diff.BomRemoved) == 0 {
 		t.Errorf("BOM changes = added %v, removed %v", diff.BomAdded, diff.BomRemoved)
 	}

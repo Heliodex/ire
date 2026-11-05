@@ -38,9 +38,11 @@ func TestJournalAdjustmentSavesDeflation(t *testing.T) {
 	}
 
 	result := decode[contract.JournalAdjustment](t, adjusted)
+
 	if result.Journal.ApprovedSeconds == nil || *result.Journal.ApprovedSeconds != approved {
 		t.Errorf("approved seconds = %v, want %d", result.Journal.ApprovedSeconds, approved)
 	}
+
 	if result.Journal.ReviewerNote == nil || *result.Journal.ReviewerNote == "" {
 		t.Errorf("reviewer note = %v", result.Journal.ReviewerNote)
 	}
@@ -49,14 +51,17 @@ func TestJournalAdjustmentSavesDeflation(t *testing.T) {
 	for _, other := range bundle.Journals[1:] {
 		expected += other.Seconds
 	}
+
 	if result.HoursApprovedSeconds != expected {
 		t.Errorf("total = %d, want %d", result.HoursApprovedSeconds, expected)
 	}
 
 	reloaded := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
+
 	if reloaded.Submission.HoursApprovedSeconds == nil || *reloaded.Submission.HoursApprovedSeconds != expected {
 		t.Errorf("submission hours = %v, want %d", reloaded.Submission.HoursApprovedSeconds, expected)
 	}
+
 	if fresh := reloaded.Journals[0]; fresh.ApprovedSeconds == nil || *fresh.ApprovedSeconds != approved {
 		t.Errorf("reloaded entry = %+v", fresh)
 	}

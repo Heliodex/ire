@@ -19,6 +19,7 @@ func TestClassifyDesignFiles(t *testing.T) {
 	if len(files.PCB) != 2 || len(files.CAD) != 1 || len(files.Firmware) != 1 || len(files.Gerbers) != 1 {
 		t.Errorf("design groups = PCB %v, CAD %v, firmware %v, gerbers %v", files.PCB, files.CAD, files.Firmware, files.Gerbers)
 	}
+
 	if !files.any() || len(files.all()) != 5 {
 		t.Errorf("all = %v", files.all())
 	}

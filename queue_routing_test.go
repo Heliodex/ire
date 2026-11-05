@@ -40,6 +40,7 @@ func TestQueueRoutesResubmissionToPreviousReviewer(t *testing.T) {
 	if len(reviewerQueue) != 2 || reviewerQueue[0].ID != "sub_fixture_2" || reviewerQueue[1].ID != "sub_fixture_3" {
 		t.Errorf("previous reviewer queue = %v, want the resubmission first", reviewerQueue)
 	}
+
 	if reviewerQueue[0].PreviousReviewer == nil || *reviewerQueue[0].PreviousReviewer != "reviewer@example.com" {
 		t.Errorf("previous reviewer = %v", reviewerQueue[0].PreviousReviewer)
 	}
