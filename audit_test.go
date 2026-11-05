@@ -17,6 +17,7 @@ func TestAuditLogPage(t *testing.T) {
 	if _, err := application.store.Exec(t.Context(), `insert into user (id, email, name, created_at) values ('usr_auditor', 'auditor@example.com', 'Aud', ?)`, application.nowText()); err != nil {
 		t.Fatal(err)
 	}
+
 	if _, err := application.store.Exec(t.Context(), `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at)
 		values ('mem_auditor', ?, 'usr_auditor', 'auditor', '["hardware"]', '[]', 1, ?)`, programID, application.nowText()); err != nil {
 		t.Fatal(err)
@@ -36,6 +37,7 @@ func TestAuditLogPage(t *testing.T) {
 	if created.Code != http.StatusCreated {
 		t.Fatalf("invite = %d: %s", created.Code, created.Body.String())
 	}
+
 	member := decode[contract.Member](t, created)
 
 	update, _ := json.Marshal(contract.UpdateMember{Role: roleOrganizer, Active: true})
@@ -75,6 +77,7 @@ func TestAuditLogPage(t *testing.T) {
 	if memberEntry.TargetLabel == nil || *memberEntry.TargetLabel != "audit@example.com" {
 		t.Errorf("member target label = %v", memberEntry.TargetLabel)
 	}
+
 	if memberEntry.BeforeJson == nil || *memberEntry.BeforeJson == "" || memberEntry.AfterJson == nil {
 		t.Errorf("member before/after = %+v", memberEntry)
 	}
@@ -83,6 +86,7 @@ func TestAuditLogPage(t *testing.T) {
 	if len(reviews.Entries) != 1 {
 		t.Fatalf("review.decision audit = %+v", reviews.Entries)
 	}
+
 	if reviews.Entries[0].TargetLabel == nil || *reviews.Entries[0].TargetLabel != "Starbie" {
 		t.Errorf("review target label = %v", reviews.Entries[0].TargetLabel)
 	}

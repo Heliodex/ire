@@ -74,6 +74,7 @@ func TestMemberAdministration(t *testing.T) {
 func TestReviewerAvatarsAreExposed(t *testing.T) {
 	application := newTestApp(t)
 	admin := login(t, application, "admin@example.com")
+
 	const avatar = "https://cdn.example.com/ada.png"
 
 	if _, err := application.store.Exec(t.Context(), `update user set avatar_url = ? where email = 'admin@example.com'`, avatar); err != nil {
@@ -86,6 +87,7 @@ func TestReviewerAvatarsAreExposed(t *testing.T) {
 	}
 
 	roster := decode[contract.MembersResponse](t, do(t, application, http.MethodGet, testBase+"/members", nil, admin, nil))
+
 	var found bool
 
 	for _, member := range roster.Members {

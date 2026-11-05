@@ -101,9 +101,11 @@ func (a *reviewApp) reviewerProfile(ctx context.Context, programID, key string) 
 
 	if profile.ID != nil {
 		condition += " and (r.reviewer_id = ? or (r.reviewer_id is null and lower(r.reviewer_email) = lower(?)))"
+
 		args = append(args, *profile.ID, profile.Email)
 	} else {
 		condition += " and lower(r.reviewer_email) = lower(?)"
+
 		args = append(args, profile.Email)
 	}
 

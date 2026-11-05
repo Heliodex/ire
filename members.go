@@ -210,6 +210,7 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 
 	if query := strings.TrimSpace(r.URL.Query().Get("q")); query != "" {
 		like := "%" + strings.ToLower(query) + "%"
+
 		conditions = append(conditions, `(lower(a.action) like ? or lower(coalesce(a.actor_email, '')) like ?
 			or lower(coalesce(au.name, '')) like ? or lower(coalesce(a.target_type, '')) like ?
 			or lower(coalesce(a.target_id, '')) like ? or lower(coalesce(tu.email, ts.title, '')) like ?
@@ -237,6 +238,7 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 		left join submission ts on a.target_type = 'submission' and ts.id = a.target_id
 		where ` + strings.Join(conditions, " and ") + `
 		order by a.created_at desc, a.id desc limit ? offset ?`
+
 	args = append(args, limit+1, offset)
 
 	rows, err := a.store.Query(r.Context(), query, args...)
