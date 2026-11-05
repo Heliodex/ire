@@ -15,11 +15,7 @@ const (
 
 // retentionResult counts what one prune pass removed.
 type retentionResult struct {
-	LoginFlows   int
-	Deliveries   int
-	Snapshots    int
-	AuditRecords int
-	FakeReceipts int
+	LoginFlows, Deliveries, Snapshots, AuditRecords, FakeReceipts int
 }
 
 // pruneRetention clears short-lived state and the operational history no longer needed after a decision.
