@@ -153,6 +153,8 @@ async function invite(): Promise<void> {
 			<span>{members.length} {members.length === 1 ? "account" : "accounts"}</span>
 		</div>
 
+		<h3 class="invite-title">Invite a reviewer</h3>
+
 		<form
 			class="invite"
 			onsubmit={(event): void => {
@@ -172,7 +174,7 @@ async function invite(): Promise<void> {
 					{/each}
 				</select>
 			</label>
-			<button class="ui-button" disabled={saving === "invite" || email.trim() === ""} type="submit">
+			<button class="ui-button primary" disabled={saving === "invite" || email.trim() === ""} type="submit">
 				{saving === "invite" ? "Inviting…" : "Invite"}
 			</button>
 		</form>
@@ -290,6 +292,12 @@ async function invite(): Promise<void> {
 	margin-bottom: var(--space-3);
 }
 
+.invite-title {
+	margin-bottom: var(--space-2);
+	font-size: var(--text-sm);
+	font-weight: 700;
+}
+
 .invite {
 	display: flex;
 	flex-wrap: wrap;
@@ -310,8 +318,6 @@ async function invite(): Promise<void> {
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--text-2);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
 }
 
 .role-field {

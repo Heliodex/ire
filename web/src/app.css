@@ -547,6 +547,11 @@ textarea.ui-input {
 	border-collapse: collapse;
 }
 
+.ui-table table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
 .ui-table th,
 .ui-table td {
 	padding: var(--space-2) var(--space-3);
