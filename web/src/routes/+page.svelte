@@ -104,7 +104,13 @@ async function signIn(address: string): Promise<void> {
 					<span>Email</span>
 					<input autocomplete="email" class="ui-input" required type="email" bind:value={email}>
 				</label>
-				<button class="ui-button block" disabled={busy} type="submit" class:primary={!authConfig?.hca}>
+				<button
+					class="ui-button block"
+					disabled={busy}
+					type="submit"
+					class:ghost={authConfig?.hca}
+					class:primary={!authConfig?.hca}
+				>
 					{busy ? "Signing in…" : "Sign in"}
 				</button>
 			</form>
@@ -226,19 +232,34 @@ form {
 }
 
 .account {
+	position: relative;
 	display: flex;
 	gap: var(--space-2);
 	align-items: baseline;
 	justify-content: space-between;
-	padding: var(--space-2) var(--space-3);
+	padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
 	text-align: left;
 	background: transparent;
 	border: 1px solid var(--border);
 	border-radius: var(--radius-sm);
 }
 
+.account::after {
+	position: absolute;
+	top: 50%;
+	right: var(--space-3);
+	font-size: var(--text-sm);
+	color: var(--text-3);
+	content: "→";
+	transform: translateY(-50%);
+}
+
 .account:hover {
 	background: var(--surface-2);
+}
+
+.account:hover::after {
+	color: var(--text);
 }
 
 .account:disabled {

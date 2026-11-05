@@ -13,7 +13,7 @@ const roles = ["reviewer", "organizer", "admin", "auditor"] as const
 const roleLabels: { [_: string]: string } = {
 	admin: "Admin",
 	auditor: "Auditor",
-	organizer: "Organizer",
+	organizer: "Organiser",
 	reviewer: "Reviewer",
 }
 

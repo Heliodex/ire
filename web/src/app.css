@@ -588,6 +588,12 @@ textarea.ui-input {
 	color: var(--text-2);
 }
 
+.ui-switch {
+	width: 15px;
+	height: 15px;
+	accent-color: var(--primary);
+}
+
 .visually-hidden {
 	position: absolute;
 	width: 1px;
