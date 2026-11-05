@@ -12,10 +12,11 @@ afterEach(() => {
 
 // stubFetch records the requested URL and answers with the given body.
 function stubFetch(status: number, body: unknown, seen: { url: string }): void {
-	globalThis.fetch = (input: RequestInfo | URL): Promise<Response> => {
+	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- The stub implements only the call signature the client uses, not fetch's statics.
+	globalThis.fetch = ((input: RequestInfo | URL): Promise<Response> => {
 		seen.url = input instanceof Request ? input.url : input.toString()
 		return Promise.resolve(Response.json(body, { status }))
-	}
+	}) as typeof fetch
 }
 
 // catchError resolves with the rejection reason so failures can be asserted like values.

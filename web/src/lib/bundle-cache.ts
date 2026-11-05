@@ -53,7 +53,7 @@ function isCachedBundle(value: unknown, version: number, target: string): value 
 	if (!("savedAt" in value) || typeof value.savedAt !== "number") return false
 	if (!("bundle" in value) || typeof value.bundle !== "object" || value.bundle === null) return false
 
-	const bundle: unknown = value.bundle
+	const { bundle } = value
 	if (!("submission" in bundle) || typeof bundle.submission !== "object" || bundle.submission === null) return false
 
 	return "id" in bundle.submission && bundle.submission.id === target
