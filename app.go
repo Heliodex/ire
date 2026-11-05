@@ -238,6 +238,8 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, target, http.StatusFound)
 	case path == "/review" && r.URL.Query().Get("id") != "":
 		http.Redirect(w, r, "/review/"+url.PathEscape(r.URL.Query().Get("id")), http.StatusFound)
+	case path == "/makers" && r.URL.Query().Get("email") != "":
+		http.Redirect(w, r, "/makers/"+url.PathEscape(r.URL.Query().Get("email")), http.StatusFound)
 	case protectedPage(path):
 		if !signedIn {
 			http.Redirect(w, r, "/", http.StatusFound)
@@ -253,6 +255,10 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 			page = "/reviewers"
 		}
 
+		if strings.HasPrefix(path, "/makers/") {
+			page = "/makers"
+		}
+
 		app.StaticPage(w, page)
 	default:
 		http.NotFound(w, r)
@@ -261,7 +267,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 // protectedPage reports the prerendered routes that need a session.
 func protectedPage(path string) bool {
-	for _, prefix := range []string{"/queue", "/reviewed", "/review", "/reviewers", "/deliveries", "/admin"} {
+	for _, prefix := range []string{"/queue", "/reviewed", "/review", "/reviewers", "/makers", "/deliveries", "/admin"} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}
