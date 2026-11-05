@@ -1624,7 +1624,43 @@ func (j *InviteMember) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type JournalAdjustment struct {
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hoursApprovedSeconds".
+	HoursApprovedSeconds int `json:"hoursApprovedSeconds" yaml:"hoursApprovedSeconds" mapstructure:"hoursApprovedSeconds"`
+
+	// Journal corresponds to the JSON schema field "journal".
+	Journal JournalEntry `json:"journal" yaml:"journal" mapstructure:"journal"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *JournalAdjustment) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["hoursApprovedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursApprovedSeconds in JournalAdjustment: required")
+	}
+	if _, ok := raw["journal"]; raw != nil && !ok {
+		return fmt.Errorf("field journal in JournalAdjustment: required")
+	}
+	type Plain JournalAdjustment
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.HoursApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursApprovedSeconds", 0)
+	}
+	*j = JournalAdjustment(plain)
+	return nil
+}
+
 type JournalEntry struct {
+	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
+	ApprovedSeconds *int `json:"approvedSeconds,omitempty,omitzero" yaml:"approvedSeconds,omitempty" mapstructure:"approvedSeconds,omitempty"`
+
 	// At corresponds to the JSON schema field "at".
 	At string `json:"at" yaml:"at" mapstructure:"at"`
 
@@ -1642,6 +1678,9 @@ type JournalEntry struct {
 
 	// MediaCount corresponds to the JSON schema field "mediaCount".
 	MediaCount int `json:"mediaCount" yaml:"mediaCount" mapstructure:"mediaCount"`
+
+	// ReviewerNote corresponds to the JSON schema field "reviewerNote".
+	ReviewerNote *string `json:"reviewerNote,omitempty,omitzero" yaml:"reviewerNote,omitempty" mapstructure:"reviewerNote,omitempty"`
 
 	// Seconds corresponds to the JSON schema field "seconds".
 	Seconds int `json:"seconds" yaml:"seconds" mapstructure:"seconds"`
@@ -1701,6 +1740,50 @@ func (j *JournalEntry) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "seconds", 0)
 	}
 	*j = JournalEntry(plain)
+	return nil
+}
+
+type JournalReviewRequest struct {
+	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
+	ApprovedSeconds int `json:"approvedSeconds" yaml:"approvedSeconds" mapstructure:"approvedSeconds"`
+
+	// ReviewerNote corresponds to the JSON schema field "reviewerNote".
+	ReviewerNote string `json:"reviewerNote" yaml:"reviewerNote" mapstructure:"reviewerNote"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *JournalReviewRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["approvedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field approvedSeconds in JournalReviewRequest: required")
+	}
+	if _, ok := raw["reviewerNote"]; raw != nil && !ok {
+		return fmt.Errorf("field reviewerNote in JournalReviewRequest: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in JournalReviewRequest: required")
+	}
+	type Plain JournalReviewRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.ApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
+	}
+	if utf8.RuneCountInString(string(plain.ReviewerNote)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "reviewerNote", 4000)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = JournalReviewRequest(plain)
 	return nil
 }
 
@@ -1953,6 +2036,141 @@ func (j *Membership) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s length: must be >= %d", "role", 1)
 	}
 	*j = Membership(plain)
+	return nil
+}
+
+type Note struct {
+	// AuthorEmail corresponds to the JSON schema field "authorEmail".
+	AuthorEmail string `json:"authorEmail" yaml:"authorEmail" mapstructure:"authorEmail"`
+
+	// AuthorName corresponds to the JSON schema field "authorName".
+	AuthorName *string `json:"authorName,omitempty,omitzero" yaml:"authorName,omitempty" mapstructure:"authorName,omitempty"`
+
+	// Body corresponds to the JSON schema field "body".
+	Body string `json:"body" yaml:"body" mapstructure:"body"`
+
+	// CreatedAt corresponds to the JSON schema field "createdAt".
+	CreatedAt string `json:"createdAt" yaml:"createdAt" mapstructure:"createdAt"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// SubjectID corresponds to the JSON schema field "subjectId".
+	SubjectID string `json:"subjectId" yaml:"subjectId" mapstructure:"subjectId"`
+
+	// SubjectType corresponds to the JSON schema field "subjectType".
+	SubjectType string `json:"subjectType" yaml:"subjectType" mapstructure:"subjectType"`
+}
+
+type NoteCreated struct {
+	// Note corresponds to the JSON schema field "note".
+	Note Note `json:"note" yaml:"note" mapstructure:"note"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *NoteCreated) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["note"]; raw != nil && !ok {
+		return fmt.Errorf("field note in NoteCreated: required")
+	}
+	type Plain NoteCreated
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = NoteCreated(plain)
+	return nil
+}
+
+type NoteRequest struct {
+	// Body corresponds to the JSON schema field "body".
+	Body string `json:"body" yaml:"body" mapstructure:"body"`
+
+	// SubjectType corresponds to the JSON schema field "subjectType".
+	SubjectType string `json:"subjectType" yaml:"subjectType" mapstructure:"subjectType"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *NoteRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["body"]; raw != nil && !ok {
+		return fmt.Errorf("field body in NoteRequest: required")
+	}
+	if _, ok := raw["subjectType"]; raw != nil && !ok {
+		return fmt.Errorf("field subjectType in NoteRequest: required")
+	}
+	type Plain NoteRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Body)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "body", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Body)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "body", 4000)
+	}
+	if matched, _ := regexp.MatchString(`^(submission|project|maker)$`, string(plain.SubjectType)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "SubjectType", `^(submission|project|maker)$`)
+	}
+	*j = NoteRequest(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Note) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["authorEmail"]; raw != nil && !ok {
+		return fmt.Errorf("field authorEmail in Note: required")
+	}
+	if _, ok := raw["body"]; raw != nil && !ok {
+		return fmt.Errorf("field body in Note: required")
+	}
+	if _, ok := raw["createdAt"]; raw != nil && !ok {
+		return fmt.Errorf("field createdAt in Note: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in Note: required")
+	}
+	if _, ok := raw["subjectId"]; raw != nil && !ok {
+		return fmt.Errorf("field subjectId in Note: required")
+	}
+	if _, ok := raw["subjectType"]; raw != nil && !ok {
+		return fmt.Errorf("field subjectType in Note: required")
+	}
+	type Plain Note
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.AuthorEmail)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "authorEmail", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Body)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "body", 1)
+	}
+	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if utf8.RuneCountInString(string(plain.SubjectID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "subjectId", 1)
+	}
+	if matched, _ := regexp.MatchString(`^(submission|project|maker)$`, string(plain.SubjectType)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "SubjectType", `^(submission|project|maker)$`)
+	}
+	*j = Note(plain)
 	return nil
 }
 
@@ -2392,6 +2610,9 @@ type QueueItem struct {
 	// MakerName corresponds to the JSON schema field "makerName".
 	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
 
+	// PreviousReviewer corresponds to the JSON schema field "previousReviewer".
+	PreviousReviewer *string `json:"previousReviewer,omitempty,omitzero" yaml:"previousReviewer,omitempty" mapstructure:"previousReviewer,omitempty"`
+
 	// Priority corresponds to the JSON schema field "priority".
 	Priority int `json:"priority" yaml:"priority" mapstructure:"priority"`
 
@@ -2533,6 +2754,174 @@ func (j *QueueResponse) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type Resubmission struct {
+	// AddedFiles corresponds to the JSON schema field "addedFiles".
+	AddedFiles []string `json:"addedFiles" yaml:"addedFiles" mapstructure:"addedFiles"`
+
+	// BomAdded corresponds to the JSON schema field "bomAdded".
+	BomAdded []string `json:"bomAdded" yaml:"bomAdded" mapstructure:"bomAdded"`
+
+	// BomPriceChanges corresponds to the JSON schema field "bomPriceChanges".
+	BomPriceChanges []ResubmissionPrice `json:"bomPriceChanges" yaml:"bomPriceChanges" mapstructure:"bomPriceChanges"`
+
+	// BomRemoved corresponds to the JSON schema field "bomRemoved".
+	BomRemoved []string `json:"bomRemoved" yaml:"bomRemoved" mapstructure:"bomRemoved"`
+
+	// ChangedEntries corresponds to the JSON schema field "changedEntries".
+	ChangedEntries []ResubmissionEntry `json:"changedEntries" yaml:"changedEntries" mapstructure:"changedEntries"`
+
+	// Commits corresponds to the JSON schema field "commits".
+	Commits []EvidenceCommit `json:"commits" yaml:"commits" mapstructure:"commits"`
+
+	// NewEntries corresponds to the JSON schema field "newEntries".
+	NewEntries []ResubmissionEntry `json:"newEntries" yaml:"newEntries" mapstructure:"newEntries"`
+
+	// PreviousDecision corresponds to the JSON schema field "previousDecision".
+	PreviousDecision *string `json:"previousDecision,omitempty,omitzero" yaml:"previousDecision,omitempty" mapstructure:"previousDecision,omitempty"`
+
+	// PreviousNote corresponds to the JSON schema field "previousNote".
+	PreviousNote *string `json:"previousNote,omitempty,omitzero" yaml:"previousNote,omitempty" mapstructure:"previousNote,omitempty"`
+
+	// PreviousReviewedAt corresponds to the JSON schema field "previousReviewedAt".
+	PreviousReviewedAt *string `json:"previousReviewedAt,omitempty,omitzero" yaml:"previousReviewedAt,omitempty" mapstructure:"previousReviewedAt,omitempty"`
+
+	// PreviousReviewer corresponds to the JSON schema field "previousReviewer".
+	PreviousReviewer *string `json:"previousReviewer,omitempty,omitzero" yaml:"previousReviewer,omitempty" mapstructure:"previousReviewer,omitempty"`
+
+	// PreviousVersion corresponds to the JSON schema field "previousVersion".
+	PreviousVersion int `json:"previousVersion" yaml:"previousVersion" mapstructure:"previousVersion"`
+
+	// RemovedFiles corresponds to the JSON schema field "removedFiles".
+	RemovedFiles []string `json:"removedFiles" yaml:"removedFiles" mapstructure:"removedFiles"`
+}
+
+type ResubmissionEntry struct {
+	// At corresponds to the JSON schema field "at".
+	At string `json:"at" yaml:"at" mapstructure:"at"`
+
+	// Seconds corresponds to the JSON schema field "seconds".
+	Seconds int `json:"seconds" yaml:"seconds" mapstructure:"seconds"`
+
+	// Title corresponds to the JSON schema field "title".
+	Title *string `json:"title,omitempty,omitzero" yaml:"title,omitempty" mapstructure:"title,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ResubmissionEntry) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["at"]; raw != nil && !ok {
+		return fmt.Errorf("field at in ResubmissionEntry: required")
+	}
+	if _, ok := raw["seconds"]; raw != nil && !ok {
+		return fmt.Errorf("field seconds in ResubmissionEntry: required")
+	}
+	type Plain ResubmissionEntry
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.At)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "at", 1)
+	}
+	if 0 > plain.Seconds {
+		return fmt.Errorf("field %s: must be >= %v", "seconds", 0)
+	}
+	*j = ResubmissionEntry(plain)
+	return nil
+}
+
+type ResubmissionPrice struct {
+	// AfterCents corresponds to the JSON schema field "afterCents".
+	AfterCents int `json:"afterCents" yaml:"afterCents" mapstructure:"afterCents"`
+
+	// BeforeCents corresponds to the JSON schema field "beforeCents".
+	BeforeCents int `json:"beforeCents" yaml:"beforeCents" mapstructure:"beforeCents"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name string `json:"name" yaml:"name" mapstructure:"name"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ResubmissionPrice) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["afterCents"]; raw != nil && !ok {
+		return fmt.Errorf("field afterCents in ResubmissionPrice: required")
+	}
+	if _, ok := raw["beforeCents"]; raw != nil && !ok {
+		return fmt.Errorf("field beforeCents in ResubmissionPrice: required")
+	}
+	if _, ok := raw["name"]; raw != nil && !ok {
+		return fmt.Errorf("field name in ResubmissionPrice: required")
+	}
+	type Plain ResubmissionPrice
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.AfterCents {
+		return fmt.Errorf("field %s: must be >= %v", "afterCents", 0)
+	}
+	if 0 > plain.BeforeCents {
+		return fmt.Errorf("field %s: must be >= %v", "beforeCents", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Name)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "name", 1)
+	}
+	*j = ResubmissionPrice(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Resubmission) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["addedFiles"]; raw != nil && !ok {
+		return fmt.Errorf("field addedFiles in Resubmission: required")
+	}
+	if _, ok := raw["bomAdded"]; raw != nil && !ok {
+		return fmt.Errorf("field bomAdded in Resubmission: required")
+	}
+	if _, ok := raw["bomPriceChanges"]; raw != nil && !ok {
+		return fmt.Errorf("field bomPriceChanges in Resubmission: required")
+	}
+	if _, ok := raw["bomRemoved"]; raw != nil && !ok {
+		return fmt.Errorf("field bomRemoved in Resubmission: required")
+	}
+	if _, ok := raw["changedEntries"]; raw != nil && !ok {
+		return fmt.Errorf("field changedEntries in Resubmission: required")
+	}
+	if _, ok := raw["commits"]; raw != nil && !ok {
+		return fmt.Errorf("field commits in Resubmission: required")
+	}
+	if _, ok := raw["newEntries"]; raw != nil && !ok {
+		return fmt.Errorf("field newEntries in Resubmission: required")
+	}
+	if _, ok := raw["previousVersion"]; raw != nil && !ok {
+		return fmt.Errorf("field previousVersion in Resubmission: required")
+	}
+	if _, ok := raw["removedFiles"]; raw != nil && !ok {
+		return fmt.Errorf("field removedFiles in Resubmission: required")
+	}
+	type Plain Resubmission
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.PreviousVersion {
+		return fmt.Errorf("field %s: must be >= %v", "previousVersion", 0)
+	}
+	*j = Resubmission(plain)
+	return nil
+}
+
 type Review struct {
 	// Acknowledgements corresponds to the JSON schema field "acknowledgements".
 	Acknowledgements []string `json:"acknowledgements" yaml:"acknowledgements" mapstructure:"acknowledgements"`
@@ -2606,11 +2995,17 @@ type ReviewBundle struct {
 	// Journals corresponds to the JSON schema field "journals".
 	Journals []JournalEntry `json:"journals" yaml:"journals" mapstructure:"journals"`
 
+	// Notes corresponds to the JSON schema field "notes".
+	Notes []Note `json:"notes" yaml:"notes" mapstructure:"notes"`
+
 	// Policy corresponds to the JSON schema field "policy".
 	Policy ReviewPolicy `json:"policy" yaml:"policy" mapstructure:"policy"`
 
 	// PriorReviews corresponds to the JSON schema field "priorReviews".
 	PriorReviews []PriorReview `json:"priorReviews" yaml:"priorReviews" mapstructure:"priorReviews"`
+
+	// Resubmission corresponds to the JSON schema field "resubmission".
+	Resubmission *Resubmission `json:"resubmission,omitempty,omitzero" yaml:"resubmission,omitempty" mapstructure:"resubmission,omitempty"`
 
 	// Reviews corresponds to the JSON schema field "reviews".
 	Reviews []Review `json:"reviews" yaml:"reviews" mapstructure:"reviews"`
@@ -2639,6 +3034,9 @@ func (j *ReviewBundle) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["journals"]; raw != nil && !ok {
 		return fmt.Errorf("field journals in ReviewBundle: required")
+	}
+	if _, ok := raw["notes"]; raw != nil && !ok {
+		return fmt.Errorf("field notes in ReviewBundle: required")
 	}
 	if _, ok := raw["policy"]; raw != nil && !ok {
 		return fmt.Errorf("field policy in ReviewBundle: required")

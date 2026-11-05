@@ -5,11 +5,15 @@ import { page } from "$app/state"
 import {
 	type Bundle,
 	type Check,
+	type Note,
 	claimShip,
+	createNote,
 	decideShip,
+	deleteNote,
 	fetchBundle,
 	fetchCheckHead,
 	fetchMe,
+	fetchQueue,
 	heartbeat,
 	program,
 	refreshRepositoryEvidence,
@@ -24,6 +28,8 @@ import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
+import JournalTime from "../../lib/components/review/JournalTime.svelte"
+import NotesCard from "../../lib/components/review/NotesCard.svelte"
 import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
 import {
@@ -77,6 +83,7 @@ let checksOutdated = $state(false)
 let coverFailed = $state(false)
 let showAllEvents = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
+let prefetchTimer: ReturnType<typeof setTimeout> | null = null
 
 interface CachedBundle {
 	bundle: Bundle
@@ -176,6 +183,7 @@ const canSecondPass = $derived(role === "organizer" || role === "admin")
 const checking = $derived(submission?.status === "checking")
 const readOnly = $derived(session.me?.readOnly ?? false)
 const canDecide = $derived(!readOnly && !reviewed && !checking && (!secondPass || canSecondPass))
+const canAdjustEntries = $derived(canDecide && bundle?.claim?.isMine === 1)
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
@@ -240,6 +248,10 @@ afterNavigate((): void => {
 	loading = true
 	coverFailed = false
 	stopChecks()
+	if (prefetchTimer) {
+		clearTimeout(prefetchTimer)
+		prefetchTimer = null
+	}
 	error = ""
 	acknowledgements = []
 	showAllEvents = false
@@ -323,6 +335,7 @@ onMount((): (() => void) => {
 	return (): void => {
 		clearInterval(beat)
 		stopChecks()
+		if (prefetchTimer) clearTimeout(prefetchTimer)
 		window.removeEventListener("keydown", onKeydown)
 		if (claimedId !== "") ignore(releaseShip(claimedId))
 	}
@@ -401,6 +414,35 @@ function showCachedBundle(cached: Bundle): void {
 	hourInit()
 }
 
+// schedulePrefetch warms the next ship's bundle once the current screen is idle.
+function schedulePrefetch(ship: Bundle["submission"]): void {
+	if (prefetchTimer) clearTimeout(prefetchTimer)
+	if (ship.status === "decided" || ship.status === "withdrawn" || ship.status === "checking") return
+
+	prefetchTimer = setTimeout(() => {
+		prefetchTimer = null
+		void prefetchNext(ship.id, ship.stage)
+	}, 2500)
+}
+
+// prefetchNext fetches the first unclaimed ship after this one and keeps it in the tab cache.
+async function prefetchNext(currentID: string, stage: number): Promise<void> {
+	try {
+		const queue = await fetchQueue("all", stage, 0, 5)
+		const next = queue.items.find(
+			item =>
+				item.id !== currentID
+				&& (!item.claimedBy || item.claimedBy === session.me?.user.email)
+				&& !readBundleCache(item.id),
+		)
+		if (!next) return
+
+		writeBundleCache(next.id, await fetchBundle(next.id))
+	} catch {
+		// Prefetching is best effort; opening the ship still loads it normally.
+	}
+}
+
 async function load(target = id): Promise<void> {
 	const sameShip = bundle?.submission.id === target
 
@@ -438,6 +480,7 @@ async function load(target = id): Promise<void> {
 		hourInit()
 		error = ""
 		watchChecks()
+		schedulePrefetch(next.submission)
 		void checkHead()
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
@@ -650,6 +693,30 @@ function flash(message: string): void {
 	}, 3500)
 }
 
+// entrySaved keeps the rail total in step with the per-entry adjudication.
+function entrySaved(seconds: number): void {
+	hours = Math.round((seconds / 3600) * 100) / 100
+}
+
+// addNote stores an internal note and shows it immediately.
+async function addNote(subjectType: string, body: string): Promise<void> {
+	if (!submission) return
+
+	const note = await createNote(submission.id, { body, subjectType })
+	if (bundle) bundle.notes = [note, ...bundle.notes]
+}
+
+// removeNote deletes an internal note and drops it from the list.
+async function removeNote(note: Note): Promise<void> {
+	await deleteNote(note.id)
+	if (bundle) bundle.notes = bundle.notes.filter(item => item.id !== note.id)
+}
+
+// canDeleteNote lets the author or an admin remove a note.
+function canDeleteNote(note: Note): boolean {
+	return session.me?.user.email === note.authorEmail || role === "admin"
+}
+
 async function saveDraftNow(): Promise<void> {
 	if (!bundle) return
 	try {
@@ -839,6 +906,107 @@ async function saveDraftNow(): Promise<void> {
 							</span>
 						</div>
 					{/if}
+					{#if bundle.resubmission}
+						{const diff = bundle.resubmission}
+						<div class="section resubmission">
+							<h3>Since v{diff.previousVersion}</h3>
+							{#if diff.previousDecision || diff.previousNote}
+								<div class="prior-row">
+									{#if diff.previousDecision}
+										<span
+											class="ui-badge"
+											data-tone={statusTone(
+												diff.previousDecision === "approved" ? "approved" : "changes",
+											)}
+											>{decisionLabel(diff.previousDecision)}</span
+										>
+									{/if}
+									{#if diff.previousNote}
+										<p>{diff.previousNote}</p>
+									{/if}
+									{#if diff.previousReviewer || diff.previousReviewedAt}
+										<small>
+											{diff.previousReviewer ?? "Reviewer"}
+											{#if diff.previousReviewedAt}
+												· {formatDateTime(diff.previousReviewedAt)}
+											{/if}
+										</small>
+									{/if}
+								</div>
+							{/if}
+							<div class="stats">
+								<div><span>Commits</span><strong>{diff.commits.length}</strong></div>
+								<div>
+									<span>Files</span><strong
+										>+{diff.addedFiles.length} / -{diff.removedFiles.length}</strong
+									>
+								</div>
+								<div>
+									<span>New entries</span><strong
+										>{diff.newEntries.length}
+										{diff.changedEntries.length > 0
+											? ` · ${diff.changedEntries.length} edited`
+											: ""}</strong
+									>
+								</div>
+								<div>
+									<span>BOM</span><strong
+										>{diff.bomAdded.length} added
+										{diff.bomPriceChanges.length > 0
+											? ` · ${diff.bomPriceChanges.length} repriced`
+											: ""}</strong
+									>
+								</div>
+							</div>
+							{#if diff.commits.length > 0}
+								<details>
+									<summary>{diff.commits.length} new commit{diff.commits.length === 1 ? "" : "s"}</summary>
+									<ul class="change-list">
+										{#each diff.commits.slice(0, 10) as commit (commit.sha)}
+											<li>
+												<code class="ui-mono">{commit.sha.slice(0, 7)}</code>
+												{commit.message}
+											</li>
+										{/each}
+									</ul>
+								</details>
+							{/if}
+							{#if diff.addedFiles.length + diff.removedFiles.length > 0}
+								<details>
+									<summary>
+										{diff.addedFiles.length} added, {diff.removedFiles.length} removed
+									</summary>
+									<ul class="change-list">
+										{#each diff.addedFiles.slice(0, 20) as file (file)}
+											<li class="added">+ {file}</li>
+										{/each}
+										{#each diff.removedFiles.slice(0, 20) as file (file)}
+											<li class="removed">- {file}</li>
+										{/each}
+									</ul>
+								</details>
+							{/if}
+							{#if diff.bomAdded.length + diff.bomRemoved.length + diff.bomPriceChanges.length > 0}
+								<details>
+									<summary>BOM changes</summary>
+									<ul class="change-list">
+										{#each diff.bomAdded as part (part)}
+											<li class="added">+ {part}</li>
+										{/each}
+										{#each diff.bomRemoved as part (part)}
+											<li class="removed">- {part}</li>
+										{/each}
+										{#each diff.bomPriceChanges as change (change.name)}
+											<li>
+												{change.name}: {formatMoneyAmount(change.beforeCents)} →
+												{formatMoneyAmount(change.afterCents)}
+											</li>
+										{/each}
+									</ul>
+								</details>
+							{/if}
+						</div>
+					{/if}
 					<h2>What the maker built</h2>
 					<p class="description">{submission.description || "No description was sent."}</p>
 
@@ -904,6 +1072,16 @@ async function saveDraftNow(): Promise<void> {
 							</button>
 						{/if}
 					</div>
+
+					<div class="section">
+						<h3>Internal notes</h3>
+						<NotesCard
+							canDelete={canDeleteNote}
+							notes={bundle.notes}
+							onAdd={addNote}
+							onRemove={removeNote}
+						/>
+					</div>
 				</article>
 			{:else if tab === "checks"}
 				<ChecksTab
@@ -937,6 +1115,13 @@ async function saveDraftNow(): Promise<void> {
 								{#if entry.mediaCount > 0}
 									<small>{entry.mediaCount} image{entry.mediaCount === 1 ? "" : "s"} attached</small>
 								{/if}
+								<JournalTime
+									editable={canAdjustEntries}
+									{entry}
+									onSaved={entrySaved}
+									shipId={submission.id}
+									version={submission.version}
+								/>
 							</article>
 						{/each}
 					</div>
@@ -1631,6 +1816,35 @@ h1 {
 .prior-row small {
 	font-size: var(--text-xs);
 	color: var(--text-3);
+}
+
+.resubmission details {
+	padding-top: var(--space-2);
+	font-size: var(--text-sm);
+}
+
+.resubmission summary {
+	cursor: pointer;
+	color: var(--text-2);
+}
+
+.change-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	padding: var(--space-2) 0 0 var(--space-3);
+	margin: 0;
+	font-size: var(--text-sm);
+	color: var(--text-2);
+	list-style: none;
+}
+
+.change-list .added {
+	color: var(--accent-green);
+}
+
+.change-list .removed {
+	color: var(--accent-red);
 }
 
 .event {

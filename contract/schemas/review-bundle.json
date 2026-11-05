@@ -257,6 +257,9 @@
 			"items": {
 				"type": "object",
 				"properties": {
+					"approvedSeconds": {
+						"type": "integer"
+					},
 					"at": {
 						"type": "string",
 						"minLength": 1
@@ -280,6 +283,9 @@
 						"type": "integer",
 						"minimum": 0
 					},
+					"reviewerNote": {
+						"type": "string"
+					},
 					"seconds": {
 						"type": "integer",
 						"minimum": 0
@@ -300,6 +306,50 @@
 					"seconds"
 				],
 				"title": "JournalEntry"
+			}
+		},
+		"notes": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"authorEmail": {
+						"type": "string",
+						"minLength": 1
+					},
+					"authorName": {
+						"type": "string"
+					},
+					"body": {
+						"type": "string",
+						"minLength": 1
+					},
+					"createdAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"subjectId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"subjectType": {
+						"type": "string",
+						"pattern": "^(submission|project|maker)$"
+					}
+				},
+				"required": [
+					"authorEmail",
+					"body",
+					"createdAt",
+					"id",
+					"subjectId",
+					"subjectType"
+				],
+				"title": "Note"
 			}
 		},
 		"policy": {
@@ -366,6 +416,165 @@
 				],
 				"title": "PriorReview"
 			}
+		},
+		"resubmission": {
+			"type": "object",
+			"properties": {
+				"addedFiles": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"bomAdded": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"bomPriceChanges": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"afterCents": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"beforeCents": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"afterCents",
+							"beforeCents",
+							"name"
+						],
+						"title": "ResubmissionPrice"
+					}
+				},
+				"bomRemoved": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"changedEntries": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"at": {
+								"type": "string",
+								"minLength": 1
+							},
+							"seconds": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"at",
+							"seconds"
+						],
+						"title": "ResubmissionEntry"
+					}
+				},
+				"commits": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"author": {
+								"type": "string"
+							},
+							"date": {
+								"type": "string"
+							},
+							"message": {
+								"type": "string"
+							},
+							"sha": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"author",
+							"date",
+							"message",
+							"sha"
+						],
+						"title": "EvidenceCommit"
+					}
+				},
+				"newEntries": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"at": {
+								"type": "string",
+								"minLength": 1
+							},
+							"seconds": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"at",
+							"seconds"
+						],
+						"title": "ResubmissionEntry"
+					}
+				},
+				"previousDecision": {
+					"type": "string"
+				},
+				"previousNote": {
+					"type": "string"
+				},
+				"previousReviewedAt": {
+					"type": "string"
+				},
+				"previousReviewer": {
+					"type": "string"
+				},
+				"previousVersion": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"removedFiles": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": [
+				"addedFiles",
+				"bomAdded",
+				"bomPriceChanges",
+				"bomRemoved",
+				"changedEntries",
+				"commits",
+				"newEntries",
+				"previousVersion",
+				"removedFiles"
+			],
+			"title": "Resubmission"
 		},
 		"reviews": {
 			"type": "array",
@@ -559,6 +768,7 @@
 		"checks",
 		"events",
 		"journals",
+		"notes",
 		"policy",
 		"priorReviews",
 		"reviews",

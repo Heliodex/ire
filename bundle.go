@@ -20,6 +20,11 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		return contract.ReviewBundle{}, err
 	}
 
+	notes, err := a.loadNotes(ctx, ship)
+	if err != nil {
+		return contract.ReviewBundle{}, err
+	}
+
 	bom, err := a.loadBom(ctx, ship.ID)
 	if err != nil {
 		return contract.ReviewBundle{}, err
@@ -135,11 +140,17 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		submission.DecidedAt = &ship.DecidedAt
 	}
 
-	return contract.ReviewBundle{
+	resubmission, err := a.resubmissionDiff(ctx, ship, evidence, journals)
+	if err != nil {
+		return contract.ReviewBundle{}, err
+	}
+
+	bundle := contract.ReviewBundle{
 		Submission:       submission,
 		Checks:           checks,
 		Journals:         journals,
 		Bom:              bom,
+		Notes:            notes,
 		Reviews:          reviews,
 		Events:           events,
 		Evidence:         evidence,
@@ -149,5 +160,8 @@ func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person
 		Draft:            a.draftFor(ctx, ship.ID, person.ID),
 		Acknowledgements: a.acknowledgementsFor(ctx, ship.ID, ship.Version, person.ID),
 		Policy:           contractPolicy(policy),
-	}, nil
+		Resubmission:     resubmission,
+	}
+
+	return bundle, nil
 }

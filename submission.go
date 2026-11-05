@@ -106,7 +106,7 @@ func (a *reviewApp) latestChecks(ctx context.Context, submissionID string, versi
 // loadJournals returns journal entries with their media and clip counts.
 func (a *reviewApp) loadJournals(ctx context.Context, submissionID string) ([]contract.JournalEntry, error) {
 	rows, err := a.store.Query(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
-			coalesce(media, '[]'), coalesce(timelapses, '[]')
+			coalesce(media, '[]'), coalesce(timelapses, '[]'), coalesce(approved_seconds, -1), coalesce(reviewer_note, '')
 		from journal_entry where submission_id = ? order by sort, at`, submissionID)
 	if err != nil {
 		return nil, err
@@ -119,8 +119,10 @@ func (a *reviewApp) loadJournals(ctx context.Context, submissionID string) ([]co
 		var (
 			item                                        contract.JournalEntry
 			title, text, markdown, mediaJSON, clipsJSON string
+			approvedSeconds                             int
+			reviewerNote                                string
 		)
-		if err := rows.Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON); err != nil {
+		if err := rows.Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON, &approvedSeconds, &reviewerNote); err != nil {
 			return nil, err
 		}
 
@@ -130,6 +132,12 @@ func (a *reviewApp) loadJournals(ctx context.Context, submissionID string) ([]co
 		item.MediaCount = jsonArrayLength(mediaJSON)
 		item.ClipCount = jsonArrayLength(clipsJSON)
 		item.CoveredSeconds = jsonCoveredSeconds(clipsJSON)
+
+		if approvedSeconds >= 0 {
+			item.ApprovedSeconds = &approvedSeconds
+		}
+
+		item.ReviewerNote = optionalText(reviewerNote)
 		out = append(out, item)
 	}
 

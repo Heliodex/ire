@@ -1,0 +1,52 @@
+{
+	"type": "object",
+	"properties": {
+		"note": {
+			"type": "object",
+			"properties": {
+				"authorEmail": {
+					"type": "string",
+					"minLength": 1
+				},
+				"authorName": {
+					"type": "string"
+				},
+				"body": {
+					"type": "string",
+					"minLength": 1
+				},
+				"createdAt": {
+					"type": "string",
+					"minLength": 1
+				},
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"subjectId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"subjectType": {
+					"type": "string",
+					"pattern": "^(submission|project|maker)$"
+				}
+			},
+			"required": [
+				"authorEmail",
+				"body",
+				"createdAt",
+				"id",
+				"subjectId",
+				"subjectType"
+			],
+			"title": "Note"
+		}
+	},
+	"required": [
+		"note"
+	],
+	"title": "NoteCreated",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/note-created.json"
+}

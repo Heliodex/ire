@@ -1,0 +1,21 @@
+{
+	"type": "object",
+	"properties": {
+		"body": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 4000
+		},
+		"subjectType": {
+			"type": "string",
+			"pattern": "^(submission|project|maker)$"
+		}
+	},
+	"required": [
+		"body",
+		"subjectType"
+	],
+	"title": "NoteRequest",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/review/note.json"
+}

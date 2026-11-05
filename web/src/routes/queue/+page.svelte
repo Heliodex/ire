@@ -494,6 +494,14 @@ async function moveSelection(step: number): Promise<void> {
 	listElement?.querySelector<HTMLElement>('.row[aria-current="true"]')?.scrollIntoView({ block: "nearest" })
 }
 
+// ageTone marks ships that have waited longer than the queue target.
+function ageTone(ingestedAt: string): string {
+	const days = (Date.now() - Date.parse(ingestedAt)) / 86_400_000
+	if (days >= 7) return "age--late"
+	if (days >= 3) return "age--warn"
+	return ""
+}
+
 // claimError makes a claim conflict readable and formats the expiry from the API.
 function claimError(err: unknown): string {
 	if (!(err instanceof ApiError) || err.code !== "claim_taken")
@@ -710,6 +718,16 @@ async function open(item: QueueItem): Promise<void> {
 						>
 							{item.claimedBy === session.me?.user.email ? "Yours" : humanStatus(item.status)}
 						</span>
+						{#if item.previousReviewer}
+							<span
+								class="ui-badge previous"
+								title={`Previously reviewed by ${item.previousReviewer}`}
+							>
+								{item.previousReviewer === session.me?.user.email
+									? "Yours to continue"
+									: "Resubmission"}
+							</span>
+						{/if}
 						<span class="theme">{item.theme ?? ""}</span>
 					</span>
 					<div class="facts">
@@ -720,7 +738,7 @@ async function open(item: QueueItem): Promise<void> {
 						<span class="version">v{item.version}</span>
 						<span class="timing">
 							<span class="hours">{formatDuration(item.hoursClaimedSeconds)} claimed</span>
-							<span class="age">{timeAgo(item.ingestedAt)}</span>
+							<span class="age {ageTone(item.ingestedAt)}">{timeAgo(item.ingestedAt)}</span>
 						</span>
 					</div>
 					<span class="checks">
@@ -1101,6 +1119,14 @@ h1 {
 
 .version {
 	text-align: right;
+}
+
+.age--warn {
+	color: var(--accent-yellow);
+}
+
+.age--late {
+	color: var(--accent-red);
 }
 
 .checks {
