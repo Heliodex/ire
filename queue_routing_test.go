@@ -35,19 +35,22 @@ func TestQueueRoutesResubmissionToPreviousReviewer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reviewerQueue := queueIDs(t, application, reviewer)
-	if len(reviewerQueue) != 2 || reviewerQueue[0] != "sub_fixture_2" || reviewerQueue[1] != "sub_fixture_3" {
+	reviewerQueue := queueItems(t, application, reviewer)
+	if len(reviewerQueue) != 2 || reviewerQueue[0].ID != "sub_fixture_2" || reviewerQueue[1].ID != "sub_fixture_3" {
 		t.Errorf("previous reviewer queue = %v, want the resubmission first", reviewerQueue)
 	}
+	if reviewerQueue[0].PreviousReviewer == nil || *reviewerQueue[0].PreviousReviewer != "reviewer@example.com" {
+		t.Errorf("previous reviewer = %v", reviewerQueue[0].PreviousReviewer)
+	}
 
-	organiserQueue := queueIDs(t, application, organiser)
-	if len(organiserQueue) != 2 || organiserQueue[0] != "sub_fixture_3" || organiserQueue[1] != "sub_fixture_2" {
+	organiserQueue := queueItems(t, application, organiser)
+	if len(organiserQueue) != 2 || organiserQueue[0].ID != "sub_fixture_3" || organiserQueue[1].ID != "sub_fixture_2" {
 		t.Errorf("other reviewer queue = %v, want the fresh resubmission last", organiserQueue)
 	}
 }
 
-// queueIDs lists the stage 1 queue in the order the reviewer sees it.
-func queueIDs(t *testing.T, application *reviewApp, cookie *http.Cookie) []string {
+// queueItems lists the stage 1 queue in the order the reviewer sees it.
+func queueItems(t *testing.T, application *reviewApp, cookie *http.Cookie) []contract.QueueItem {
 	t.Helper()
 
 	recorder := do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all", nil, cookie, nil)
@@ -55,11 +58,5 @@ func queueIDs(t *testing.T, application *reviewApp, cookie *http.Cookie) []strin
 		t.Fatalf("queue = %d: %s", recorder.Code, recorder.Body.String())
 	}
 
-	queue := decode[contract.QueueResponse](t, recorder)
-	ids := make([]string, 0, len(queue.Items))
-	for _, item := range queue.Items {
-		ids = append(ids, item.ID)
-	}
-
-	return ids
+	return decode[contract.QueueResponse](t, recorder).Items
 }

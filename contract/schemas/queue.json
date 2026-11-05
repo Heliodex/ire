@@ -141,6 +141,9 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"previousReviewer": {
+						"type": "string"
+					},
 					"priority": {
 						"type": "integer",
 						"minimum": 0

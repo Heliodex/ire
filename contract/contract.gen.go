@@ -2610,6 +2610,9 @@ type QueueItem struct {
 	// MakerName corresponds to the JSON schema field "makerName".
 	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
 
+	// PreviousReviewer corresponds to the JSON schema field "previousReviewer".
+	PreviousReviewer *string `json:"previousReviewer,omitempty,omitzero" yaml:"previousReviewer,omitempty" mapstructure:"previousReviewer,omitempty"`
+
 	// Priority corresponds to the JSON schema field "priority".
 	Priority int `json:"priority" yaml:"priority" mapstructure:"priority"`
 
