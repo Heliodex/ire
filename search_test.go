@@ -12,10 +12,7 @@ func TestSearchFindsProjectByTitleMakerAndExternalID(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
 
-	cases := []struct {
-		query string
-		want  string
-	}{
+	cases := []struct{ query, want string }{
 		{query: "starbie", want: "sub_fixture_1"},
 		{query: "shubhayu", want: "sub_fixture_2"},
 		{query: "fix-blocked", want: "sub_fixture_3"},
