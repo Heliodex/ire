@@ -23,14 +23,11 @@ const accountEmail = $derived(session.me?.user.email ?? "")
 const accountName = $derived(session.me?.user.name ?? accountEmail)
 const accountProfileHref = $derived(session.me ? `/reviewers/${encodeURIComponent(session.me.user.id)}` : "/")
 
-const navRoutes = $derived([
-	"/queue",
-	"/reviewed",
-	"/deliveries",
-	...(showAdmin ? ["/admin"] : []),
-	...(showAudit ? ["/audit"] : []),
-	"/docs",
-])
+interface NavItem {
+	active: boolean
+	href: string
+	label: string
+}
 
 // isQueueRoute keeps the review screen under the queue tab without catching /reviewed.
 function isQueueRoute(path: string): boolean {
@@ -41,17 +38,21 @@ function isReviewedRoute(path: string): boolean {
 	return path === "/reviewed" || path.startsWith("/reviewed/")
 }
 
-// tabIndex maps the current route onto the navigation tabs; review counts as part of the queue.
-function tabIndex(path: string): number {
-	if (isQueueRoute(path)) return 0
-	if (isReviewedRoute(path)) return 1
-	if (path.startsWith("/deliveries")) return 2
-	if (showAdmin && path.startsWith("/admin")) return 3
-	if (showAudit && path.startsWith("/audit")) return showAdmin ? 4 : 3
-	if (path.startsWith("/docs")) return navRoutes.length - 1
+const navItems = $derived.by((): NavItem[] => {
+	const path = page.url.pathname
+	const sections: NavItem[] = [
+		{ active: isQueueRoute(path), href: "/queue", label: "Queue" },
+		{ active: isReviewedRoute(path), href: "/reviewed", label: "Reviewed" },
+		{ active: path.startsWith("/deliveries"), href: "/deliveries", label: "Deliveries" },
+	]
 
-	return -1
-}
+	if (showAdmin) sections.push({ active: path.startsWith("/admin"), href: "/admin", label: "Admin" })
+	if (showAudit) sections.push({ active: path.startsWith("/audit"), href: "/audit", label: "Audit" })
+
+	sections.push({ active: path.startsWith("/docs"), href: "/docs", label: "Docs" })
+
+	return sections
+})
 
 // isTyping reports whether a key event belongs to an editable field.
 function isTyping(target: EventTarget | null): boolean {
@@ -71,7 +72,7 @@ function onKeydown(event: KeyboardEvent): void {
 		const match = /^(?:Digit|Numpad)([1-6])$/.exec(event.code)
 		if (!match) return
 
-		const destination = navRoutes[Number(match[1]) - 1]
+		const destination = navItems[Number(match[1]) - 1]?.href
 		if (!destination) return
 
 		event.preventDefault()
@@ -84,15 +85,11 @@ function onKeydown(event: KeyboardEvent): void {
 	if (event.key !== "[" && event.key !== "]") return
 	if (event.ctrlKey || event.metaKey || event.altKey) return
 
-	const current = tabIndex(page.url.pathname)
+	const current = navItems.findIndex(item => item.active)
 	const step = event.key === "]" ? 1 : -1
 	const next =
-		current === -1
-			? step === 1
-				? 0
-				: navRoutes.length - 1
-			: (current + step + navRoutes.length) % navRoutes.length
-	const destination = navRoutes[next]
+		current === -1 ? (step === 1 ? 0 : navItems.length - 1) : (current + step + navItems.length) % navItems.length
+	const destination = navItems[next]?.href
 	if (!destination) return
 
 	event.preventDefault()
@@ -214,52 +211,15 @@ async function signOut(): Promise<void> {
 			{/if}
 
 			<nav aria-label="Sections">
-				<a
-					aria-current={isQueueRoute(page.url.pathname) ? "page" : undefined}
-					aria-keyshortcuts="Alt+1"
-					href="/queue"
-					class:active={isQueueRoute(page.url.pathname)}
-					>Queue</a
-				>
-				<a
-					aria-current={isReviewedRoute(page.url.pathname) ? "page" : undefined}
-					aria-keyshortcuts="Alt+2"
-					href="/reviewed"
-					class:active={isReviewedRoute(page.url.pathname)}
-					>Reviewed</a
-				>
-				<a
-					aria-current={page.url.pathname.startsWith("/deliveries") ? "page" : undefined}
-					aria-keyshortcuts="Alt+3"
-					href="/deliveries"
-					class:active={page.url.pathname.startsWith("/deliveries")}
-					>Deliveries</a
-				>
-				{#if showAdmin}
+				{#each navItems as item, index (item.href)}
 					<a
-						aria-current={page.url.pathname.startsWith("/admin") ? "page" : undefined}
-						aria-keyshortcuts="Alt+4"
-						href="/admin"
-						class:active={page.url.pathname.startsWith("/admin")}
-						>Admin</a
+						aria-current={item.active ? "page" : undefined}
+						aria-keyshortcuts={`Alt+${index + 1}`}
+						href={item.href}
+						class:active={item.active}
+						>{item.label}</a
 					>
-				{/if}
-				{#if showAudit}
-					<a
-						aria-current={page.url.pathname.startsWith("/audit") ? "page" : undefined}
-						aria-keyshortcuts={`Alt+${showAdmin ? 5 : 4}`}
-						href="/audit"
-						class:active={page.url.pathname.startsWith("/audit")}
-						>Audit</a
-					>
-				{/if}
-				<a
-					aria-current={page.url.pathname.startsWith("/docs") ? "page" : undefined}
-					aria-keyshortcuts={`Alt+${navRoutes.length}`}
-					href="/docs"
-					class:active={page.url.pathname.startsWith("/docs")}
-					>Docs</a
-				>
+				{/each}
 			</nav>
 		{/if}
 	</header>
