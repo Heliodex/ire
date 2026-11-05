@@ -27,6 +27,7 @@ import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
 import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
 import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
+import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
 const tabKeys = ["overview", "checks", "journal", "bom", "evidence", "history"] as const
@@ -721,8 +722,16 @@ async function saveDraftNow(): Promise<void> {
 			<span>{submission.heldReason ?? "Held for a second review."}</span>
 		</div>
 		{#if heldReview}
+			{const heldHref = reviewerHref(heldReview.reviewerEmail)}
 			<div class="first-pass">
-				<strong>First pass · {heldReview.reviewerEmail}</strong>
+				<strong>
+					First pass ·
+					{#if heldHref}
+						<a href={heldHref}>{heldReview.reviewerEmail}</a>
+					{:else}
+						{heldReview.reviewerEmail}
+					{/if}
+				</strong>
 				{#if heldReview.noteToMaker}
 					<p>{heldReview.noteToMaker}</p>
 				{/if}
@@ -820,6 +829,7 @@ async function saveDraftNow(): Promise<void> {
 						<div class="section">
 							<h3>Prior review</h3>
 							{#each bundle.priorReviews as prior (prior.at)}
+								{const priorHref = reviewerHref(prior.reviewer?.includes("@") ? prior.reviewer : null)}
 								<div class="prior-row">
 									<span
 										class="ui-badge"
@@ -829,7 +839,14 @@ async function saveDraftNow(): Promise<void> {
 										>{prior.result}</span
 									>
 									<p>{prior.feedback}</p>
-									<small>{prior.reviewer ?? "Reviewer"} · {formatDateTime(prior.at)}</small>
+									<small>
+										{#if priorHref}
+											<a href={priorHref}>{prior.reviewer}</a>
+										{:else}
+											{prior.reviewer ?? "Reviewer"}
+										{/if}
+										· {formatDateTime(prior.at)}
+									</small>
 								</div>
 							{/each}
 						</div>
@@ -1168,8 +1185,15 @@ async function saveDraftNow(): Promise<void> {
 					{/if}
 
 					{#if bundle.claim}
+						{const claimHref = reviewerHref(bundle.claim.reviewerEmail)}
 						<p class="claim">
-							Claimed by {bundle.claim.reviewerEmail} until {formatDateTime(bundle.claim.expiresAt)}
+							Claimed by
+							{#if claimHref}
+								<a href={claimHref}>{bundle.claim.reviewerEmail}</a>
+							{:else}
+								{bundle.claim.reviewerEmail}
+							{/if}
+							until {formatDateTime(bundle.claim.expiresAt)}
 						</p>
 					{/if}
 				</section>
@@ -1716,6 +1740,20 @@ h1 {
 	padding-top: var(--space-3);
 	font-size: var(--text-xs);
 	color: var(--text-3);
+}
+
+.first-pass a,
+.prior-row a,
+.claim a {
+	color: var(--text-2);
+	text-decoration: none;
+}
+
+.first-pass a:hover,
+.prior-row a:hover,
+.claim a:hover {
+	color: var(--text);
+	text-decoration: underline;
 }
 
 .mobile-actions {

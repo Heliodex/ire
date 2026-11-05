@@ -117,6 +117,55 @@ export const memberSchema = pipe(
 
 export const membersResponseSchema = pipe(object({ members: array(memberSchema) }), title("MembersResponse"))
 
+export const reviewerReviewSchema = pipe(
+	object({
+		createdAt: timestamp,
+		decision: pipe(string(), minLength(1)),
+		held: nonNegative,
+		hoursApprovedSeconds: optional(pipe(number(), integer())),
+		id: pipe(string(), minLength(1)),
+		invalidatedAt: optionalString,
+		stage: nonNegative,
+		submissionId: pipe(string(), minLength(1)),
+		submissionTitle: pipe(string(), minLength(1)),
+	}),
+	title("ReviewerReview"),
+)
+
+export const reviewerStatsSchema = pipe(
+	object({
+		approved: nonNegative,
+		changes: nonNegative,
+		firstPass: nonNegative,
+		held: nonNegative,
+		hoursApprovedSeconds: nonNegative,
+		invalidated: nonNegative,
+		lastReviewAt: optionalString,
+		rejected: nonNegative,
+		secondPass: nonNegative,
+		total: nonNegative,
+	}),
+	title("ReviewerStats"),
+)
+
+export const reviewerProfileSchema = pipe(
+	object({
+		active: optional(boolean()),
+		email: pipe(string(), minLength(1)),
+		id: optionalString,
+		joinedAt: optionalString,
+		lastLoginAt: optionalString,
+		name: optionalString,
+		permissions: array(string()),
+		reviews: array(reviewerReviewSchema),
+		reviewTotal: nonNegative,
+		role: optionalString,
+		stats: reviewerStatsSchema,
+		tracks: array(string()),
+	}),
+	title("ReviewerProfile"),
+)
+
 export const inviteMemberSchema = pipe(
 	object({
 		email: pipe(string(), minLength(3), maxLength(320), nonBlank),
@@ -866,6 +915,7 @@ export const responseSchemas = Object.freeze([
 	reviewBundleSchema,
 	reviewEventSchema,
 	reviewedResponseSchema,
+	reviewerProfileSchema,
 	reviewsResponseSchema,
 	searchResponseSchema,
 	sendBackResultSchema,

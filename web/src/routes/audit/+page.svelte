@@ -4,6 +4,7 @@ import { goto } from "$app/navigation"
 import { type AuditEntry, fetchAudit, fetchMe, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { formatDateTime, formatDuration, timeAgo } from "../../lib/format"
+import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
 const actionOptions = [
@@ -348,9 +349,24 @@ function targetLink(entry: AuditEntry): string | null {
 				<article class="entry">
 					<div class="entry-head">
 						<span class="ui-badge" data-tone={actionTone(entry)}>{actionLabel(entry.action)}</span>
-						<span class="actor" title={entry.actorEmail ?? ""}>{actor(entry)}</span>
+						{#if reviewerHref(entry.actorEmail)}
+							<a
+								class="actor"
+								href={reviewerHref(entry.actorEmail) ?? "#"}
+								title={entry.actorEmail ?? ""}
+							>
+								{actor(entry)}
+							</a>
+						{:else}
+							<span class="actor">{actor(entry)}</span>
+						{/if}
 						{#if targetLink(entry)}
 							<a class="target" href={targetLink(entry)}>{entry.targetLabel ?? entry.targetId}</a>
+						{:else if entry.targetId
+							&& (entry.action.startsWith("member.") || entry.action.startsWith("user."))}
+							<a class="target" href={reviewerHref(entry.targetId) ?? "#"}>
+								{entry.targetLabel ?? entry.targetId}
+							</a>
 						{:else if entry.targetLabel || entry.targetId}
 							<span class="target">{entry.targetLabel ?? entry.targetId}</span>
 						{/if}
@@ -463,6 +479,11 @@ function targetLink(entry: AuditEntry): string | null {
 .actor {
 	font-weight: 600;
 	color: var(--text);
+	text-decoration: none;
+}
+
+a.actor:hover {
+	text-decoration: underline;
 }
 
 .target {

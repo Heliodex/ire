@@ -14,6 +14,7 @@ import {
 import { ApiError } from "../../lib/api-error"
 import MemberRole from "../../lib/components/admin/MemberRole.svelte"
 import { formatDateTime } from "../../lib/format"
+import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
 const roles = ["reviewer", "organizer", "admin", "auditor"] as const
@@ -193,8 +194,10 @@ async function invite(): Promise<void> {
 					{#each members as member (member.id)}
 						<tr class:inactive={!member.active}>
 							<td>
-								<strong>{member.name ?? member.email}</strong>
-								<span class="muted">{member.email}</span>
+								<a class="member-link" href={reviewerHref(member.id) ?? "#"}>
+									<strong>{member.name ?? member.email}</strong>
+									<span class="muted">{member.email}</span>
+								</a>
 								{#if saving === member.id}
 									<span class="saving">Saving…</span>
 								{/if}
@@ -285,6 +288,16 @@ async function invite(): Promise<void> {
 .page-head p,
 .muted {
 	color: var(--text-2);
+}
+
+.member-link {
+	display: block;
+	color: var(--text);
+	text-decoration: none;
+}
+
+.member-link:hover {
+	text-decoration: underline;
 }
 
 .section-head {

@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { Review } from "../../api"
 import { formatDateTime, formatHours } from "../../format"
+import { reviewerHref } from "../../reviewer"
 
 let { reviews }: { reviews: Review[] } = $props()
 </script>
@@ -13,6 +14,7 @@ let { reviews }: { reviews: Review[] } = $props()
 {:else}
 	<ol class="history">
 		{#each reviews as review (review.id)}
+			{const href = reviewerHref(review.reviewerEmail)}
 			<li class="ui-card padded" class:invalidated={review.invalidatedAt}>
 				<div class="history-head">
 					<span class="ui-badge">Stage {review.stage}</span>
@@ -23,7 +25,14 @@ let { reviews }: { reviews: Review[] } = $props()
 					{#if review.invalidatedAt}
 						<span class="ui-badge" data-tone="warn">Invalidated</span>
 					{/if}
-					<span class="history-when">{review.reviewerEmail} · {formatDateTime(review.createdAt)}</span>
+					<span class="history-when">
+						{#if href}
+							<a {href} title={review.reviewerEmail}>{review.reviewerName ?? review.reviewerEmail}</a>
+						{:else}
+							{review.reviewerName ?? review.reviewerEmail}
+						{/if}
+						· {formatDateTime(review.createdAt)}
+					</span>
 				</div>
 				{#if review.hoursApprovedSeconds !== undefined}
 					<p>{formatHours(review.hoursApprovedSeconds)} approved</p>
@@ -68,6 +77,16 @@ let { reviews }: { reviews: Review[] } = $props()
 .history-when {
 	font-size: var(--text-xs);
 	color: var(--text-3);
+}
+
+.history-when a {
+	color: var(--text-2);
+	text-decoration: none;
+}
+
+.history-when a:hover {
+	color: var(--text);
+	text-decoration: underline;
 }
 
 .history p {

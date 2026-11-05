@@ -1,0 +1,474 @@
+<script lang="ts">
+import { goto } from "$app/navigation"
+import { page } from "$app/state"
+import { fetchReviewerProfile, type ReviewerProfile } from "../../lib/api"
+import { ApiError } from "../../lib/api-error"
+import { formatDateTime, formatHours, statusTone } from "../../lib/format"
+
+const roleInfo: { [_: string]: { detail: string; label: string } } = {
+	admin: {
+		detail: "Manages the roster, sessions and audit log, and can review every stage.",
+		label: "Admin",
+	},
+	auditor: {
+		detail: "Read-only access to the queue, reviews and audit log.",
+		label: "Auditor",
+	},
+	organizer: {
+		detail: "Reviews first pass and confirms, overrides or returns held second-pass ships.",
+		label: "Organiser",
+	},
+	reviewer: {
+		detail: "Claims first-pass ships, acknowledges warnings and records stage 1 decisions.",
+		label: "Reviewer",
+	},
+}
+
+let key = ""
+let profile = $state<ReviewerProfile | null>(null)
+let loading = $state(true)
+let error = $state("")
+let request = 0
+
+$effect((): void => {
+	const next = page.url.searchParams.get("reviewer")?.trim() ?? ""
+	if (next === "") {
+		void goto("/queue")
+		return
+	}
+
+	if (next === key) return
+
+	key = next
+	void load(next)
+})
+
+async function load(target: string): Promise<void> {
+	const current = ++request
+	loading = true
+	error = ""
+	profile = null
+
+	try {
+		profile = await fetchReviewerProfile(target)
+	} catch (err) {
+		if (current !== request) return
+
+		if (err instanceof ApiError && err.code === "unauthorized") {
+			void goto("/")
+			return
+		}
+
+		if (err instanceof ApiError && err.code === "not_found")
+			error = "Reviewer not found. They may not have reviewed for this programme."
+		else error = err instanceof Error ? err.message : "Could not load this reviewer."
+	} finally {
+		if (current === request) loading = false
+	}
+}
+
+function roleLabel(role: string | undefined): string {
+	return role ? (roleInfo[role]?.label ?? role) : "Not on the roster"
+}
+
+function roleDetail(role: string | undefined): string {
+	return role
+		? (roleInfo[role]?.detail ?? "This account has historical reviews.")
+		: "This reviewer has historical reviews but is not on the current roster."
+}
+
+function activeLabel(active: boolean | undefined): string {
+	if (active === undefined) return "Former reviewer"
+	return active ? "Active" : "Inactive"
+}
+
+function activeTone(active: boolean | undefined): string {
+	if (active === undefined) return "pending"
+	return active ? "approved" : "changes"
+}
+</script>
+
+<svelte:head>
+	<title>{profile ? `${profile.name ?? profile.email} · Reviewer` : "Reviewer"} · Half Life Review</title>
+</svelte:head>
+
+{#if loading}
+	<div class="skeleton ui-card">
+		<div></div>
+		<div></div>
+		<div></div>
+	</div>
+{:else if error || !profile}
+	<div class="ui-card ui-empty">
+		<strong>Cannot open this reviewer</strong>
+		<span>{error || "This reviewer does not exist."}</span>
+		<a class="ui-button" data-variant="outline" href="/queue">Back to the queue</a>
+	</div>
+{:else}
+	<section class="profile-head">
+		<div>
+			<p class="crumbs"><a href="/queue">Queue</a> / Reviewer</p>
+			<div class="title-line">
+				<h1>{profile.name ?? profile.email}</h1>
+				<span class="ui-badge" data-tone={activeTone(profile.active)}>{activeLabel(profile.active)}</span>
+			</div>
+			<p class="email">{profile.email}</p>
+		</div>
+		<div class="identity">
+			<div>
+				<span>Role</span>
+				<strong>{roleLabel(profile.role)}</strong>
+			</div>
+			<div>
+				<span>Joined</span>
+				<strong>{profile.joinedAt ? formatDateTime(profile.joinedAt) : "—"}</strong>
+			</div>
+			<div>
+				<span>Last sign-in</span>
+				<strong>{profile.lastLoginAt ? formatDateTime(profile.lastLoginAt) : "Never"}</strong>
+			</div>
+			<div>
+				<span>Last review</span>
+				<strong>{profile.stats.lastReviewAt ? formatDateTime(profile.stats.lastReviewAt) : "—"}</strong>
+			</div>
+		</div>
+	</section>
+
+	<div class="grid">
+		<section class="ui-card padded">
+			<h2>Permissions</h2>
+			<p class="role-detail">{roleDetail(profile.role)}</p>
+			<dl class="permissions">
+				<div>
+					<dt>Role</dt>
+					<dd>{roleLabel(profile.role)}</dd>
+				</div>
+				<div>
+					<dt>Tracks</dt>
+					<dd>{profile.tracks.length > 0 ? profile.tracks.join(", ") : "—"}</dd>
+				</div>
+				<div>
+					<dt>Extra permissions</dt>
+					<dd>{profile.permissions.length > 0 ? profile.permissions.join(", ") : "None beyond the role"}</dd>
+				</div>
+			</dl>
+		</section>
+
+		<section class="ui-card padded">
+			<h2>Review stats</h2>
+			<dl class="stats">
+				<div>
+					<dt>Total reviews</dt>
+					<dd>{profile.stats.total}</dd>
+				</div>
+				<div>
+					<dt>Approved</dt>
+					<dd>{profile.stats.approved}</dd>
+				</div>
+				<div>
+					<dt>Changes</dt>
+					<dd>{profile.stats.changes}</dd>
+				</div>
+				<div>
+					<dt>Rejected</dt>
+					<dd>{profile.stats.rejected}</dd>
+				</div>
+				<div>
+					<dt>Held</dt>
+					<dd>{profile.stats.held}</dd>
+				</div>
+				<div>
+					<dt>Second pass</dt>
+					<dd>{profile.stats.secondPass}</dd>
+				</div>
+				<div>
+					<dt>Invalidated</dt>
+					<dd>{profile.stats.invalidated}</dd>
+				</div>
+				<div>
+					<dt>Hours approved</dt>
+					<dd>{formatHours(profile.stats.hoursApprovedSeconds)}</dd>
+				</div>
+			</dl>
+		</section>
+	</div>
+
+	<section class="ui-card padded reviews">
+		<div class="section-head">
+			<h2>Reviews</h2>
+			<span>{profile.reviewTotal} {profile.reviewTotal === 1 ? "decision" : "decisions"}</span>
+		</div>
+
+		{#if profile.reviews.length === 0}
+			<div class="ui-empty">
+				<strong>No decisions yet</strong>
+				<span>This reviewer has not recorded a stage 1 or second-pass decision.</span>
+			</div>
+		{:else}
+			<ol class="review-list">
+				{#each profile.reviews as review (review.id)}
+					<li class:invalidated={review.invalidatedAt}>
+						<div class="review-head">
+							<a
+								class="ship"
+								data-sveltekit-reload
+								href={`/review/${encodeURIComponent(review.submissionId)}`}
+							>
+								{review.submissionTitle}
+							</a>
+							<span class="ui-badge" data-tone={statusTone(review.decision)}>{review.decision}</span>
+							<span class="ui-badge">Stage {review.stage}</span>
+							{#if review.held === 1}
+								<span class="ui-badge" data-tone="secondpass">Held</span>
+							{/if}
+							{#if review.invalidatedAt}
+								<span class="ui-badge" data-tone="changes">Invalidated</span>
+							{/if}
+							<time class="when" datetime={review.createdAt}>{formatDateTime(review.createdAt)}</time>
+						</div>
+						{#if review.hoursApprovedSeconds !== undefined}
+							<p class="hours">{formatHours(review.hoursApprovedSeconds)} approved</p>
+						{/if}
+						{#if review.invalidatedAt}
+							<p class="muted">Invalidated {formatDateTime(review.invalidatedAt)}.</p>
+						{/if}
+					</li>
+				{/each}
+			</ol>
+			{#if profile.reviewTotal > profile.reviews.length}
+				<p class="muted note">
+					Showing the latest {profile.reviews.length} of {profile.reviewTotal} decisions.
+				</p>
+			{/if}
+		{/if}
+	</section>
+{/if}
+
+<style>
+.profile-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-4);
+	align-items: flex-end;
+	justify-content: space-between;
+	padding-bottom: var(--space-5);
+}
+
+.crumbs {
+	font-size: var(--text-sm);
+	color: var(--text-3);
+}
+
+.crumbs a {
+	color: var(--text-2);
+	text-decoration: none;
+}
+
+.crumbs a:hover {
+	color: var(--text);
+}
+
+.title-line {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: baseline;
+	padding-top: var(--space-1);
+}
+
+h1 {
+	font-size: var(--text-2xl);
+}
+
+.email {
+	padding-top: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--text-2);
+}
+
+.identity {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-4);
+}
+
+.identity div {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.identity span {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.identity strong {
+	font-size: var(--text-sm);
+	font-weight: 600;
+	color: var(--text);
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-3);
+	margin-bottom: var(--space-3);
+}
+
+.grid h2,
+.reviews h2 {
+	padding-bottom: var(--space-2);
+	font-size: var(--text-md);
+}
+
+.role-detail {
+	font-size: var(--text-sm);
+	line-height: 1.5;
+	color: var(--text-2);
+}
+
+.permissions,
+.stats {
+	display: grid;
+	gap: var(--space-2);
+	padding-top: var(--space-3);
+}
+
+.permissions div,
+.stats div {
+	display: flex;
+	gap: var(--space-3);
+	align-items: baseline;
+	justify-content: space-between;
+	padding-bottom: var(--space-1);
+	border-bottom: 1px solid var(--border);
+}
+
+.permissions div:last-child,
+.stats div:last-child {
+	border-bottom: 0;
+}
+
+.permissions dt,
+.stats dt {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.permissions dd,
+.stats dd {
+	font-size: var(--text-sm);
+	font-weight: 600;
+	color: var(--text);
+	text-align: right;
+}
+
+.stats {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reviews {
+	margin-bottom: var(--space-4);
+}
+
+.section-head {
+	display: flex;
+	gap: var(--space-3);
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.section-head span {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.review-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding-top: var(--space-2);
+	list-style: none;
+}
+
+.review-list li {
+	padding: var(--space-2) var(--space-3);
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
+}
+
+.review-list li.invalidated {
+	opacity: 0.72;
+}
+
+.review-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+}
+
+.ship {
+	font-size: var(--text-sm);
+	font-weight: 600;
+	color: var(--text);
+	text-decoration: none;
+}
+
+.ship:hover {
+	text-decoration: underline;
+}
+
+.when {
+	margin-left: auto;
+	font-size: var(--text-xs);
+	color: var(--text-3);
+	white-space: nowrap;
+}
+
+.hours,
+.muted {
+	font-size: var(--text-sm);
+	color: var(--text-2);
+}
+
+.note {
+	padding-top: var(--space-3);
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.skeleton {
+	display: grid;
+	gap: 1px;
+	overflow: hidden;
+	background: var(--border);
+}
+
+.skeleton div {
+	height: 84px;
+	background: var(--surface);
+	animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	50% {
+		opacity: 0.55;
+	}
+}
+
+@media (max-width: 760px) {
+	.grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.identity {
+		width: 100%;
+	}
+
+	.review-head .when {
+		margin-left: 0;
+	}
+}
+</style>

@@ -18,6 +18,7 @@ import {
 	queueResponseSchema,
 	reviewBundleSchema,
 	reviewedResponseSchema,
+	reviewerProfileSchema,
 	searchResponseSchema,
 	sendBackResultSchema,
 } from "./contract"
@@ -50,6 +51,7 @@ export type FakeDelivery = InferOutput<typeof fakeDeliveriesResponseSchema>["del
 export type Member = InferOutput<typeof memberSchema>
 export type AuditEntry = InferOutput<typeof auditResponseSchema>["entries"][number]
 export type Audit = InferOutput<typeof auditResponseSchema>
+export type ReviewerProfile = InferOutput<typeof reviewerProfileSchema>
 
 export const program = "half-life"
 
@@ -260,6 +262,12 @@ export interface AuditFilters {
 	action?: string
 	days?: number
 	q?: string
+}
+
+// fetchReviewerProfile returns one reviewer's roster entry, stats and recent decisions.
+export async function fetchReviewerProfile(key: string): Promise<ReviewerProfile> {
+	const response = await fetch(`/api/v1/programs/${program}/reviewers/${encodeURIComponent(key)}`)
+	return parseJSON(response, reviewerProfileSchema)
 }
 
 // fetchAudit lists audit entries, optionally narrowed by action, age or a search term.
