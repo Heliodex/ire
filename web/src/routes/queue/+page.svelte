@@ -3,6 +3,7 @@ import { onMount, tick } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
 import { browser } from "$app/env"
 import { goto } from "$app/navigation"
+import { page } from "$app/state"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import {
@@ -63,7 +64,7 @@ let selected = $state(
 			)
 		: 0,
 )
-let search = $state(savedQueue?.search ?? "")
+let search = $state(savedQueue?.search ?? searchFromURL())
 let sortKey = $state<SortKey | null>(
 	savedQueue && sortKeys.includes(savedQueue.sortKey as SortKey) ? (savedQueue.sortKey as SortKey) : null,
 )
@@ -109,7 +110,11 @@ const visible = $derived(
 	queue.items.filter(item => {
 		if (search.trim() === "") return true
 		const needle = search.trim().toLowerCase()
-		return item.title.toLowerCase().includes(needle) || item.makerName.toLowerCase().includes(needle)
+		return (
+			item.title.toLowerCase().includes(needle)
+			|| item.makerName.toLowerCase().includes(needle)
+			|| humanStatus(item.status).toLowerCase().includes(needle)
+		)
 	}),
 )
 
@@ -588,7 +593,7 @@ function claimError(err: unknown): string {
 		: "Another reviewer has already claimed this ship."
 }
 
-async function open(item: QueueItem): Promise<void> {
+async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 	opening = item.id
 	actionError = ""
 	try {
@@ -599,13 +604,43 @@ async function open(item: QueueItem): Promise<void> {
 		if (index !== -1) selected = index
 
 		saveQueueState()
-		window.location.assign(`/review/${encodeURIComponent(item.id)}`)
+		let target = `/review/${encodeURIComponent(item.id)}`
+		if (tab) target += `?tab=${tab}`
+		window.location.assign(target)
 	} catch (err) {
 		actionError = claimError(err)
 		await load(filter, stage, true)
 	} finally {
 		opening = ""
 	}
+}
+
+// openChecks claims the ship like a normal open, then lands on its checks tab.
+function openChecks(item: QueueItem, event?: Event): void {
+	event?.stopPropagation()
+	event?.preventDefault()
+	void open(item, "checks")
+}
+
+// searchFromURL restores a shared filter, e.g. from a status badge link. It stays empty during prerendering, which has no query string.
+function searchFromURL(): string {
+	if (!browser) return ""
+
+	return page.url.searchParams.get("search") ?? ""
+}
+
+// filterByStatus narrows the text search to one status when its badge is activated; activating it again clears the search. The filter lives in the URL so it survives reloads and links.
+function filterByStatus(item: QueueItem, event: MouseEvent): void {
+	event.preventDefault()
+	event.stopPropagation()
+	const label = humanStatus(item.status)
+	search = search === label ? "" : label
+	selected = 0
+
+	const url = new URL(page.url.href)
+	if (search === "") url.searchParams.delete("search")
+	else url.searchParams.set("search", search)
+	history.replaceState(history.state, "", url)
 }
 </script>
 
@@ -865,13 +900,16 @@ async function open(item: QueueItem): Promise<void> {
 						<span class="inline-theme">{item.theme ?? ""}</span>
 					</span>
 					<span class="badges">
-						<span
+						<a
+							aria-label={`Show only ${humanStatus(item.status)} ships`}
 							class="ui-badge status"
 							data-tone={statusTone(item.status)}
+							href={`/queue?search=${encodeURIComponent(humanStatus(item.status))}`}
+							onclick={(event: MouseEvent): void => filterByStatus(item, event)}
 							title={item.claimedBy ? `Claimed by ${item.claimedBy}` : humanStatus(item.status)}
 						>
 							{item.claimedBy === session.me?.user.email ? "Yours" : humanStatus(item.status)}
-						</span>
+						</a>
 						{#if item.previousReviewer}
 							<span class="ui-badge previous" title={`Previously reviewed by ${item.previousReviewer}`}>
 								{item.previousReviewer === session.me?.user.email
@@ -892,7 +930,12 @@ async function open(item: QueueItem): Promise<void> {
 							<span class="age {ageTone(item.ingestedAt)}">{timeAgo(item.ingestedAt)}</span>
 						</span>
 					</div>
-					<span class="checks">
+					<a
+						aria-label={`Open ${item.title} on its checks tab`}
+						class="checks"
+						href={`/review/${encodeURIComponent(item.id)}?tab=checks`}
+						onclick={(event: MouseEvent): void => openChecks(item, event)}
+					>
 						<span class="counts">
 							{#if item.status === "checking"}
 								<span class="pending-text">Checks running…</span>
@@ -946,7 +989,7 @@ async function open(item: QueueItem): Promise<void> {
 								{/if}
 							</span>
 						{/if}
-					</span>
+					</a>
 				</button>
 			{/each}
 		</div>
@@ -1351,6 +1394,13 @@ h1 {
 	gap: 3px;
 	align-items: center;
 	overflow: hidden;
+}
+
+a.checks,
+a.status {
+	color: inherit;
+	text-decoration: none;
+	cursor: pointer;
 }
 
 .dot-more {
