@@ -23,12 +23,8 @@ type fakeHCA struct {
 	server *httptest.Server
 	key    *rsa.PrivateKey
 
-	mu          sync.Mutex
-	nonce       string
-	email       string
-	subject     string
-	displayName string
-	picture     string
+	mu                                          sync.Mutex
+	nonce, email, subject, displayName, picture string
 }
 
 // newFakeHCA starts the provider and returns its live URL.

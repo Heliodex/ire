@@ -152,8 +152,7 @@ type decisionRecord struct {
 	person                                   reviewer
 	request                                  contract.DecisionRequest
 	reviewID, status                         string
-	stage, submissionStage                   int
-	hours                                    int
+	stage, submissionStage, hours            int
 	note, reason, overrideReason, supersedes string
 	held, secondPass                         bool
 	event                                    string
@@ -426,23 +425,18 @@ func (a *reviewApp) writeDecisionAgain(w http.ResponseWriter, r *http.Request, s
 
 // reviewRow is the subset of a stored decision needed to replay a response.
 type reviewRow struct {
-	ID           string
-	Held         int
-	HeldReason   string
-	Decision     string
-	Hours        int
-	NoteToMaker  string
-	ReviewerName string
-	CreatedAt    string
+	ID                                   string
+	Held                                 int
+	HeldReason, Decision                 string
+	Hours                                int
+	NoteToMaker, ReviewerName, CreatedAt string
 }
 
 // heldReview is the stage 1 review waiting for a second pass.
 type heldReview struct {
-	ID          string
-	ReviewerID  string
-	Decision    string
-	Hours       int
-	NoteToMaker string
+	ID, ReviewerID, Decision string
+	Hours                    int
+	NoteToMaker              string
 }
 
 // heldReview reads the latest held, non-invalidated first-pass review for a ship.

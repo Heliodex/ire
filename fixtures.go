@@ -16,59 +16,33 @@ import (
 
 // A fixture is a real half-life project row reduced to the fields a reviewer needs: the repo and description, the evidence, the claimed hours and a prescribed check outcome. The fixture suite stands in for the network checks until they are ported.
 type fixture struct {
-	externalID   string
-	title        string
-	description  string
-	repoURL      string
-	readme       string
-	thumbnailURL string
-	theme        string
-	makerEmail   string
-	makerName    string
-	tier         int
-	hoursClaimed int
-	hoursJournal int
-	priority     int
-	journals     []fixtureJournal
-	bom          []fixtureBom
-	checks       []fixtureCheck
-	priorReview  *fixturePriorReview
+	externalID, title, description, repoURL, readme, thumbnailURL, theme, makerEmail, makerName string
+	tier, hoursClaimed, hoursJournal, priority                                                  int
+	journals                                                                                    []fixtureJournal
+	bom                                                                                         []fixtureBom
+	checks                                                                                      []fixtureCheck
+	priorReview                                                                                 *fixturePriorReview
 }
 
 type fixtureJournal struct {
-	at     string
-	hours  int
-	title  string
-	text   string
-	clips  int
-	media  int
-	coverS int
+	at                   string
+	hours                int
+	title, text          string
+	clips, media, coverS int
 }
 
 type fixtureBom struct {
-	name    string
-	purpose string
-	qty     int
-	cents   int
-	vendor  string
-	link    string
+	name, purpose string
+	qty, cents    int
+	vendor, link  string
 }
 
 type fixtureCheck struct {
-	key      string
-	label    string
-	group    string
-	status   string
-	severity string
-	summary  string
-	detail   string
+	key, label, group, status, severity, summary, detail string
 }
 
 type fixturePriorReview struct {
-	result   string
-	feedback string
-	reviewer string
-	at       string
+	result, feedback, reviewer, at string
 }
 
 type checkCounts struct {

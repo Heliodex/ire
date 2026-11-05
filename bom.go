@@ -20,21 +20,18 @@ var bomLinkPattern = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
 
 // bomSummary is the parsed shape of the repository's bill of materials.
 type bomSummary struct {
-	Path       string
-	Rows       int
-	TotalCents int
-	HasPrice   bool
-	HasVendor  bool
-	Parts      []string
-	Items      []bomItem
-	Err        error
+	Path                string
+	Rows, TotalCents    int
+	HasPrice, HasVendor bool
+	Parts               []string
+	Items               []bomItem
+	Err                 error
 }
 
 // bomItem is one parsed repository BOM row with the values compared against the submitted BOM.
 type bomItem struct {
-	Name      string
-	Quantity  int
-	UnitCents int
+	Name                string
+	Quantity, UnitCents int
 }
 
 // fetchBOM reads the first bill-of-materials file and parses its rows.

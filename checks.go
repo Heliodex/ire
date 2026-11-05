@@ -65,11 +65,10 @@ type githubCommit struct {
 
 // githubClient calls the GitHub REST API with the configured token.
 type githubClient struct {
-	http  *http.Client
-	base  string
-	token string
-	cache *forgeCache
-	clock func() time.Time
+	http        *http.Client
+	base, token string
+	cache       *forgeCache
+	clock       func() time.Time
 }
 
 // now returns the client's clock, falling back to wall time when a test did not set one.

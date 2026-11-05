@@ -94,37 +94,20 @@ const (
 
 // config is the process-level configuration that never belongs in SQLite: the shared secrets and the delivery mode.
 type config struct {
-	IngestSecret      string
-	OutboundSecret    string
-	OutboundURL       string
-	GitHubToken       string
-	GitHubAPIBase     string
-	HackatimeAPIBase  string
-	HCClientID        string
-	HCClientSecret    string
-	HCRedirectURI     string
-	HCAuthBase        string
-	BootstrapEmail    string
-	BootstrapRole     string
-	SeedFixtures      bool
-	AllowDevAccounts  bool
-	DisableRepoChecks bool
-	EnableJobs        bool
-	OutboundDryRun    bool
-	Shadow            bool
-	Enqueue           func(context.Context, app.JobRequest) (bool, error)
+	IngestSecret, OutboundSecret, OutboundURL, GitHubToken, GitHubAPIBase, HackatimeAPIBase, HCClientID, HCClientSecret, HCRedirectURI, HCAuthBase, BootstrapEmail, BootstrapRole string
+	SeedFixtures, AllowDevAccounts, DisableRepoChecks, EnableJobs, OutboundDryRun, Shadow                                                                                         bool
+	Enqueue                                                                                                                                                                       func(context.Context, app.JobRequest) (bool, error)
 }
 
 // reviewApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.
 type reviewApp struct {
-	store          *storage.Client
-	client         *http.Client
-	mux            *http.ServeMux
-	config         config
-	clock          func() time.Time
-	browserLimiter *rateLimiter
-	machineLimiter *rateLimiter
-	forgeCache     *forgeCache
+	store                          *storage.Client
+	client                         *http.Client
+	mux                            *http.ServeMux
+	config                         config
+	clock                          func() time.Time
+	browserLimiter, machineLimiter *rateLimiter
+	forgeCache                     *forgeCache
 }
 
 // newReviewApp builds the routes around one store and outbound client.
@@ -257,6 +240,7 @@ func (a *reviewApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(path, "/review/") {
 			page = "/review"
 		}
+
 		if strings.HasPrefix(path, "/reviewers/") {
 			page = "/reviewers"
 		}
@@ -385,10 +369,6 @@ func writeStorage(w http.ResponseWriter, err error) {
 
 // programRow is the subset of a programme the prototype reads.
 type programRow struct {
-	ID            string
-	Slug          string
-	Name          string
-	OutboundURL   string
-	CreatedAt     string
-	PolicyVersion int
+	ID, Slug, Name, OutboundURL, CreatedAt string
+	PolicyVersion                          int
 }
