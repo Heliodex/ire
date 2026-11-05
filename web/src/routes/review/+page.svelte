@@ -24,6 +24,7 @@ import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
+import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
 import { formatDateTime, formatHours, formatMoney, formatMoneyAmount, humanStatus, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
@@ -875,6 +876,7 @@ async function saveDraftNow(): Promise<void> {
 			{#if reviewed}
 				<section class="ui-card padded decision">
 					<h2>{submission.status === "withdrawn" ? "Withdrawn" : "Final decision"}</h2>
+					<TimeEvidenceBar segments={timeSegments} />
 					<p class="policy">
 						{submission.status === "withdrawn"
 							? "This ship was withdrawn before a final decision."
@@ -884,6 +886,7 @@ async function saveDraftNow(): Promise<void> {
 			{:else if readOnly}
 				<section class="ui-card padded decision">
 					<h2>Read-only shadow</h2>
+					<TimeEvidenceBar segments={timeSegments} />
 					<p class="policy">
 						This copy is here for review and parity only. Claims, drafts and decisions stay in Ari, and
 						Review sends nothing to the maker.
@@ -893,35 +896,7 @@ async function saveDraftNow(): Promise<void> {
 				<section class="ui-card padded decision">
 					<h2>Decision</h2>
 
-					{#if timeSegments.length > 0}
-						<div class="time-evidence">
-							<span class="time-title">Time evidence</span>
-							<div
-								aria-label={timeSegments
-									.map(segment => `${segment.label} ${formatHours(segment.value)}`)
-									.join(", ")}
-								class="time-bar"
-								role="img"
-							>
-								{#each timeSegments as segment (segment.tone)}
-									<span
-										class="time-segment"
-										data-tone={segment.tone}
-										style:flex-grow={segment.value}
-									></span>
-								{/each}
-							</div>
-							<ul class="time-legend">
-								{#each timeSegments as segment (segment.tone)}
-									<li>
-										<span class="time-dot" data-tone={segment.tone}></span>
-										<span>{segment.label}</span>
-										<strong>{formatHours(segment.value)}</strong>
-									</li>
-								{/each}
-							</ul>
-						</div>
-					{/if}
+					<TimeEvidenceBar segments={timeSegments} />
 
 					<label class="field">
 						<span>Approved hours</span>
@@ -1527,85 +1502,6 @@ h1 {
 	font-size: var(--text-xs);
 	color: var(--text-3);
 	border-top: 1px solid var(--border);
-}
-
-.time-evidence {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-2);
-	padding-top: var(--space-3);
-}
-
-.time-title {
-	font-size: var(--text-xs);
-	font-weight: 700;
-	color: var(--text-3);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-
-.time-bar {
-	display: flex;
-	gap: 2px;
-	height: 10px;
-	overflow: hidden;
-	background: var(--surface-3);
-	border-radius: var(--radius-full);
-}
-
-.time-segment {
-	flex-basis: 0;
-	min-width: 2px;
-}
-
-.time-segment[data-tone="journals"],
-.time-dot[data-tone="journals"] {
-	background: var(--accent-purple);
-}
-
-.time-segment[data-tone="lapse"],
-.time-dot[data-tone="lapse"] {
-	background: var(--accent-orange);
-}
-
-.time-segment[data-tone="hackatime"],
-.time-dot[data-tone="hackatime"] {
-	background: var(--accent-blue);
-}
-
-.time-segment[data-tone="cut"],
-.time-dot[data-tone="cut"] {
-	background: var(--text-3);
-}
-
-.time-legend {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-1) var(--space-3);
-	padding: 0;
-	margin: 0;
-	font-size: var(--text-xs);
-	color: var(--text-3);
-	list-style: none;
-}
-
-.time-legend li {
-	display: inline-flex;
-	gap: 4px;
-	align-items: center;
-}
-
-.time-dot {
-	flex: none;
-	width: 7px;
-	height: 7px;
-	border-radius: 2px;
-}
-
-.time-legend strong {
-	font-weight: 700;
-	font-variant-numeric: tabular-nums;
-	color: var(--text-2);
 }
 
 .field {
