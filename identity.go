@@ -36,9 +36,8 @@ func (a *reviewApp) duplicateChecks(ctx context.Context, programID string, reque
 	)
 
 	for rows.Next() {
-		var (
-			externalID, title, otherRepo, otherDemo, otherEmail, otherHackatime, otherSlack string
-		)
+		var externalID, title, otherRepo, otherDemo, otherEmail, otherHackatime, otherSlack string
+
 		if err := rows.Scan(&externalID, &title, &otherRepo, &otherDemo, &otherEmail, &otherHackatime, &otherSlack); err != nil {
 			continue
 		}

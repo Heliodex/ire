@@ -24,9 +24,7 @@ const (
 
 // loginFlow is the server-side half of one authorisation attempt: PKCE, nonce and the exact redirect used.
 type loginFlow struct {
-	Verifier    string
-	Nonce       string
-	RedirectURI string
+	Verifier, Nonce, RedirectURI string
 }
 
 // hcaConfigured reports whether the OAuth application has the credentials the flow needs.
