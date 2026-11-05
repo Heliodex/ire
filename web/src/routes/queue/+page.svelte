@@ -131,12 +131,15 @@ const visible = $derived(
 			const needle = search.trim().toLowerCase()
 			return item.title.toLowerCase().includes(needle) || item.makerName.toLowerCase().includes(needle)
 		})
-		.sort(compareItems),
+		// toSorted keeps the cached rows untouched while sorting the filtered copy.
+		.toSorted(compareItems),
 )
 
 // checkScore ranks a ship by how much attention its checks need: blocking failures first, then warnings, then clean ships.
 function checkScore(item: QueueItem): number {
-	return (item.checkSummary.fail + item.checkSummary.error) * 100 + item.checkSummary.warn * 10 - item.checkSummary.pass
+	return (
+		(item.checkSummary.fail + item.checkSummary.error) * 100 + item.checkSummary.warn * 10 - item.checkSummary.pass
+	)
 }
 
 // compareItems orders two rows by the active sort header, keeping the server order when nothing is sorted.
@@ -169,6 +172,8 @@ function compareItems(a: QueueItem, b: QueueItem): number {
 		case "checks":
 			result = checkScore(a) - checkScore(b)
 			break
+		default:
+			break
 	}
 
 	return result * sortDir
@@ -179,9 +184,8 @@ function toggleSort(key: SortKey): void {
 	if (sortKey !== key) {
 		sortKey = key
 		sortDir = 1
-	} else if (sortDir === 1) {
-		sortDir = -1
-	} else {
+	} else if (sortDir === 1) sortDir = -1
+	else {
 		sortKey = null
 		sortDir = 1
 	}
@@ -785,30 +789,94 @@ async function open(item: QueueItem): Promise<void> {
 		<div class="ui-card list" bind:this={listElement} class:refreshing>
 			<div class="column-head">
 				<span></span>
-				<button aria-label={sortLabel("ship", "Ship")} class="sort" onclick={() => toggleSort("ship")} type="button"
-					>Ship{#if sortKey === "ship"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+				<button
+					aria-label={sortLabel("ship", "Ship")}
+					class="sort"
+					onclick={() => toggleSort("ship")}
+					type="button"
 				>
-				<button aria-label={sortLabel("maker", "Maker")} class="sort" onclick={() => toggleSort("maker")} type="button"
-					>Maker{#if sortKey === "maker"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+					Ship
+					{#if sortKey === "ship"}
+						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+					{/if}
+				</button>
+				<button
+					aria-label={sortLabel("maker", "Maker")}
+					class="sort"
+					onclick={() => toggleSort("maker")}
+					type="button"
 				>
-				<button aria-label={sortLabel("status", "Status")} class="sort" onclick={() => toggleSort("status")} type="button"
-					>Status{#if sortKey === "status"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+					Maker
+					{#if sortKey === "maker"}
+						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+					{/if}
+				</button>
+				<button
+					aria-label={sortLabel("status", "Status")}
+					class="sort"
+					onclick={() => toggleSort("status")}
+					type="button"
 				>
-				<button aria-label={sortLabel("type", "Type")} class="sort" onclick={() => toggleSort("type")} type="button"
-					>Type{#if sortKey === "type"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+					Status
+					{#if sortKey === "status"}
+						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+					{/if}
+				</button>
+				<button
+					aria-label={sortLabel("type", "Type")}
+					class="sort"
+					onclick={() => toggleSort("type")}
+					type="button"
 				>
-				<button aria-label={sortLabel("version", "Version")} class="sort" onclick={() => toggleSort("version")} type="button"
-					>Ver{#if sortKey === "version"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+					Type
+					{#if sortKey === "type"}
+						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+					{/if}
+				</button>
+				<button
+					aria-label={sortLabel("version", "Version")}
+					class="sort"
+					onclick={() => toggleSort("version")}
+					type="button"
 				>
-				<button aria-label={sortLabel("claimed", "Claimed hours")} class="sort" onclick={() => toggleSort("claimed")} type="button"
-					>Claimed{#if sortKey === "claimed"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+					Ver
+					{#if sortKey === "version"}
+						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+					{/if}
+				</button>
+				<button
+					aria-label={sortLabel("claimed", "Claimed hours")}
+					class="sort"
+					onclick={() => toggleSort("claimed")}
+					type="button"
 				>
-				<button aria-label={sortLabel("age", "Age")} class="sort" onclick={() => toggleSort("age")} type="button"
-					>Age{#if sortKey === "age"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+					Claimed
+					{#if sortKey === "claimed"}
+						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+					{/if}
+				</button>
+				<button
+					aria-label={sortLabel("age", "Age")}
+					class="sort"
+					onclick={() => toggleSort("age")}
+					type="button"
 				>
-				<button aria-label={sortLabel("checks", "Checks")} class="sort" onclick={() => toggleSort("checks")} type="button"
-					>Checks{#if sortKey === "checks"}<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>{/if}</button
+					Age
+					{#if sortKey === "age"}
+						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+					{/if}
+				</button>
+				<button
+					aria-label={sortLabel("checks", "Checks")}
+					class="sort"
+					onclick={() => toggleSort("checks")}
+					type="button"
 				>
+					Checks
+					{#if sortKey === "checks"}
+						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+					{/if}
+				</button>
 			</div>
 			{#each visible as item, index (item.id)}
 				<button
@@ -908,7 +976,9 @@ async function open(item: QueueItem): Promise<void> {
 								class="dots"
 								role="img"
 							>
-								{#each groupChecks(wideChecks ? item.checks : item.checks.slice(0, maxCheckDots)) as group (group.group)}
+								{#each groupChecks(
+									wideChecks ? item.checks : item.checks.slice(0, maxCheckDots),
+								) as group (group.group)}
 									<span class="dot-group">
 										{#each group.items as check (check.key)}
 											<span
@@ -967,7 +1037,7 @@ async function open(item: QueueItem): Promise<void> {
 {#if previewItem}
 	<div aria-hidden="true" class="preview-veil">
 		{#if previewItem.thumbnailUrl}
-			<img alt="" draggable="false" src={previewItem.thumbnailUrl} />
+			<img alt="" draggable="false" src={previewItem.thumbnailUrl}>
 		{:else}
 			<span class="preview-empty">No project image</span>
 		{/if}
@@ -1132,10 +1202,10 @@ h1 {
 	min-width: 0;
 	padding: 0;
 	overflow: hidden;
+	text-overflow: ellipsis;
 	font: inherit;
 	color: inherit;
 	text-align: left;
-	text-overflow: ellipsis;
 	white-space: nowrap;
 	cursor: pointer;
 	background: none;
