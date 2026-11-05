@@ -384,6 +384,7 @@ func TestFixturesAppearInQueue(t *testing.T) {
 	if bundle.Submission.MakerEmail != "c6h@example.com" {
 		t.Errorf("maker email = %q, want full email", bundle.Submission.MakerEmail)
 	}
+
 	if bundle.Submission.MakerSlackID == nil || *bundle.Submission.MakerSlackID != "U0C6HSTAR" {
 		t.Errorf("maker slack = %+v, want U0C6HSTAR", bundle.Submission.MakerSlackID)
 	}

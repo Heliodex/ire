@@ -298,6 +298,7 @@ func TestDemoResultMapping(t *testing.T) {
 // TestIDHelpers covers the identifier utilities.
 func TestIDHelpers(t *testing.T) {
 	seen := map[string]bool{}
+
 	for range 10 {
 		id := newID("evt")
 		if len(id) < 5 || seen[id] {
