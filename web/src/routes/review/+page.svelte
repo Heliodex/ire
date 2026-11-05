@@ -31,6 +31,12 @@ import { session } from "../../lib/session.svelte.js"
 const tabKeys = ["overview", "checks", "journal", "bom", "evidence", "history"] as const
 type Tab = (typeof tabKeys)[number]
 
+interface TimeSegment {
+	label: string
+	tone: "journals" | "lapse" | "hackatime" | "cut"
+	value: number
+}
+
 let bundle = $state<Bundle | null>(null)
 let id = $state("")
 let loading = $state(true)
@@ -73,6 +79,19 @@ const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const canApprove = $derived(!reviewed && blocking.length === 0 && (secondPass || missingAcks.length === 0))
+const approvedSeconds = $derived(Math.max(0, Math.round((Number(hours) || 0) * 3600)))
+const timeSegments = $derived.by((): TimeSegment[] => {
+	const claimed = submission?.hoursClaimedSeconds ?? 0
+	const timelapsed = (bundle?.journals ?? []).reduce((sum, entry) => sum + entry.coveredSeconds, 0)
+	const segments: TimeSegment[] = [
+		{ label: "Journalled", tone: "journals", value: submission?.hoursJournalSeconds ?? 0 },
+		{ label: "Timelapsed", tone: "lapse", value: timelapsed },
+		{ label: "Hackatimed", tone: "hackatime", value: submission?.hoursHackatimeSeconds ?? 0 },
+		{ label: "Deflated", tone: "cut", value: Math.max(0, claimed - approvedSeconds) },
+	]
+
+	return segments.filter(segment => segment.value > 0)
+})
 const backPath = $derived(page.url.searchParams.get("from") === "reviewed" ? "/reviewed" : "/queue")
 const backLabel = $derived(backPath === "/reviewed" ? "Reviewed" : "Queue")
 
@@ -416,7 +435,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		const result = await decideShip(id, {
 			acknowledgements,
 			decision,
-			hoursApprovedSeconds: Math.max(0, Math.round(hours * 3600)),
+			hoursApprovedSeconds: approvedSeconds,
 			idempotencyKey: key,
 			internalNote: internalNote.trim(),
 			noteToMaker: note.trim(),
@@ -873,6 +892,36 @@ async function saveDraftNow(): Promise<void> {
 			{:else}
 				<section class="ui-card padded decision">
 					<h2>Decision</h2>
+
+					{#if timeSegments.length > 0}
+						<div class="time-evidence">
+							<span class="time-title">Time evidence</span>
+							<div
+								aria-label={timeSegments
+									.map(segment => `${segment.label} ${formatHours(segment.value)}`)
+									.join(", ")}
+								class="time-bar"
+								role="img"
+							>
+								{#each timeSegments as segment (segment.tone)}
+									<span
+										class="time-segment"
+										data-tone={segment.tone}
+										style:flex-grow={segment.value}
+									></span>
+								{/each}
+							</div>
+							<ul class="time-legend">
+								{#each timeSegments as segment (segment.tone)}
+									<li>
+										<span class="time-dot" data-tone={segment.tone}></span>
+										<span>{segment.label}</span>
+										<strong>{formatHours(segment.value)}</strong>
+									</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
 
 					<label class="field">
 						<span>Approved hours</span>
@@ -1478,6 +1527,85 @@ h1 {
 	font-size: var(--text-xs);
 	color: var(--text-3);
 	border-top: 1px solid var(--border);
+}
+
+.time-evidence {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding-top: var(--space-3);
+}
+
+.time-title {
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-3);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.time-bar {
+	display: flex;
+	gap: 2px;
+	height: 10px;
+	overflow: hidden;
+	background: var(--surface-3);
+	border-radius: var(--radius-full);
+}
+
+.time-segment {
+	flex-basis: 0;
+	min-width: 2px;
+}
+
+.time-segment[data-tone="journals"],
+.time-dot[data-tone="journals"] {
+	background: var(--accent-purple);
+}
+
+.time-segment[data-tone="lapse"],
+.time-dot[data-tone="lapse"] {
+	background: var(--accent-orange);
+}
+
+.time-segment[data-tone="hackatime"],
+.time-dot[data-tone="hackatime"] {
+	background: var(--accent-blue);
+}
+
+.time-segment[data-tone="cut"],
+.time-dot[data-tone="cut"] {
+	background: var(--text-3);
+}
+
+.time-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1) var(--space-3);
+	padding: 0;
+	margin: 0;
+	font-size: var(--text-xs);
+	color: var(--text-3);
+	list-style: none;
+}
+
+.time-legend li {
+	display: inline-flex;
+	gap: 4px;
+	align-items: center;
+}
+
+.time-dot {
+	flex: none;
+	width: 7px;
+	height: 7px;
+	border-radius: 2px;
+}
+
+.time-legend strong {
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-2);
 }
 
 .field {
