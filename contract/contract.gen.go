@@ -2217,6 +2217,9 @@ func (j *PriorReview) UnmarshalJSON(value []byte) error {
 }
 
 type QueueCheck struct {
+	// Group corresponds to the JSON schema field "group".
+	Group string `json:"group" yaml:"group" mapstructure:"group"`
+
 	// Key corresponds to the JSON schema field "key".
 	Key string `json:"key" yaml:"key" mapstructure:"key"`
 
@@ -2236,6 +2239,9 @@ func (j *QueueCheck) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
+	if _, ok := raw["group"]; raw != nil && !ok {
+		return fmt.Errorf("field group in QueueCheck: required")
+	}
 	if _, ok := raw["key"]; raw != nil && !ok {
 		return fmt.Errorf("field key in QueueCheck: required")
 	}
@@ -2252,6 +2258,9 @@ func (j *QueueCheck) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
+	}
+	if utf8.RuneCountInString(string(plain.Group)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "group", 1)
 	}
 	if utf8.RuneCountInString(string(plain.Key)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)

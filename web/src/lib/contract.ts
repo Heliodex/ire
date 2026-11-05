@@ -187,6 +187,7 @@ export const queueCountsSchema = pipe(
 
 export const queueCheckSchema = pipe(
 	object({
+		group: pipe(string(), minLength(1)),
 		key: pipe(string(), minLength(1)),
 		label: pipe(string(), minLength(1)),
 		severity: pipe(string(), minLength(1)),

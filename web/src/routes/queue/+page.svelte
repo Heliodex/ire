@@ -4,7 +4,7 @@ import { SvelteMap } from "svelte/reactivity"
 import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import { checkTone } from "../../lib/checks"
+import { checkTone, groupChecks } from "../../lib/checks"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import { formatDateTime, formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
@@ -508,14 +508,18 @@ async function open(item: QueueItem): Promise<void> {
 								class="dots"
 								role="img"
 							>
-								{#each item.checks as check (check.key)}
-									<span
-										aria-hidden="true"
-										class="dot"
-										data-tone={checkTone(check)}
-										title={`${check.label}: ${check.status}`}
-									>
-										<CheckIcon status={check.status} />
+								{#each groupChecks(item.checks) as group (group.group)}
+									<span class="dot-group">
+										{#each group.items as check (check.key)}
+											<span
+												aria-hidden="true"
+												class="dot"
+												data-tone={checkTone(check)}
+												title={`${check.label}: ${check.status}`}
+											>
+												<CheckIcon status={check.status} />
+											</span>
+										{/each}
 									</span>
 								{/each}
 							</span>
@@ -837,8 +841,18 @@ h1 {
 .dots {
 	display: flex;
 	flex-wrap: nowrap;
-	gap: 1px;
+	gap: 3px;
 	overflow: hidden;
+}
+
+.dot-group {
+	display: flex;
+	gap: 1px;
+}
+
+.dot-group + .dot-group {
+	padding-left: 4px;
+	border-left: 1px solid var(--border-2);
 }
 
 .dot {

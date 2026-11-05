@@ -187,7 +187,7 @@ func (a *reviewApp) queueChecks(ctx context.Context, items []contract.QueueItem)
 		out[items[i].ID] = []contract.QueueCheck{}
 	}
 
-	rows, err := a.store.Query(ctx, `select c.submission_id, c.check_key, c.label, c.status, c.severity
+	rows, err := a.store.Query(ctx, `select c.submission_id, c.check_key, c.label, c.group_key, c.status, c.severity
 		from check_result c
 		join submission s on s.id = c.submission_id
 		where c.submission_id in (`+placeholders+`) and c.version = s.version
@@ -205,7 +205,7 @@ func (a *reviewApp) queueChecks(ctx context.Context, items []contract.QueueItem)
 			check        contract.QueueCheck
 		)
 
-		if err := rows.Scan(&submissionID, &check.Key, &check.Label, &check.Status, &check.Severity); err != nil {
+		if err := rows.Scan(&submissionID, &check.Key, &check.Label, &check.Group, &check.Status, &check.Severity); err != nil {
 			return nil, err
 		}
 
