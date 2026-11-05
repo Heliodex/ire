@@ -257,6 +257,9 @@
 			"items": {
 				"type": "object",
 				"properties": {
+					"approvedSeconds": {
+						"type": "integer"
+					},
 					"at": {
 						"type": "string",
 						"minLength": 1
@@ -279,6 +282,9 @@
 					"mediaCount": {
 						"type": "integer",
 						"minimum": 0
+					},
+					"reviewerNote": {
+						"type": "string"
 					},
 					"seconds": {
 						"type": "integer",

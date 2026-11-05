@@ -1624,7 +1624,43 @@ func (j *InviteMember) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type JournalAdjustment struct {
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hoursApprovedSeconds".
+	HoursApprovedSeconds int `json:"hoursApprovedSeconds" yaml:"hoursApprovedSeconds" mapstructure:"hoursApprovedSeconds"`
+
+	// Journal corresponds to the JSON schema field "journal".
+	Journal JournalEntry `json:"journal" yaml:"journal" mapstructure:"journal"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *JournalAdjustment) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["hoursApprovedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursApprovedSeconds in JournalAdjustment: required")
+	}
+	if _, ok := raw["journal"]; raw != nil && !ok {
+		return fmt.Errorf("field journal in JournalAdjustment: required")
+	}
+	type Plain JournalAdjustment
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.HoursApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursApprovedSeconds", 0)
+	}
+	*j = JournalAdjustment(plain)
+	return nil
+}
+
 type JournalEntry struct {
+	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
+	ApprovedSeconds *int `json:"approvedSeconds,omitempty,omitzero" yaml:"approvedSeconds,omitempty" mapstructure:"approvedSeconds,omitempty"`
+
 	// At corresponds to the JSON schema field "at".
 	At string `json:"at" yaml:"at" mapstructure:"at"`
 
@@ -1642,6 +1678,9 @@ type JournalEntry struct {
 
 	// MediaCount corresponds to the JSON schema field "mediaCount".
 	MediaCount int `json:"mediaCount" yaml:"mediaCount" mapstructure:"mediaCount"`
+
+	// ReviewerNote corresponds to the JSON schema field "reviewerNote".
+	ReviewerNote *string `json:"reviewerNote,omitempty,omitzero" yaml:"reviewerNote,omitempty" mapstructure:"reviewerNote,omitempty"`
 
 	// Seconds corresponds to the JSON schema field "seconds".
 	Seconds int `json:"seconds" yaml:"seconds" mapstructure:"seconds"`
@@ -1701,6 +1740,50 @@ func (j *JournalEntry) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "seconds", 0)
 	}
 	*j = JournalEntry(plain)
+	return nil
+}
+
+type JournalReviewRequest struct {
+	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
+	ApprovedSeconds int `json:"approvedSeconds" yaml:"approvedSeconds" mapstructure:"approvedSeconds"`
+
+	// ReviewerNote corresponds to the JSON schema field "reviewerNote".
+	ReviewerNote string `json:"reviewerNote" yaml:"reviewerNote" mapstructure:"reviewerNote"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *JournalReviewRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["approvedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field approvedSeconds in JournalReviewRequest: required")
+	}
+	if _, ok := raw["reviewerNote"]; raw != nil && !ok {
+		return fmt.Errorf("field reviewerNote in JournalReviewRequest: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in JournalReviewRequest: required")
+	}
+	type Plain JournalReviewRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.ApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
+	}
+	if utf8.RuneCountInString(string(plain.ReviewerNote)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "reviewerNote", 4000)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = JournalReviewRequest(plain)
 	return nil
 }
 

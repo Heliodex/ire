@@ -385,12 +385,14 @@ export const submissionSchema = pipe(
 
 export const journalSchema = pipe(
 	object({
+		approvedSeconds: optional(pipe(number(), integer())),
 		at: timestamp,
 		clipCount: nonNegative,
 		coveredSeconds: nonNegative,
 		id: pipe(string(), minLength(1)),
 		markdown: optionalString,
 		mediaCount: nonNegative,
+		reviewerNote: optionalString,
 		seconds: nonNegative,
 		text: optionalString,
 		title: optionalString,
@@ -584,6 +586,23 @@ export const sendBackResultSchema = pipe(
 		status: pipe(string(), minLength(1)),
 	}),
 	title("SendBackResult"),
+)
+
+export const journalReviewRequestSchema = pipe(
+	object({
+		approvedSeconds: nonNegative,
+		reviewerNote: pipe(string(), maxLength(maxNote)),
+		version: nonNegative,
+	}),
+	title("JournalReviewRequest"),
+)
+
+export const journalReviewResponseSchema = pipe(
+	object({
+		hoursApprovedSeconds: nonNegative,
+		journal: journalSchema,
+	}),
+	title("JournalAdjustment"),
 )
 
 export const decisionResultSchema = pipe(
@@ -892,6 +911,7 @@ export const requestSchemas = Object.freeze([
 	draftRequestSchema,
 	decisionRequestSchema,
 	sendBackRequestSchema,
+	journalReviewRequestSchema,
 	ingestRequestSchema,
 	inviteMemberSchema,
 	updateMemberSchema,
@@ -911,6 +931,7 @@ export const responseSchemas = Object.freeze([
 	eventsResponseSchema,
 	fakeDeliveriesResponseSchema,
 	ingestResponseSchema,
+	journalReviewResponseSchema,
 	meResponseSchema,
 	membersResponseSchema,
 	outboxResponseSchema,

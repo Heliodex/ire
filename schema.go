@@ -8,7 +8,7 @@ import (
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 9
+const schemaVersion = 10
 
 // schemaStatements is the prototype subset of plan/03-data-model.md: programmes, people, sessions, ships, evidence, checks, claims, reviews, drafts, timeline, audit, outbox and settings. Fraud, forms, counters and retention jobs come later.
 //
@@ -171,6 +171,10 @@ func schemaStatements() []storage.Statement {
 		)`,
 
 		`create index if not exists journal_submission_idx on journal_entry(submission_id, at)`,
+
+		// Journal time is adjudicated per entry while a ship is claimed. The columns are added separately so existing databases keep their rows.
+		`alter table journal_entry add column approved_seconds integer`,
+		`alter table journal_entry add column reviewer_note text`,
 
 		`create table if not exists hackatime_link (
 			submission_id text not null references submission(id) on delete cascade,
