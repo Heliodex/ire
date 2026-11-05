@@ -6,7 +6,8 @@ import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } f
 import { ApiError } from "../../lib/api-error"
 import { checkGroupLabel, checkStatusLabel, checkTone, groupChecks } from "../../lib/checks"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
-import { formatDateTime, formatHours, humanStatus, statusTone, timeAgo } from "../../lib/format"
+import MakerAvatar from "../../lib/components/MakerAvatar.svelte"
+import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"
 
 type Filter = "all" | "fast" | "attention" | "mine"
@@ -497,7 +498,10 @@ async function open(item: QueueItem): Promise<void> {
 					</span>
 					<span class="ship-title" title={item.title}>
 						<span class="ship-name">{item.title}</span>
-						<span class="maker inline-maker">{item.makerName}</span>
+						<span class="maker inline-maker">
+							<MakerAvatar name={item.makerName} url={item.makerAvatarUrl} />
+							<span class="maker-name">{item.makerName}</span>
+						</span>
 						<span class="inline-theme">{item.theme ?? ""}</span>
 					</span>
 					<span class="badges">
@@ -511,10 +515,13 @@ async function open(item: QueueItem): Promise<void> {
 						<span class="theme">{item.theme ?? ""}</span>
 					</span>
 					<div class="facts">
-						<span class="maker fact-maker">{item.makerName}</span>
+						<span class="maker fact-maker">
+							<MakerAvatar name={item.makerName} url={item.makerAvatarUrl} />
+							<span class="maker-name">{item.makerName}</span>
+						</span>
 						<span class="version">v{item.version}</span>
 						<span class="timing">
-							<span class="hours">{formatHours(item.hoursClaimedSeconds)} claimed</span>
+							<span class="hours">{formatDuration(item.hoursClaimedSeconds)} claimed</span>
 							<span class="age">{timeAgo(item.ingestedAt)}</span>
 						</span>
 					</div>
@@ -733,7 +740,7 @@ h1 {
 
 .row {
 	display: grid;
-	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 96px 64px minmax(140px, 190px);
+	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 136px 64px minmax(140px, 190px);
 	gap: var(--space-3);
 	align-items: center;
 	width: 100%;
@@ -746,7 +753,7 @@ h1 {
 
 .column-head {
 	display: grid;
-	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 96px 64px minmax(140px, 190px);
+	grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 160px) 96px 64px 36px 136px 64px minmax(140px, 190px);
 	gap: var(--space-3);
 	align-items: center;
 	padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
@@ -849,6 +856,18 @@ h1 {
 	font-size: var(--text-sm);
 	color: var(--text-2);
 	white-space: nowrap;
+}
+
+.maker {
+	display: inline-flex;
+	gap: var(--space-1);
+	align-items: center;
+	min-width: 0;
+}
+
+.maker-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .inline-maker {
@@ -1173,7 +1192,7 @@ h1 {
 	}
 
 	.inline-maker {
-		display: block;
+		display: flex;
 		grid-area: maker;
 		padding-left: 0;
 	}
@@ -1246,7 +1265,7 @@ h1 {
 		grid-template-areas:
 			"name maker"
 			"type type";
-		grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
+		grid-template-columns: minmax(0, clamp(7rem, 38%, 10rem)) minmax(0, 1fr);
 		gap: var(--space-2);
 		row-gap: 2px;
 		align-items: baseline;
@@ -1260,7 +1279,7 @@ h1 {
 	}
 
 	.inline-maker {
-		display: block;
+		display: flex;
 		grid-area: maker;
 		padding-left: 0;
 	}

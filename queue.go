@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
+
+const makerAvatarBase = "https://cachet.dunkirk.sh/users"
 
 // handleQueue returns the stage 1 work list, counts and claim state in one response.
 //
@@ -47,7 +50,7 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 
 	now := a.nowText()
 	query := `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
-			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), s.hours_claimed_seconds,
+			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), coalesce(s.maker_slack_id, ''), s.hours_claimed_seconds,
 			coalesce(s.check_summary, ''), s.ingested_at, coalesce(u.email, ''),
 			coalesce(r.status, ''), coalesce(r.attempts, 0), coalesce(r.started_at, ''), coalesce(r.finished_at, ''),
 			coalesce(r.error, ''), coalesce(r.runner_version, '')
@@ -94,13 +97,13 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var (
 			item                                                     contract.QueueItem
-			theme, thumbnail, makerName                              string
+			theme, thumbnail, makerName, makerSlack                  string
 			summaryJSON, claimedBy                                   string
 			runStatus, runStarted, runFinished, runError, runVersion string
 			week, runAttempts                                        int
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Version, &item.Status, &item.Stage, &item.Priority,
-			&item.Title, &theme, &thumbnail, &week, &makerName, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy,
+			&item.Title, &theme, &thumbnail, &week, &makerName, &makerSlack, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy,
 			&runStatus, &runAttempts, &runStarted, &runFinished, &runError, &runVersion); err != nil {
 			writeStorage(w, err)
 
@@ -124,6 +127,11 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		}
 
 		item.MakerName = makerName
+
+		if makerSlack != "" {
+			avatar := makerAvatarBase + "/" + url.PathEscape(makerSlack) + "/r"
+			item.MakerAvatarURL = &avatar
+		}
 
 		item.CheckSummary = parseCheckSummary(summaryJSON)
 		if claimedBy != "" {

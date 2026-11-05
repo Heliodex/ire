@@ -16,6 +16,15 @@ export function formatMinutes(seconds: number): string {
 	return `${hours}h ${minutes}m`
 }
 
+// formatDuration renders integer seconds as hours, minutes and seconds, e.g. 6h 24m 36s.
+export function formatDuration(seconds: number): string {
+	const total = Math.max(0, Math.round(seconds))
+	const hours = Math.floor(total / 3600)
+	const minutes = Math.floor((total % 3600) / 60)
+	const secs = total % 60
+	return `${hours}h ${minutes}m ${secs}s`
+}
+
 // formatDate renders an ISO timestamp in the reader's locale.
 export function formatDate(value: string | null | undefined): string {
 	if (!value) return "–"

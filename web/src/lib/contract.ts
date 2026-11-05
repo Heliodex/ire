@@ -206,6 +206,7 @@ export const queueItemSchema = pipe(
 		hoursClaimedSeconds: nonNegative,
 		id: pipe(string(), minLength(1)),
 		ingestedAt: timestamp,
+		makerAvatarUrl: optionalString,
 		makerName: pipe(string(), minLength(1)),
 		priority: nonNegative,
 		stage: nonNegative,

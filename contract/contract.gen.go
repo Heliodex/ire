@@ -2365,6 +2365,9 @@ type QueueItem struct {
 	// IngestedAt corresponds to the JSON schema field "ingestedAt".
 	IngestedAt string `json:"ingestedAt" yaml:"ingestedAt" mapstructure:"ingestedAt"`
 
+	// MakerAvatarURL corresponds to the JSON schema field "makerAvatarUrl".
+	MakerAvatarURL *string `json:"makerAvatarUrl,omitempty,omitzero" yaml:"makerAvatarUrl,omitempty" mapstructure:"makerAvatarUrl,omitempty"`
+
 	// MakerName corresponds to the JSON schema field "makerName".
 	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
 

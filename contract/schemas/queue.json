@@ -134,6 +134,9 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"makerAvatarUrl": {
+						"type": "string"
+					},
 					"makerName": {
 						"type": "string",
 						"minLength": 1
