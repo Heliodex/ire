@@ -22,8 +22,9 @@ import { session } from "../../lib/session.svelte.js"
 const sortKeys: SortKey[] = ["ship", "maker", "status", "type", "version", "claimed", "age", "checks"]
 
 const maxCheckDots = 11
+const maxWideCheckDots = 20
 
-// wideChecks renders every check dot without the +N badge at the widest layout, where the checks column has room. Narrower layouts keep eliding.
+// wideChecks renders up to twenty check dots at the widest layout, where the checks column has room. Narrower layouts keep eliding at eleven; both cap so the dots never run into the age column.
 let wideChecks = $state(false)
 
 // queueState persists the visit in tab storage. It is built per call so sessionStorage is only touched on the client.
@@ -902,7 +903,7 @@ async function open(item: QueueItem): Promise<void> {
 								role="img"
 							>
 								{#each groupChecks(
-									wideChecks ? item.checks : item.checks.slice(0, maxCheckDots),
+									item.checks.slice(0, wideChecks ? maxWideCheckDots : maxCheckDots),
 								) as group (group.group)}
 									<span class="dot-group">
 										{#each group.items as check (check.key)}
@@ -918,13 +919,13 @@ async function open(item: QueueItem): Promise<void> {
 										{/each}
 									</span>
 								{/each}
-								{#if !wideChecks && item.checks.length > maxCheckDots}
+								{#if item.checks.length > (wideChecks ? maxWideCheckDots : maxCheckDots)}
 									<span
 										aria-hidden="true"
 										class="dot-more"
-										title={`${item.checks.length - maxCheckDots} more checks`}
+										title={`${item.checks.length - (wideChecks ? maxWideCheckDots : maxCheckDots)} more checks`}
 									>
-										+{item.checks.length - maxCheckDots}
+										+{item.checks.length - (wideChecks ? maxWideCheckDots : maxCheckDots)}
 									</span>
 								{/if}
 							</span>
