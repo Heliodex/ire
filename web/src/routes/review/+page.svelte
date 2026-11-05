@@ -57,6 +57,7 @@ let sendingBack = $state(false)
 let rerunning = $state(false)
 let rerunError = $state("")
 let checksOutdated = $state(false)
+let coverFailed = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 
 const submission = $derived(bundle?.submission ?? null)
@@ -115,6 +116,7 @@ afterNavigate((): void => {
 	const previous = claimedId
 	id = next
 	loading = true
+	coverFailed = false
 	stopChecks()
 	error = ""
 	acknowledgements = []
@@ -613,14 +615,47 @@ async function saveDraftNow(): Promise<void> {
 
 			{#if tab === "overview"}
 				<article class="ui-card padded overview">
-					{#if submission.thumbnailUrl}
+					{#if submission.thumbnailUrl && !coverFailed}
 						<img
 							alt={`${submission.title} project image`}
 							class="cover"
 							decoding="async"
 							loading="lazy"
+							onerror={(): void => {
+								coverFailed = true
+							}}
 							src={submission.thumbnailUrl}
 						>
+					{:else}
+						<div class="cover-empty">
+							<svg aria-hidden="true" fill="none" height="26" viewBox="0 0 24 24" width="26">
+								<rect
+									height="16"
+									rx="2"
+									stroke="currentColor"
+									stroke-width="1.6"
+									width="18"
+									x="3"
+									y="4"
+								/>
+								<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
+								<path
+									d="m4 17 4.5-4.5 3 3L15 12l5 5"
+									stroke="currentColor"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="1.6"
+								/>
+							</svg>
+							<strong
+								>{submission.thumbnailUrl ? "Project image unavailable" : "No project image"}</strong
+							>
+							<span>
+								{submission.thumbnailUrl
+									? "The image link could not be loaded."
+									: "This ship does not include a project image."}
+							</span>
+						</div>
 					{/if}
 					<h2>What the maker built</h2>
 					<p class="description">{submission.description || "No description was sent."}</p>
@@ -1256,6 +1291,38 @@ h1 {
 	margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
 	object-fit: contain;
 	background: var(--surface-2);
+}
+
+.cover-empty {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	align-items: center;
+	justify-content: center;
+	width: calc(100% + 2 * var(--space-4));
+	min-height: 200px;
+	padding: var(--space-6) var(--space-4);
+	margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
+	text-align: center;
+	background: var(--surface-2);
+	border-bottom: 1px solid var(--border);
+}
+
+.cover-empty svg {
+	margin-bottom: var(--space-1);
+	color: var(--text-3);
+}
+
+.cover-empty strong {
+	font-size: var(--text-sm);
+	font-weight: 700;
+	color: var(--text-2);
+}
+
+.cover-empty span {
+	max-width: 36ch;
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .stats {
