@@ -1238,6 +1238,7 @@ h1 {
 }
 
 .description {
+	max-width: 80ch;
 	padding-top: var(--space-2);
 	font-size: var(--text-sm);
 	color: var(--text-2);
@@ -1434,9 +1435,10 @@ h1 {
 
 .field-count {
 	flex: none;
+	font-size: var(--text-sm);
 	font-weight: 400;
 	font-variant-numeric: tabular-nums;
-	color: var(--text-3);
+	color: var(--text-2);
 	white-space: nowrap;
 }
 
@@ -1550,6 +1552,7 @@ h1 {
 
 	.mobile-actions .ui-button {
 		min-width: 0;
+		height: 44px;
 	}
 
 	.shortcuts-button {

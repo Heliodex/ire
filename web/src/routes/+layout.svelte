@@ -291,9 +291,7 @@ main {
 	flex: 1;
 	flex-direction: column;
 	width: 100%;
-	max-width: 1240px;
 	padding: var(--space-5) var(--space-4) var(--space-7);
-	margin: 0 auto;
 }
 
 .visually-hidden {
