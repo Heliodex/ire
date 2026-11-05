@@ -29,63 +29,71 @@ var queueSortColumns = map[string]string{
 	"checks":  "(coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.fail'), 0) + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.error'), 0)) * 100 + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.warn'), 0) * 10 - coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.pass'), 0)",
 }
 
-// handleQueue returns the stage 1 work list, counts and claim state in one response.
-//
-//nolint:funlen // The query, row mapping and check join belong together.
-func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireReviewer(w, r)
-	if !ok {
-		return
-	}
+// queueParams is the validated queue listing request.
+type queueParams struct {
+	stage      int
+	filter     string
+	sortColumn string
+	sortDir    string
+}
 
-	stage := stageOne
+// parseQueueParams validates the listing query, writing the error for a bad stage, sort or role.
+func (a *ireApp) parseQueueParams(w http.ResponseWriter, r *http.Request, person reviewer) (queueParams, bool) {
+	var params queueParams
+
+	params.stage = stageOne
 
 	if value := strings.TrimSpace(r.URL.Query().Get("stage")); value != "" {
 		parsed, err := strconv.Atoi(value)
 		if err != nil || parsed < 0 || parsed > 2 {
 			app.WriteErrorField(w, http.StatusBadRequest, "invalid", "stage", "stage must be 0, 1 or 2")
-			return
+
+			return queueParams{}, false
 		}
 
-		stage = parsed
+		params.stage = parsed
 	}
 
-	if stage == 2 && !canReviewSecondPass(person.Role) {
+	if params.stage == 2 && !canReviewSecondPass(person.Role) {
 		app.WriteError(w, http.StatusForbidden, "only organisers can view the second pass")
-		return
+
+		return queueParams{}, false
 	}
 
-	filter := strings.TrimSpace(r.URL.Query().Get("filter"))
-	if filter == "" {
-		filter = queueFilterAll
+	params.filter = strings.TrimSpace(r.URL.Query().Get("filter"))
+	if params.filter == "" {
+		params.filter = queueFilterAll
 	}
 
 	sortKey := strings.TrimSpace(r.URL.Query().Get("sort"))
-	sortDir := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("dir")))
+	params.sortDir = strings.ToLower(strings.TrimSpace(r.URL.Query().Get("dir")))
 
-	if sortDir == "" {
-		sortDir = "asc"
+	if params.sortDir == "" {
+		params.sortDir = "asc"
 	}
 
-	if sortDir != "asc" && sortDir != "desc" {
+	if params.sortDir != "asc" && params.sortDir != "desc" {
 		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "dir", "dir must be asc or desc")
 
-		return
+		return queueParams{}, false
 	}
-
-	var sortColumn string
 
 	if sortKey != "" {
 		column, ok := queueSortColumns[sortKey]
 		if !ok {
 			app.WriteErrorField(w, http.StatusBadRequest, "invalid", "sort", "sort must be ship, maker, status, type, version, claimed, age or checks")
 
-			return
+			return queueParams{}, false
 		}
 
-		sortColumn = column
+		params.sortColumn = column
 	}
 
+	return params, true
+}
+
+// queueListQuery builds the listing query for one page, keeping the resubmission ordering for stage 1.
+func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offset int) (string, []any) {
 	now := a.nowText()
 	query := `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
 			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), coalesce(s.maker_slack_id, ''), s.hours_claimed_seconds,
@@ -104,9 +112,9 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		where s.program_id = ? and s.stage = ?
 		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`
 
-	args := []any{now, person.ProgramID, stage}
+	args := []any{now, person.ProgramID, params.stage}
 
-	switch filter {
+	switch params.filter {
 	case queueFilterFast:
 		query += ` and s.status = 'ready' and s.check_summary like '%"overall":"pass"%'`
 	case queueFilterAttention:
@@ -119,7 +127,7 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	order := ` order by s.priority desc, s.ingested_at asc, s.id asc`
-	if stage == stageOne && sortColumn == "" {
+	if params.stage == stageOne && params.sortColumn == "" {
 		// The previous reviewer keeps a resubmission first, and other reviewers only see a fresh one behind the rest of the queue.
 		order = ` order by s.priority desc,
 			case
@@ -131,15 +139,95 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		args = append(args, person.ID, a.later(-reviewerHold))
 	}
 
-	if sortColumn != "" {
+	if params.sortColumn != "" {
 		// An explicit sort spans pages, so appended rows keep arriving at the end.
-		order = ` order by ` + sortColumn + ` ` + sortDir + `, s.id asc`
+		order = ` order by ` + params.sortColumn + ` ` + params.sortDir + `, s.id asc`
 	}
 
 	query += order + ` limit ? offset ?`
 
+	args = append(args, limit+1, offset)
+
+	return query, args
+}
+
+// scanQueueItem reads one listing row into a queue item.
+func scanQueueItem(rows *storage.Rows) (contract.QueueItem, error) {
+	var (
+		item                                                     contract.QueueItem
+		theme, thumbnail, makerName, makerSlack                  string
+		summaryJSON, claimedBy                                   string
+		runStatus, runStarted, runFinished, runError, runVersion string
+		previousReviewer                                         string
+		week, runAttempts                                        int
+	)
+	if err := rows.Scan(&item.ID, &item.ExternalID, &item.Version, &item.Status, &item.Stage, &item.Priority,
+		&item.Title, &theme, &thumbnail, &week, &makerName, &makerSlack, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy,
+		&runStatus, &runAttempts, &runStarted, &runFinished, &runError, &runVersion, &previousReviewer); err != nil {
+		return contract.QueueItem{}, err
+	}
+
+	if theme != "" {
+		item.Theme = &theme
+	}
+
+	if thumbnail != "" {
+		item.ThumbnailURL = &thumbnail
+	}
+
+	if week > 0 {
+		item.Week = &week
+	}
+
+	if makerName == "" {
+		makerName = "Unknown maker"
+	}
+
+	item.MakerName = makerName
+
+	if makerSlack != "" {
+		avatar := makerAvatarBase + "/" + url.PathEscape(makerSlack) + "/r"
+		item.MakerAvatarURL = &avatar
+	}
+
+	item.CheckSummary = parseCheckSummary(summaryJSON)
+	if claimedBy != "" {
+		item.ClaimedBy = &claimedBy
+	}
+
+	if previousReviewer != "" {
+		item.PreviousReviewer = &previousReviewer
+	}
+
+	if runStatus != "" {
+		item.CheckRun = &contract.CheckRun{
+			Status:        runStatus,
+			Attempts:      runAttempts,
+			StartedAt:     runStarted,
+			FinishedAt:    optionalText(runFinished),
+			Error:         optionalText(runError),
+			RunnerVersion: runVersion,
+		}
+	}
+
+	return item, nil
+}
+
+// handleQueue returns the stage 1 work list, counts and claim state in one response.
+func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
+	person, ok := a.requireReviewer(w, r)
+	if !ok {
+		return
+	}
+
+	params, ok := a.parseQueueParams(w, r, person)
+	if !ok {
+		return
+	}
+
 	limit := parseLimit(r)
-	args = append(args, limit+1, parseOffset(r))
+
+	query, args := a.queueListQuery(params, person, limit, parseOffset(r))
 
 	rows, err := a.store.Query(r.Context(), query, args...)
 	if err != nil {
@@ -156,63 +244,11 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for rows.Next() {
-		var (
-			item                                                     contract.QueueItem
-			theme, thumbnail, makerName, makerSlack                  string
-			summaryJSON, claimedBy                                   string
-			runStatus, runStarted, runFinished, runError, runVersion string
-			previousReviewer                                         string
-			week, runAttempts                                        int
-		)
-		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Version, &item.Status, &item.Stage, &item.Priority,
-			&item.Title, &theme, &thumbnail, &week, &makerName, &makerSlack, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy,
-			&runStatus, &runAttempts, &runStarted, &runFinished, &runError, &runVersion, &previousReviewer); err != nil {
+		item, err := scanQueueItem(rows)
+		if err != nil {
 			writeStorage(w, err)
 
 			return
-		}
-
-		if theme != "" {
-			item.Theme = &theme
-		}
-
-		if thumbnail != "" {
-			item.ThumbnailURL = &thumbnail
-		}
-
-		if week > 0 {
-			item.Week = &week
-		}
-
-		if makerName == "" {
-			makerName = "Unknown maker"
-		}
-
-		item.MakerName = makerName
-
-		if makerSlack != "" {
-			avatar := makerAvatarBase + "/" + url.PathEscape(makerSlack) + "/r"
-			item.MakerAvatarURL = &avatar
-		}
-
-		item.CheckSummary = parseCheckSummary(summaryJSON)
-		if claimedBy != "" {
-			item.ClaimedBy = &claimedBy
-		}
-
-		if previousReviewer != "" {
-			item.PreviousReviewer = &previousReviewer
-		}
-
-		if runStatus != "" {
-			item.CheckRun = &contract.CheckRun{
-				Status:        runStatus,
-				Attempts:      runAttempts,
-				StartedAt:     runStarted,
-				FinishedAt:    optionalText(runFinished),
-				Error:         optionalText(runError),
-				RunnerVersion: runVersion,
-			}
 		}
 
 		response.Items = append(response.Items, item)
