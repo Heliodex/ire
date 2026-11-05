@@ -34,5 +34,5 @@
 	],
 	"title": "ClaimResponse",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/claim.json"
+	"$id": "https://wt.example/ire/claim.json"
 }

@@ -150,5 +150,5 @@
 	],
 	"title": "ReviewEvent",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/review-event.json"
+	"$id": "https://wt.example/ire/review-event.json"
 }

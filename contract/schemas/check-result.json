@@ -47,5 +47,5 @@
 	],
 	"title": "CheckResult",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/check-result.json"
+	"$id": "https://wt.example/ire/check-result.json"
 }

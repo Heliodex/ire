@@ -779,5 +779,5 @@
 	],
 	"title": "ReviewBundle",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/review-bundle.json"
+	"$id": "https://wt.example/ire/review-bundle.json"
 }

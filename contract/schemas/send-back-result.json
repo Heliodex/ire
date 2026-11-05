@@ -21,5 +21,5 @@
 	],
 	"title": "SendBackResult",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/send-back-result.json"
+	"$id": "https://wt.example/ire/send-back-result.json"
 }

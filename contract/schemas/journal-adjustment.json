@@ -65,5 +65,5 @@
 	],
 	"title": "JournalAdjustment",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/journal-adjustment.json"
+	"$id": "https://wt.example/ire/journal-adjustment.json"
 }

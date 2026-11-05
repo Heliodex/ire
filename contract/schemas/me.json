@@ -66,5 +66,5 @@
 	],
 	"title": "MeResponse",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/me.json"
+	"$id": "https://wt.example/ire/me.json"
 }

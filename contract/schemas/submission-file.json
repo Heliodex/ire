@@ -33,5 +33,5 @@
 	],
 	"title": "SubmissionFileResponse",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/submission-file.json"
+	"$id": "https://wt.example/ire/submission-file.json"
 }

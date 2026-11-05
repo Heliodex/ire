@@ -75,5 +75,5 @@
 	],
 	"title": "ParityResponse",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/parity.json"
+	"$id": "https://wt.example/ire/parity.json"
 }

@@ -19,5 +19,5 @@
 	],
 	"title": "ErrorResponse",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/error.json"
+	"$id": "https://wt.example/ire/error.json"
 }

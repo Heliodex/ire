@@ -34,5 +34,5 @@
 	],
 	"title": "DecisionOutcome",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/decision-outcome.json"
+	"$id": "https://wt.example/ire/decision-outcome.json"
 }

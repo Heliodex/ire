@@ -48,5 +48,5 @@
 	],
 	"title": "NoteCreated",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/note-created.json"
+	"$id": "https://wt.example/ire/note-created.json"
 }

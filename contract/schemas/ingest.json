@@ -264,5 +264,5 @@
 	],
 	"title": "IngestRequest",
 	"$schema": "http://json-schema.org/draft-07/schema#",
-	"$id": "https://wt.example/review/ingest.json"
+	"$id": "https://wt.example/ire/ingest.json"
 }
