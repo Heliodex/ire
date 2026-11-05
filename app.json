@@ -21,13 +21,13 @@
 	"health": "/healthz",
 	"job_concurrency": 4,
 	"host": "ire.localhost",
-	"memory_mb": 128,
+	"memory_mb": 512,
 	"name": "ire",
 	"schedule": [
 		{
 			"method": "POST",
 			"path": "/jobs/tick",
-			"every": "10s"
+			"every": "30s"
 		}
 	],
 	"env": {
