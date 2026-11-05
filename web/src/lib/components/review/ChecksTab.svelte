@@ -1,6 +1,7 @@
 <script lang="ts">
+import { SvelteSet } from "svelte/reactivity"
 import type { Check } from "../../api"
-import { groupChecks, isBlocking, isWarning } from "../../checks"
+import { checkGroupLabel, groupChecks, isBlocking, isWarning } from "../../checks"
 import { statusTone } from "../../format"
 
 let {
@@ -19,6 +20,12 @@ const warnings = $derived(checks.filter(isWarning))
 const blocking = $derived(checks.filter(isBlocking))
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const groups = $derived(groupChecks(checks))
+const collapsed = new SvelteSet<string>()
+
+function toggleGroup(group: string): void {
+	if (collapsed.has(group)) collapsed.delete(group)
+	else collapsed.add(group)
+}
 </script>
 
 <div class="checks-panel">
@@ -44,33 +51,66 @@ const groups = $derived(groupChecks(checks))
 	<div class="ui-card checks">
 		{#each groups as group (group.group)}
 			<div class="group">
-				<h2>{group.group}</h2>
-				{#each group.items as check (check.key)}
-					<div class="check">
-						<span class="ui-badge check-status" data-tone={statusTone(check.status)}>{check.status}</span>
-						<span class="check-label">{check.label}</span>
-						<code class="check-key ui-mono" title={check.key}>{check.key}</code>
-						{#if isWarning(check)}
-							<label class="ack" title="Acknowledge this warning">
-								<input
-									aria-label={`Acknowledge ${check.label}`}
-									checked={acknowledgements.includes(check.key)}
-									onchange={(): void => onToggle(check.key)}
-									type="checkbox"
-								>
-								<span>Ack</span>
-							</label>
-						{:else}
-							<span class="ack-empty"></span>
-						{/if}
-						<span class="check-detail">
-							<span class="check-summary">{check.summary}</span>
-							{#if check.detail}
-								<span class="check-note">{check.detail}</span>
+				<h2 class="group-heading">
+					<button
+						aria-expanded={!collapsed.has(group.group)}
+						class="group-toggle"
+						onclick={(): void => toggleGroup(group.group)}
+						type="button"
+					>
+						<span class="group-name">{checkGroupLabel(group.group)}</span>
+						<span class="group-count"
+							>{group.items.length} {group.items.length === 1 ? "check" : "checks"}</span
+						>
+						<svg
+							aria-hidden="true"
+							class="chevron"
+							fill="none"
+							height="14"
+							viewBox="0 0 24 24"
+							width="14"
+							class:collapsed={collapsed.has(group.group)}
+						>
+							<path
+								d="m6 9 6 6 6-6"
+								stroke="currentColor"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+							/>
+						</svg>
+					</button>
+				</h2>
+				{#if !collapsed.has(group.group)}
+					{#each group.items as check (check.key)}
+						<div class="check">
+							<span class="ui-badge check-status" data-tone={statusTone(check.status)}
+								>{check.status}</span
+							>
+							<span class="check-label">{check.label}</span>
+							<code class="check-key ui-mono" title={check.key}>{check.key}</code>
+							{#if isWarning(check)}
+								<label class="ack" title="Acknowledge this warning">
+									<input
+										aria-label={`Acknowledge ${check.label}`}
+										checked={acknowledgements.includes(check.key)}
+										onchange={(): void => onToggle(check.key)}
+										type="checkbox"
+									>
+									<span>Ack</span>
+								</label>
+							{:else}
+								<span class="ack-empty"></span>
 							{/if}
-						</span>
-					</div>
-				{/each}
+							<span class="check-detail">
+								<span class="check-summary">{check.summary}</span>
+								{#if check.detail}
+									<span class="check-note">{check.detail}</span>
+								{/if}
+							</span>
+						</div>
+					{/each}
+				{/if}
 			</div>
 		{/each}
 	</div>
@@ -99,12 +139,48 @@ const groups = $derived(groupChecks(checks))
 	border-top: 1px solid var(--border);
 }
 
-.group h2 {
+.group-heading {
+	margin: 0;
+}
+
+.group-toggle {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+	width: 100%;
 	padding: var(--space-2) var(--space-4);
 	font-size: var(--text-xs);
 	font-weight: 700;
-	color: var(--text-3);
+	color: var(--text-2);
+	text-align: left;
 	background: var(--surface-2);
+	border: 0;
+}
+
+.group-toggle:hover {
+	color: var(--text);
+	background: var(--surface-3);
+}
+
+.group-name {
+	flex: 1;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.group-count {
+	font-weight: 600;
+	color: var(--text-3);
+}
+
+.chevron {
+	flex: none;
+	color: var(--text-3);
+	transition: transform 0.15s;
+}
+
+.chevron.collapsed {
+	transform: rotate(-90deg);
 }
 
 .check {
@@ -215,7 +291,7 @@ const groups = $derived(groupChecks(checks))
 
 @media (max-width: 640px) {
 	.check,
-	.group h2 {
+	.group-toggle {
 		padding-inline: var(--space-3);
 	}
 }
