@@ -13,6 +13,7 @@ import {
 	fetchBundle,
 	fetchCheckHead,
 	fetchMe,
+	fetchQueue,
 	heartbeat,
 	program,
 	refreshRepositoryEvidence,
@@ -82,6 +83,7 @@ let checksOutdated = $state(false)
 let coverFailed = $state(false)
 let showAllEvents = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
+let prefetchTimer: ReturnType<typeof setTimeout> | null = null
 
 interface CachedBundle {
 	bundle: Bundle
@@ -246,6 +248,10 @@ afterNavigate((): void => {
 	loading = true
 	coverFailed = false
 	stopChecks()
+	if (prefetchTimer) {
+		clearTimeout(prefetchTimer)
+		prefetchTimer = null
+	}
 	error = ""
 	acknowledgements = []
 	showAllEvents = false
@@ -329,6 +335,7 @@ onMount((): (() => void) => {
 	return (): void => {
 		clearInterval(beat)
 		stopChecks()
+		if (prefetchTimer) clearTimeout(prefetchTimer)
 		window.removeEventListener("keydown", onKeydown)
 		if (claimedId !== "") ignore(releaseShip(claimedId))
 	}
@@ -407,6 +414,35 @@ function showCachedBundle(cached: Bundle): void {
 	hourInit()
 }
 
+// schedulePrefetch warms the next ship's bundle once the current screen is idle.
+function schedulePrefetch(ship: Bundle["submission"]): void {
+	if (prefetchTimer) clearTimeout(prefetchTimer)
+	if (ship.status === "decided" || ship.status === "withdrawn" || ship.status === "checking") return
+
+	prefetchTimer = setTimeout(() => {
+		prefetchTimer = null
+		void prefetchNext(ship.id, ship.stage)
+	}, 2500)
+}
+
+// prefetchNext fetches the first unclaimed ship after this one and keeps it in the tab cache.
+async function prefetchNext(currentID: string, stage: number): Promise<void> {
+	try {
+		const queue = await fetchQueue("all", stage, 0, 5)
+		const next = queue.items.find(
+			item =>
+				item.id !== currentID
+				&& (!item.claimedBy || item.claimedBy === session.me?.user.email)
+				&& !readBundleCache(item.id),
+		)
+		if (!next) return
+
+		writeBundleCache(next.id, await fetchBundle(next.id))
+	} catch {
+		// Prefetching is best effort; opening the ship still loads it normally.
+	}
+}
+
 async function load(target = id): Promise<void> {
 	const sameShip = bundle?.submission.id === target
 
@@ -444,6 +480,7 @@ async function load(target = id): Promise<void> {
 		hourInit()
 		error = ""
 		watchChecks()
+		schedulePrefetch(next.submission)
 		void checkHead()
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
