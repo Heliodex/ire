@@ -397,4 +397,10 @@ h1 {
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }
+
+@media (max-width: 760px) {
+	.doc-section .ui-table table {
+		min-width: 560px;
+	}
+}
 </style>

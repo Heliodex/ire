@@ -394,4 +394,11 @@ code {
 	font-family: var(--font-mono);
 	font-size: var(--text-xs);
 }
+
+@media (max-width: 760px) {
+	.roster table,
+	.audit table {
+		min-width: 640px;
+	}
+}
 </style>

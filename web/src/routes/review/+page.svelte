@@ -1675,6 +1675,10 @@ h1 {
 	overflow-x: auto;
 }
 
+.table-wrap table {
+	min-width: 560px;
+}
+
 .rail {
 	display: flex;
 	flex-direction: column;
