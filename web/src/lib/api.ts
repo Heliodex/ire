@@ -17,6 +17,7 @@ import {
 	outboxResponseSchema,
 	queueResponseSchema,
 	reviewBundleSchema,
+	searchResponseSchema,
 	sendBackResultSchema,
 } from "./contract"
 import { ValidationError } from "./validation-error"
@@ -25,6 +26,7 @@ export type AuthConfig = InferOutput<typeof authConfigSchema>
 export type Me = InferOutput<typeof meResponseSchema>
 export type Queue = InferOutput<typeof queueResponseSchema>
 export type QueueItem = Queue["items"][number]
+export type SearchResult = InferOutput<typeof searchResponseSchema>["results"][number]
 export type Bundle = InferOutput<typeof reviewBundleSchema>
 export type Check = Bundle["checks"][number]
 export type Journal = Bundle["journals"][number]
@@ -119,6 +121,14 @@ export async function fetchQueue(filter = "all", stage = 1, offset = 0, limit = 
 		`/api/v1/programs/${program}/queue?stage=${stage}&filter=${encodeURIComponent(filter)}&offset=${offset}&limit=${limit}`,
 	)
 	return parseJSON(response, queueResponseSchema)
+}
+
+// searchProjects finds open ships by title, maker, external id or theme for the header search.
+export async function searchProjects(query: string, limit = 8): Promise<SearchResult[]> {
+	const response = await fetch(`/api/v1/programs/${program}/search?q=${encodeURIComponent(query)}&limit=${limit}`)
+	const body = await parseJSON(response, searchResponseSchema)
+
+	return body.results
 }
 
 // fetchBundle returns everything the review screen shows.

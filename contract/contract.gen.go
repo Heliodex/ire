@@ -3039,6 +3039,106 @@ func (j *ReviewsResponse) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type SearchResponse struct {
+	// Results corresponds to the JSON schema field "results".
+	Results []SearchResult `json:"results" yaml:"results" mapstructure:"results"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *SearchResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["results"]; raw != nil && !ok {
+		return fmt.Errorf("field results in SearchResponse: required")
+	}
+	type Plain SearchResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = SearchResponse(plain)
+	return nil
+}
+
+type SearchResult struct {
+	// ExternalID corresponds to the JSON schema field "externalId".
+	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// MakerName corresponds to the JSON schema field "makerName".
+	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Theme corresponds to the JSON schema field "theme".
+	Theme *string `json:"theme,omitempty,omitzero" yaml:"theme,omitempty" mapstructure:"theme,omitempty"`
+
+	// ThumbnailURL corresponds to the JSON schema field "thumbnailUrl".
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty,omitzero" yaml:"thumbnailUrl,omitempty" mapstructure:"thumbnailUrl,omitempty"`
+
+	// Title corresponds to the JSON schema field "title".
+	Title string `json:"title" yaml:"title" mapstructure:"title"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *SearchResult) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["externalId"]; raw != nil && !ok {
+		return fmt.Errorf("field externalId in SearchResult: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in SearchResult: required")
+	}
+	if _, ok := raw["makerName"]; raw != nil && !ok {
+		return fmt.Errorf("field makerName in SearchResult: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in SearchResult: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in SearchResult: required")
+	}
+	if _, ok := raw["title"]; raw != nil && !ok {
+		return fmt.Errorf("field title in SearchResult: required")
+	}
+	type Plain SearchResult
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if utf8.RuneCountInString(string(plain.MakerName)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "makerName", 1)
+	}
+	if 0 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
+	}
+	*j = SearchResult(plain)
+	return nil
+}
+
 type SendBackRequest struct {
 	// Reason corresponds to the JSON schema field "reason".
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`

@@ -223,6 +223,24 @@ export const queueResponseSchema = pipe(
 	title("QueueResponse"),
 )
 
+// ─── Search ─────────────────────────────────────────────────────────────────
+
+export const searchResultSchema = pipe(
+	object({
+		externalId: pipe(string(), minLength(1)),
+		id: pipe(string(), minLength(1)),
+		makerName: pipe(string(), minLength(1)),
+		stage: nonNegative,
+		status: pipe(string(), minLength(1)),
+		theme: optionalString,
+		thumbnailUrl: optionalString,
+		title: pipe(string(), minLength(1)),
+	}),
+	title("SearchResult"),
+)
+
+export const searchResponseSchema = pipe(object({ results: array(searchResultSchema) }), title("SearchResponse"))
+
 // ─── Parity ─────────────────────────────────────────────────────────────────
 
 export const parityShipSchema = pipe(
@@ -818,6 +836,7 @@ export const responseSchemas = Object.freeze([
 	reviewBundleSchema,
 	reviewEventSchema,
 	reviewsResponseSchema,
+	searchResponseSchema,
 	sendBackResultSchema,
 	statusResponseSchema,
 	withdrawResponseSchema,

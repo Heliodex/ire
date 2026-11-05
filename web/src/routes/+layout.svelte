@@ -4,6 +4,7 @@ import { goto } from "$app/navigation"
 import { page } from "$app/state"
 import { fetchMe, logout } from "../lib/api"
 import { ApiError } from "../lib/api-error"
+import SearchBar from "../lib/components/SearchBar.svelte"
 import { session } from "../lib/session.svelte.js"
 import { theme } from "../lib/theme.svelte.js"
 import type { LayoutProps } from "./$types"
@@ -107,6 +108,7 @@ async function signOut(): Promise<void> {
 			<div class="spacer"></div>
 
 			{#if session.me}
+				<SearchBar />
 				<span class="email">{session.me.user.email}</span>
 			{/if}
 
@@ -305,6 +307,10 @@ main {
 	.top,
 	nav {
 		padding-inline: var(--space-3);
+	}
+
+	.top {
+		flex-wrap: wrap;
 	}
 
 	.email {
