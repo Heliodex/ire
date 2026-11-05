@@ -3,6 +3,7 @@
 		"strict": true,
 		"types": ["bun", "$app/types"]
 	},
+	"exclude": ["src/service-worker.js"],
 	"extends": "$app/tsconfig",
 	"include": ["src", "tests", "vite.config.ts"]
 }
