@@ -13,41 +13,15 @@ import (
 
 // submissionRow is the flattened ship row every handler reads. Nullable columns are coalesced to zero values.
 type submissionRow struct {
-	ID            string
-	ProgramID     string
-	ExternalID    string
-	Version       int
-	PreviousID    string
-	Status        string
-	Stage         int
-	Priority      int
-	HeldReason    string
-	Title         string
-	Description   string
-	Track         string
-	Theme         string
-	Phase         string
-	Week          int
-	MakerEmail    string
-	MakerName     string
-	MakerSlack    string
-	MakerHackatim string
-	RepoURL       string
-	DemoURL       string
-	ThumbnailURL  string
-	RequestedTier int
-	GrantCapCents int
-	BomTotalCents int
-	HoursClaimed  int
-	HoursJournal  int
-	HoursHackatim int
-	HoursApproved int
-	CheckSummary  string
-	IngestedAt    string
-	FirstOpenedAt string
-	DecidedAt     string
-	CreatedAt     string
-	UpdatedAt     string
+	ID, ProgramID, ExternalID                                                                             string
+	Version                                                                                               int
+	PreviousID, Status                                                                                    string
+	Stage, Priority                                                                                       int
+	HeldReason, Title, Description, Track, Theme, Phase                                                   string
+	Week                                                                                                  int
+	MakerEmail, MakerName, MakerSlack, MakerHackatim, RepoURL, DemoURL, ThumbnailURL                      string
+	RequestedTier, GrantCapCents, BomTotalCents, HoursClaimed, HoursJournal, HoursHackatim, HoursApproved int
+	CheckSummary, IngestedAt, FirstOpenedAt, DecidedAt, CreatedAt, UpdatedAt                              string
 }
 
 // loadSubmission reads one ship by id.
