@@ -18,6 +18,18 @@ let signingOut = $state(false)
 const readOnly = $derived(session.me?.readOnly ?? false)
 const showAdmin = $derived(session.me?.programs.some(item => item.role === "admin") ?? false)
 const showAudit = $derived(session.me?.programs.some(item => item.role === "admin" || item.role === "auditor") ?? false)
+const accountEmail = $derived(session.me?.user.email ?? "")
+const accountName = $derived(session.me?.user.name ?? accountEmail)
+
+// initials makes a short avatar label from the display name, falling back to the email local part.
+function initials(value: string): string {
+	const parts = value
+		.split(/[\s@._-]+/)
+		.filter(Boolean)
+		.slice(0, 2)
+
+	return parts.map(part => part.charAt(0).toUpperCase()).join("") || "?"
+}
 const navRoutes = $derived([
 	"/queue",
 	"/reviewed",
@@ -127,7 +139,10 @@ async function signOut(): Promise<void> {
 
 			{#if session.me}
 				<SearchBar />
-				<span class="email">{session.me.user.email}</span>
+				<span class="account" title={accountEmail}>
+					<span aria-hidden="true" class="avatar">{initials(accountName)}</span>
+					<span class="account-name">{accountName}</span>
+				</span>
 			{/if}
 
 			<button
@@ -175,16 +190,46 @@ async function signOut(): Promise<void> {
 			{/if}
 
 			<nav aria-label="Sections">
-				<a href="/queue" class:active={isQueueRoute(page.url.pathname)}>Queue</a>
-				<a href="/reviewed" class:active={isReviewedRoute(page.url.pathname)}>Reviewed</a>
-				<a href="/deliveries" class:active={page.url.pathname.startsWith("/deliveries")}>Deliveries</a>
+				<a
+					aria-current={isQueueRoute(page.url.pathname) ? "page" : undefined}
+					href="/queue"
+					class:active={isQueueRoute(page.url.pathname)}
+					>Queue</a
+				>
+				<a
+					aria-current={isReviewedRoute(page.url.pathname) ? "page" : undefined}
+					href="/reviewed"
+					class:active={isReviewedRoute(page.url.pathname)}
+					>Reviewed</a
+				>
+				<a
+					aria-current={page.url.pathname.startsWith("/deliveries") ? "page" : undefined}
+					href="/deliveries"
+					class:active={page.url.pathname.startsWith("/deliveries")}
+					>Deliveries</a
+				>
 				{#if showAdmin}
-					<a href="/admin" class:active={page.url.pathname.startsWith("/admin")}>Admin</a>
+					<a
+						aria-current={page.url.pathname.startsWith("/admin") ? "page" : undefined}
+						href="/admin"
+						class:active={page.url.pathname.startsWith("/admin")}
+						>Admin</a
+					>
 				{/if}
 				{#if showAudit}
-					<a href="/audit" class:active={page.url.pathname.startsWith("/audit")}>Audit</a>
+					<a
+						aria-current={page.url.pathname.startsWith("/audit") ? "page" : undefined}
+						href="/audit"
+						class:active={page.url.pathname.startsWith("/audit")}
+						>Audit</a
+					>
 				{/if}
-				<a href="/docs" class:active={page.url.pathname.startsWith("/docs")}>Docs</a>
+				<a
+					aria-current={page.url.pathname.startsWith("/docs") ? "page" : undefined}
+					href="/docs"
+					class:active={page.url.pathname.startsWith("/docs")}
+					>Docs</a
+				>
 			</nav>
 		{/if}
 	</header>
@@ -269,9 +314,33 @@ nav {
 	flex: 1;
 }
 
-.email {
+.account {
+	display: inline-flex;
+	gap: var(--space-2);
+	align-items: center;
+	min-width: 0;
+}
+
+.avatar {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	font-size: 10px;
+	font-weight: 800;
+	color: var(--text-2);
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	border-radius: 50%;
+}
+
+.account-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
 	font-size: var(--text-sm);
 	color: var(--text-2);
+	white-space: nowrap;
 }
 
 nav {
@@ -325,7 +394,7 @@ main {
 		flex-wrap: wrap;
 	}
 
-	.email {
+	.account-name {
 		display: none;
 	}
 
