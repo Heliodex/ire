@@ -3,7 +3,7 @@ import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { type AuditEntry, fetchAudit, fetchMe, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import { formatDateTime, formatDuration, timeAgo } from "../../lib/format"
+import { formatDateTime, formatHours, timeAgo } from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
@@ -159,7 +159,7 @@ const labels: { [_: string]: string } = {
 }
 
 function valueLabel(key: string, value: unknown): string {
-	if (key === "hours" && typeof value === "number") return formatDuration(value)
+	if (key === "hours" && typeof value === "number") return formatHours(value)
 	if (typeof value === "boolean") return value ? "Yes" : "No"
 	if (value === null || value === undefined || value === "") return "–"
 	if (Array.isArray(value)) return value.map(String).join(", ") || "–"
@@ -389,7 +389,11 @@ function targetLink(entry: AuditEntry): string | null {
 							{#each changes(entry) as change (change.key)}
 								<div>
 									<dt>{change.label}</dt>
-									<dd>{change.from} <span aria-hidden="true">→</span> {change.to}</dd>
+									<dd>
+										<span class="from">{change.from}</span>
+										<span aria-hidden="true" class="arrow">→</span>
+										<span class="to">{change.to}</span>
+									</dd>
 								</div>
 							{/each}
 						</dl>
@@ -517,14 +521,18 @@ a.target:hover {
 .changes {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--space-2) var(--space-4);
+	gap: var(--space-2);
 	padding-top: var(--space-1);
 }
 
 .changes div {
-	display: flex;
+	display: inline-flex;
 	gap: var(--space-2);
 	align-items: baseline;
+	padding: 4px var(--space-2);
+	font-size: var(--text-xs);
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
 }
 
 .changes dt {
@@ -534,9 +542,26 @@ a.target:hover {
 }
 
 .changes dd {
+	display: inline-flex;
+	gap: 4px;
+	align-items: baseline;
+	margin: 0;
 	font-size: var(--text-xs);
 	font-variant-numeric: tabular-nums;
-	color: var(--text-2);
+	white-space: nowrap;
+}
+
+.changes .from {
+	color: var(--text-3);
+}
+
+.changes .arrow {
+	color: var(--text-3);
+}
+
+.changes .to {
+	font-weight: 700;
+	color: var(--text);
 }
 
 .more {
