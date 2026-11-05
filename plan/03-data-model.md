@@ -6,7 +6,7 @@
 - **IDs** are text: `sub_...`, `rev_...`, `usr_...`, `prg_...`. Opaque, URL-safe, generated server-side.
 - **Timestamps** are text in UTC ISO 8601 with milliseconds (`2026-11-03T14:05:00.000Z`). Use one helper; never store local time.
 - **Time is integer seconds** with a `_seconds` suffix. Hours are formatting.
-- **Money** is integer cents with a `_cents` suffix. Half Life owns the actual grant; Review only displays and forwards.
+- **Money** is integer cents with a `_cents` suffix. Half Life owns the actual grant; Ire only displays and forwards.
 - **JSON** is text validated by Go before write. Hot-path fields are normalised into columns; JSON is for snapshots and open-ended metadata.
 - **Booleans** are integer 0/1.
 - **Migrations** are versioned and checksummed through `store.Migrate`. Expand/contract only; never edit an applied migration.
@@ -380,7 +380,7 @@ create table bom_line (
 );
 ```
 
-The design-week funding decision is priced from this list and the agreed tier. Review does not trust the repo's CSV over the list Half Life sent; it displays both and flags disagreement.
+The design-week funding decision is priced from this list and the agreed tier. Ire does not trust the repo's CSV over the list Half Life sent; it displays both and flags disagreement.
 
 ## Checks
 
@@ -752,7 +752,7 @@ limit ?;
 
 Covered by `submission_queue_idx`. A keyset cursor uses `(priority, ingested_at, id)`.
 
-### Review bundle
+### Ire bundle
 
 One query for the submission, one for checks (latest per key), one for journals, one for commits, one for clips, one for BOM, one for prior reviews. Seven indexed reads on one submission, not N+1. The handler assembles the DTO and caps each array.
 

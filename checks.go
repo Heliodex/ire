@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 const (
@@ -86,7 +86,7 @@ func (c githubClient) now() time.Time {
 }
 
 // repoChecks runs the real repository checks and returns the snapshot the evidence tab reuses. Only GitHub is supported in this slice; other forges return a warning so the reviewer knows the repo was not fetched.
-func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now time.Time, maker []contract.BomLine) ([]contract.CheckResult, *contract.Evidence) {
+func (a *ireApp) repoChecks(ctx context.Context, repoURL, since string, now time.Time, maker []contract.BomLine) ([]contract.CheckResult, *contract.Evidence) {
 	checkedAt := now.Format(timestampFormat)
 
 	if strings.TrimSpace(repoURL) == "" {
@@ -568,7 +568,7 @@ func (c githubClient) head(ctx context.Context, owner, name string) (string, int
 }
 
 // githubClient builds the configured client with the app's cache and clock.
-func (a *reviewApp) githubClient() githubClient {
+func (a *ireApp) githubClient() githubClient {
 	base := a.config.GitHubAPIBase
 	if base == "" {
 		base = githubDefaultAPI
@@ -599,7 +599,7 @@ func (c githubClient) fetch(ctx context.Context, path, accept, etag string) ([]b
 	}
 
 	req.Header.Set("Accept", accept)
-	req.Header.Set("User-Agent", "half-life-review")
+	req.Header.Set("User-Agent", "half-life-ire")
 	req.Header.Set("X-Github-Api-Version", "2022-11-28")
 
 	if etag != "" {

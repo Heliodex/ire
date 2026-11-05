@@ -13,14 +13,14 @@ import (
 	"strconv"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // handleIngest accepts an Ari-compatible ship, verifies the signature over the raw body, and writes the snapshot, evidence and local checks in one transaction.
-func (a *reviewApp) handleIngest(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleIngest(w http.ResponseWriter, r *http.Request) {
 	program, ok := a.programFor(w, r)
 	if !ok {
 		return
@@ -121,7 +121,7 @@ func validateIngest(w http.ResponseWriter, request contract.IngestRequest) bool 
 }
 
 // verifyIngestSignature checks the HMAC over timestamp.body, or the legacy body-only signature when the programme allows it. It writes the 401 and returns false on failure.
-func (a *reviewApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request, program programRow, body []byte) bool {
+func (a *ireApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request, program programRow, body []byte) bool {
 	signature := strings.ToLower(strings.TrimSpace(r.Header.Get("X-Ari-Signature")))
 	if signature == "" {
 		app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "X-Ari-Signature is required")
@@ -157,7 +157,7 @@ func (a *reviewApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request
 }
 
 // allowLegacySignature reads the programme setting that accepts the current SDK's body-only signature. A missing or unreadable setting rejects the request rather than accepting an unverified body.
-func (a *reviewApp) allowLegacySignature(ctx context.Context, programID string) bool {
+func (a *ireApp) allowLegacySignature(ctx context.Context, programID string) bool {
 	var value string
 	if err := a.store.QueryRow(ctx, `select value from program_setting where program_id = ? and key = 'allow_legacy_signature'`, programID).Scan(&value); err != nil {
 		return false
@@ -167,7 +167,7 @@ func (a *reviewApp) allowLegacySignature(ctx context.Context, programID string) 
 }
 
 // ingestShip writes a new version, or reports the existing delivery or open ship. response is the API body; status is the HTTP status.
-func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request contract.IngestRequest, deliveryID, rawBody string) (contract.IngestAccepted, int, error) {
+func (a *ireApp) ingestShip(ctx context.Context, program programRow, request contract.IngestRequest, deliveryID, rawBody string) (contract.IngestAccepted, int, error) {
 	now := a.nowText()
 
 	var (
@@ -298,7 +298,7 @@ func (a *reviewApp) ingestShip(ctx context.Context, program programRow, request 
 }
 
 // nextSubmissionVersion returns the next version and the ship it replaces.
-func (a *reviewApp) nextSubmissionVersion(ctx context.Context, programID, externalID string) (int, string, error) {
+func (a *ireApp) nextSubmissionVersion(ctx context.Context, programID, externalID string) (int, string, error) {
 	var (
 		lastID, lastStatus string
 		lastVersion        int
@@ -319,7 +319,7 @@ func (a *reviewApp) nextSubmissionVersion(ctx context.Context, programID, extern
 }
 
 // openShip returns the open ship for an external id.
-func (a *reviewApp) openShip(ctx context.Context, programID, externalID string) (string, int, error) {
+func (a *ireApp) openShip(ctx context.Context, programID, externalID string) (string, int, error) {
 	var (
 		id      string
 		version int
@@ -333,7 +333,7 @@ func (a *reviewApp) openShip(ctx context.Context, programID, externalID string) 
 }
 
 // handleWithdraw closes an open ship. It is idempotent: a ship that is already decided still reports withdrawn with its id.
-func (a *reviewApp) handleWithdraw(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 	program, ok := a.programFor(w, r)
 	if !ok {
 		return

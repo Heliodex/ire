@@ -5,20 +5,20 @@
 ```mermaid
 flowchart LR
     Maker[Maker] -->|submits in| HL[Half Life]
-    HL -->|signed ship ingest| Review[Review service]
-    Review -->|signed decision webhook| HL
-    HL -->|GET status / reviews since| Review
-    Review -->|repo + commits| Forge[GitHub / GitLab]
-    Review -->|tracked time| HT[Hackatime]
-    Review -->|timelapse evidence| Lapse[Lapse]
-    Review -->|demo probe| Web[Public demo URL]
-    Review -->|OAuth| HCA[Hack Club Auth]
-    Review -->|fraud check, stage 2 only| Fraud[Fraud provider]
-    Reviewer[Reviewer / organiser] -->|browser| Review
-    Review -->|SSE queue events| Reviewer
+    HL -->|signed ship ingest| Ire[Ire service]
+    Ire -->|signed decision webhook| HL
+    HL -->|GET status / reviews since| Ire
+    Ire -->|repo + commits| Forge[GitHub / GitLab]
+    Ire -->|tracked time| HT[Hackatime]
+    Ire -->|timelapse evidence| Lapse[Lapse]
+    Ire -->|demo probe| Web[Public demo URL]
+    Ire -->|OAuth| HCA[Hack Club Auth]
+    Ire -->|fraud check, stage 2 only| Fraud[Fraud provider]
+    Reviewer[Reviewer / organiser] -->|browser| Ire
+    Ire -->|SSE queue events| Reviewer
 ```
 
-Review is one `wt` app:
+Ire is one `wt` app:
 
 - a Go API compiled to a Wasm component;
 - a prerendered SvelteKit frontend served as static files by the supervisor;
@@ -202,7 +202,7 @@ The API client validates every request and response through the same Valibot sch
 ```mermaid
 sequenceDiagram
     participant HL as Half Life
-    participant API as Review API
+    participant API as Ire API
     participant DB as SQLite
     participant Q as Job queue
     participant C as Check runner
@@ -218,12 +218,12 @@ sequenceDiagram
     API->>API: publish queue event
 ```
 
-### Review
+### Ire
 
 ```mermaid
 sequenceDiagram
     participant R as Reviewer browser
-    participant API as Review API
+    participant API as Ire API
     participant DB as SQLite
     participant Q as Job queue
 
@@ -282,7 +282,7 @@ Track scope is a column (`hardware` now; `software` later). Stage scope is deriv
 
 - Ingest and withdraw: HMAC signature over `timestamp.body` with the programme signing secret.
 - Status/list: `Authorization: Bearer <programme signing secret>` (the same secret Ari's status endpoint uses) or a separate read key.
-- Outbound: Review signs; Half Life verifies with the outbound secret.
+- Outbound: Ire signs; Half Life verifies with the outbound secret.
 - No cookies on machine endpoints. No bearer on browser endpoints.
 
 ### Authorisation rules
@@ -370,7 +370,7 @@ The current scaffold is close. The production shape should look like this:
 ```json
 {
   "name": "review",
-  "host": "review.localhost",
+  "host": "ire.localhost",
   "health": "/healthz",
   "memory_mb": 256,
   "disk_mb": 512,
@@ -450,7 +450,7 @@ Staging is not optional. Webhook signatures, OAuth redirect URIs and SQLite migr
 - `wt logs review --follow`, `wt jobs review list`, `wt apps`, `wt inspect review`.
 - `GET /metrics` on the supervisor gives CPU/memory/disk; the app's own counters are in the admin health endpoint.
 - Alerts (external): queue age, outbox backlog, check error rate, fraud error rate, disk > 80%, backup age.
-- Daily summary to Slack (optional): shipped, decided, queue depth, median time, holds, fraud failures, delivery failures. This can reuse Half Life's existing `slack-review-summary` by exposing the stats endpoint; it does not need to live in Review.
+- Daily summary to Slack (optional): shipped, decided, queue depth, median time, holds, fraud failures, delivery failures. This can reuse Half Life's existing `slack-review-summary` by exposing the stats endpoint; it does not need to live in Ire.
 
 ## Scaling and limits
 

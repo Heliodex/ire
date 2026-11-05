@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestParseBOM covers CSV and Markdown tables, quantities and prices.

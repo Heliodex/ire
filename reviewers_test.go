@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestReviewerProfile covers identity, permissions, decision stats and the recent review list.

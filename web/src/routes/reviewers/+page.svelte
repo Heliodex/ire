@@ -94,7 +94,7 @@ function activeTone(active: boolean | undefined): string {
 </script>
 
 <svelte:head>
-	<title>{profile ? `${profile.name ?? profile.email} · Reviewer` : "Reviewer"} · Half Life Review</title>
+	<title>{profile ? `${profile.name ?? profile.email} · Reviewer` : "Reviewer"} · Ire</title>
 </svelte:head>
 
 {#if loading}

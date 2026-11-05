@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestQueueRoutesResubmissionToPreviousReviewer covers the previous-reviewer hold: the reviewer who last decided a ship sees its resubmission first, while other reviewers see it behind the rest of the queue.
@@ -52,7 +52,7 @@ func TestQueueRoutesResubmissionToPreviousReviewer(t *testing.T) {
 }
 
 // queueItems lists the stage 1 queue in the order the reviewer sees it.
-func queueItems(t *testing.T, application *reviewApp, cookie *http.Cookie) []contract.QueueItem {
+func queueItems(t *testing.T, application *ireApp, cookie *http.Cookie) []contract.QueueItem {
 	t.Helper()
 
 	recorder := do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all", nil, cookie, nil)

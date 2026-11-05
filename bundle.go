@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // reviewBundle assembles the seven indexed reads behind the review screen.
 //
 //nolint:funlen // The payload is one mapping of the ship and its evidence.
-func (a *reviewApp) reviewBundle(ctx context.Context, ship submissionRow, person reviewer) (contract.ReviewBundle, error) {
+func (a *ireApp) reviewBundle(ctx context.Context, ship submissionRow, person reviewer) (contract.ReviewBundle, error) {
 	checks, err := a.latestChecks(ctx, ship.ID, ship.Version)
 	if err != nil {
 		return contract.ReviewBundle{}, err

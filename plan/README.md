@@ -1,13 +1,13 @@
-# Review platform plan
+# Ire platform plan
 
 - **Status:** draft for review
 - **Date:** 2026-11-03
 - **Scope:** a replacement for Ari as Half Life's review surface
-- **Working name:** Review (the repository is already `review`)
+- **Working name:** Ire (the repository is already `review`)
 
 ## The short version
 
-Build a standalone review service in the `wt` stack: a Go API compiled to a Wasm component, a prerendered SvelteKit frontend, typed Valibot-to-Go contracts, and per-app SQLite. Half Life keeps owning participants, hours, tiers, the ledger and maker notifications. Review owns the review queue, claims, evidence snapshots, automatic checks, stage transitions, reviewer decisions and the audit trail. It sends final decisions back to Half Life exactly as Ari does today.
+Build a standalone review service in the `wt` stack: a Go API compiled to a Wasm component, a prerendered SvelteKit frontend, typed Valibot-to-Go contracts, and per-app SQLite. Half Life keeps owning participants, hours, tiers, the ledger and maker notifications. Ire owns the review queue, claims, evidence snapshots, automatic checks, stage transitions, reviewer decisions and the audit trail. It sends final decisions back to Half Life exactly as Ari does today.
 
 The product is deliberately familiar to Ari reviewers: the same queue, claim, evidence tabs, hours rail, decision buttons, keyboard shortcuts and second pass. The differences are where Ari hurts:
 
@@ -21,11 +21,11 @@ The product is deliberately familiar to Ari reviewers: the same queue, claim, ev
 
 | Decision | Choice | Why |
 | --- | --- | --- |
-| Where review state lives | Review's own SQLite database | Jamstack-style, `wt`-native, no cross-service Postgres coupling |
+| Where review state lives | Ire's own SQLite database | Jamstack-style, `wt`-native, no cross-service Postgres coupling |
 | Who writes money | Half Life only | The ledger, tiers and grants already have one correct implementation |
 | Integration shape | Ari-compatible edge first, native API second | Half Life can switch by changing secrets and base URL; no big-bang rewrite |
 | Automatic checks | Port `ari-webhooks` and Half Life's repo checks | Ari's thoroughness is the main thing to keep; a rewrite would lose it |
-| Review stages | Stage 0 checks, Stage 1 reviewer, Stage 2 organiser/fraud | Makes "fraud only at stage 2" explicit and testable |
+| Ire stages | Stage 0 checks, Stage 1 reviewer, Stage 2 organiser/fraud | Makes "fraud only at stage 2" explicit and testable |
 | Fraud | External provider, called only from stage 2 | Keeps private detection logic out of the public repo |
 | Reviewer auth | Hack Club Auth via OAuth | Reviewers already have HCA accounts; Ari uses it today |
 | Frontend | Static SvelteKit, no server load/actions | The only supported `wt` shape |
@@ -49,7 +49,7 @@ The reasoning behind each is in [decisions.md](./decisions.md).
 - Reviewer VMs, NDA-gated evidence, collaborative ships and the software track.
 - A second implementation of the ledger, tiers, grants, shop or printer award.
 - A participant-facing submission or status UI. Half Life already has one.
-- Maker email or Slack delivery from Review. Half Life already sends those from its decision path.
+- Maker email or Slack delivery from Ire. Half Life already sends those from its decision path.
 - A public priority-review form, MCP server, or agent-facing API.
 - Replacing Half Life's `/review` console immediately. It can stay as a fallback until cutover is proven.
 

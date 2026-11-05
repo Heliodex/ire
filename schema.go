@@ -436,7 +436,7 @@ func schemaStatements() []storage.Statement {
 }
 
 // migrate applies the prototype schema and then seeds the programme and demo ships.
-func (a *reviewApp) migrate(ctx context.Context) error {
+func (a *ireApp) migrate(ctx context.Context) error {
 	if err := a.store.Migrate(ctx, schemaVersion, schemaStatements()...); err != nil {
 		return err
 	}
@@ -445,7 +445,7 @@ func (a *reviewApp) migrate(ctx context.Context) error {
 }
 
 // seed creates the Half Life programme, its dev reviewers and, when missing, the three fixture ships. Every write is idempotent, so a partial seed is repaired on the next start.
-func (a *reviewApp) seed(ctx context.Context) error {
+func (a *ireApp) seed(ctx context.Context) error {
 	now := a.nowText()
 
 	outboundURL := a.config.OutboundURL
@@ -487,7 +487,7 @@ func (a *reviewApp) seed(ctx context.Context) error {
 }
 
 // seedPeople creates the three development accounts. They are placeholders for Hack Club Auth and must not survive a real deployment.
-func (a *reviewApp) seedPeople(ctx context.Context, now string) error {
+func (a *ireApp) seedPeople(ctx context.Context, now string) error {
 	people := []struct {
 		id, email, name, role string
 	}{

@@ -119,7 +119,7 @@ async function invite(): Promise<void> {
 </script>
 
 <svelte:head>
-	<title>Admin · Half Life Review</title>
+	<title>Admin · Ire</title>
 </svelte:head>
 
 <section class="page-head">

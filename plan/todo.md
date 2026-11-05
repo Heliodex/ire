@@ -54,7 +54,7 @@ wt build --dir .
 
 - [x] `GET /api/v1/me` with user and programme memberships.
 - [x] Development login for seeded accounts, hashed session tokens, `HttpOnly` cookies and expiry.
-- [x] Development logout and `REVIEW_DEV_AUTH=0` switch.
+- [x] Development logout and `IRE_DEV_AUTH=0` switch.
 - [x] Reviewer, organiser, admin and auditor roles in the schema and memberships.
 - [x] Programme scoping on queue, bundle, claim, draft, decision and outbox routes.
 - [x] Maker email redaction in the review bundle for reviewers.
@@ -85,7 +85,7 @@ wt build --dir .
 - [x] Check-indicator alignment in the thin layout.
 - [x] Request changes toned orange; reject red; approve green.
 
-### Review screen
+### Ire screen
 
 - [x] Single bundle endpoint with submission, checks, journals, BOM, reviews, events, prior reviews, claim, draft, acknowledgements and policy.
 - [x] Overview with edge-to-edge cover image, description, claimed/journal/Hackatime/BOM stats and timeline.
@@ -212,7 +212,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] Real checks replace payload checks by key, so fixtures and new ingests share one UI.
 - [x] Summary and `ready` / `needs_attention` transition; a blocking failure holds the ship.
 - [x] Bounded requests with a 12-second timeout, response-size cap and optional GitHub token.
-- [x] `REVIEW_GITHUB_TOKEN`, `REVIEW_GITHUB_API` and `REVIEW_DISABLE_REPO_CHECKS`.
+- [x] `IRE_GITHUB_TOKEN`, `IRE_GITHUB_API` and `IRE_DISABLE_REPO_CHECKS`.
 - [x] Integration tests against a fake GitHub server, including a missing repository.
 - [x] Verified against a real public repository (`C6-H/Starbie`) from the Wasm component.
 - [x] Check details, groups, warning/blocking gates and the dot strip still work with real results.
@@ -221,7 +221,7 @@ The first check pass is working. New GitHub ingests fetch the repository in the 
 - [x] The worker replaces repository check rows, stores the evidence snapshot and moves the ship to `ready` or `needs_attention`.
 - [x] A queue failure falls back to running the checks inline; a stale `checking` ship moves to `needs_attention` after ten minutes.
 - [x] The job handler skips a version that was decided, withdrawn or replaced.
-- [x] `job_concurrency` is four; `REVIEW_DISABLE_JOBS=1` keeps the inline path.
+- [x] `job_concurrency` is four; `IRE_DISABLE_JOBS=1` keeps the inline path.
 - [x] Tests cover the queued path, idempotent rerun and the inline fallback.
 - [x] `check_run` stores status, attempts, start/finish, last error and runner version per submission version.
 - [x] The queue, review bundle and status feed expose the check run; the queue shows a Checking count and label.
@@ -281,20 +281,20 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [x] Browser mutations reject a cross-site `Origin` through `session.SameOrigin`.
 - [x] The redirect URI falls back to the public origin when `HC_REDIRECT_URI` is unset.
 - [x] Secrets resolve through `secret://` references in `app.json`; the live app now reports `hca: true`.
-- [x] One configured `REVIEW_BOOTSTRAP_EMAIL` can create its first membership; every other unknown account is refused.
+- [x] One configured `IRE_BOOTSTRAP_EMAIL` can create its first membership; every other unknown account is refused.
 - [x] `server_pages` sends root and protected page loads through the component; signed-in root and `/login` go to `/queue`, while signed-out protected pages go to `/` before any page renders.
-- [x] Review URLs use `/review/{id}`; the old query form redirects, and static assets stay absolute so hydration works below the root.
-- [x] Development accounts and login are gated by `REVIEW_DEV_AUTH`; seeding dev accounts is skipped when it is off.
+- [x] Ire URLs use `/review/{id}`; the old query form redirects, and static assets stay absolute so hydration works below the root.
+- [x] Development accounts and login are gated by `IRE_DEV_AUTH`; seeding dev accounts is skipped when it is off.
 - [x] The login screen shows `Continue with Hack Club` when HCA is configured and keeps dev accounts for local use.
 - [x] Stage 2 actions are limited to organiser/admin roles.
 - [x] Tests cover the auth config, a full fake-provider flow, bad state and an unknown member.
 - [x] Signed HTTP outbound delivery is tested against a local receiver that verifies `timestamp.delivery_id.body`.
-- [x] `REVIEW_OUTBOUND_URL` can point at a real HTTPS receiver; retries and delivery rows already exist.
+- [x] `IRE_OUTBOUND_URL` can point at a real HTTPS receiver; retries and delivery rows already exist.
 
 ### Remaining
 
 - [x] Register the real Hack Club Auth application and set `HC_CLIENT_ID`, `HC_CLIENT_SECRET` and `HC_REDIRECT_URI` through `wt secrets`.
-- [ ] Point `REVIEW_OUTBOUND_URL` at the staging Half Life receiver and set its signing secret.
+- [ ] Point `IRE_OUTBOUND_URL` at the staging Half Life receiver and set its signing secret.
 - [x] Admins invite emails and change roles or active state from `/admin`, with an audit trail.
 - [ ] Roster sync from Half Life or Hack Club is still missing; invited members must be added by email.
 - [x] Store the stable Hack Club subject in `user_identity` so an email change cannot break the binding.
@@ -305,36 +305,36 @@ The auth flow, real OAuth app and signed HTTP delivery are implemented and teste
 - [ ] Test provider timeout and duplicate identity binding end to end.
 - [x] Outbound tests cover a 5xx retry, a dropped connection retry and permanent failure on 4xx.
 - [ ] Send one approved, one changes and one rejected event to staging; verify Half Life applies each.
-- [x] `REVIEW_OUTBOUND_DRY_RUN=1` records deliveries as sent without calling the receiver, so a pilot can compare before cutover.
+- [x] `IRE_OUTBOUND_DRY_RUN=1` records deliveries as sent without calling the receiver, so a pilot can compare before cutover.
 - [x] `plan/08-runbook.md` covers the shadow window, cutover, recovery feeds, rollback and incident checks.
-- [x] `plan/08-runbook.md` documents `REVIEW_DEV_AUTH=0` and the SQL that removes the seeded accounts from a production copy.
+- [x] `plan/08-runbook.md` documents `IRE_DEV_AUTH=0` and the SQL that removes the seeded accounts from a production copy.
 - [x] The runbook includes the delete for the three seeded emails before the pilot.
 
 **Done when:** a real HCA reviewer can sign in and complete a clean approval, and the staging Half Life receiver verifies and applies the signed final event.
 
 ## Integration – read-only shadow
 
-**Goal:** run Review beside Ari without changing any decision path, until parity is proven.
+**Goal:** run Ire beside Ari without changing any decision path, until parity is proven.
 
-- [x] `REVIEW_SHADOW=1` makes claim, heartbeat, release, draft, decision and send-back return `409 shadow_mode`.
+- [x] `IRE_SHADOW=1` makes claim, heartbeat, release, draft, decision and send-back return `409 shadow_mode`.
 - [x] `GET /api/v1/me` returns `readOnly`, the layout shows a shadow banner, and the queue and review pages never auto-claim.
 - [x] The review decision rail and decision keyboard shortcuts are hidden in shadow mode.
 - [x] Auditors can read the queue and reviews but cannot claim, draft or decide, even outside shadow mode.
 - [x] Shadow mode writes no outbox rows and `deliverDue` is suppressed; `program.outbound_enabled` is enforced in live mode too.
 - [x] `maxIngestBody` is raised from 1 MiB to 16 MiB, with tests for a payload above 1 MiB and one above the new cap.
 - [x] A nested meta payload with BOM, hours, grant cap and prior reviews round-trips into the review bundle.
-- [x] Half Life dual-sends the open queue and every new hand-in to Review on branch `review` (75401a76..2a5eb392).
-- [x] Half Life withdraws the Review copy when Ari resolves, reverts or receives a resubmission, and uses a per-submission delivery id so a resubmission creates the next version.
-- [x] Live create, replay, status, withdraw and recreate-v2 passed against the Review shadow with the Half Life client.
+- [x] Half Life dual-sends the open queue and every new hand-in to Ire on branch `review` (75401a76..2a5eb392).
+- [x] Half Life withdraws the Ire copy when Ari resolves, reverts or receives a resubmission, and uses a per-submission delivery id so a resubmission creates the next version.
+- [x] Live create, replay, status, withdraw and recreate-v2 passed against the Ire shadow with the Half Life client.
 - [x] `GET /api/v1/programs/{program}/parity` gives the Half Life parity script the open queue with hours, BOM and check summaries.
-- [x] Review is deployed to `https://review-wt-demo.k.hackclub.dev` with shadow on, an empty DB and machine ingest verified by the Half Life client.
+- [x] Ire is deployed to `https://ire-wt-demo.k.hackclub.dev` with shadow on, an empty DB and machine ingest verified by the Half Life client.
 - [ ] `review-parity` is committed but has not run against a Half Life DB with real open hand-ins; the staging smoke and fixtures validated the feed.
 - [x] The staging callback is allowed; `lewin@hackclub.com` signs in as the only member and the admin roster shows one active admin.
 - [x] A public `/docs` page documents the ingest endpoints, signing, status phases, parity feed, reconciliation, outbound events and troubleshooting.
 - [x] Unauthenticated queue, review, deliveries, admin and API requests are rejected; dev sign-in and fixtures are off.
-- [x] Half Life's shadow webhook verifies the `timestamp.delivery_id.body` envelope, records every event as ignored and never applies it; Review sends nothing while shadow.
+- [x] Half Life's shadow webhook verifies the `timestamp.delivery_id.body` envelope, records every event as ignored and never applies it; Ire sends nothing while shadow.
 
-**Done when:** a shadow ship appears in Review with real checks, reviewers cannot claim it or cause a delivery, and Half Life's Ari-only behaviour is unchanged.
+**Done when:** a shadow ship appears in Ire with real checks, reviewers cannot claim it or cause a delivery, and Half Life's Ari-only behaviour is unchanged.
 
 ## Next 4 – Evidence snapshot
 
@@ -369,7 +369,7 @@ The repository half is working: ingest caches the README, file tree and commits,
 - [x] Parsed Markdown never keeps raw HTML or image syntax; an oversized tree is capped and marked truncated. Oversized README, paginated commit and refresh failure tests remain.
 - [ ] Document what is stored, what is linked, retention and privacy.
 
-**Done when:** opening a ship shows its README, file tree, commits, journals and clips without leaving Review, the data is cached for the version, and a new version refreshes it.
+**Done when:** opening a ship shows its README, file tree, commits, journals and clips without leaving Ire, the data is cached for the version, and a new version refreshes it.
 
 ## Cross-cutting work for the four steps
 

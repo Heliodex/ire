@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // holdSecondPass takes fixture 2 through a stage 1 approval with every warning acknowledged.
-func holdSecondPass(t *testing.T, application *reviewApp, reviewer *http.Cookie, key string) contract.ReviewBundle {
+func holdSecondPass(t *testing.T, application *ireApp, reviewer *http.Cookie, key string) contract.ReviewBundle {
 	t.Helper()
 
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, reviewer, nil); claim.Code != http.StatusOK {

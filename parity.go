@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
@@ -12,7 +12,7 @@ import (
 const maxParityShips = 1000
 
 // handleParity returns the open queue with the values the Half Life parity script compares. It is machine-only and never writes.
-func (a *reviewApp) handleParity(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleParity(w http.ResponseWriter, r *http.Request) {
 	program, ok := a.programFor(w, r)
 	if !ok {
 		return

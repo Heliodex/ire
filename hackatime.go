@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 const (
@@ -40,7 +40,7 @@ type hackatimeLink struct {
 }
 
 // hackatimeChecks reads the linked projects from Hackatime and reports what it could verify.
-func (a *reviewApp) hackatimeChecks(ctx context.Context, ship submissionRow) []contract.CheckResult {
+func (a *ireApp) hackatimeChecks(ctx context.Context, ship submissionRow) []contract.CheckResult {
 	checkedAt := a.nowText()
 
 	links, err := a.loadHackatimeLinks(ctx, ship.ID)
@@ -95,7 +95,7 @@ func (a *reviewApp) hackatimeChecks(ctx context.Context, ship submissionRow) []c
 }
 
 // loadHackatimeLinks reads the linked projects for a ship.
-func (a *reviewApp) loadHackatimeLinks(ctx context.Context, submissionID string) ([]hackatimeLink, error) {
+func (a *ireApp) loadHackatimeLinks(ctx context.Context, submissionID string) ([]hackatimeLink, error) {
 	rows, err := a.store.Query(ctx, `select project, seconds, coalesce(fetched_at, ''), coalesce(error, '')
 		from hackatime_link where submission_id = ? order by project`, submissionID)
 	if err != nil {
@@ -118,7 +118,7 @@ func (a *reviewApp) loadHackatimeLinks(ctx context.Context, submissionID string)
 }
 
 // refreshHackatimeLinks refreshes each project, returning the total, stale projects and their errors.
-func (a *reviewApp) refreshHackatimeLinks(ctx context.Context, ship submissionRow, links []hackatimeLink) (int, []string, []string) {
+func (a *ireApp) refreshHackatimeLinks(ctx context.Context, ship submissionRow, links []hackatimeLink) (int, []string, []string) {
 	var (
 		total    int
 		stale    []string
@@ -157,7 +157,7 @@ func (a *reviewApp) refreshHackatimeLinks(ctx context.Context, ship submissionRo
 }
 
 // hackatimeFresh reports whether a cached value is still inside the five-minute window.
-func (a *reviewApp) hackatimeFresh(link *hackatimeLink) bool {
+func (a *ireApp) hackatimeFresh(link *hackatimeLink) bool {
 	if link.Error != "" || link.FetchedAt == "" {
 		return false
 	}
@@ -171,7 +171,7 @@ func (a *reviewApp) hackatimeFresh(link *hackatimeLink) bool {
 }
 
 // fetchHackatimeProject reads one project's all-time seconds from the public stats endpoint.
-func (a *reviewApp) fetchHackatimeProject(ctx context.Context, userID, project string) (int, error) {
+func (a *ireApp) fetchHackatimeProject(ctx context.Context, userID, project string) (int, error) {
 	base := strings.TrimSpace(a.config.HackatimeAPIBase)
 	if base == "" {
 		base = hackatimeDefaultAPI
@@ -188,7 +188,7 @@ func (a *reviewApp) fetchHackatimeProject(ctx context.Context, userID, project s
 	}
 
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "half-life-review")
+	req.Header.Set("User-Agent", "half-life-ire")
 
 	resp, err := a.client.Do(req)
 	if err != nil {

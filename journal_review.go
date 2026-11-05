@@ -5,14 +5,14 @@ import (
 	"errors"
 	"net/http"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // handleJournalReview records a reviewer's approved time and deflation note for one journal entry.
-func (a *reviewApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return
@@ -104,7 +104,7 @@ func (a *reviewApp) handleJournalReview(w http.ResponseWriter, r *http.Request) 
 }
 
 // loadJournalEntry reads one journal entry for a ship.
-func (a *reviewApp) loadJournalEntry(ctx context.Context, submissionID, entryID string) (contract.JournalEntry, error) {
+func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID string) (contract.JournalEntry, error) {
 	var (
 		item                                        contract.JournalEntry
 		title, text, markdown, mediaJSON, clipsJSON string
@@ -137,7 +137,7 @@ func (a *reviewApp) loadJournalEntry(ctx context.Context, submissionID, entryID 
 }
 
 // journalApprovedTotal sums each entry's approved time, using the claimed time where an entry has no adjustment.
-func (a *reviewApp) journalApprovedTotal(ctx context.Context, submissionID, entryID string, approved int) (int, error) {
+func (a *ireApp) journalApprovedTotal(ctx context.Context, submissionID, entryID string, approved int) (int, error) {
 	rows, err := a.store.Query(ctx, `select id, seconds, coalesce(approved_seconds, -1) from journal_entry where submission_id = ?`, submissionID)
 	if err != nil {
 		return 0, err

@@ -79,14 +79,14 @@ async function signIn(address: string): Promise<void> {
 </script>
 
 <svelte:head>
-	<title>Sign in · Half Life Review</title>
+	<title>Sign in · Ire</title>
 </svelte:head>
 
 <section class="login">
 	<div class="panel ui-card padded">
 		<div class="intro">
 			<span class="mark">HL</span>
-			<h1>Half Life Review</h1>
+			<h1>Ire</h1>
 			<p>Stage 1 queue for hardware ships.</p>
 		</div>
 

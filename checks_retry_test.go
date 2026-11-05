@@ -11,14 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
 
 // flakyGitHub serves one repository whose metadata and commit endpoints can fail on demand.
 type flakyGitHub struct {
-	server               *httptest.Server
+	server                *httptest.Server
 	failMeta, failCommits atomic.Bool
 }
 
@@ -60,7 +60,7 @@ func newFlakyGitHub(t *testing.T) *flakyGitHub {
 }
 
 // retryTestApp builds an app that captures enqueued jobs instead of running them.
-func retryTestApp(t *testing.T, fake *flakyGitHub, jobs *[]app.JobRequest) *reviewApp {
+func retryTestApp(t *testing.T, fake *flakyGitHub, jobs *[]app.JobRequest) *ireApp {
 	t.Helper()
 
 	application := newTestApp(t)
@@ -76,7 +76,7 @@ func retryTestApp(t *testing.T, fake *flakyGitHub, jobs *[]app.JobRequest) *revi
 }
 
 // ingestRetryShip ingests a ship against the flaky forge.
-func ingestRetryShip(t *testing.T, application *reviewApp, externalID, repo string) string {
+func ingestRetryShip(t *testing.T, application *ireApp, externalID, repo string) string {
 	t.Helper()
 
 	body := ingestBody(externalID)
@@ -90,7 +90,7 @@ func ingestRetryShip(t *testing.T, application *reviewApp, externalID, repo stri
 }
 
 // runCheckJob runs the queued check job for a ship.
-func runCheckJob(t *testing.T, application *reviewApp, submissionID string) {
+func runCheckJob(t *testing.T, application *ireApp, submissionID string) {
 	t.Helper()
 
 	payload, _ := json.Marshal(checkJob{SubmissionID: submissionID, Version: 1})
@@ -100,7 +100,7 @@ func runCheckJob(t *testing.T, application *reviewApp, submissionID string) {
 }
 
 // postTick runs the schedule tick.
-func postTick(t *testing.T, application *reviewApp) {
+func postTick(t *testing.T, application *ireApp) {
 	t.Helper()
 
 	if recorder := do(t, application, http.MethodPost, "/jobs/tick", nil, nil, nil); recorder.Code != http.StatusOK {
@@ -109,7 +109,7 @@ func postTick(t *testing.T, application *reviewApp) {
 }
 
 // shipStatus reads a ship's status as a reviewer.
-func shipStatus(t *testing.T, application *reviewApp, submissionID string) string {
+func shipStatus(t *testing.T, application *ireApp, submissionID string) string {
 	t.Helper()
 
 	cookie := login(t, application, "reviewer@example.com")
@@ -119,7 +119,7 @@ func shipStatus(t *testing.T, application *reviewApp, submissionID string) strin
 }
 
 // retryEventCount counts automatic retry events for a ship.
-func retryEventCount(t *testing.T, application *reviewApp, submissionID string) int {
+func retryEventCount(t *testing.T, application *ireApp, submissionID string) int {
 	t.Helper()
 
 	var count int

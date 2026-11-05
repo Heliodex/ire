@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestJournalAdjustmentSavesDeflation covers the per-entry approved time, its note and the ship total it feeds.

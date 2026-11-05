@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // duplicateChecks compares a new ship with earlier ones in the same programme.
-func (a *reviewApp) duplicateChecks(ctx context.Context, programID string, request contract.IngestRequest, now time.Time) []contract.CheckResult {
+func (a *ireApp) duplicateChecks(ctx context.Context, programID string, request contract.IngestRequest, now time.Time) []contract.CheckResult {
 	checkedAt := now.Format(timestampFormat)
 	repo := strings.ToLower(strings.TrimSpace(stringValue(request.RepoURL)))
 	demo := strings.ToLower(strings.TrimSpace(stringValue(request.DemoURL)))

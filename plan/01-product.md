@@ -200,7 +200,7 @@ No stage 1 code path calls the provider. This is enforced in the service layer, 
 ### A clean design submission
 
 1. Maker submits in Half Life. Half Life sends a signed ship.
-2. Review snapshots it and enqueues checks. Repo and evidence checks finish in seconds.
+2. Ire snapshots it and enqueues checks. Repo and evidence checks finish in seconds.
 3. The ship appears in the stage 1 queue with a green preflight.
 4. Reviewer opens it; auto-claimed; bundle is already prefetched.
 5. Reviewer reads the README, BOM and a few journal entries; approves in two keystrokes.
@@ -234,14 +234,14 @@ No stage 1 code path calls the provider. This is enforced in the service layer, 
 ### A resubmission
 
 1. Half Life withdraws the old ship and sends a new version of the same `external_id`.
-2. Review keeps the old version and its decision; the new version is a new row.
+2. Ire keeps the old version and its decision; the new version is a new row.
 3. The review screen shows the diff since the last decision and any prior decision notes.
 4. The old ship cannot be decided; the new one has its own claim, checks and decision.
 
 ### An override after delivery
 
 1. An admin reverts or requeues a decided ship.
-2. Review invalidates the review, releases the claim, and writes an outbound `review.reverted` or `review.requeued`.
+2. Ire invalidates the review, releases the claim, and writes an outbound `review.reverted` or `review.requeued`.
 3. Half Life reverses credit or returns the ship to the queue.
 4. The audit trail keeps both decisions and the reason.
 
@@ -249,14 +249,14 @@ No stage 1 code path calls the provider. This is enforced in the service layer, 
 
 These are not optional integration details. The UI and the policy engine must reflect them, or a reviewer will make a decision the backend refuses.
 
-- **A build may be submitted before its design is approved.** Half Life allows this deliberately, so a maker is not blocked by review capacity. Review can show and queue the build, but a build approval must be disabled with "Waiting for design approval" until the design is approved. Do not let a reviewer spend time on an approval that cannot land.
-- **Design approval is the funding decision.** The design review sets the tier and the parts grant. A build has no tier. Review displays the tier the maker requested and the BOM total; it sends an hours decision and, if the reviewer changes it, a tier override. Half Life remains the writer.
-- **A design cannot be approved below its tier's funded-hours floor.** Half Life refuses it. Review should show the floor and explain why the tier must step down, rather than letting the reviewer hit a server error.
-- **Stale Hackatime blocks approval unless the reviewer sets an explicit hours value.** Review must show the stale state, not a zero, and must not silently approve on a cached number.
-- **One open ship per `(project, phase)`.** A new hand-in while one is open is a `409 already_queued` with the existing id. Half Life adopts that id; Review must return it.
+- **A build may be submitted before its design is approved.** Half Life allows this deliberately, so a maker is not blocked by review capacity. Ire can show and queue the build, but a build approval must be disabled with "Waiting for design approval" until the design is approved. Do not let a reviewer spend time on an approval that cannot land.
+- **Design approval is the funding decision.** The design review sets the tier and the parts grant. A build has no tier. Ire displays the tier the maker requested and the BOM total; it sends an hours decision and, if the reviewer changes it, a tier override. Half Life remains the writer.
+- **A design cannot be approved below its tier's funded-hours floor.** Half Life refuses it. Ire should show the floor and explain why the tier must step down, rather than letting the reviewer hit a server error.
+- **Stale Hackatime blocks approval unless the reviewer sets an explicit hours value.** Ire must show the stale state, not a zero, and must not silently approve on a cached number.
+- **One open ship per `(project, phase)`.** A new hand-in while one is open is a `409 already_queued` with the existing id. Half Life adopts that id; Ire must return it.
 - **Nobody reviews their own work.** The queue, direct URL, claim and decision all refuse it. Admin does not bypass this.
-- **A returned phase grants its own extension.** Half Life writes the extension; Review does not. It only needs to deliver the `changes` decision promptly.
-- **Half Life's `finalizeReview` is the only writer of credit.** If Review's decision is refused (order, stale hours, tier), the outbound delivery fails and is retried; Review must show that state, not pretend the decision is complete.
+- **A returned phase grants its own extension.** Half Life writes the extension; Ire does not. It only needs to deliver the `changes` decision promptly.
+- **Half Life's `finalizeReview` is the only writer of credit.** If Ire's decision is refused (order, stale hours, tier), the outbound delivery fails and is retried; Ire must show that state, not pretend the decision is complete.
 
 If a rule changes in Half Life, it changes here in the same release. The integration tests should encode these invariants.
 
@@ -264,11 +264,11 @@ If a rule changes in Half Life, it changes here in the same release. The integra
 
 The goal is not pixel parity. It is **no relearning**. A reviewer should recognise the shape and know where everything is.
 
-| Ari | Review | Notes |
+| Ari | Ire | Notes |
 | --- | --- | --- |
 | Queue, filters, priority, oldest first | Same | Add a "ready to approve" / "needs a look" split |
 | Claim, heartbeat, finish session | Same | Auto-claim on open; release on navigate |
-| Review screen: header, evidence dock, rail, decision footer | Same two-pane shape | Stage 1 rail is simpler; stage 2 adds held/fraud panels |
+| Ire screen: header, evidence dock, rail, decision footer | Same two-pane shape | Stage 1 rail is simpler; stage 2 adds held/fraud panels |
 | Evidence: commits, devlog, Lapse, README, files, past reviews | Same | One bundle; prefetch; resubmission diff |
 | Hours rail, per-source adjustments, deflation | Same | Seconds model; sends approved seconds to Half Life |
 | Checklist, custom fields, snippets | Same | Stage-scoped; off by default in stage 1 |
@@ -279,7 +279,7 @@ The goal is not pixel parity. It is **no relearning**. A reviewer should recogni
 | Collaborative ships | Dropped | Half Life is solo |
 | Software track | Deferred | Hardware first; track is a column |
 | Reviewer reauth | Optional | HCA prompt if a programme wants it |
-| Priority review form | Not in Review | Half Life owns the maker-facing form |
+| Priority review form | Not in Ire | Half Life owns the maker-facing form |
 | MCP / agent API | Deferred | Add later if reviewers ask |
 | Activity log / leaderboard | Same idea, simpler | Audit-backed |
 | `ship.updated` edits | Deferred | Reviewer notes instead; add if needed |
@@ -388,13 +388,13 @@ Operational metrics:
 
 ## Non-goals and deliberate omissions
 
-- **No ledger.** Review never credits coins. It sends a decision.
+- **No ledger.** Ire never credits coins. It sends a decision.
 - **No maker UI.** Half Life is the maker's surface.
 - **No reviewer VMs.** Hardware review does not need an ephemeral desktop.
-- **No NDA vault.** Review does not collect identity documents or private evidence.
+- **No NDA vault.** Ire does not collect identity documents or private evidence.
 - **No collaborative ships in v1.** The data model has a `maker` object and can grow a `collaborators` array, but Half Life hardware is solo.
 - **No software track in v1.** The check policy and track column are ready; the UI and default checks are hardware.
-- **No email delivery.** Half Life notifies makers. Review can post reviewer ops to Slack later.
+- **No email delivery.** Half Life notifies makers. Ire can post reviewer ops to Slack later.
 - **No public queue.** Reviewer capacity is internal.
 - **No automatic rejection on check failure.** A failed check is a human decision, unless a programme explicitly opts into auto-reject for a specific check.
-- **No AI review in v1.** The fraud provider can use whatever it wants; Review does not embed prompts.
+- **No AI review in v1.** The fraud provider can use whatever it wants; Ire does not embed prompts.

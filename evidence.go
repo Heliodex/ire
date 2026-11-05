@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // loadEvidence returns the cached repository snapshot for a submission version and whether one was stored.
-func (a *reviewApp) loadEvidence(ctx context.Context, submissionID string, version int) (contract.Evidence, bool, error) {
+func (a *ireApp) loadEvidence(ctx context.Context, submissionID string, version int) (contract.Evidence, bool, error) {
 	var (
 		evidence                                                        contract.Evidence
 		defaultBranch, headSha, readme, failure, filesJSON, commitsJSON string
@@ -52,7 +52,7 @@ func (a *reviewApp) loadEvidence(ctx context.Context, submissionID string, versi
 }
 
 // commitSince returns the previous approval time, or the programme start for a first version.
-func (a *reviewApp) commitSince(ctx context.Context, programID, previousID string) string {
+func (a *ireApp) commitSince(ctx context.Context, programID, previousID string) string {
 	if previousID != "" {
 		var decidedAt string
 		if err := a.store.QueryRow(ctx, `select coalesce(decided_at, '') from submission where id = ?`, previousID).Scan(&decidedAt); err == nil && decidedAt != "" {
@@ -69,7 +69,7 @@ func (a *reviewApp) commitSince(ctx context.Context, programID, previousID strin
 }
 
 // saveEvidence replaces the snapshot for a submission version, so a refresh never leaves two copies.
-func (a *reviewApp) saveEvidence(ctx context.Context, submissionID string, version int, evidence contract.Evidence) error {
+func (a *ireApp) saveEvidence(ctx context.Context, submissionID string, version int, evidence contract.Evidence) error {
 	files, err := json.Marshal(evidence.Files)
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (a *reviewApp) saveEvidence(ctx context.Context, submissionID string, versi
 }
 
 // handleEvidenceRefresh refetches the repository snapshot for organisers, leaving the decision and checks untouched.
-func (a *reviewApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return

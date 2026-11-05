@@ -729,7 +729,7 @@ async function saveDraftNow(): Promise<void> {
 </script>
 
 <svelte:head>
-	<title>{submission ? `${submission.title} · Review` : "Review · Half Life"}</title>
+	<title>{submission ? `${submission.title} · Ire` : "Ire"}</title>
 </svelte:head>
 
 {#if loading}
@@ -1212,7 +1212,7 @@ async function saveDraftNow(): Promise<void> {
 						<TimeEvidenceBar segments={timeSegments} />
 						<p class="policy">
 							This copy is here for review and parity only. Claims, drafts and decisions stay in Ari, and
-							Review sends nothing to the maker.
+							Ire sends nothing to the maker.
 						</p>
 					</section>
 				{:else}

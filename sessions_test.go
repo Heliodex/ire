@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestRevokeSessions covers admin revocation and the role boundary.

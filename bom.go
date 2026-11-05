@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 )
 
 const maxBOMBody = 1 << 20
@@ -35,7 +35,7 @@ type bomItem struct {
 }
 
 // fetchBOM reads the first bill-of-materials file and parses its rows.
-func (a *reviewApp) fetchBOM(ctx context.Context, client githubClient, owner, name string, tree githubTree) bomSummary {
+func (a *ireApp) fetchBOM(ctx context.Context, client githubClient, owner, name string, tree githubTree) bomSummary {
 	path := findBOMPath(tree)
 	if path == "" {
 		return bomSummary{}
@@ -430,7 +430,7 @@ func submittedBom(meta *contract.IngestMeta) []contract.BomLine {
 }
 
 // loadBomLines reads the maker's submitted BOM for the check job and evidence refresh.
-func (a *reviewApp) loadBomLines(ctx context.Context, submissionID string) []contract.BomLine {
+func (a *ireApp) loadBomLines(ctx context.Context, submissionID string) []contract.BomLine {
 	rows, err := a.store.Query(ctx, `select name, quantity, unit_cost_cents, coalesce(vendor, ''), coalesce(link, '')
 		from bom_line where submission_id = ? order by sort asc`, submissionID)
 	if err != nil {

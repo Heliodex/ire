@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
@@ -21,7 +21,7 @@ const (
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 // handleSearch finds open ships by title, maker, external id or theme for the header search.
-func (a *reviewApp) handleSearch(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return

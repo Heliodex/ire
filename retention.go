@@ -19,7 +19,7 @@ type retentionResult struct {
 }
 
 // pruneRetention clears short-lived state and the operational history no longer needed after a decision.
-func (a *reviewApp) pruneRetention(ctx context.Context) (retentionResult, error) {
+func (a *ireApp) pruneRetention(ctx context.Context) (retentionResult, error) {
 	now := a.now()
 	result := retentionResult{}
 

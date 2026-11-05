@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestMemberAdministration covers the roster, invite, update, audit and last-admin guard.

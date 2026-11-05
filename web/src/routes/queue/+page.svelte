@@ -631,7 +631,7 @@ async function open(item: QueueItem): Promise<void> {
 </script>
 
 <svelte:head>
-	<title>Queue · Half Life Review</title>
+	<title>Queue · Ire</title>
 </svelte:head>
 
 <svelte:window onscroll={onQueueScroll} />

@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
@@ -14,7 +14,7 @@ import (
 // resubmissionDiff compares a ship with the version it replaced: the previous decision, new commits, file changes, journal entries and BOM changes.
 //
 //nolint:nilnil // A first version has no diff and is not an error.
-func (a *reviewApp) resubmissionDiff(ctx context.Context, ship submissionRow, current *contract.Evidence, journals []contract.JournalEntry) (*contract.Resubmission, error) {
+func (a *ireApp) resubmissionDiff(ctx context.Context, ship submissionRow, current *contract.Evidence, journals []contract.JournalEntry) (*contract.Resubmission, error) {
 	if ship.PreviousID == "" {
 		return nil, nil
 	}
@@ -172,7 +172,7 @@ func changedBom(previous, current []contract.BomLine) (added, removed []string, 
 }
 
 // fillPreviousReview adds the last final decision on the previous version.
-func (a *reviewApp) fillPreviousReview(ctx context.Context, previousID string, diff *contract.Resubmission) {
+func (a *ireApp) fillPreviousReview(ctx context.Context, previousID string, diff *contract.Resubmission) {
 	var reviewerEmail, decision, note, createdAt string
 
 	err := a.store.QueryRow(ctx, `select reviewer_email, decision, note_to_maker, created_at

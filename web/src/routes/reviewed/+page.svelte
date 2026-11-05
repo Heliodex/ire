@@ -128,7 +128,7 @@ onMount((): (() => void) => {
 </script>
 
 <svelte:head>
-	<title>Reviewed · Half Life Review</title>
+	<title>Reviewed · Ire</title>
 </svelte:head>
 
 <section class="page-head">

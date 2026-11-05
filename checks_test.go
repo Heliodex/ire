@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestParseBOMCSV covers quoted names, quantities and prices.

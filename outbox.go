@@ -13,7 +13,7 @@ import (
 const outboxTable = "webhook_outbox"
 
 // outboxStore builds the signed delivery queue around the app clock, HTTP client and fake receiver.
-func (a *reviewApp) outboxStore() outbox.Outbox {
+func (a *ireApp) outboxStore() outbox.Outbox {
 	return outbox.Outbox{
 		Table:  outboxTable,
 		Signer: a.signer(a.config.OutboundSecret),
@@ -25,7 +25,7 @@ func (a *reviewApp) outboxStore() outbox.Outbox {
 
 // reviewSender keeps the in-process fake receiver for the demo and posts real HTTP deliveries with Ari's headers.
 type reviewSender struct {
-	app *reviewApp
+	app *ireApp
 }
 
 // Send performs one delivery attempt. A dry run records the delivery as sent without touching the receiver, so a pilot can compare before cutover.
@@ -45,14 +45,14 @@ func (s reviewSender) Send(ctx context.Context, delivery outbox.Delivery) (int, 
 		TimestampHeader: "X-Ari-Timestamp",
 		DeliveryHeader:  "X-Ari-Delivery-Id",
 		SignatureHeader: "X-Ari-Signature",
-		UserAgent:       "half-life-review",
+		UserAgent:       "half-life-ire",
 	}
 
 	return sender.Send(ctx, delivery)
 }
 
 // handleTick is driven by app.json's schedule. It sends due deliveries, releases expired claims and clears expired sessions.
-func (a *reviewApp) handleTick(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleTick(w http.ResponseWriter, r *http.Request) {
 	now := a.nowText()
 
 	delivered, retried, failed := a.deliverDue(r.Context())
@@ -91,7 +91,7 @@ func (a *reviewApp) handleTick(w http.ResponseWriter, r *http.Request) {
 }
 
 // deliverDue sends every delivery whose retry time has arrived.
-func (a *reviewApp) deliverDue(ctx context.Context) (int, int, int) {
+func (a *ireApp) deliverDue(ctx context.Context) (int, int, int) {
 	if !a.outboundEnabled(ctx, programID) {
 		return 0, 0, 0
 	}
@@ -107,7 +107,7 @@ func (a *reviewApp) deliverDue(ctx context.Context) (int, int, int) {
 }
 
 // deliverOutboxNow sends the queue and returns the stored status of one delivery.
-func (a *reviewApp) deliverOutboxNow(ctx context.Context, id string) string {
+func (a *ireApp) deliverOutboxNow(ctx context.Context, id string) string {
 	a.deliverDue(ctx)
 
 	record, err := a.outboxStore().Get(ctx, a.store, id)
@@ -128,7 +128,7 @@ func normalizeOutboxStatus(status string) string {
 }
 
 // receiveFake verifies and stores a delivery in the prototype's in-process receiver.
-func (a *reviewApp) receiveFake(ctx context.Context, delivery outbox.Delivery) (int, error) {
+func (a *ireApp) receiveFake(ctx context.Context, delivery outbox.Delivery) (int, error) {
 	signer := a.signer(a.config.OutboundSecret)
 
 	var verified int

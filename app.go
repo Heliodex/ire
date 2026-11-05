@@ -102,8 +102,8 @@ type config struct {
 	Enqueue                                                                                                                                                                       func(context.Context, app.JobRequest) (bool, error)
 }
 
-// reviewApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.
-type reviewApp struct {
+// ireApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.
+type ireApp struct {
 	store                          *storage.Client
 	client                         *http.Client
 	mux                            *http.ServeMux
@@ -113,8 +113,8 @@ type reviewApp struct {
 	forgeCache                     *forgeCache
 }
 
-// newReviewApp builds the routes around one store and outbound client.
-func newReviewApp(store *storage.Client, client *http.Client, cfg config) *reviewApp {
+// newIreApp builds the routes around one store and outbound client.
+func newIreApp(store *storage.Client, client *http.Client, cfg config) *ireApp {
 	if client == nil {
 		client = http.DefaultClient
 	}
@@ -126,7 +126,7 @@ func newReviewApp(store *storage.Client, client *http.Client, cfg config) *revie
 		}
 	}
 
-	a := &reviewApp{store: store, client: client, mux: http.NewServeMux(), config: cfg, clock: time.Now}
+	a := &ireApp{store: store, client: client, mux: http.NewServeMux(), config: cfg, clock: time.Now}
 	a.browserLimiter = newRateLimiter(browserRateLimit, a.now)
 	a.machineLimiter = newRateLimiter(machineRateLimit, a.now)
 	a.forgeCache = newForgeCache()
@@ -136,27 +136,27 @@ func newReviewApp(store *storage.Client, client *http.Client, cfg config) *revie
 }
 
 // handler exposes the routes to the wasm wiring or a test.
-func (a *reviewApp) handler() http.Handler {
+func (a *ireApp) handler() http.Handler {
 	return a.withRateLimit(a.mux)
 }
 
 // now returns the app's clock in UTC.
-func (a *reviewApp) now() time.Time {
+func (a *ireApp) now() time.Time {
 	return a.clock().UTC()
 }
 
 // nowText formats the current time with the contract's fixed-width layout.
-func (a *reviewApp) nowText() string {
+func (a *ireApp) nowText() string {
 	return a.now().Format(timestampFormat)
 }
 
 // later returns the current time plus d, formatted for storage.
-func (a *reviewApp) later(d time.Duration) string {
+func (a *ireApp) later(d time.Duration) string {
 	return a.now().Add(d).Format(timestampFormat)
 }
 
 // routes registers the Ari-compatible edge, the native API and the supervised tick endpoint.
-func (a *reviewApp) routes() {
+func (a *ireApp) routes() {
 	a.mux.HandleFunc("POST /api/ingest/{program}", a.handleIngest)
 	a.mux.HandleFunc("POST /api/ingest/{program}/withdraw", a.handleWithdraw)
 	a.mux.HandleFunc("GET /api/ingest/{program}/status", a.handleStatus)
@@ -211,7 +211,7 @@ func (a *reviewApp) routes() {
 }
 
 // handlePage gates every HTML navigation before the static build is served.
-func (a *reviewApp) handlePage(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	signedIn := a.hasSession(r)
 
@@ -270,7 +270,7 @@ func protectedPage(path string) bool {
 }
 
 // programFor resolves the path's programme slug, writing a 404 when it does not exist.
-func (a *reviewApp) programFor(w http.ResponseWriter, r *http.Request) (programRow, bool) {
+func (a *ireApp) programFor(w http.ResponseWriter, r *http.Request) (programRow, bool) {
 	slug := r.PathValue("program")
 
 	var row programRow
@@ -293,7 +293,7 @@ func (a *reviewApp) programFor(w http.ResponseWriter, r *http.Request) (programR
 }
 
 // programByID loads a programme by its opaque id.
-func (a *reviewApp) programByID(ctx context.Context, id string) (programRow, error) {
+func (a *ireApp) programByID(ctx context.Context, id string) (programRow, error) {
 	var row programRow
 
 	row.ID = id

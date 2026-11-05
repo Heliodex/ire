@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 const previewBoardText = "(kicad_pcb (version 20211014) (generator pcbnew) (general (thickness 1.6)))"
@@ -41,7 +41,7 @@ func fakePreviewForge(t *testing.T) *httptest.Server {
 }
 
 // seedPreviewShip points a fixture ship at the fake forge with a listed board file.
-func seedPreviewShip(t *testing.T, application *reviewApp) {
+func seedPreviewShip(t *testing.T, application *ireApp) {
 	t.Helper()
 
 	files := `[{"path":"board.kicad_pcb","kind":"file"},{"path":"board.kicad_sch","kind":"file"},{"path":"board.kicad_pro","kind":"file"},{"path":"big.kicad_pcb","kind":"file"},{"path":"README.md","kind":"file"}]`

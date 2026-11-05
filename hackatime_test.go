@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestHackatimeChecks covers the public stats fetch, the five-minute cache and a stale fallback.

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestSearchFindsProjectByTitleMakerAndExternalID covers the header search matching and escaping.

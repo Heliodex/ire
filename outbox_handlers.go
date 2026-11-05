@@ -4,13 +4,13 @@ import (
 	"encoding/json/v2"
 	"net/http"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
 
 // handleOutbox lists recent deliveries so an operator can see what was sent and why a retry is pending.
-func (a *reviewApp) handleOutbox(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleOutbox(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return
@@ -107,7 +107,7 @@ func redactOutboxPayload(payload string) *string {
 }
 
 // handleFakeDeliveries lists what the prototype's in-process receiver accepted, with the signature it verified.
-func (a *reviewApp) handleFakeDeliveries(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleFakeDeliveries(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.currentReviewer(w, r); !ok {
 		return
 	}

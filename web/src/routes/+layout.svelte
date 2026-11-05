@@ -127,7 +127,7 @@ async function signOut(): Promise<void> {
 
 <svelte:head>
 	<link href="/favicon.svg" rel="icon">
-	<meta content="Review queue for Half Life hardware ships" name="description">
+	<meta content="Ire queue for Half Life hardware ships" name="description">
 </svelte:head>
 
 <svelte:window onkeydown={onKeydown} />
@@ -140,7 +140,7 @@ async function signOut(): Promise<void> {
 			<a class="brand" href={session.me ? "/queue" : "/"}>
 				<span class="mark">HL</span>
 				<span class="brand-copy">
-					<strong>Review</strong>
+					<strong>Ire</strong>
 					<small>Half Life hardware</small>
 				</span>
 			</a>
@@ -206,7 +206,7 @@ async function signOut(): Promise<void> {
 			{#if readOnly}
 				<div class="shadow-banner" role="status">
 					<strong>Shadow mode</strong>
-					Review is read-only. Ships and decisions stay in Ari.
+					Ire is read-only. Ships and decisions stay in Ari.
 				</div>
 			{/if}
 

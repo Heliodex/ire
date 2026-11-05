@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestReviewedListsDecidedShips covers the reviewed tab and its decision filter.

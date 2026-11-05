@@ -1,4 +1,4 @@
-module review
+module ire
 
 go 1.27.1
 

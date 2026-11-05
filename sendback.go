@@ -4,14 +4,14 @@ import (
 	"net/http"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // handleSendBack returns a held ship to stage 1 and invalidates the first-pass review that held it.
-func (a *reviewApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return

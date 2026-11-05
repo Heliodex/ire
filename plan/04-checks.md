@@ -119,18 +119,18 @@ Preserve the hard-won details:
 
 ## Two gates, one policy
 
-Half Life already has a submit gate (`submitPhase` re-runs `checkRepo`) and Review has review-time checks. They are not the same gate:
+Half Life already has a submit gate (`submitPhase` re-runs `checkRepo`) and Ire has review-time checks. They are not the same gate:
 
 - Half Life's gate decides whether a maker may hand work in. It should stay strict and fast, because the maker can fix a blocking issue before a reviewer sees it.
-- Review's gate decides whether a reviewer may approve. It catches drift: a repo that changed after submit, a README edited, a file deleted, a Hackatime project renamed.
+- Ire's gate decides whether a reviewer may approve. It catches drift: a repo that changed after submit, a README edited, a file deleted, a Hackatime project renamed.
 
 Both should use the same theme requirement table. To prevent drift:
 
 - Keep the canonical hardware requirement table in a generated JSON fixture checked into both repositories (or a versioned `policy.json` with a checksum).
-- Half Life's `verify:contracts` pins the fixture; Review's contract tests pin the same fixture.
+- Half Life's `verify:contracts` pins the fixture; Ire's contract tests pin the same fixture.
 - A requirement change is a two-repository change with the same fixture hash. If only one side changes, the fixture mismatch fails CI.
 
-Where the two disagree at review time, Review's result is what the reviewer sees, and the reviewer can waive it with a reason. Do not silently ignore a review-time failure because the submit gate passed.
+Where the two disagree at review time, Ire's result is what the reviewer sees, and the reviewer can waive it with a reason. Do not silently ignore a review-time failure because the submit gate passed.
 
 ## Check details
 
@@ -192,7 +192,7 @@ Do not fetch every `.json` file. Only open the five shallowest plausible candida
 ### Identity
 
 - Ingest carries the maker's verification status from Half Life/HCA.
-- Review does not collect documents. It shows `verified` / `not verified` / `unknown`.
+- Ire does not collect documents. It shows `verified` / `not verified` / `unknown`.
 - A non-verified maker is a warning at review time; Half Life already enforces verification at payout. Do not duplicate the payout gate.
 
 ### Duplicates

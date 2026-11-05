@@ -274,7 +274,7 @@ function targetLink(entry: AuditEntry): string | null {
 </script>
 
 <svelte:head>
-	<title>Audit log · Half Life Review</title>
+	<title>Audit log · Ire</title>
 </svelte:head>
 
 <section class="page-head">

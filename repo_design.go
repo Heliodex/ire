@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 )
 
 const emptyFileBytes = 8

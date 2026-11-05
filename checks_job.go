@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
@@ -24,7 +24,7 @@ type checkJob struct {
 }
 
 // queueRepositoryChecks enqueues the forge work and falls back to running it inline if the queue is unavailable, so a ship never waits in checking forever.
-func (a *reviewApp) queueRepositoryChecks(ctx context.Context, submissionID string, version int, idempotencyKey string) {
+func (a *ireApp) queueRepositoryChecks(ctx context.Context, submissionID string, version int, idempotencyKey string) {
 	err := a.enqueueCheckJob(ctx, submissionID, version, idempotencyKey)
 	if err == nil {
 		return
@@ -43,7 +43,7 @@ func (a *reviewApp) queueRepositoryChecks(ctx context.Context, submissionID stri
 }
 
 // enqueueCheckJob adds one idempotent job per submission version.
-func (a *reviewApp) enqueueCheckJob(ctx context.Context, submissionID string, version int, idempotencyKey string) error {
+func (a *ireApp) enqueueCheckJob(ctx context.Context, submissionID string, version int, idempotencyKey string) error {
 	payload, err := json.Marshal(checkJob{SubmissionID: submissionID, Version: version})
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (a *reviewApp) enqueueCheckJob(ctx context.Context, submissionID string, ve
 }
 
 // handleJobChecks runs the repository checks the supervisor queued for a checking ship.
-func (a *reviewApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
 	var job checkJob
 	if !app.ReadJSON(w, r, maxAPIBody, "body", &job) {
 		return
@@ -101,7 +101,7 @@ func (a *reviewApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
 }
 
 // runRepositoryChecks records one attempt around the repository fetch.
-func (a *reviewApp) runRepositoryChecks(ctx context.Context, ship submissionRow) error {
+func (a *ireApp) runRepositoryChecks(ctx context.Context, ship submissionRow) error {
 	attempts := a.startCheckRun(ctx, ship)
 
 	if err := a.collectRepositoryChecks(ctx, ship); err != nil {
@@ -116,7 +116,7 @@ func (a *reviewApp) runRepositoryChecks(ctx context.Context, ship submissionRow)
 }
 
 // startCheckRun marks a new attempt and returns its number.
-func (a *reviewApp) startCheckRun(ctx context.Context, ship submissionRow) int {
+func (a *ireApp) startCheckRun(ctx context.Context, ship submissionRow) int {
 	now := a.nowText()
 
 	result, err := a.store.Exec(ctx, `update check_run set status = 'running', attempts = attempts + 1,
@@ -145,7 +145,7 @@ func (a *reviewApp) startCheckRun(ctx context.Context, ship submissionRow) int {
 }
 
 // finishCheckRun records a successful attempt.
-func (a *reviewApp) finishCheckRun(ctx context.Context, ship submissionRow) {
+func (a *ireApp) finishCheckRun(ctx context.Context, ship submissionRow) {
 	if _, err := a.store.Exec(ctx, `update check_run set status = 'succeeded', finished_at = ?, error = null
 		where submission_id = ? and version = ?`, a.nowText(), ship.ID, ship.Version); err != nil {
 		app.Errorf("finish check run: %v", err)
@@ -153,7 +153,7 @@ func (a *reviewApp) finishCheckRun(ctx context.Context, ship submissionRow) {
 }
 
 // failCheckRun records the error and surfaces a terminal failure without waiting for the stale sweep.
-func (a *reviewApp) failCheckRun(ctx context.Context, ship submissionRow, attempts int, runErr error) {
+func (a *ireApp) failCheckRun(ctx context.Context, ship submissionRow, attempts int, runErr error) {
 	now := a.nowText()
 
 	if _, err := a.store.Exec(ctx, `update check_run set status = 'failed', finished_at = ?, error = ?
@@ -176,7 +176,7 @@ func (a *reviewApp) failCheckRun(ctx context.Context, ship submissionRow, attemp
 }
 
 // collectRepositoryChecks fetches the forge, replaces the repository check rows, stores the evidence and moves a checking ship to its real status.
-func (a *reviewApp) collectRepositoryChecks(ctx context.Context, ship submissionRow) error {
+func (a *ireApp) collectRepositoryChecks(ctx context.Context, ship submissionRow) error {
 	remote, evidence := a.repoChecks(ctx, ship.RepoURL, a.commitSince(ctx, ship.ProgramID, ship.PreviousID), a.now(), a.loadBomLines(ctx, ship.ID))
 	remote = append(remote, a.hackatimeChecks(ctx, ship)...)
 	remote = append(remote, a.demoChecks(ctx, ship)...)
@@ -243,7 +243,7 @@ func (a *reviewApp) collectRepositoryChecks(ctx context.Context, ship submission
 }
 
 // loadCheckRun returns the run row for one submission version and whether it exists.
-func (a *reviewApp) loadCheckRun(ctx context.Context, submissionID string, version int) (contract.CheckRun, bool, error) {
+func (a *ireApp) loadCheckRun(ctx context.Context, submissionID string, version int) (contract.CheckRun, bool, error) {
 	var (
 		run                 contract.CheckRun
 		finishedAt, failure string
@@ -267,7 +267,7 @@ func (a *reviewApp) loadCheckRun(ctx context.Context, submissionID string, versi
 }
 
 // loadCheckResults reads the current rows for one submission version.
-func (a *reviewApp) loadCheckResults(ctx context.Context, submissionID string, version int) ([]contract.CheckResult, error) {
+func (a *ireApp) loadCheckResults(ctx context.Context, submissionID string, version int) ([]contract.CheckResult, error) {
 	rows, err := a.store.Query(ctx, `select check_key, label, group_key, status, severity, summary, coalesce(detail, ''), coalesce(data, ''), checked_at
 		from check_result where submission_id = ? and version = ? order by checked_at asc, id asc`, submissionID, version)
 	if err != nil {

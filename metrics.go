@@ -9,7 +9,7 @@ import (
 )
 
 // handleMetrics exposes the pilot's counters in the Prometheus text format. It needs the machine bearer token, like the status feed.
-func (a *reviewApp) handleMetrics(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	if !a.requireMachine(w, r) {
 		return
 	}
@@ -26,7 +26,7 @@ func (a *reviewApp) handleMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 // metricsText reads queue, review, check and delivery counters in one pass of small queries.
-func (a *reviewApp) metricsText(ctx context.Context, id string) (string, error) {
+func (a *ireApp) metricsText(ctx context.Context, id string) (string, error) {
 	var out strings.Builder
 
 	out.WriteString("# HELP review_queue_depth Open ships by stage and status.\n# TYPE review_queue_depth gauge\n")

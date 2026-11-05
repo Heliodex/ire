@@ -1,4 +1,4 @@
-# Half Life Review
+# Ire
 
 A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working second pass, queued GitHub repository checks and a signed outbox. Reviewer auth uses Hack Club Auth over OpenID Connect when configured, with development accounts as a fallback, and GitHub evidence is cached per ship.
 
@@ -31,7 +31,7 @@ The interface follows Ari's visual language: Hanken Grotesk, Ari's grey surfaces
 wt dev --dir . --port 8080
 ```
 
-Open the `dev: vite at …` URL that it prints (the frontend is served by Vite in development; the API is on `review.localhost:8080`). For a production build, run `wt build --dir .` and `wt deploy --dir .`; the supervisor then serves both the static site and the API on `review.localhost`. A read-only shadow deployment sets `REVIEW_SHADOW=1`: every ingest, status and withdraw call still works, but reviewer mutations return `409 shadow_mode`, the UI hides the decision rail, and the outbox is suppressed. The root and protected pages are selected server-side with `server_pages` and `app.StaticPage`: a signed-in root redirects to `/queue`, a signed-out root serves the login page, and `/queue`, `/review` and `/deliveries` redirect to `/` without loading the page first. A ship opens at `/review/{id}`; old `/review?id=…` links redirect to that path. The queue pages with `limit` and `offset` and shows a load-more control; the machine feeds page with `since`. Organisers can rerun the repository checks from the review rail; the run is queued with the same fallback as ingest and the page follows it until it finishes. The rail compares the snapshot head with the live GitHub head and shows a stale notice with that action when the repository moved. `/login` remains as a compatibility redirect to `/`.
+Open the `dev: vite at …` URL that it prints (the frontend is served by Vite in development; the API is on `ire.localhost:8080`). For a production build, run `wt build --dir .` and `wt deploy --dir .`; the supervisor then serves both the static site and the API on `ire.localhost`. A read-only shadow deployment sets `IRE_SHADOW=1`: every ingest, status and withdraw call still works, but reviewer mutations return `409 shadow_mode`, the UI hides the decision rail, and the outbox is suppressed. The root and protected pages are selected server-side with `server_pages` and `app.StaticPage`: a signed-in root redirects to `/queue`, a signed-out root serves the login page, and `/queue`, `/review` and `/deliveries` redirect to `/` without loading the page first. A ship opens at `/review/{id}`; old `/review?id=…` links redirect to that path. The queue pages with `limit` and `offset` and shows a load-more control; the machine feeds page with `since`. Organisers can rerun the repository checks from the review rail; the run is queued with the same fallback as ingest and the page follows it until it finishes. The rail compares the snapshot head with the live GitHub head and shows a stale notice with that action when the repository moved. `/login` remains as a compatibility redirect to `/`.
 
 Sign in with one of the seeded accounts:
 
@@ -58,28 +58,28 @@ Reset the demo at any time with `POST /api/v1/dev/reset` while signed in. It del
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `REVIEW_INGEST_SECRET` | `dev-ingest-secret` | Verifies Ari inbound signatures and the status bearer |
-| `REVIEW_OUTBOUND_SECRET` | `dev-outbound-secret` | Signs outbound webhooks |
-| `REVIEW_OUTBOUND_URL` | `fake://receiver` | `fake://receiver` keeps deliveries in-process; an `https://` URL posts them |
-| `REVIEW_OUTBOUND_DRY_RUN` | `0` | `1` records deliveries as sent without calling the receiver, for a pilot shadow window |
-| `REVIEW_SHADOW` | `0` | `1` makes Review a read-only shadow of Ari: claims, drafts, decisions and send-backs return `409 shadow_mode`, and nothing is delivered |
-| `REVIEW_SEED_FIXTURES` | `1` | `0` starts with an empty queue |
-| `REVIEW_DEV_AUTH` | `1` | `0` disables the development sign-in endpoint |
-| `REVIEW_GITHUB_TOKEN` | empty | GitHub token for the repository checks; raises the API rate limit |
-| `REVIEW_GITHUB_API` | `https://api.github.com` | GitHub API base, useful for a fake server in tests |
+| `IRE_INGEST_SECRET` | `dev-ingest-secret` | Verifies Ari inbound signatures and the status bearer |
+| `IRE_OUTBOUND_SECRET` | `dev-outbound-secret` | Signs outbound webhooks |
+| `IRE_OUTBOUND_URL` | `fake://receiver` | `fake://receiver` keeps deliveries in-process; an `https://` URL posts them |
+| `IRE_OUTBOUND_DRY_RUN` | `0` | `1` records deliveries as sent without calling the receiver, for a pilot shadow window |
+| `IRE_SHADOW` | `0` | `1` makes Ire a read-only shadow of Ari: claims, drafts, decisions and send-backs return `409 shadow_mode`, and nothing is delivered |
+| `IRE_SEED_FIXTURES` | `1` | `0` starts with an empty queue |
+| `IRE_DEV_AUTH` | `1` | `0` disables the development sign-in endpoint |
+| `IRE_GITHUB_TOKEN` | empty | GitHub token for the repository checks; raises the API rate limit |
+| `IRE_GITHUB_API` | `https://api.github.com` | GitHub API base, useful for a fake server in tests |
 | `HACKATIME_API_BASE` | `https://hackatime.hackclub.com` | Hackatime API base for the linked-project time check |
-| `REVIEW_DISABLE_REPO_CHECKS` | `0` | `1` skips network checks and keeps the payload-only checks |
-| `REVIEW_DISABLE_JOBS` | `0` | `1` runs repository checks inline instead of enqueuing a job |
+| `IRE_DISABLE_REPO_CHECKS` | `0` | `1` skips network checks and keeps the payload-only checks |
+| `IRE_DISABLE_JOBS` | `0` | `1` runs repository checks inline instead of enqueuing a job |
 | `HC_CLIENT_ID` | empty | Hack Club Auth OAuth client id |
 | `HC_CLIENT_SECRET` | empty | Hack Club Auth OAuth client secret |
 | `HC_REDIRECT_URI` | empty | Registered callback; when empty it is derived from the public origin |
 | `HC_AUTH_BASE` | `https://auth.hackclub.com` | Auth provider base, useful for a fake provider in tests |
-| `REVIEW_BOOTSTRAP_EMAIL` | empty | One HCA email allowed to create its first membership; set it as a secret and disable it after the roster is seeded |
-| `REVIEW_BOOTSTRAP_ROLE` | `admin` | Role given to the bootstrap email: admin, organizer, reviewer or auditor |
+| `IRE_BOOTSTRAP_EMAIL` | empty | One HCA email allowed to create its first membership; set it as a secret and disable it after the roster is seeded |
+| `IRE_BOOTSTRAP_ROLE` | `admin` | Role given to the bootstrap email: admin, organizer, reviewer or auditor |
 
-Set real secrets with `wt secrets set review REVIEW_INGEST_SECRET`, `REVIEW_OUTBOUND_SECRET`, `REVIEW_GITHUB_TOKEN`, `HC_CLIENT_ID`, `HC_CLIENT_SECRET`, `HC_REDIRECT_URI` and `REVIEW_BOOTSTRAP_EMAIL` before deploying. **The development login is not Hack Club Auth.** It exists for local use and must be disabled with `REVIEW_DEV_AUTH=0` before a real programme uses it.
+Set real secrets with `wt secrets set ire IRE_INGEST_SECRET`, `IRE_OUTBOUND_SECRET`, `IRE_GITHUB_TOKEN`, `HC_CLIENT_ID`, `HC_CLIENT_SECRET`, `HC_REDIRECT_URI` and `IRE_BOOTSTRAP_EMAIL` before deploying. **The development login is not Hack Club Auth.** It exists for local use and must be disabled with `IRE_DEV_AUTH=0` before a real programme uses it.
 
-The HCA application must allow the `openid`, `profile` and `email` scopes and the exact callback URI. Hack Club Auth uses `openid profile email`, OIDC discovery, PKCE, nonce and RS256 ID-token verification against the provider JWKS, plus the existing programme roster. The stable HCA subject is stored in `user_identity`, so changing the email on a Hack Club account does not break the link; a second subject for the same account is refused. `REVIEW_BOOTSTRAP_EMAIL` can admit exactly one configured HCA email so the first administrator can sign in; `*` admits any email only while `REVIEW_DEV_AUTH` is on, for local testing, and never applies in production. Disable it after the roster is seeded by setting the secret to an address that cannot sign in, or by removing the env reference and redeploying. An admin can invite an email and choose reviewer, organizer, admin or auditor at `/admin`, which also lists recent audit actions; a verified account without an active membership is refused, except for the one configured bootstrap email; every other account stays refused unless a roster row exists. Signing up with Hack Club Auth never creates a Review membership; the deployed shadow has only the bootstrap admin on the roster. OAuth state, verifier and nonce live in a short-lived `login_flow` row, and browser mutations require a same-origin request. Request bodies are bounded, browser mutations are limited to 120 per minute per session, and signed machine mutations to 240 per minute per address. The scheduled tick prunes expired sessions, login flows, old ingest deliveries, closed-ship snapshots, audit records and fake receipts.
+The HCA application must allow the `openid`, `profile` and `email` scopes and the exact callback URI. Hack Club Auth uses `openid profile email`, OIDC discovery, PKCE, nonce and RS256 ID-token verification against the provider JWKS, plus the existing programme roster. The stable HCA subject is stored in `user_identity`, so changing the email on a Hack Club account does not break the link; a second subject for the same account is refused. `IRE_BOOTSTRAP_EMAIL` can admit exactly one configured HCA email so the first administrator can sign in; `*` admits any email only while `IRE_DEV_AUTH` is on, for local testing, and never applies in production. Disable it after the roster is seeded by setting the secret to an address that cannot sign in, or by removing the env reference and redeploying. An admin can invite an email and choose reviewer, organizer, admin or auditor at `/admin`, which also lists recent audit actions; a verified account without an active membership is refused, except for the one configured bootstrap email; every other account stays refused unless a roster row exists. Signing up with Hack Club Auth never creates an Ire membership; the deployed shadow has only the bootstrap admin on the roster. OAuth state, verifier and nonce live in a short-lived `login_flow` row, and browser mutations require a same-origin request. Request bodies are bounded, browser mutations are limited to 120 per minute per session, and signed machine mutations to 240 per minute per address. The scheduled tick prunes expired sessions, login flows, old ingest deliveries, closed-ship snapshots, audit records and fake receipts.
 
 ### Repository checks and evidence
 
@@ -125,8 +125,8 @@ An ingest body follows Ari's documented shape, with `meta.bom`, `meta.hours` and
 
 ```sh
 BODY='{"external_id":"demo:design", ...}'
-SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$REVIEW_INGEST_SECRET" -hex | awk '{print $2}')
-curl -X POST http://review.localhost:8080/api/ingest/half-life \
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$IRE_INGEST_SECRET" -hex | awk '{print $2}')
+curl -X POST http://ire.localhost:8080/api/ingest/half-life \
   -H "X-Ari-Signature: $SIG" -H 'Content-Type: application/json' --data "$BODY"
 ```
 
@@ -152,7 +152,7 @@ The app builds against the v2 SDK (`github.com/heliodex/better-deploy/wt/package
 - **Checks** are real for public GitHub repositories on new ingests and run as a durable job. Hackatime time and journal/clip coverage are checked. Fixture ships carry prescribed results. GitLab, demo probes, identity and duplicate checks are not ported yet.
 - **Auth** uses Hack Club Auth over OIDC when configured. Development accounts remain for local work; the platform identity provider is not used because it is a separate password store, and there is no roster admin UI yet.
 - **Stage 2** has the queue, confirm, override with a reason, send-back and a final decision. The configurable rule engine, fraud, and admin revert or requeue are later.
-- **Delivery receiver** defaults to the in-process `fake://receiver`. Point `REVIEW_OUTBOUND_URL` at a real endpoint to use HTTP; `packages/v2/outbox` signs the exact bytes, leases each attempt, retries 5xx/timeouts and fails permanent 4xx responses.
+- **Delivery receiver** defaults to the in-process `fake://receiver`. Point `IRE_OUTBOUND_URL` at a real endpoint to use HTTP; `packages/v2/outbox` signs the exact bytes, leases each attempt, retries 5xx/timeouts and fails permanent 4xx responses.
 - **Evidence** for GitHub ships now includes the README, file tree and commits fetched at ingest. Journals and clips still come only from the ingest payload, and the README is shown as plain text rather than rendered Markdown.
 
 ## Where the plan goes next

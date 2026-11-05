@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
@@ -17,11 +17,11 @@ import (
 // A fixture is a real half-life project row reduced to the fields a reviewer needs: the repo and description, the evidence, the claimed hours and a prescribed check outcome. The fixture suite stands in for the network checks until they are ported.
 type fixture struct {
 	externalID, title, description, repoURL, readme, thumbnailURL, theme, makerEmail, makerName, makerSlack string
-	tier, hoursClaimed, hoursJournal, priority                                                                 int
-	journals                                                                                    []fixtureJournal
-	bom                                                                                         []fixtureBom
-	checks                                                                                      []fixtureCheck
-	priorReview                                                                                 *fixturePriorReview
+	tier, hoursClaimed, hoursJournal, priority                                                              int
+	journals                                                                                                []fixtureJournal
+	bom                                                                                                     []fixtureBom
+	checks                                                                                                  []fixtureCheck
+	priorReview                                                                                             *fixturePriorReview
 }
 
 type fixtureJournal struct {
@@ -93,7 +93,7 @@ func checkCountsFor(checks []contract.CheckResult) checkCounts {
 // seedFixtures inserts the three demo ships: a clean approval, a ship with warnings, and one the checks refuse.
 //
 //nolint:dupl,goconst,mnd // The fixture lists are deliberately literal: prices, durations and near-identical check rows are demo data.
-func (a *reviewApp) seedFixtures(ctx context.Context) error {
+func (a *ireApp) seedFixtures(ctx context.Context) error {
 	now := a.now()
 	base := now.Add(-3 * time.Hour)
 
@@ -236,8 +236,8 @@ func fixtureID(index int) string {
 	return fmt.Sprintf("sub_fixture_%d", index+1)
 }
 
-// handleDevReset clears the demo ships and reseeds them. It exists so a rehearsal can start from the same three rows; REVIEW_DEV_AUTH=0 removes it.
-func (a *reviewApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
+// handleDevReset clears the demo ships and reseeds them. It exists so a rehearsal can start from the same three rows; IRE_DEV_AUTH=0 removes it.
+func (a *ireApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
 	if !a.config.AllowDevAccounts {
 		app.WriteError(w, http.StatusNotFound, "development reset is disabled")
 		return
@@ -271,7 +271,7 @@ func (a *reviewApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
 }
 
 // insertFixture writes one demo ship, its snapshot, evidence and prescribed checks.
-func (a *reviewApp) insertFixture(ctx context.Context, index int, f fixture, now time.Time) error {
+func (a *ireApp) insertFixture(ctx context.Context, index int, f fixture, now time.Time) error {
 	ingested := now.Add(-time.Duration(index+1) * 2 * time.Hour)
 	id := fixtureID(index)
 

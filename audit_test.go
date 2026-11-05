@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestAuditLogPage covers auditor access, action/search/age filters, target labels and before/after detail.

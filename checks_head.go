@@ -3,13 +3,13 @@ package main
 import (
 	"net/http"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
 
 // handleChecksHead compares the newest commit on the default branch with the snapshot the checks ran against.
-func (a *reviewApp) handleChecksHead(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleChecksHead(w http.ResponseWriter, r *http.Request) {
 	if _, ok := a.requireReviewer(w, r); !ok {
 		return
 	}

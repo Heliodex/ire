@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
@@ -19,7 +19,7 @@ const (
 )
 
 // handleNoteCreate stores an internal note on a ship, its project or its maker.
-func (a *reviewApp) handleNoteCreate(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleNoteCreate(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return
@@ -79,7 +79,7 @@ func (a *reviewApp) handleNoteCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleNoteDelete removes a note the caller wrote, or any note for an admin.
-func (a *reviewApp) handleNoteDelete(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleNoteDelete(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return
@@ -132,7 +132,7 @@ func (a *reviewApp) handleNoteDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // loadNotes returns the notes on this ship, its project and its maker, newest first.
-func (a *reviewApp) loadNotes(ctx context.Context, ship submissionRow) ([]contract.Note, error) {
+func (a *ireApp) loadNotes(ctx context.Context, ship submissionRow) ([]contract.Note, error) {
 	rows, err := a.store.Query(ctx, `select id, subject_type, subject_id, author_email, coalesce(author_name, ''), body, created_at
 		from review_note
 		where program_id = ? and (

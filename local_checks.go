@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // localChecks is the prototype's offline check suite. It reads only the payload: no network, no forge token. The fixtures show what the ported checks will report.

@@ -11,7 +11,7 @@ import (
 const shadowErrorCode = "shadow_mode"
 
 // requireWritable refuses a reviewer mutation while Review is a read-only shadow of Ari.
-func (a *reviewApp) requireWritable(w http.ResponseWriter) bool {
+func (a *ireApp) requireWritable(w http.ResponseWriter) bool {
 	if !a.config.Shadow {
 		return true
 	}
@@ -22,7 +22,7 @@ func (a *reviewApp) requireWritable(w http.ResponseWriter) bool {
 }
 
 // requireReviewerWrite combines the session, shadow and role guards for a reviewer mutation.
-func (a *reviewApp) requireReviewerWrite(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+func (a *ireApp) requireReviewerWrite(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return reviewer{}, false
@@ -41,7 +41,7 @@ func (a *reviewApp) requireReviewerWrite(w http.ResponseWriter, r *http.Request)
 }
 
 // outboundEnabled reports whether the programme may post a delivery right now.
-func (a *reviewApp) outboundEnabled(ctx context.Context, programID string) bool {
+func (a *ireApp) outboundEnabled(ctx context.Context, programID string) bool {
 	if a.config.Shadow {
 		return false
 	}

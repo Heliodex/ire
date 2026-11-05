@@ -15,27 +15,27 @@ import (
 
 // loadConfig reads the prototype's configuration. Missing secrets fall back to documented development values; production must set both.
 func loadConfig() config {
-	seed := os.Getenv("REVIEW_SEED_FIXTURES") != "0"
+	seed := os.Getenv("IRE_SEED_FIXTURES") != "0"
 
 	return config{
-		IngestSecret:      envOr("REVIEW_INGEST_SECRET", "dev-ingest-secret"),
-		OutboundSecret:    envOr("REVIEW_OUTBOUND_SECRET", "dev-outbound-secret"),
-		OutboundURL:       envOr("REVIEW_OUTBOUND_URL", "fake://receiver"),
-		GitHubToken:       envOr("REVIEW_GITHUB_TOKEN", ""),
-		GitHubAPIBase:     envOr("REVIEW_GITHUB_API", githubDefaultAPI),
+		IngestSecret:      envOr("IRE_INGEST_SECRET", "dev-ingest-secret"),
+		OutboundSecret:    envOr("IRE_OUTBOUND_SECRET", "dev-outbound-secret"),
+		OutboundURL:       envOr("IRE_OUTBOUND_URL", "fake://receiver"),
+		GitHubToken:       envOr("IRE_GITHUB_TOKEN", ""),
+		GitHubAPIBase:     envOr("IRE_GITHUB_API", githubDefaultAPI),
 		HackatimeAPIBase:  envOr("HACKATIME_API_BASE", hackatimeDefaultAPI),
 		HCClientID:        envOr("HC_CLIENT_ID", ""),
 		HCClientSecret:    envOr("HC_CLIENT_SECRET", ""),
 		HCRedirectURI:     envOr("HC_REDIRECT_URI", ""),
 		HCAuthBase:        envOr("HC_AUTH_BASE", "https://auth.hackclub.com"),
-		BootstrapEmail:    strings.ToLower(strings.TrimSpace(os.Getenv("REVIEW_BOOTSTRAP_EMAIL"))),
-		BootstrapRole:     envOr("REVIEW_BOOTSTRAP_ROLE", roleAdmin),
+		BootstrapEmail:    strings.ToLower(strings.TrimSpace(os.Getenv("IRE_BOOTSTRAP_EMAIL"))),
+		BootstrapRole:     envOr("IRE_BOOTSTRAP_ROLE", roleAdmin),
 		SeedFixtures:      seed,
-		AllowDevAccounts:  os.Getenv("REVIEW_DEV_AUTH") != "0",
-		DisableRepoChecks: os.Getenv("REVIEW_DISABLE_REPO_CHECKS") == "1",
-		EnableJobs:        os.Getenv("REVIEW_DISABLE_JOBS") != "1",
-		OutboundDryRun:    os.Getenv("REVIEW_OUTBOUND_DRY_RUN") == "1",
-		Shadow:            os.Getenv("REVIEW_SHADOW") == "1",
+		AllowDevAccounts:  os.Getenv("IRE_DEV_AUTH") != "0",
+		DisableRepoChecks: os.Getenv("IRE_DISABLE_REPO_CHECKS") == "1",
+		EnableJobs:        os.Getenv("IRE_DISABLE_JOBS") != "1",
+		OutboundDryRun:    os.Getenv("IRE_OUTBOUND_DRY_RUN") == "1",
+		Shadow:            os.Getenv("IRE_SHADOW") == "1",
 	}
 }
 
@@ -58,7 +58,7 @@ func init() {
 	)
 
 	if storeErr == nil {
-		application := newReviewApp(store, wasihttp.NewClient(), loadConfig())
+		application := newIreApp(store, wasihttp.NewClient(), loadConfig())
 		handler = application.handler()
 		migrate = application.migrate
 	}

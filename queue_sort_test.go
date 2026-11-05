@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestQueueSortOrdersPages covers server-side sorting across pages: concatenated pages match one full sorted fetch with no gaps or repeats.

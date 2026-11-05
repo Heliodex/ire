@@ -7,7 +7,7 @@ import (
 )
 
 // signer builds an HMAC signer on the app clock. The window is the same five minutes Ari allows.
-func (a *reviewApp) signer(secret string) sign.Signer {
+func (a *ireApp) signer(secret string) sign.Signer {
 	return sign.Signer{
 		Secret: []byte(secret),
 		Window: time.Duration(signatureWindow) * time.Second,

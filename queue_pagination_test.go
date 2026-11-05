@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestQueuePagination covers limit, offset and the hasMore flag.

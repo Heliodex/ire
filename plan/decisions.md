@@ -4,20 +4,20 @@ Architecture decisions for the review platform. Each one records the choice, the
 
 ---
 
-## ADR-001: Review owns review state, Half Life owns money
+## ADR-001: Ire owns review state, Half Life owns money
 
-**Context.** Half Life already has `finalizeReview`, the credit ledger, tier pricing, grant cards, printer awards and maker notifications. Ari does not write any of that; it sends a decision and Half Life applies it. Duplicating any of it in Review would create a second source of truth for money.
+**Context.** Half Life already has `finalizeReview`, the credit ledger, tier pricing, grant cards, printer awards and maker notifications. Ari does not write any of that; it sends a decision and Half Life applies it. Duplicating any of it in Ire would create a second source of truth for money.
 
-**Decision.** Review stores the queue, evidence snapshots, checks, claims, stage transitions, decisions and audit trail. It never writes a ledger row, tier, grant or printer award. A final decision is delivered to Half Life as `approved` / `changes` / `rejected`, with the approved time in seconds and the reviewer's note. Half Life remains the only writer of credit and the only sender of maker notifications.
+**Decision.** Ire stores the queue, evidence snapshots, checks, claims, stage transitions, decisions and audit trail. It never writes a ledger row, tier, grant or printer award. A final decision is delivered to Half Life as `approved` / `changes` / `rejected`, with the approved time in seconds and the reviewer's note. Half Life remains the only writer of credit and the only sender of maker notifications.
 
 **Consequences.**
 
-- Review can be rebuilt or replaced without touching the economy.
-- A decision is not "done" until Half Life accepts the delivery; Review must show a failed delivery and retry it.
-- Review cannot answer "what is this maker's balance?" and should not try. It links to Half Life where that question belongs.
+- Ire can be rebuilt or replaced without touching the economy.
+- A decision is not "done" until Half Life accepts the delivery; Ire must show a failed delivery and retry it.
+- Ire cannot answer "what is this maker's balance?" and should not try. It links to Half Life where that question belongs.
 - The outbound contract is the most important interface in the system. It gets contract tests, signatures and a replay path.
 
-**Rejected alternative.** Read Half Life's Postgres directly. It would couple Review to another service's schema, break the `wt`/SQLite shape, and give two services write access to money-adjacent state.
+**Rejected alternative.** Read Half Life's Postgres directly. It would couple Ire to another service's schema, break the `wt`/SQLite shape, and give two services write access to money-adjacent state.
 
 ---
 
@@ -25,7 +25,7 @@ Architecture decisions for the review platform. Each one records the choice, the
 
 **Context.** Half Life's Ari integration is real and working: `@hackclub/ari` sends signed ships, receives signed webhooks, polls `ships.status`, and has retry and reconciliation jobs. A big-bang rewrite of Half Life's integration would put the programme at risk for no reviewer-visible benefit.
 
-**Decision.** Review exposes Ari's ingest, withdraw, status and outbound event shapes at the edge. Half Life can switch by changing `ARI_BASE_URL`, `ARI_PROGRAM_ID`, `ARI_SIGNING_SECRET` and `ARI_WEBHOOK_SECRET`. The same service also exposes a richer native API (`/api/v1/...`) that returns stage, checks, fraud and timeline. Half Life migrates to the native API after the compatibility path has proven itself.
+**Decision.** Ire exposes Ari's ingest, withdraw, status and outbound event shapes at the edge. Half Life can switch by changing `ARI_BASE_URL`, `ARI_PROGRAM_ID`, `ARI_SIGNING_SECRET` and `ARI_WEBHOOK_SECRET`. The same service also exposes a richer native API (`/api/v1/...`) that returns stage, checks, fraud and timeline. Half Life migrates to the native API after the compatibility path has proven itself.
 
 **Consequences.**
 
@@ -133,7 +133,7 @@ A stage transition is a row, not an inferred status. The UI always says which st
 
 **Context.** Ari's fraud tooling is partly private. Half Life is public. A public repo cannot contain detection rules, prompts or thresholds.
 
-**Decision.** The public repo defines a `FraudProvider` interface and a `disabled` implementation. The real provider is an external HTTP service reached with a secret. Review calls it only from stage 2 and stores the verdict, score and a generic explanation. No detection logic lives in this repository.
+**Decision.** The public repo defines a `FraudProvider` interface and a `disabled` implementation. The real provider is an external HTTP service reached with a secret. Ire calls it only from stage 2 and stores the verdict, score and a generic explanation. No detection logic lives in this repository.
 
 **Consequences.**
 
@@ -171,6 +171,6 @@ A stage transition is a row, not an inferred status. The UI always says which st
 - The API and database cannot silently disagree about 0.1h.
 - The UI formats seconds; it never does arithmetic on floats.
 - A reviewer adjustment stores seconds, not a decimal hour.
-- Half Life remains authoritative for the final credited number; Review sends the seconds the reviewer saw.
+- Half Life remains authoritative for the final credited number; Ire sends the seconds the reviewer saw.
 
 **Rejected alternative.** Minutes, as Ari's older columns used. It preserves a legacy mistake for no benefit.

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // fakeHCA is a minimal OpenID provider: discovery, token, JWKS and userinfo.
@@ -157,7 +157,7 @@ func TestHCAOAuthFlow(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 
 	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
@@ -234,7 +234,7 @@ func TestHCAKeepsIdentityAcrossEmailChange(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 
 	completeHCA(t, application, provider)
@@ -255,7 +255,7 @@ func TestHCARejectsSecondIdentity(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 
 	completeHCA(t, application, provider)
@@ -275,7 +275,7 @@ func TestHCARejectsSecondIdentity(t *testing.T) {
 }
 
 // completeHCA runs one full fake-provider login and returns the session cookie.
-func completeHCA(t *testing.T, application *reviewApp, provider *fakeHCA) *http.Cookie {
+func completeHCA(t *testing.T, application *ireApp, provider *fakeHCA) *http.Cookie {
 	t.Helper()
 
 	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
@@ -308,7 +308,7 @@ func TestHCARejectsBadState(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 
 	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
@@ -328,7 +328,7 @@ func TestHCARejectsUnknownMember(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 
 	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
@@ -356,7 +356,7 @@ func TestHCABootstrapsConfiguredEmail(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 	application.config.BootstrapEmail = "new@example.com"
 	application.config.BootstrapRole = roleOrganizer
@@ -421,7 +421,7 @@ func TestHCAInactiveMembership(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 
 	if _, err := application.store.Exec(t.Context(), `update membership set active = 0 where user_id = (select id from user where email = ?)`, "reviewer@example.com"); err != nil {
@@ -446,7 +446,7 @@ func TestHCAExpiredState(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 
 	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
@@ -471,7 +471,7 @@ func TestHCASessionRotation(t *testing.T) {
 	application := newTestApp(t)
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
 
 	old := login(t, application, "reviewer@example.com")

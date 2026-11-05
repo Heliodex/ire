@@ -1,10 +1,10 @@
 # 06 – Integration
 
-This document is the contract between Review and Half Life. It is written to be implementable without reading the rest of the plan, and to be copied into `/docs` on the Review site.
+This document is the contract between Ire and Half Life. It is written to be implementable without reading the rest of the plan, and to be copied into `/docs` on the Ire site.
 
 ## The boundary
 
-Review owns:
+Ire owns:
 
 - the review queue, claims and drafts;
 - evidence snapshots for a submission version;
@@ -20,11 +20,11 @@ Half Life owns:
 - maker notifications and the participant-facing status;
 - identity verification and the fraud flag on the account.
 
-Review never writes a ledger entry, a tier, a grant or a maker notification. It sends a decision and Half Life applies it through the existing `finalizeReview` path.
+Ire never writes a ledger entry, a tier, a grant or a maker notification. It sends a decision and Half Life applies it through the existing `finalizeReview` path.
 
 ## Compatibility strategy
 
-Review exposes two surfaces:
+Ire exposes two surfaces:
 
 1. **Ari-compatible edge** – same endpoints, signatures, event names and core payload shapes as Ari. Half Life can switch by changing config, not code.
 2. **Native v1 API** – richer state: stage, checks, fraud, timeline, list-based reconciliation.
@@ -33,7 +33,7 @@ The Ari edge is a translation layer. The internal model is native. Do not let Ar
 
 ```mermaid
 flowchart LR
-    HL[Half Life] -->|Ari-compatible or native| Edge[Review edge]
+    HL[Half Life] -->|Ari-compatible or native| Edge[Ire edge]
     Edge --> Adapter[Ari adapter]
     Edge --> Native[Native API]
     Adapter --> Domain[Domain]
@@ -45,13 +45,13 @@ flowchart LR
 
 ## Half Life constraints that shape the wire
 
-These are encoded in Half Life and must be visible in Review's UI and validation. They are not Review's rules to change.
+These are encoded in Half Life and must be visible in Ire's UI and validation. They are not Ire's rules to change.
 
-- **Build before design.** A build ship can arrive before its design is approved. Review can queue and review it, but a build approval must wait for `design_status = approved`. Return the refusal as a field-level problem, not a generic 500.
+- **Build before design.** A build ship can arrive before its design is approved. Ire can queue and review it, but a build approval must wait for `design_status = approved`. Return the refusal as a field-level problem, not a generic 500.
 - **Design is the funding decision.** A design approval carries the tier and grant. A build approval does not. If the reviewer changes the tier, the outbound decision includes `tier_override`; otherwise Half Life uses the maker's requested tier.
-- **Tier floor.** A design approval below the tier's funded hours is refused by Half Life. Review's decision form should show the floor and the tier step-down before the reviewer submits.
-- **Stale Hackatime.** Half Life refuses an approval on stale data unless the reviewer supplies an explicit hours value. Review shows the stale state and requires an override.
-- **Resolved submissions are immutable.** A decision for an already-resolved ship is `409`; Review records the delivery as failed/ignored, not as a second credit.
+- **Tier floor.** A design approval below the tier's funded hours is refused by Half Life. Ire's decision form should show the floor and the tier step-down before the reviewer submits.
+- **Stale Hackatime.** Half Life refuses an approval on stale data unless the reviewer supplies an explicit hours value. Ire shows the stale state and requires an override.
+- **Resolved submissions are immutable.** A decision for an already-resolved ship is `409`; Ire records the delivery as failed/ignored, not as a second credit.
 - **One open ship per external id.** The `409 already_queued` id is part of the contract, not an error to hide.
 
 If Half Life changes one of these, the compatibility adapter, the UI policy and the contract tests change together.
@@ -67,7 +67,7 @@ If Half Life changes one of these, the compatibility adapter, the UI policy and 
 | `GET` | `/api/ingest/{program}/status` | Bearer | Look up a ship by `external_id` or `id` |
 | `POST` | `/api/ingest/{program}/status` | HMAC | Some clients send status as a signed POST; accept it as an alias |
 
-The program id is opaque. Half Life's current `ARI_PROGRAM_ID` can be reused as the Review programme id, or mapped in config. Prefer a new program id and a mapping, so a rollback is unambiguous.
+The program id is opaque. Half Life's current `ARI_PROGRAM_ID` can be reused as the Ire programme id, or mapped in config. Prefer a new program id and a mapping, so a rollback is unambiguous.
 
 ### Inbound signature
 
@@ -174,11 +174,11 @@ Rules:
 - If an open ship already exists for `external_id`, return `409 {"error":"already_queued","id":"<existing id>"}`. Half Life's existing 409 adoption path records the id instead of retrying forever.
 - If the ship is a resubmission, the new version gets `version = previous + 1` and `previous_submission_id`.
 - `meta.phase` is `design` or `build`; `meta.theme` is the theme slug; `meta.week` is the programme week.
-- `meta.priority` (optional) sets the queue priority. The maker-facing priority form stays in Half Life; Review only consumes the flag.
-- `meta.hours` is the exact breakdown Half Life computed. Review displays it; it does not independently decide the payout.
+- `meta.priority` (optional) sets the queue priority. The maker-facing priority form stays in Half Life; Ire only consumes the flag.
+- `meta.hours` is the exact breakdown Half Life computed. Ire displays it; it does not independently decide the payout.
 - `meta.prior_reviews` is optional context for the reviewer. It does not create review rows.
 - `journals[].minutes` is accepted for Ari compatibility; convert to seconds at the boundary. New senders should send `seconds`.
-- `hackatime_projects` is the list Ari counts. Review's live Hackatime check is advisory; the ingest number is the snapshot.
+- `hackatime_projects` is the list Ari counts. Ire's live Hackatime check is advisory; the ingest number is the snapshot.
 - `thumbnail_url` and cover URLs must be HTTPS.
 
 ### Ingest response
@@ -325,7 +325,7 @@ All native endpoints are under `/api/v1`. Browser endpoints use the session cook
 | --- | --- | --- |
 | `GET` | `/api/v1/me` | User, memberships, permissions |
 | `GET` | `/api/v1/programs/{program}/queue?stage=1&…` | Queue page |
-| `GET` | `/api/v1/programs/{program}/submissions/{id}` | Review bundle |
+| `GET` | `/api/v1/programs/{program}/submissions/{id}` | Ire bundle |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/claim` | Claim |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/heartbeat` | Extend claim |
 | `DELETE` | `/api/v1/programs/{program}/submissions/{id}/claim` | Release |
@@ -514,8 +514,8 @@ This is the design goal: no admin-panel archaeology, no resend scripts as the pr
 
 ### Minimal cutover (no Half Life code)
 
-1. Create the programme in Review; set the signing and outbound secrets.
-2. Register Review's outbound URL and secret in Half Life's Ari endpoint config (the same `ARI_WEBHOOK_SECRET` the handler verifies).
+1. Create the programme in Ire; set the signing and outbound secrets.
+2. Register Ire's outbound URL and secret in Half Life's Ari endpoint config (the same `ARI_WEBHOOK_SECRET` the handler verifies).
 3. Set Half Life's environment:
    - `ARI_BASE_URL=https://<review-host>`
    - `ARI_PROGRAM_ID=<review program id>`
@@ -533,7 +533,7 @@ Half Life's `lib/ari.ts` is 1,300 lines of compatibility workarounds. The native
 - `lib/review.ts` with `ingest`, `withdraw`, `status`, `reviewsSince`, `eventsSince`.
 - Use `reviewsSince` in a reconciliation job instead of per-ship `status` reads.
 - Delete `ari-resend-all`, `repair-ari-decisions`, `adoptStatusPlaceholder` and the phase polling once the native API is the source.
-- Read `checks` in Half Life's `/review` console if it remains; or link to Review and retire the console.
+- Read `checks` in Half Life's `/review` console if it remains; or link to Ire and retire the console.
 
 Do this after the compatibility cutover is stable. Do not combine the cutover with a Half Life refactor.
 
@@ -541,50 +541,50 @@ Do this after the compatibility cutover is stable. Do not combine the cutover wi
 
 - `finalizeReview` remains the only writer of credit.
 - `ariExternalId` remains `<themeProjectId>:design|build`.
-- Half Life's `PhaseSubmission` remains its own hand-in record. Review's `submission_id` is a separate id; the mapping is `external_id` + version.
+- Half Life's `PhaseSubmission` remains its own hand-in record. Ire's `submission_id` is a separate id; the mapping is `external_id` + version.
 - Half Life's maker notifications remain in its decision path.
 
 ## Shadow, pilot, cutover, rollback
 
 ### Shadow
 
-- Half Life sends the same ship to Ari and Review (a temporary dual-send in the `after` hook, or a replay job).
-- Review runs checks and shows a read-only queue; reviewers stay in Ari.
+- Half Life sends the same ship to Ari and Ire (a temporary dual-send in the `after` hook, or a replay job).
+- Ire runs checks and shows a read-only queue; reviewers stay in Ari.
 - Compare check results, queue counts, and decisions.
 - Exit criteria: check parity is understood; no crashes; outbound signatures verified; queue load is acceptable.
 
 ### Pilot
 
 - Choose one theme/week or one reviewer group.
-- For those ships, send only to Review; keep Ari for the rest.
-- Review makes final decisions; Half Life applies them through the same webhook.
+- For those ships, send only to Ire; keep Ari for the rest.
+- Ire makes final decisions; Half Life applies them through the same webhook.
 - Exit criteria: a week of real decisions, no split-brain, no missed deliveries, reviewer feedback positive.
 
 ### Cutover
 
 - Flip the environment for all ships.
 - Keep Ari's programme open read-only for history.
-- Run the reconciliation job from Review's `reviews?since` (or Half Life's existing `ari-retry`) for a week.
+- Run the reconciliation job from Ire's `reviews?since` (or Half Life's existing `ari-retry`) for a week.
 - Monitor queue age, delivery failures, check errors, reversals.
 
 ### Rollback
 
 - Flip Half Life's env back to Ari.
-- Replay open ships to Ari (Half Life's `ari-retry` will send them because their `ariSubmissionId` is null or belongs to the old programme; a small migration may be needed to clear the Review ids).
-- Decisions already made in Review remain in Half Life. Do not re-apply them to Ari; Ari only needs the open queue.
-- If Review made a decision that Half Life has not applied, deliver it before switching, or reconcile it via `reviews?since`.
+- Replay open ships to Ari (Half Life's `ari-retry` will send them because their `ariSubmissionId` is null or belongs to the old programme; a small migration may be needed to clear the Ire ids).
+- Decisions already made in Ire remain in Half Life. Do not re-apply them to Ari; Ari only needs the open queue.
+- If Ire made a decision that Half Life has not applied, deliver it before switching, or reconcile it via `reviews?since`.
 - Document the exact commands in the runbook. A rollback that requires a database edit is not a rollback.
 
 ### Historical data
 
-- Start with the open queue. Closed submissions do not need to be migrated to Review to launch.
+- Start with the open queue. Closed submissions do not need to be migrated to Ire to launch.
 - Ingest can carry `meta.prior_reviews`, so a reviewer sees the project's history without a backfill.
 - Optional: a one-off importer from Half Life's `SubmissionReview`/`PhaseSubmission` for `reviewed` reporting. Mark imported rows `historical=1`; do not run checks; do not emit webhooks.
 - Do not import Ari's internal review rows; Half Life's own review rows are the record of what the maker was told.
 
 ## Documentation
 
-The `/docs` page on Review is part of the product, not an afterthought. It must include:
+The `/docs` page on Ire is part of the product, not an afterthought. It must include:
 
 - the ingest body with a field table and a cURL example;
 - the signature scheme with a working example;

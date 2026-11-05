@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestChecksHead covers the stale snapshot notice when the default branch moves.

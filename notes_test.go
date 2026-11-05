@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestNotesAreSharedAndRemovable covers creating an internal note, seeing it in the bundle and removing it as its author.

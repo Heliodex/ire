@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestDuplicateAndIdentityChecks covers cross-ship reuse warnings.

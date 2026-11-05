@@ -58,8 +58,8 @@ const canCancel = $derived(session.me !== null)
 </script>
 
 <svelte:head>
-	<title>Integration docs · Half Life Review</title>
-	<meta content="Review ingest, status, parity and outbound integration guide" name="description">
+	<title>Integration docs · Ire</title>
+	<meta content="Ire ingest, status, parity and outbound integration guide" name="description">
 </svelte:head>
 
 <div class="docs">
@@ -68,8 +68,8 @@ const canCancel = $derived(session.me !== null)
 			<p class="crumbs"><a href={canCancel ? "/queue" : "/"}>{canCancel ? "Queue" : "Sign in"}</a></p>
 			<h1>Integration docs</h1>
 			<p class="lead">
-				Review accepts Ari-compatible ships, runs its own checks and shows the queue. Half Life can send a
-				shadow copy while Ari keeps deciding, then switch ownership later without changing the wire format.
+				Ire accepts Ari-compatible ships, runs its own checks and shows the queue. Half Life can send a shadow
+				copy while Ari keeps deciding, then switch ownership later without changing the wire format.
 			</p>
 		</div>
 	</section>
@@ -77,8 +77,8 @@ const canCancel = $derived(session.me !== null)
 	<div class="callout" role="note">
 		<strong>Live and shadow deployments</strong>
 		A deployment runs either live or in shadow mode. In shadow mode ships and checks flow, but reviewers cannot
-		claim or decide and Review writes no deliveries; the header marks it. In live mode a final decision is written
-		to the outbox and delivered with the signature below.
+		claim or decide and Ire writes no deliveries; the header marks it. In live mode a final decision is written to
+		the outbox and delivered with the signature below.
 	</div>
 
 	<section class="ui-card padded doc-section">
@@ -121,7 +121,7 @@ const canCancel = $derived(session.me !== null)
 		</p>
 		<pre class="code">BODY='&#123;"external_id":"proj_abc:design", ...&#125;'
 TS=$(date +%s)
-SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$REVIEW_INGEST_SECRET" -hex | cut -d' ' -f2)
+SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$IRE_INGEST_SECRET" -hex | cut -d' ' -f2)
 
 curl -X POST "$REVIEW_API_URL/api/ingest/{program}" \
   -H "Content-Type: application/json" \
@@ -181,7 +181,7 @@ curl -X POST "$REVIEW_API_URL/api/ingest/{program}" \
   }
 }`}</pre>
 		<p class="note">
-			The nested <code>meta.bom</code>, <code>meta.hours</code> and <code>meta.prior_reviews</code> are the Review
+			The nested <code>meta.bom</code>, <code>meta.hours</code> and <code>meta.prior_reviews</code> are the Ire
 			additions. Flatten or drop them when sending the same ship to Ari.
 		</p>
 	</section>
@@ -202,7 +202,7 @@ curl -X POST "$REVIEW_API_URL/api/ingest/{program}" \
 				<thead>
 					<tr>
 						<th scope="col">Ari phase</th>
-						<th scope="col">Review status</th>
+						<th scope="col">Ire status</th>
 						<th scope="col">Meaning</th>
 					</tr>
 				</thead>
@@ -237,7 +237,7 @@ curl -X POST "$REVIEW_API_URL/api/ingest/{program}" \
 	<section class="ui-card padded doc-section">
 		<h2>Outbound events</h2>
 		<p>
-			In live mode Review posts <code>review.approved</code>, <code>review.changes</code> or
+			In live mode Ire posts <code>review.approved</code>, <code>review.changes</code> or
 			<code>review.rejected</code>
 			to the programme's outbound URL. The signature covers
 			<code>timestamp.delivery_id.body</code>
@@ -253,23 +253,23 @@ curl -X POST "$REVIEW_API_URL/api/ingest/{program}" \
 
 	<section class="ui-card padded doc-section">
 		<h2>Half Life configuration</h2>
-		<p>Keep Ari untouched and add a separate Review provider:</p>
-		<pre class="code">REVIEW_API_URL=https://review-wt-demo.k.hackclub.dev
+		<p>Keep Ari untouched and add a separate Ire provider:</p>
+		<pre class="code">REVIEW_API_URL=https://ire-wt-demo.k.hackclub.dev
 REVIEW_PROGRAM=half-life
-REVIEW_SIGNING_SECRET=&lt;Review's REVIEW_INGEST_SECRET&gt;
+REVIEW_SIGNING_SECRET=&lt;Ire's IRE_INGEST_SECRET&gt;
 REVIEW_MODE=shadow
-REVIEW_BASE=https://review-wt-demo.k.hackclub.dev
+REVIEW_BASE=https://ire-wt-demo.k.hackclub.dev
 
-# Review itself
-REVIEW_SHADOW=1
-REVIEW_INGEST_SECRET=&lt;same secret&gt;
-REVIEW_OUTBOUND_URL=fake://receiver
-REVIEW_SEED_FIXTURES=0
-REVIEW_DEV_AUTH=0</pre>
+# Ire itself
+IRE_SHADOW=1
+IRE_INGEST_SECRET=&lt;same secret&gt;
+IRE_OUTBOUND_URL=fake://receiver
+IRE_SEED_FIXTURES=0
+IRE_DEV_AUTH=0</pre>
 		<p>
 			<code>REVIEW_MODE=shadow</code>
-			labels Half Life's side only. Review's own
-			<code>REVIEW_SHADOW=1</code>
+			labels Half Life's side only. Ire's own
+			<code>IRE_SHADOW=1</code>
 			is what makes the API read-only and suppresses deliveries.
 		</p>
 	</section>

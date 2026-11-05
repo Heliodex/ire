@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestResubmissionDiffShowsWhatChanged covers the previous decision, commits, files, journal entries and BOM changes shown above a resubmitted ship.

@@ -54,7 +54,7 @@ func (l *rateLimiter) allow(key string) bool {
 }
 
 // withRateLimit rejects a burst of mutations before it reaches storage. Reads and the supervised job endpoints stay unlimited.
-func (a *reviewApp) withRateLimit(next http.Handler) http.Handler {
+func (a *ireApp) withRateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
 			next.ServeHTTP(w, r)
@@ -75,7 +75,7 @@ func (a *reviewApp) withRateLimit(next http.Handler) http.Handler {
 }
 
 // rateKey picks the machine or browser bucket and a key that does not retain a raw session token.
-func (a *reviewApp) rateKey(r *http.Request) (string, *rateLimiter) {
+func (a *ireApp) rateKey(r *http.Request) (string, *rateLimiter) {
 	if strings.HasPrefix(r.URL.Path, "/api/ingest/") || strings.HasPrefix(r.URL.Path, "/api/v1/ingest/") || strings.HasPrefix(r.URL.Path, "/api/v1/withdraw/") {
 		return remoteHost(r), a.machineLimiter
 	}

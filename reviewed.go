@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
@@ -12,7 +12,7 @@ import (
 const reviewedFilterAll = "all"
 
 // handleReviewed returns decided ships, newest first, for the Reviewed tab.
-func (a *reviewApp) handleReviewed(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleReviewed(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return

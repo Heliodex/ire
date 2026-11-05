@@ -11,7 +11,7 @@ const detail = $derived(
 </script>
 
 <svelte:head>
-	<title>{title} · Half Life Review</title>
+	<title>{title} · Ire</title>
 </svelte:head>
 
 <section class="error-page">

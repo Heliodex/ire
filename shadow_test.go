@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestShadowModeIsReadOnly covers the server guards, the me flag, ingest and outbox suppression.

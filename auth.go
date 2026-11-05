@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/session"
@@ -32,7 +32,7 @@ func canReview(role string) bool {
 }
 
 // currentReviewer reads the session cookie and resolves it to an active membership. It writes the 401 itself so handlers only branch on the boolean.
-func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+func (a *ireApp) currentReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
 	token, ok := reviewSessions.Token(r)
 	if !ok {
 		app.WriteError(w, http.StatusUnauthorized, "sign in to review")
@@ -66,7 +66,7 @@ func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (rev
 }
 
 // hasSession reports a live session without writing an error response.
-func (a *reviewApp) hasSession(r *http.Request) bool {
+func (a *ireApp) hasSession(r *http.Request) bool {
 	token, ok := reviewSessions.Token(r)
 	if !ok {
 		return false
@@ -85,7 +85,7 @@ func (a *reviewApp) hasSession(r *http.Request) bool {
 }
 
 // requireReviewer is currentReviewer plus a check that the membership can review this programme.
-func (a *reviewApp) requireReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+func (a *ireApp) requireReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions && !session.SameOrigin(r) {
 		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
 		return reviewer{}, false
@@ -105,7 +105,7 @@ func (a *reviewApp) requireReviewer(w http.ResponseWriter, r *http.Request) (rev
 }
 
 // handleMe returns the signed-in reviewer and the programmes they can read.
-func (a *reviewApp) handleMe(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleMe(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.currentReviewer(w, r)
 	if !ok {
 		return
@@ -115,7 +115,7 @@ func (a *reviewApp) handleMe(w http.ResponseWriter, r *http.Request) {
 }
 
 // meResponse builds the shared sign-in response.
-func (a *reviewApp) meResponse(ctx context.Context, person reviewer) contract.MeResponse {
+func (a *ireApp) meResponse(ctx context.Context, person reviewer) contract.MeResponse {
 	response := contract.MeResponse{
 		ReadOnly: a.config.Shadow,
 		User: contract.MeResponseUser{
@@ -148,8 +148,8 @@ func (a *reviewApp) meResponse(ctx context.Context, person reviewer) contract.Me
 	return response
 }
 
-// handleDevLogin is the placeholder for Hack Club Auth. It issues a session for a seeded account so the queue can be demonstrated without an OAuth app; REVIEW_DEV_AUTH=0 removes it.
-func (a *reviewApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
+// handleDevLogin is the placeholder for Hack Club Auth. It issues a session for a seeded account so the queue can be demonstrated without an OAuth app; IRE_DEV_AUTH=0 removes it.
+func (a *ireApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 	if !session.SameOrigin(r) {
 		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
 		return
@@ -201,7 +201,7 @@ func (a *reviewApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleLogout deletes the session row and clears the cookie.
-func (a *reviewApp) handleLogout(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if !session.SameOrigin(r) {
 		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
 		return
@@ -219,7 +219,7 @@ func (a *reviewApp) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 // createSession stores a hashed session token and returns the raw cookie value.
-func (a *reviewApp) createSession(ctx context.Context, userID, userAgent string) (string, error) {
+func (a *ireApp) createSession(ctx context.Context, userID, userAgent string) (string, error) {
 	token, err := session.NewToken()
 	if err != nil {
 		return "", err

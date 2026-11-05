@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
@@ -19,20 +19,20 @@ const makerAvatarBase = "https://cachet.dunkirk.sh/users"
 
 // queueSortColumns maps the queue's sortable headers to their ordering, so the sort parameter only selects a key. The checks score mirrors the client's old badness order: blocking results first, then warnings, then clean ships.
 var queueSortColumns = map[string]string{
-	"ship":   "s.title collate nocase",
-	"maker":  "coalesce(s.maker_name, '') collate nocase",
-	"status": "s.status",
-	"type":   "coalesce(s.theme, '') collate nocase",
+	"ship":    "s.title collate nocase",
+	"maker":   "coalesce(s.maker_name, '') collate nocase",
+	"status":  "s.status",
+	"type":    "coalesce(s.theme, '') collate nocase",
 	"version": "s.version",
 	"claimed": "s.hours_claimed_seconds",
 	"age":     "s.ingested_at",
-	"checks": "(coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.fail'), 0) + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.error'), 0)) * 100 + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.warn'), 0) * 10 - coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.pass'), 0)",
+	"checks":  "(coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.fail'), 0) + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.error'), 0)) * 100 + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.warn'), 0) * 10 - coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.pass'), 0)",
 }
 
 // handleQueue returns the stage 1 work list, counts and claim state in one response.
 //
 //nolint:funlen // The query, row mapping and check join belong together.
-func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return
@@ -247,7 +247,7 @@ func (a *reviewApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 }
 
 // queueChecks returns the latest result per check key for every queued ship, in group order, so the queue can draw one dot per check.
-func (a *reviewApp) queueChecks(ctx context.Context, items []contract.QueueItem) (map[string][]contract.QueueCheck, error) {
+func (a *ireApp) queueChecks(ctx context.Context, items []contract.QueueItem) (map[string][]contract.QueueCheck, error) {
 	out := make(map[string][]contract.QueueCheck, len(items))
 	if len(items) == 0 {
 		return out, nil
@@ -290,7 +290,7 @@ func (a *reviewApp) queueChecks(ctx context.Context, items []contract.QueueItem)
 }
 
 // queueCounts computes the programme-wide badges, independent of the stage being viewed.
-func (a *reviewApp) queueCounts(ctx context.Context, programID string) (contract.QueueCounts, error) {
+func (a *ireApp) queueCounts(ctx context.Context, programID string) (contract.QueueCounts, error) {
 	var counts contract.QueueCounts
 
 	err := a.store.QueryRow(ctx, `select
@@ -326,7 +326,7 @@ func parseCheckSummary(summary string) contract.CheckSummary {
 }
 
 // handleClaim takes the stage 1 claim for a ship. It is one conditional write, so two reviewers cannot both win.
-func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return
@@ -414,7 +414,7 @@ func (a *reviewApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleHeartbeat extends the caller's claim.
-func (a *reviewApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return
@@ -450,7 +450,7 @@ func (a *reviewApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleRelease gives a claimed ship back to the queue.
-func (a *reviewApp) handleRelease(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleRelease(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return
@@ -492,7 +492,7 @@ func (a *reviewApp) handleRelease(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDraft saves the reviewer's note and form state so a refresh does not lose typing.
-func (a *reviewApp) handleDraft(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleDraft(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return
@@ -529,7 +529,7 @@ func (a *reviewApp) handleDraft(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleBundle returns everything the review screen needs in one request.
-func (a *reviewApp) handleBundle(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleBundle(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return
@@ -555,7 +555,7 @@ func (a *reviewApp) handleBundle(w http.ResponseWriter, r *http.Request) {
 }
 
 // loadShipForReview loads the path's ship and checks that it belongs to the path's programme.
-func (a *reviewApp) loadShipForReview(w http.ResponseWriter, r *http.Request) (submissionRow, bool) {
+func (a *ireApp) loadShipForReview(w http.ResponseWriter, r *http.Request) (submissionRow, bool) {
 	program, ok := a.programFor(w, r)
 	if !ok {
 		return submissionRow{}, false
@@ -582,7 +582,7 @@ func (a *reviewApp) loadShipForReview(w http.ResponseWriter, r *http.Request) (s
 }
 
 // holdsClaim reports whether this reviewer still holds the ship's claim.
-func (a *reviewApp) holdsClaim(ctx context.Context, submissionID, reviewerID string) bool {
+func (a *ireApp) holdsClaim(ctx context.Context, submissionID, reviewerID string) bool {
 	var found string
 
 	err := a.store.QueryRow(ctx, `select reviewer_id from claim where submission_id = ? and reviewer_id = ? and expires_at > ?`,

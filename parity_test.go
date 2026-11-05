@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestParityFeed covers the machine guard, the open queue and the values the Half Life script compares.

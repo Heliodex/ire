@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
@@ -25,7 +25,7 @@ type submissionRow struct {
 }
 
 // loadSubmission reads one ship by id.
-func (a *reviewApp) loadSubmission(ctx context.Context, id string) (submissionRow, error) {
+func (a *ireApp) loadSubmission(ctx context.Context, id string) (submissionRow, error) {
 	var row submissionRow
 
 	err := a.store.QueryRow(ctx, `select id, program_id, external_id, version, coalesce(previous_submission_id, ''),
@@ -53,7 +53,7 @@ func (a *reviewApp) loadSubmission(ctx context.Context, id string) (submissionRo
 }
 
 // loadSubmissionByExternalID reads the latest version for a project/phase.
-func (a *reviewApp) loadSubmissionByExternalID(ctx context.Context, programID, externalID string, version int) (submissionRow, error) {
+func (a *ireApp) loadSubmissionByExternalID(ctx context.Context, programID, externalID string, version int) (submissionRow, error) {
 	var id string
 
 	if version > 0 {
@@ -72,7 +72,7 @@ func (a *reviewApp) loadSubmissionByExternalID(ctx context.Context, programID, e
 }
 
 // latestChecks returns the newest result per check key for one version.
-func (a *reviewApp) latestChecks(ctx context.Context, submissionID string, version int) ([]contract.CheckResult, error) {
+func (a *ireApp) latestChecks(ctx context.Context, submissionID string, version int) ([]contract.CheckResult, error) {
 	rows, err := a.store.Query(ctx, `select check_key, label, group_key, status, severity, summary, coalesce(detail, ''), coalesce(data, ''), checked_at
 		from check_result c
 		where c.submission_id = ? and c.version = ?
@@ -104,7 +104,7 @@ func (a *reviewApp) latestChecks(ctx context.Context, submissionID string, versi
 }
 
 // loadJournals returns journal entries with their media and clip counts.
-func (a *reviewApp) loadJournals(ctx context.Context, submissionID string) ([]contract.JournalEntry, error) {
+func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contract.JournalEntry, error) {
 	rows, err := a.store.Query(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
 			coalesce(media, '[]'), coalesce(timelapses, '[]'), coalesce(approved_seconds, -1), coalesce(reviewer_note, '')
 		from journal_entry where submission_id = ? order by sort, at`, submissionID)
@@ -145,7 +145,7 @@ func (a *reviewApp) loadJournals(ctx context.Context, submissionID string) ([]co
 }
 
 // loadBom returns the priced parts list.
-func (a *reviewApp) loadBom(ctx context.Context, submissionID string) ([]contract.BomLine, error) {
+func (a *ireApp) loadBom(ctx context.Context, submissionID string) ([]contract.BomLine, error) {
 	rows, err := a.store.Query(ctx, `select name, coalesce(purpose, ''), quantity, unit_cost_cents, coalesce(vendor, ''), coalesce(link, '')
 		from bom_line where submission_id = ? order by sort`, submissionID)
 	if err != nil {
@@ -174,7 +174,7 @@ func (a *reviewApp) loadBom(ctx context.Context, submissionID string) ([]contrac
 }
 
 // loadReviews returns every review for a ship, newest first.
-func (a *reviewApp) loadReviews(ctx context.Context, submissionID string) ([]contract.Review, error) {
+func (a *ireApp) loadReviews(ctx context.Context, submissionID string) ([]contract.Review, error) {
 	rows, err := a.store.Query(ctx, `select review.id, review.stage, review.decision, review.note_to_maker, coalesce(review.internal_note, ''),
 			coalesce(review.hours_approved_seconds, 0), review.reviewer_email, coalesce(review.reviewer_name, ''), review.held,
 			coalesce(review.held_reason, ''), coalesce(review_override.reason, ''), coalesce(review.acknowledgements, ''),
@@ -221,7 +221,7 @@ func (a *reviewApp) loadReviews(ctx context.Context, submissionID string) ([]con
 }
 
 // loadEvents returns the timeline for a ship, oldest first.
-func (a *reviewApp) loadEvents(ctx context.Context, submissionID string) ([]contract.SubmissionEvent, error) {
+func (a *ireApp) loadEvents(ctx context.Context, submissionID string) ([]contract.SubmissionEvent, error) {
 	rows, err := a.store.Query(ctx, `select id, kind, coalesce(actor_email, ''), coalesce(data, ''), created_at
 		from submission_event where submission_id = ? order by created_at, id`, submissionID)
 	if err != nil {
@@ -249,7 +249,7 @@ func (a *reviewApp) loadEvents(ctx context.Context, submissionID string) ([]cont
 }
 
 // claimFor returns the live claim on a ship, if any.
-func (a *reviewApp) claimFor(ctx context.Context, submissionID string, me reviewer) *contract.ClaimState {
+func (a *ireApp) claimFor(ctx context.Context, submissionID string, me reviewer) *contract.ClaimState {
 	var email, name, expiresAt, reviewerID string
 
 	err := a.store.QueryRow(ctx, `select c.reviewer_id, u.email, coalesce(u.name, ''), c.expires_at
@@ -269,7 +269,7 @@ func (a *reviewApp) claimFor(ctx context.Context, submissionID string, me review
 }
 
 // acknowledgementsFor returns the check keys this reviewer acknowledged for a version.
-func (a *reviewApp) acknowledgementsFor(ctx context.Context, submissionID string, version int, userID string) []string {
+func (a *ireApp) acknowledgementsFor(ctx context.Context, submissionID string, version int, userID string) []string {
 	rows, err := a.store.Query(ctx, `select check_key from check_ack
 		where submission_id = ? and version = ? and reviewer_id = ? order by check_key`, submissionID, version, userID)
 	if err != nil {
@@ -290,7 +290,7 @@ func (a *reviewApp) acknowledgementsFor(ctx context.Context, submissionID string
 }
 
 // policyFor reads the review policy setting, falling back to the documented defaults.
-func (a *reviewApp) policyFor(ctx context.Context, programID string) reviewPolicy {
+func (a *ireApp) policyFor(ctx context.Context, programID string) reviewPolicy {
 	policy := defaultPolicy()
 
 	var value string
@@ -376,7 +376,7 @@ func jsonCoveredSeconds(value string) int {
 }
 
 // draftFor returns the caller's saved draft for a ship, so a refresh restores typed notes.
-func (a *reviewApp) draftFor(ctx context.Context, submissionID, reviewerID string) *contract.DraftState {
+func (a *ireApp) draftFor(ctx context.Context, submissionID, reviewerID string) *contract.DraftState {
 	var note, internalNote, updatedAt string
 
 	err := a.store.QueryRow(ctx, `select note, internal_note, updated_at from draft where submission_id = ? and reviewer_id = ?`,

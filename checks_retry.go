@@ -26,14 +26,14 @@ type erroredCheck struct {
 }
 
 // retryErroredChecks requeues ships whose GitHub checks errored, with exponential backoff and a bounded number of attempts. It runs on the schedule tick; deterministic failures (fail, not error) and closed ships are never touched.
-func (a *reviewApp) retryErroredChecks(ctx context.Context) {
+func (a *ireApp) retryErroredChecks(ctx context.Context) {
 	for _, candidate := range a.erroredChecks(ctx) {
 		a.maybeRetryChecks(ctx, candidate)
 	}
 }
 
 // erroredChecks lists open ships with error-status GitHub checks on their current version.
-func (a *reviewApp) erroredChecks(ctx context.Context) []erroredCheck {
+func (a *ireApp) erroredChecks(ctx context.Context) []erroredCheck {
 	rows, err := a.store.Query(ctx, `select s.id, s.version, s.status, s.repo_url, max(c.checked_at)
 		from submission s
 		join check_result c on c.submission_id = s.id and c.version = s.version
@@ -64,7 +64,7 @@ func (a *reviewApp) erroredChecks(ctx context.Context) []erroredCheck {
 }
 
 // maybeRetryChecks runs one candidate when its backoff has elapsed and its budget remains.
-func (a *reviewApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck) {
+func (a *ireApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck) {
 	// A ready ship under an active claim is being reviewed; leave it alone. A stuck needs_attention ship is retried even when claimed, because its reviewer cannot rerun checks themselves.
 	if candidate.status == statusReady {
 		var claimed string
@@ -116,7 +116,7 @@ func (a *reviewApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck
 }
 
 // retryEpoch returns the point a ship's automatic retry budget restarts from: a new version or a manual rerun.
-func (a *reviewApp) retryEpoch(ctx context.Context, submissionID string, version int) (string, bool) {
+func (a *ireApp) retryEpoch(ctx context.Context, submissionID string, version int) (string, bool) {
 	var received string
 	if err := a.store.QueryRow(ctx, `select received_at from submission_version where submission_id = ? and version = ?`, submissionID, version).Scan(&received); err != nil || received == "" {
 		return "", false
@@ -132,7 +132,7 @@ func (a *reviewApp) retryEpoch(ctx context.Context, submissionID string, version
 }
 
 // retryCount counts automatic retries since the budget restarted. A read failure closes the gate rather than retrying blind.
-func (a *reviewApp) retryCount(ctx context.Context, submissionID, epoch string) int {
+func (a *ireApp) retryCount(ctx context.Context, submissionID, epoch string) int {
 	var count int
 	if err := a.store.QueryRow(ctx, `select count(*) from submission_event
 		where submission_id = ? and kind = 'checks_retry' and created_at > ?`, submissionID, epoch).Scan(&count); err != nil {
@@ -143,7 +143,7 @@ func (a *reviewApp) retryCount(ctx context.Context, submissionID, epoch string) 
 }
 
 // errorCheckKeys lists the errored GitHub checks a retry is chasing, for the timeline event.
-func (a *reviewApp) errorCheckKeys(ctx context.Context, candidate erroredCheck) []string {
+func (a *ireApp) errorCheckKeys(ctx context.Context, candidate erroredCheck) []string {
 	rows, err := a.store.Query(ctx, `select distinct check_key from check_result
 		where submission_id = ? and version = ? and status = 'error'
 		  and check_key in ('repo.accessible','repo.tree','repo.commits','repo.readme')

@@ -10,14 +10,14 @@ import (
 	"strconv"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // requireMachine authenticates a machine endpoint with the programme signing secret as a bearer token.
-func (a *reviewApp) requireMachine(w http.ResponseWriter, r *http.Request) bool {
+func (a *ireApp) requireMachine(w http.ResponseWriter, r *http.Request) bool {
 	header := strings.TrimSpace(r.Header.Get("Authorization"))
 	token := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
 
@@ -30,7 +30,7 @@ func (a *reviewApp) requireMachine(w http.ResponseWriter, r *http.Request) bool 
 }
 
 // handleStatus returns the Ari-compatible ship status, looked up by external id or ship id.
-func (a *reviewApp) handleStatus(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleStatus(w http.ResponseWriter, r *http.Request) {
 	program, ok := a.programFor(w, r)
 	if !ok {
 		return
@@ -114,7 +114,7 @@ func (a *reviewApp) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // statusResponse assembles the Ari-compatible status body.
-func (a *reviewApp) statusResponse(ctx context.Context, ship submissionRow) (contract.StatusResponse, error) {
+func (a *ireApp) statusResponse(ctx context.Context, ship submissionRow) (contract.StatusResponse, error) {
 	checks, err := a.latestChecks(ctx, ship.ID, ship.Version)
 	if err != nil {
 		return contract.StatusResponse{}, err
@@ -198,7 +198,7 @@ func (a *reviewApp) statusResponse(ctx context.Context, ship submissionRow) (con
 }
 
 // statusReview converts a stored review into the review object Half Life reads.
-func (a *reviewApp) statusReview(ship submissionRow, review contract.Review) *contract.StatusResponseReview {
+func (a *ireApp) statusReview(ship submissionRow, review contract.Review) *contract.StatusResponseReview {
 	approved := ship.HoursApproved
 	if review.HoursApprovedSeconds != nil {
 		approved = *review.HoursApprovedSeconds
@@ -269,7 +269,7 @@ func formatHours(seconds int) string {
 }
 
 // handleReviews returns final decisions since a cursor, as the exact outbound payloads. This is the recovery path when a webhook is lost.
-func (a *reviewApp) handleReviews(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleReviews(w http.ResponseWriter, r *http.Request) {
 	program, ok := a.programFor(w, r)
 	if !ok {
 		return
@@ -323,7 +323,7 @@ func (a *reviewApp) handleReviews(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleEvents returns every transition since a cursor. It is the queue audit trail for integrations.
-func (a *reviewApp) handleEvents(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleEvents(w http.ResponseWriter, r *http.Request) {
 	program, ok := a.programFor(w, r)
 	if !ok {
 		return

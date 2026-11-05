@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )

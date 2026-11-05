@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
@@ -30,7 +30,7 @@ func isPreviewableKicad(path string) bool {
 }
 
 // handleSubmissionFile returns the capped text of one snapshot-listed board file for in-app preview. The path must appear in the ship's evidence snapshot, so reviewers cannot walk the repository or read unrelated files.
-func (a *reviewApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
 	_, ok := a.requireReviewer(w, r)
 	if !ok {
 		return

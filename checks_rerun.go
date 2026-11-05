@@ -9,7 +9,7 @@ import (
 )
 
 // handleChecksRerun queues a fresh repository check for an organiser without changing the review.
-func (a *reviewApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return

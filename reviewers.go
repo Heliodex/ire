@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
@@ -15,7 +15,7 @@ import (
 const reviewerReviewLimit = 50
 
 // handleReviewerProfile returns one reviewer's identity, permissions, stats and recent decisions.
-func (a *reviewApp) handleReviewerProfile(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleReviewerProfile(w http.ResponseWriter, r *http.Request) {
 	program, ok := a.programFor(w, r)
 	if !ok {
 		return
@@ -47,7 +47,7 @@ func (a *reviewApp) handleReviewerProfile(w http.ResponseWriter, r *http.Request
 }
 
 // reviewerProfile reads the roster entry, falling back to a historical review email for former reviewers.
-func (a *reviewApp) reviewerProfile(ctx context.Context, programID, key string) (contract.ReviewerProfile, error) {
+func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (contract.ReviewerProfile, error) {
 	profile := contract.ReviewerProfile{Email: key, Permissions: []string{}, Reviews: []contract.ReviewerReview{}, Tracks: []string{}}
 
 	var (

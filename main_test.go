@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
@@ -22,7 +22,7 @@ import (
 const testBase = "/api/v1/programs/half-life"
 
 // newTestApp builds the prototype over an in-memory storage service with a fixed clock.
-func newTestApp(t *testing.T) *reviewApp {
+func newTestApp(t *testing.T) *ireApp {
 	t.Helper()
 
 	server, err := storage.NewTestServer()
@@ -41,7 +41,7 @@ func newTestApp(t *testing.T) *reviewApp {
 		DisableRepoChecks: true,
 	}
 
-	application := newReviewApp(server.NewClient(server.Client()), server.Client(), cfg)
+	application := newIreApp(server.NewClient(server.Client()), server.Client(), cfg)
 	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC) }
 
 	if err := application.migrate(context.Background()); err != nil {
@@ -52,7 +52,7 @@ func newTestApp(t *testing.T) *reviewApp {
 }
 
 // do sends one request to the app and returns the recorder.
-func do(t *testing.T, application *reviewApp, method, path string, body []byte, cookie *http.Cookie, headers map[string]string) *httptest.ResponseRecorder {
+func do(t *testing.T, application *ireApp, method, path string, body []byte, cookie *http.Cookie, headers map[string]string) *httptest.ResponseRecorder {
 	t.Helper()
 
 	request := httptest.NewRequest(method, path, bytes.NewReader(body))
@@ -71,7 +71,7 @@ func do(t *testing.T, application *reviewApp, method, path string, body []byte, 
 }
 
 // login signs in through the dev endpoint and returns the session cookie.
-func login(t *testing.T, application *reviewApp, email string) *http.Cookie {
+func login(t *testing.T, application *ireApp, email string) *http.Cookie {
 	t.Helper()
 
 	body, _ := json.Marshal(contract.LoginRequest{Email: email})
@@ -1042,7 +1042,7 @@ func TestAuthConfigReportsMethods(t *testing.T) {
 
 	application.config.HCClientID = "client"
 	application.config.HCClientSecret = "secret"
-	application.config.HCRedirectURI = "http://review.localhost/auth/callback"
+	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 
 	config = decode[contract.AuthConfig](t, do(t, application, http.MethodGet, "/api/v1/auth/config", nil, nil, nil))
 	if !config.Hca {

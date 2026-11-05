@@ -9,7 +9,7 @@ import (
 )
 
 // handleRevokeSessions signs a member out everywhere after an admin request.
-func (a *reviewApp) handleRevokeSessions(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleRevokeSessions(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return

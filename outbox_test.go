@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // TestOutboundRetriesAfterReceiverError covers the shared outbox retry path and its stored attempt history.

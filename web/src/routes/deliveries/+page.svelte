@@ -50,7 +50,7 @@ function eventOf(body: string): string {
 </script>
 
 <svelte:head>
-	<title>Deliveries · Half Life Review</title>
+	<title>Deliveries · Ire</title>
 </svelte:head>
 
 <section class="head">

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 // demoChecks probes a public HTTPS demo without letting it reach loopback or private networks.
-func (a *reviewApp) demoChecks(ctx context.Context, ship submissionRow) []contract.CheckResult {
+func (a *ireApp) demoChecks(ctx context.Context, ship submissionRow) []contract.CheckResult {
 	checkedAt := a.nowText()
 
 	if strings.TrimSpace(ship.DemoURL) == "" {
@@ -50,7 +50,7 @@ func (a *reviewApp) demoChecks(ctx context.Context, ship submissionRow) []contra
 	}
 
 	req.Header.Set("Accept", "text/html")
-	req.Header.Set("User-Agent", "half-life-review")
+	req.Header.Set("User-Agent", "half-life-ire")
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -129,10 +129,10 @@ The critical path is **checks → stage 1 UI → cutover**. Everything else can 
   - fast lane / needs a look;
   - claim state;
   - SSE updates with a "new work" chip.
-- Review bundle:
+- Ire bundle:
   - one endpoint, capped arrays;
   - project, maker (redacted), checks, evidence, hours, BOM, prior reviews, policy.
-- Review screen:
+- Ire screen:
   - header, preflight, evidence tabs, rail, decision buttons;
   - auto-claim, heartbeat, release;
   - draft autosave;
@@ -434,7 +434,7 @@ Test a restore on staging at least once per phase. A backup that has never been 
 ### Secret rotation
 
 - Ingest: add the new secret as the active one, keep the old for a grace window (the adapter can verify both), update Half Life, then retire the old.
-- Outbound: update Review's secret, update Half Life's verifier, then resend failed deliveries.
+- Outbound: update Ire's secret, update Half Life's verifier, then resend failed deliveries.
 - HCA: rotate the client secret, redeploy, verify login.
 - Store only last-4 in the DB; never log the value.
 
@@ -469,7 +469,7 @@ Each has a recommended default so the build can proceed.
 | Does stage 1 approval require a note? | No. Default note pre-filled; optional edit. Required for changes/reject. |
 | Does stage 2 require a note to confirm? | No. Required on override/send-back. |
 | Is fraud required for every stage 2 ship? | No. Trigger rules; default on entry to stage 2 only when policy matches. |
-| Who owns the fraud provider? | A separate private service; Review calls it with a secret. |
+| Who owns the fraud provider? | A separate private service; Ire calls it with a secret. |
 | Do we need a separate checks app? | No for v1. Split if check load or timeouts demand it. |
 | Do we migrate closed submissions? | No blocking import. `prior_reviews` in ingest gives context. Optional report import later. |
 | Do we keep Half Life's `/review` console? | Keep as a fallback during pilot; retire or link after cutover. |
@@ -517,7 +517,7 @@ At the end of two weeks, the wire and the stage 1 loop should be real. Checks ca
 
 ## Definition of done (v1)
 
-- Half Life can switch to Review by changing environment variables, and switch back.
+- Half Life can switch to Ire by changing environment variables, and switch back.
 - A reviewer can work a full queue without training beyond the handbook.
 - Stage 1 approval is two keystrokes for a clean ship and never requires a note unless the reviewer wants one.
 - Stage 2 holds exactly what policy says, fraud runs only there, and every hold has a visible reason.

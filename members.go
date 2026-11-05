@@ -7,14 +7,14 @@ import (
 	"strconv"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // requireAdmin loads the signed-in reviewer and refuses anyone who is not an admin of the programme.
-func (a *reviewApp) requireAdmin(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+func (a *ireApp) requireAdmin(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return reviewer{}, false
@@ -29,7 +29,7 @@ func (a *reviewApp) requireAdmin(w http.ResponseWriter, r *http.Request) (review
 }
 
 // handleMembers lists the programme roster with roles and last sign-in.
-func (a *reviewApp) handleMembers(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleMembers(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireAdmin(w, r)
 	if !ok {
 		return
@@ -46,7 +46,7 @@ func (a *reviewApp) handleMembers(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleInviteMember adds a user to the roster, creating the user row when the email is new.
-func (a *reviewApp) handleInviteMember(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleInviteMember(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireAdmin(w, r)
 	if !ok {
 		return
@@ -108,7 +108,7 @@ func (a *reviewApp) handleInviteMember(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUpdateMember changes a member's role or active flag and refuses to remove the last admin.
-func (a *reviewApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireAdmin(w, r)
 	if !ok {
 		return
@@ -176,7 +176,7 @@ func (a *reviewApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 }
 
 // requireAuditReader allows admins and auditors to read the programme audit log.
-func (a *reviewApp) requireAuditReader(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+func (a *ireApp) requireAuditReader(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
 	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return reviewer{}, false
@@ -191,7 +191,7 @@ func (a *reviewApp) requireAuditReader(w http.ResponseWriter, r *http.Request) (
 }
 
 // handleAudit lists recent audit entries for the programme.
-func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireAuditReader(w, r)
 	if !ok {
 		return
@@ -290,7 +290,7 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 }
 
 // listMembers reads the roster in a stable order.
-func (a *reviewApp) listMembers(ctx context.Context, programID string) ([]contract.Member, error) {
+func (a *ireApp) listMembers(ctx context.Context, programID string) ([]contract.Member, error) {
 	rows, err := a.store.Query(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.active, m.created_at, coalesce(u.last_login_at, '')
 		from membership m join user u on u.id = m.user_id
 		where m.program_id = ? order by m.active desc, m.role, u.email`, programID)
@@ -320,7 +320,7 @@ func (a *reviewApp) listMembers(ctx context.Context, programID string) ([]contra
 }
 
 // memberByUserID reads one roster row.
-func (a *reviewApp) memberByUserID(ctx context.Context, programID, userID string) (contract.Member, bool, error) {
+func (a *ireApp) memberByUserID(ctx context.Context, programID, userID string) (contract.Member, bool, error) {
 	var member contract.Member
 
 	var name, avatar, lastLogin string
@@ -345,7 +345,7 @@ func (a *reviewApp) memberByUserID(ctx context.Context, programID, userID string
 }
 
 // activeAdminCount reports how many admins could still manage the programme.
-func (a *reviewApp) activeAdminCount(ctx context.Context, programID string) (int, error) {
+func (a *ireApp) activeAdminCount(ctx context.Context, programID string) (int, error) {
 	var count int
 
 	err := a.store.QueryRow(ctx, `select count(*) from membership where program_id = ? and role = ? and active = 1`,
@@ -365,7 +365,7 @@ func validMemberRole(role string) bool {
 }
 
 // writeAudit stores one admin action with its before and after values.
-func (a *reviewApp) writeAudit(ctx context.Context, person reviewer, action, targetType, targetID string, before, after map[string]any) {
+func (a *ireApp) writeAudit(ctx context.Context, person reviewer, action, targetType, targetID string, before, after map[string]any) {
 	_, _ = a.store.Exec(ctx, `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
 		values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		newID("aud"), person.ProgramID, person.ID, person.Email, action, targetType, targetID,

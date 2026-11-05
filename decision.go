@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/outbox"
@@ -17,7 +17,7 @@ import (
 )
 
 // handleDecision records a stage 1 decision, applies the hold policy, writes the outbox row and returns the next ship to open.
-func (a *reviewApp) handleDecision(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {
 		return
@@ -165,7 +165,7 @@ type decisionRecord struct {
 }
 
 // decisionStatements builds the review, submission update, audit, acknowledgement and outbox writes.
-func (a *reviewApp) decisionStatements(ctx context.Context, record decisionRecord) ([]storage.TransactionStatement, string, *decisionProblem) {
+func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) ([]storage.TransactionStatement, string, *decisionProblem) {
 	statements := []storage.TransactionStatement{
 		{SQL: `insert into review (id, submission_id, version, stage, reviewer_id, reviewer_email, reviewer_name, reviewer_role,
 				decision, note_to_maker, internal_note, hours_approved_seconds, acknowledgements, policy_version, held, held_reason,
@@ -247,7 +247,7 @@ func decisionState(ship submissionRow, held bool) (string, int, int) {
 }
 
 // decisionPayloadJSON builds the exact event bytes for the outbox.
-func (a *reviewApp) decisionPayloadJSON(ctx context.Context, ship submissionRow, person reviewer, checks []contract.CheckResult, request contract.DecisionRequest, hours int, note, overrideReason string, stage int, now string) ([]byte, error) {
+func (a *ireApp) decisionPayloadJSON(ctx context.Context, ship submissionRow, person reviewer, checks []contract.CheckResult, request contract.DecisionRequest, hours int, note, overrideReason string, stage int, now string) ([]byte, error) {
 	history := a.stageHistory(ctx, ship.ID, person, request.Decision, now, stage)
 	payload := a.outboundPayload(ship, person, checks, request.Decision, hours, note, strings.TrimSpace(request.InternalNote), overrideReason, now, history, payloadHackatimeProjects(ctx, a.store, ship.ID, ship.Version))
 
@@ -308,7 +308,7 @@ func noteProblem(request contract.DecisionRequest, note string, policy reviewPol
 }
 
 // decisionGuard validates role, stage, version and claim, and loads the current checks.
-func (a *reviewApp) decisionGuard(w http.ResponseWriter, r *http.Request, ship submissionRow, person reviewer, request contract.DecisionRequest) (bool, []contract.CheckResult, bool) {
+func (a *ireApp) decisionGuard(w http.ResponseWriter, r *http.Request, ship submissionRow, person reviewer, request contract.DecisionRequest) (bool, []contract.CheckResult, bool) {
 	if ship.Status == statusChecking {
 		app.WriteError(w, http.StatusConflict, "checks are still running")
 		return false, nil, false
@@ -380,7 +380,7 @@ type secondPassBase struct {
 }
 
 // secondPassBase loads the held review and rejects a decision on the organiser's own first pass.
-func (a *reviewApp) secondPassBase(ctx context.Context, ship submissionRow, person reviewer, request contract.DecisionRequest, note string) (secondPassBase, *decisionProblem) {
+func (a *ireApp) secondPassBase(ctx context.Context, ship submissionRow, person reviewer, request contract.DecisionRequest, note string) (secondPassBase, *decisionProblem) {
 	held, found, err := a.heldReview(ctx, ship.ID)
 	if err != nil {
 		app.Errorf("held review: %v", err)
@@ -406,7 +406,7 @@ func (a *reviewApp) secondPassBase(ctx context.Context, ship submissionRow, pers
 }
 
 // writeDecisionAgain returns the row an idempotent retry already wrote.
-func (a *reviewApp) writeDecisionAgain(w http.ResponseWriter, r *http.Request, ship submissionRow, review reviewRow) {
+func (a *ireApp) writeDecisionAgain(w http.ResponseWriter, r *http.Request, ship submissionRow, review reviewRow) {
 	outboxID, status := a.outboxForReview(r.Context(), review.ID)
 
 	nextStage := ship.Stage
@@ -444,7 +444,7 @@ type heldReview struct {
 }
 
 // heldReview reads the latest held, non-invalidated first-pass review for a ship.
-func (a *reviewApp) heldReview(ctx context.Context, submissionID string) (heldReview, bool, error) {
+func (a *ireApp) heldReview(ctx context.Context, submissionID string) (heldReview, bool, error) {
 	var row heldReview
 
 	err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), decision, coalesce(hours_approved_seconds, 0), note_to_maker
@@ -462,7 +462,7 @@ func (a *reviewApp) heldReview(ctx context.Context, submissionID string) (heldRe
 }
 
 // findReview returns the review a submission already has for this idempotency key.
-func (a *reviewApp) findReview(ctx context.Context, submissionID, key string) (reviewRow, bool, error) {
+func (a *ireApp) findReview(ctx context.Context, submissionID, key string) (reviewRow, bool, error) {
 	if strings.TrimSpace(key) == "" {
 		return reviewRow{}, false, nil
 	}
@@ -484,7 +484,7 @@ func (a *reviewApp) findReview(ctx context.Context, submissionID, key string) (r
 }
 
 // outboxForReview returns the delivery id and status for a review, or empty strings.
-func (a *reviewApp) outboxForReview(ctx context.Context, reviewID string) (string, string) {
+func (a *ireApp) outboxForReview(ctx context.Context, reviewID string) (string, string) {
 	var id, status string
 	if err := a.store.QueryRow(ctx, `select id, status from webhook_outbox where dedupe_key = ?`, "decision:"+reviewID).Scan(&id, &status); err != nil {
 		return "", ""
@@ -515,7 +515,7 @@ func holdFor(ship submissionRow, policy reviewPolicy, checks []contract.CheckRes
 }
 
 // nextQueueID finds the next open ship for auto-advance in the current stage.
-func (a *reviewApp) nextQueueID(ctx context.Context, programID, currentID string, stage int) string {
+func (a *ireApp) nextQueueID(ctx context.Context, programID, currentID string, stage int) string {
 	var (
 		id  string
 		err error
@@ -548,7 +548,7 @@ func eventKind(held bool) string {
 }
 
 // policyVersion reads the programme's current policy version for the review snapshot.
-func (a *reviewApp) policyVersion(ctx context.Context, programID string) int {
+func (a *ireApp) policyVersion(ctx context.Context, programID string) int {
 	var version int
 	if err := a.store.QueryRow(ctx, `select coalesce(policy_version, 1) from program where id = ?`, programID).Scan(&version); err != nil {
 		return 1
@@ -558,7 +558,7 @@ func (a *reviewApp) policyVersion(ctx context.Context, programID string) int {
 }
 
 // outboundURL reads the programme's delivery URL, falling back to the in-process receiver.
-func (a *reviewApp) outboundURL(programID string) string {
+func (a *ireApp) outboundURL(programID string) string {
 	program, err := a.programByID(context.Background(), programID)
 	if err == nil && program.OutboundURL != "" {
 		return program.OutboundURL

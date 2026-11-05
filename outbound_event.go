@@ -4,7 +4,7 @@ import (
 	"context"
 	"slices"
 
-	"review/contract"
+	"ire/contract"
 )
 
 // outboundStage is one stage in the outbound history.
@@ -109,7 +109,7 @@ func outboundEventName(decision string) string {
 }
 
 // outboundPayload builds the final event. A held decision never reaches here because no outbox row is written.
-func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks []contract.CheckResult, decision string, hours int, note, internalNote, overrideReason, now string, history []outboundStage, hackatimeProjects []string) outboundEvent {
+func (a *ireApp) outboundPayload(ship submissionRow, person reviewer, checks []contract.CheckResult, decision string, hours int, note, internalNote, overrideReason, now string, history []outboundStage, hackatimeProjects []string) outboundEvent {
 	results := make([]outboundCheck, 0, len(checks))
 	for _, check := range checks {
 		results = append(results, outboundCheck{Key: check.Key, Status: check.Status, Summary: check.Summary})
@@ -158,7 +158,7 @@ func (a *reviewApp) outboundPayload(ship submissionRow, person reviewer, checks 
 }
 
 // stageHistory builds the stage list including the decision being made.
-func (a *reviewApp) stageHistory(ctx context.Context, submissionID string, person reviewer, decision, now string, stage int) []outboundStage {
+func (a *ireApp) stageHistory(ctx context.Context, submissionID string, person reviewer, decision, now string, stage int) []outboundStage {
 	var out []outboundStage
 
 	reviews, err := a.loadReviews(ctx, submissionID)

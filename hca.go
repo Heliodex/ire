@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"review/contract"
+	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/oauth"
@@ -28,12 +28,12 @@ type loginFlow struct {
 }
 
 // hcaConfigured reports whether the OAuth application has the credentials the flow needs.
-func (a *reviewApp) hcaConfigured() bool {
+func (a *ireApp) hcaConfigured() bool {
 	return strings.TrimSpace(a.config.HCClientID) != "" && strings.TrimSpace(a.config.HCClientSecret) != ""
 }
 
 // hcaIssuer returns the OIDC issuer, defaulting to Hack Club Auth.
-func (a *reviewApp) hcaIssuer() string {
+func (a *ireApp) hcaIssuer() string {
 	base := strings.TrimSpace(a.config.HCAuthBase)
 	if base == "" {
 		base = "https://auth.hackclub.com"
@@ -43,7 +43,7 @@ func (a *reviewApp) hcaIssuer() string {
 }
 
 // oauthClient builds a client for one flow. The package caches discovery and keys for the request.
-func (a *reviewApp) oauthClient() (*oauth.Client, error) {
+func (a *ireApp) oauthClient() (*oauth.Client, error) {
 	return oauth.New(oauth.Config{
 		Issuer:       a.hcaIssuer(),
 		ClientID:     strings.TrimSpace(a.config.HCClientID),
@@ -55,7 +55,7 @@ func (a *reviewApp) oauthClient() (*oauth.Client, error) {
 }
 
 // redirectURI prefers the registered callback and falls back to the browser-facing origin.
-func (a *reviewApp) redirectURI(r *http.Request) string {
+func (a *ireApp) redirectURI(r *http.Request) string {
 	if value := strings.TrimSpace(a.config.HCRedirectURI); value != "" {
 		return value
 	}
@@ -74,7 +74,7 @@ func safeAvatarURL(value string) string {
 }
 
 // handleAuthConfig tells the login screen which sign-in methods exist.
-func (a *reviewApp) handleAuthConfig(w http.ResponseWriter, _ *http.Request) {
+func (a *ireApp) handleAuthConfig(w http.ResponseWriter, _ *http.Request) {
 	app.WriteJSON(w, http.StatusOK, contract.AuthConfig{
 		Dev: a.config.AllowDevAccounts,
 		Hca: a.hcaConfigured(),
@@ -82,7 +82,7 @@ func (a *reviewApp) handleAuthConfig(w http.ResponseWriter, _ *http.Request) {
 }
 
 // handleHCAStart begins the OpenID Connect code flow with PKCE, nonce and a stored flow.
-func (a *reviewApp) handleHCAStart(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleHCAStart(w http.ResponseWriter, r *http.Request) {
 	if !a.hcaConfigured() {
 		app.WriteError(w, http.StatusServiceUnavailable, "Hack Club Auth is not configured")
 		return
@@ -131,7 +131,7 @@ func (a *reviewApp) handleHCAStart(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleHCACallback verifies state, exchanges the code, verifies the ID token and opens a session for a roster member.
-func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
+func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 
 	if !a.hcaConfigured() {
@@ -263,7 +263,7 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 }
 
 // saveLoginFlow stores one attempt and drops expired rows.
-func (a *reviewApp) saveLoginFlow(ctx context.Context, state string, flow loginFlow) error {
+func (a *ireApp) saveLoginFlow(ctx context.Context, state string, flow loginFlow) error {
 	_, err := a.store.Transaction(ctx,
 		storage.TransactionStatement{
 			SQL:  `delete from login_flow where created_at < ?`,
@@ -279,7 +279,7 @@ func (a *reviewApp) saveLoginFlow(ctx context.Context, state string, flow loginF
 }
 
 // takeLoginFlow consumes an attempt so a callback code cannot be replayed.
-func (a *reviewApp) takeLoginFlow(ctx context.Context, state string) (loginFlow, bool, error) {
+func (a *ireApp) takeLoginFlow(ctx context.Context, state string) (loginFlow, bool, error) {
 	var (
 		flow      loginFlow
 		createdAt string
@@ -308,7 +308,7 @@ func (a *reviewApp) takeLoginFlow(ctx context.Context, state string) (loginFlow,
 }
 
 // memberByEmail finds an active programme membership for an email.
-func (a *reviewApp) memberByEmail(ctx context.Context, email string) (reviewer, bool, error) {
+func (a *ireApp) memberByEmail(ctx context.Context, email string) (reviewer, bool, error) {
 	var person reviewer
 
 	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
@@ -333,7 +333,7 @@ func (a *reviewApp) memberByEmail(ctx context.Context, email string) (reviewer, 
 var errIdentityConflict = errors.New("identity is already linked")
 
 // memberBySubject finds an active membership through a stable provider subject.
-func (a *reviewApp) memberBySubject(ctx context.Context, subject string) (reviewer, bool, error) {
+func (a *ireApp) memberBySubject(ctx context.Context, subject string) (reviewer, bool, error) {
 	if strings.TrimSpace(subject) == "" {
 		return reviewer{}, false, nil
 	}
@@ -360,7 +360,7 @@ func (a *reviewApp) memberBySubject(ctx context.Context, subject string) (review
 }
 
 // bindIdentity links a stable subject once and refuses a second subject for the same account.
-func (a *reviewApp) bindIdentity(ctx context.Context, userID, provider, subject string) error {
+func (a *ireApp) bindIdentity(ctx context.Context, userID, provider, subject string) error {
 	if strings.TrimSpace(subject) == "" {
 		return nil
 	}
@@ -402,7 +402,7 @@ func (a *reviewApp) bindIdentity(ctx context.Context, userID, provider, subject 
 }
 
 // canBootstrap reports whether this sign-in may create the first membership.
-func (a *reviewApp) canBootstrap(email string) bool {
+func (a *ireApp) canBootstrap(email string) bool {
 	if !validBootstrapRole(a.config.BootstrapRole) || a.config.BootstrapEmail == "" {
 		return false
 	}
@@ -426,7 +426,7 @@ func validBootstrapRole(role string) bool {
 }
 
 // bootstrapMember creates the configured bootstrap account and its programme membership once.
-func (a *reviewApp) bootstrapMember(ctx context.Context, email, name string) (reviewer, bool, error) {
+func (a *ireApp) bootstrapMember(ctx context.Context, email, name string) (reviewer, bool, error) {
 	var userID string
 
 	err := a.store.QueryRow(ctx, `select id from user where lower(email) = ?`, email).Scan(&userID)
@@ -477,13 +477,13 @@ func (a *reviewApp) bootstrapMember(ctx context.Context, email, name string) (re
 }
 
 // redirectAuthError sends the browser back to the login screen with a short reason.
-func (a *reviewApp) redirectAuthError(w http.ResponseWriter, r *http.Request, reason string) {
+func (a *ireApp) redirectAuthError(w http.ResponseWriter, r *http.Request, reason string) {
 	reviewSessions.Clear(w, r)
 	session.Clear(w, r, oauthStateCookie)
 	http.Redirect(w, r, "/?error="+url.QueryEscape(reason), http.StatusFound)
 }
 
 // logAuthProblem keeps identity-merge failures out of the sign-in decision.
-func (a *reviewApp) logAuthProblem(stage string, err error) {
+func (a *ireApp) logAuthProblem(stage string, err error) {
 	app.Warnf("hca %s: %v", stage, err)
 }
