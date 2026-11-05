@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 
 	"ire/contract"
@@ -28,7 +29,7 @@ func TestQueueSortOrdersPages(t *testing.T) {
 		t.Fatalf("second page = %+v", second)
 	}
 
-	paged := append(first.Items, second.Items...)
+	paged := slices.Concat(first.Items, second.Items)
 	for i := range paged {
 		if paged[i].ID != full.Items[i].ID {
 			t.Fatalf("paged order = %+v, want %+v", paged, full.Items)
