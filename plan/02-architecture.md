@@ -406,11 +406,11 @@ Notes:
 ### Environment and secrets
 
 ```sh
-wt secrets set review PROGRAM_SIGNING_SECRET
-wt secrets set review PROGRAM_OUTBOUND_SECRET
-wt secrets set review HCA_CLIENT_SECRET
-wt secrets set review GITHUB_TOKEN
-wt secrets set review FRAUD_API_KEY
+wt secrets set ire PROGRAM_SIGNING_SECRET
+wt secrets set ire PROGRAM_OUTBOUND_SECRET
+wt secrets set ire HCA_CLIENT_SECRET
+wt secrets set ire GITHUB_TOKEN
+wt secrets set ire FRAUD_API_KEY
 ```
 
 `app.json` env values use `secret://NAME`. The supervisor never puts secret values in argv; it passes only the names.
@@ -421,10 +421,10 @@ wt secrets set review FRAUD_API_KEY
 wt contract --dir .
 go test ./...
 cd web && bun run svelte:check && bun run build
-wt deploy --dir . --app-host review.<domain>
-wt backup create review
-wt rollback review <deployment-id>
-wt backup restore review <snapshot>
+wt deploy --dir . --app-host ire.<domain>
+wt backup create ire
+wt rollback ire <deployment-id>
+wt backup restore ire <snapshot>
 ```
 
 - Deploy runs the contract step automatically when `contract: "valibot"` is set; still run it in CI.
@@ -447,7 +447,7 @@ Staging is not optional. Webhook signatures, OAuth redirect URIs and SQLite migr
 - Structured logs through `app.Logf`: request id, route, status, duration, programme, submission id, job id. Never log tokens or full payloads.
 - `X-Request-Id` from the supervisor, propagated to storage and jobs.
 - `GET /api/v1/admin/health` (admin): DB writable, migration version, last tick, queue depth, outbox backlog, oldest open ship, last outbound success.
-- `wt logs review --follow`, `wt jobs review list`, `wt apps`, `wt inspect review`.
+- `wt logs ire --follow`, `wt jobs ire list`, `wt apps`, `wt inspect ire`.
 - `GET /metrics` on the supervisor gives CPU/memory/disk; the app's own counters are in the admin health endpoint.
 - Alerts (external): queue age, outbox backlog, check error rate, fraud error rate, disk > 80%, backup age.
 - Daily summary to Slack (optional): shipped, decided, queue depth, median time, holds, fraud failures, delivery failures. This can reuse Half Life's existing `slack-review-summary` by exposing the stats endpoint; it does not need to live in Ire.

@@ -810,7 +810,7 @@ Rules:
 - Never edit an applied migration; the storage service checksums it.
 - Use `store.Migrate(ctx, version, statements...)` with the next integer version.
 - Test the migration on a copy of production data, not just an empty DB.
-- Back up before a destructive migration; `wt backup create review`.
+- Back up before a destructive migration; `wt backup create ire`.
 - A code rollback must be able to read the newer schema. If it cannot, restore the backup with the rollback.
 - Migration statements are capped by SQL/time limits; a large backfill belongs in a job, not in `/_wt/migrate`.
 

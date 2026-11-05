@@ -351,34 +351,34 @@ Do not claim a check passed unless it ran. A skipped check is called out in the 
 wt contract --dir .
 go test ./...
 cd web && bun run svelte:check && bun run build
-wt deploy --dir . --app-host review.<domain>
-wt doctor review
+wt deploy --dir . --app-host ire.<domain>
+wt doctor ire
 ```
 
 Before a migration:
 
 ```sh
-wt backup create review
+wt backup create ire
 ```
 
 After:
 
 ```sh
 wt apps
-wt logs review --tail 100
-wt route check review --path /healthz
+wt logs ire --tail 100
+wt route check ire --path /healthz
 ```
 
 ### Rollback
 
 ```sh
-wt rollback review <deployment-id>
+wt rollback ire <deployment-id>
 ```
 
 - Code rollback only. If the migration is not backward-compatible, also restore the backup:
 
 ```sh
-wt rollback review <deployment-id> --backup <snapshot>
+wt rollback ire <deployment-id> --backup <snapshot>
 ```
 
 - Then verify `/healthz`, the queue, and one synthetic decision.
@@ -386,10 +386,10 @@ wt rollback review <deployment-id> --backup <snapshot>
 ### Backup and restore
 
 ```sh
-wt backup create review
-wt backup list review
-wt backup restore review <snapshot>
-wt backup download review <snapshot> --out review-backup.tar.gz
+wt backup create ire
+wt backup list ire
+wt backup restore ire <snapshot>
+wt backup download ire <snapshot> --out review-backup.tar.gz
 ```
 
 Test a restore on staging at least once per phase. A backup that has never been restored is a hope.
@@ -397,15 +397,15 @@ Test a restore on staging at least once per phase. A backup that has never been 
 ### Queue stuck
 
 1. `GET /api/v1/admin/health` – queue depth, oldest open, last tick.
-2. `wt jobs review list --status dead` – check/outbox jobs.
-3. `wt logs review --q "sub_"` – find the submission.
+2. `wt jobs ire list --status dead` – check/outbox jobs.
+3. `wt logs ire --q "sub_"` – find the submission.
 4. If checks are stuck: re-run the group from the review page or admin.
 5. If the claim is stuck: the claim expires; `/jobs/tick` sweeps it; an admin can release.
 6. If the outbox is stuck: inspect the row, fix the receiver, resend.
 
 ### Outbox failed
 
-1. `wt logs review --q "outbox"` and the admin outbox view.
+1. `wt logs ire --q "outbox"` and the admin outbox view.
 2. Check the last HTTP status and error.
 3. Verify the receiver's URL and secret.
 4. Fix, then `POST /outbox/{id}/resend` (new delivery id).

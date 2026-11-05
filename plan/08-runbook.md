@@ -20,7 +20,7 @@ This runbook covers the review service as deployed through `wt`. Half Life stays
 
    The memberships cascade with the user rows. Re-run the bootstrap only if the roster is empty.
 5. Sign in once with the bootstrap admin, invite the real reviewers and organizers at `/admin`, then disable the bootstrap by setting `IRE_BOOTSTRAP_EMAIL` to an address that cannot sign in, or by removing the secret reference.
-6. Run `wt doctor review` and open `/queue`, `/review/{id}` and `/admin`.
+6. Run `wt doctor ire` and open `/queue`, `/review/{id}` and `/admin`.
 
 ## Shadow window
 
@@ -45,7 +45,7 @@ This runbook covers the review service as deployed through `wt`. Half Life stays
 ## Rollback
 
 1. Set `IRE_OUTBOUND_DRY_RUN=1` first, so a retry cannot double-apply a decision.
-2. `wt rollback review <deployment-id>` restores the previous build.
+2. `wt rollback ire <deployment-id>` restores the previous build.
 3. Replay Half Life's own state from its ledger; Ire is a cache of decisions, not the source of credit.
 4. Sessions survive a rollback; revoke a compromised member from `/admin` if needed.
 
@@ -62,7 +62,7 @@ The read-only staging instance runs on the shared `wt` supervisor:
 
 - Supervisor: `https://wt.k.hackclub.dev`
 - App host: `https://ire.k.hackclub.dev`
-- App name: `review`
+- App name: `ire`
 - Ingress: `ire.k.hackclub.dev` on the `wt` deployment, service port 8080
 
 Current staging posture:
@@ -87,12 +87,14 @@ Deploy from a clean `main` with the staging env temporarily applied to `app.json
 Then:
 
 ```sh
-wt deploy --dir . \
+WT_TOKEN="$(cat <token-file>)" wt deploy --dir . \
   --host https://wt.k.hackclub.dev \
   --app-host ire.k.hackclub.dev
 ```
 
-The first deploy needed `--skip-route-check` because the ingress existed before the app did; later deploys do not. `wt route check review` and `wt doctor review` should both pass.
+Pass the supervisor token via `WT_TOKEN`: the `--token` flag 401s on the deploy preflight even for a valid token. `wt build` only hashes `component_inputs`, so after Go changes wipe `main.wasm main.cwasm static .wt-build.json web/build` and rebuild, or the deploy ships a stale component. `IRE_INGEST_SECRET` must exist before deploying (`wt secrets ire set IRE_INGEST_SECRET` reads the value from stdin) and must match Half Life's `IRE_SIGNING_SECRET`; when rotating, set both sides together.
+
+The first deploy needed `--skip-route-check` because the ingress existed before the app did; later deploys do not. `wt route check ire` and `wt doctor ire` should both pass.
 
 Do not deploy with `IRE_SHADOW=0`, fixtures on or development sign-in on: that would turn the public staging host into an open demo. The staging overrides above must be applied for every deploy until a separate production manifest exists.
 
