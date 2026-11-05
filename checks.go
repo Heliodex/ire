@@ -40,15 +40,20 @@ type githubRepo struct {
 	Message       string `json:"message"`
 }
 
+// githubTreeEntry is one path in the recursive tree.
+type githubTreeEntry struct {
+	Path string `json:"path"`
+	Type string `json:"type"`
+	Mode string `json:"mode"`
+	Size *int   `json:"size"`
+}
+
 // githubTree is the recursive tree response.
 type githubTree struct {
-	Sha  string `json:"sha"`
-	Tree []struct {
-		Path string `json:"path"`
-		Type string `json:"type"`
-	} `json:"tree"`
-	Truncated bool   `json:"truncated"`
-	Message   string `json:"message"`
+	Sha       string            `json:"sha"`
+	Tree      []githubTreeEntry `json:"tree"`
+	Truncated bool              `json:"truncated"`
+	Message   string            `json:"message"`
 }
 
 // githubCommit is one commit in the list response.
@@ -122,6 +127,13 @@ func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now t
 		checks = append(checks, check("repo.tree", "Repository files", "repo", statusError, severityBlock, "Repository files could not be read", "The file tree request failed; retry the checks before deciding.", checkedAt))
 	} else {
 		bom := a.fetchBOM(ctx, client, owner, name, tree)
+		if bom.Rows == 0 && len(readme) > 0 {
+			// A BOM table in the README is as good as a CSV file, and the price comparison can use it.
+			if table := parseBOM("README.md", readme); table.Rows > 0 {
+				bom = table
+			}
+		}
+
 		checks = append(checks, fileChecks(tree, bom, maker, checkedAt)...)
 	}
 
@@ -146,29 +158,21 @@ func (a *reviewApp) repoChecks(ctx context.Context, repoURL, since string, now t
 	return checks, &snapshot
 }
 
-// fileChecks checks the file tree for the BOM and design files, and adds the README image count.
+// fileChecks checks the file tree for the BOM, design files and placeholder files, and adds the README image count.
 func fileChecks(tree githubTree, bom bomSummary, maker []contract.BomLine, checkedAt string) []contract.CheckResult {
-	designFiles := []string{}
-
-	for _, file := range tree.Tree {
-		if file.Type != "blob" {
-			continue
-		}
-
-		if isDesignFile(strings.ToLower(file.Path)) {
-			designFiles = append(designFiles, file.Path)
-		}
-	}
-
-	sort.Strings(designFiles)
+	design := classifyDesignFiles(tree)
+	designPaths := design.all()
 
 	checks := []contract.CheckResult{bomCheck(bom, checkedAt), bomMatchCheck(bom, maker, checkedAt)}
 
-	if len(designFiles) > 0 {
-		checks = append(checks, check("repo.design_files", "Design files", "repo", statusPass, severityInfo, "Design files found", strings.Join(capStrings(designFiles, 6), ", "), checkedAt))
+	if len(designPaths) > 0 {
+		checks = append(checks, check("repo.design_files", "Design files", "repo", statusPass, severityInfo, "Design files found", design.summary()+": "+strings.Join(capStrings(designPaths, 6), ", "), checkedAt))
 	} else {
-		checks = append(checks, check("repo.design_files", "Design files", "repo", statusFail, severityWarn, "No design files", "Add the KiCad, Eagle or gerber source files.", checkedAt))
+		checks = append(checks, check("repo.design_files", "Design files", "repo", statusFail, severityWarn, "No design files", "Add the KiCad, Eagle, EasyEDA, CAD or gerber source files.", checkedAt))
 	}
+
+	checks = append(checks, design.kindChecks(checkedAt)...)
+	checks = append(checks, emptyFilesCheck(tree, checkedAt))
 
 	return checks
 }
@@ -443,15 +447,9 @@ func isBOMFile(base string) bool {
 	return strings.HasPrefix(base, "bom") || strings.Contains(base, "bill-of-materials") || strings.Contains(base, "bill_of_materials")
 }
 
-// isDesignFile matches PCB source, schematic and fabrication files.
+// isDesignFile matches PCB, CAD and fabrication files for the evidence tree.
 func isDesignFile(path string) bool {
-	for _, suffix := range []string{".kicad_pcb", ".kicad_sch", ".sch", ".brd", ".gbr", ".drl", ".zip", ".step", ".stl"} {
-		if strings.HasSuffix(path, suffix) {
-			return true
-		}
-	}
-
-	return strings.Contains(path, "gerber") || strings.Contains(path, "drill")
+	return isPCBPath(path) || isGerberPath(path) || isCADPath(path)
 }
 
 // commitCheck reports commit count, days and authors.

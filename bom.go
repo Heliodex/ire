@@ -74,7 +74,7 @@ func findBOMPath(tree githubTree) string {
 // bomCheck reports the parsed BOM, not just the file.
 func bomCheck(bom bomSummary, checkedAt string) contract.CheckResult {
 	if bom.Path == "" {
-		return check("repo.bom", "Bill of materials", "repo", statusFail, severityWarn, "No BOM file", "Add a BOM with part, quantity, unit price and vendor.", checkedAt)
+		return check("repo.bom", "Bill of materials", "repo", statusFail, severityWarn, "No BOM file or README table", "Add a BOM with part, quantity, unit price and vendor, or a table in the README.", checkedAt)
 	}
 
 	if bom.Err != nil {
