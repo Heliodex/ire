@@ -308,7 +308,7 @@ h1 {
 }
 
 .search {
-	flex: 0 1 18.125rem;
+	flex: 0 1 18.13rem;
 }
 
 .error-notice {
@@ -345,7 +345,7 @@ h1 {
 	align-items: center;
 	padding: var(--space-3) var(--space-4);
 	text-decoration: none;
-	border-bottom: 0.0625rem solid var(--border);
+	border-bottom: 1px solid var(--border);
 }
 
 .row:last-child {
@@ -361,11 +361,11 @@ h1 {
 	flex: none;
 	place-items: center;
 	width: 3.5rem;
-	height: 2.625rem;
+	height: 2.63rem;
 	overflow: hidden;
 	color: var(--text-3);
 	background: var(--surface-2);
-	border: 0.0625rem solid var(--border);
+	border: 1px solid var(--border);
 	border-radius: var(--radius-sm);
 }
 
@@ -404,7 +404,7 @@ h1 {
 	display: flex;
 	flex: none;
 	flex-direction: column;
-	gap: 0.1875rem;
+	gap: 0.19rem;
 	align-items: flex-start;
 }
 
@@ -418,7 +418,7 @@ h1 {
 	flex: none;
 	flex-direction: column;
 	align-items: flex-end;
-	min-width: 4.625rem;
+	min-width: 4.63rem;
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }

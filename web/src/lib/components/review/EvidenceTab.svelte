@@ -411,7 +411,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 .commit-list li {
 	display: flex;
 	flex-direction: column;
-	gap: 0.125rem;
+	gap: 2px;
 	padding: var(--space-1) 0;
 	font-size: var(--text-sm);
 }

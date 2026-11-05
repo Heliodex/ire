@@ -348,7 +348,7 @@ h1 {
 	line-height: 1.5;
 	color: var(--text-2);
 	background: var(--surface-2);
-	border: 0.0625rem solid var(--border);
+	border: 1px solid var(--border);
 	border-radius: var(--radius-md);
 }
 
@@ -393,7 +393,7 @@ h1 {
 	color: var(--code-foreground);
 	white-space: pre;
 	background: var(--code-background);
-	border: 0.0625rem solid var(--border);
+	border: 1px solid var(--border);
 	border-radius: var(--radius-md);
 }
 

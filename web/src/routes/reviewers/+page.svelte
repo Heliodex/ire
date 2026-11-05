@@ -316,7 +316,7 @@ h1 {
 .identity div {
 	display: flex;
 	flex-direction: column;
-	gap: 0.125rem;
+	gap: 2px;
 }
 
 .identity span {
@@ -361,7 +361,7 @@ h1 {
 	align-items: baseline;
 	justify-content: space-between;
 	padding-bottom: var(--space-1);
-	border-bottom: 0.0625rem solid var(--border);
+	border-bottom: 1px solid var(--border);
 }
 
 .permissions div:last-child {
@@ -390,7 +390,7 @@ h1 {
 .stats div {
 	display: flex;
 	flex-direction: column;
-	gap: 0.125rem;
+	gap: 2px;
 	padding: var(--space-2) var(--space-3);
 	background: var(--surface-2);
 	border-radius: var(--radius-sm);

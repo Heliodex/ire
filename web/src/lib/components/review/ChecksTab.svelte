@@ -143,7 +143,7 @@ function toggleGroup(group: string): void {
 }
 
 .group + .group {
-	border-top: 0.0625rem solid var(--border);
+	border-top: 1px solid var(--border);
 }
 
 .group-heading {
@@ -192,12 +192,12 @@ function toggleGroup(group: string): void {
 
 .check {
 	display: grid;
-	grid-template-columns: 3.625rem 11.875rem minmax(0, 1fr) 4rem;
+	grid-template-columns: 3.63rem 11.88rem minmax(0, 1fr) 4rem;
 	row-gap: var(--space-1);
 	column-gap: var(--space-3);
 	align-items: start;
 	padding: var(--space-2) var(--space-4);
-	border-top: 0.0625rem solid var(--border);
+	border-top: 1px solid var(--border);
 }
 
 .group h2 + .check {
@@ -214,7 +214,7 @@ function toggleGroup(group: string): void {
 }
 
 .check-key {
-	padding-top: 0.125rem;
+	padding-top: 2px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-size: var(--text-xs);
@@ -226,7 +226,7 @@ function toggleGroup(group: string): void {
 	display: flex;
 	flex-direction: column;
 	grid-column: 1 / -1;
-	gap: 0.0625rem;
+	gap: 1px;
 }
 
 .check-summary {
@@ -244,13 +244,13 @@ function toggleGroup(group: string): void {
 	gap: var(--space-1);
 	align-items: center;
 	justify-self: end;
-	padding: 0.125rem 0.5rem 0.125rem 0.3125rem;
+	padding: 2px 0.5rem 2px 0.31rem;
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--status-pending);
 	cursor: pointer;
 	background: color-mix(in srgb, var(--status-pending) 10%, var(--surface));
-	border: 0.0625rem solid color-mix(in srgb, var(--status-pending) 35%, transparent);
+	border: 1px solid color-mix(in srgb, var(--status-pending) 35%, transparent);
 	border-radius: var(--radius-full);
 }
 
@@ -270,7 +270,7 @@ function toggleGroup(group: string): void {
 		grid-template-areas:
 			"status label key ack"
 			"detail detail detail detail";
-		grid-template-columns: 3.375rem minmax(0, 1fr) minmax(5.625rem, 9.375rem) 3.5rem;
+		grid-template-columns: 3.38rem minmax(0, 1fr) minmax(5.63rem, 9.38rem) 3.5rem;
 		row-gap: var(--space-1);
 	}
 
@@ -303,7 +303,7 @@ function toggleGroup(group: string): void {
 			"status label ack"
 			"key key key"
 			"detail detail detail";
-		grid-template-columns: 3.375rem minmax(0, 1fr) 3.5rem;
+		grid-template-columns: 3.38rem minmax(0, 1fr) 3.5rem;
 	}
 }
 

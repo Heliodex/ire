@@ -1524,7 +1524,7 @@ h1 {
 }
 
 .first-pass p {
-	padding-top: 0.125rem;
+	padding-top: 2px;
 }
 
 .ship-tabs {
@@ -1549,7 +1549,7 @@ h1 {
 	gap: var(--space-2);
 	padding-top: var(--space-3);
 	margin-top: var(--space-3);
-	border-top: 0.0625rem solid var(--border);
+	border-top: 1px solid var(--border);
 }
 
 .send-back h3 {
@@ -1642,7 +1642,7 @@ h1 {
 	margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
 	text-align: center;
 	background: var(--surface-2);
-	border-bottom: 0.0625rem solid var(--border);
+	border-bottom: 1px solid var(--border);
 }
 
 .cover-empty svg {
@@ -1689,7 +1689,7 @@ h1 {
 .section {
 	padding-top: var(--space-4);
 	margin-top: var(--space-4);
-	border-top: 0.0625rem solid var(--border);
+	border-top: 1px solid var(--border);
 }
 
 .section h3 {
@@ -1755,9 +1755,9 @@ h1 {
 
 .event .dot {
 	flex: none;
-	width: 0.375rem;
-	height: 0.375rem;
-	margin-top: 0.4375rem;
+	width: 0.38rem;
+	height: 0.38rem;
+	margin-top: 0.44rem;
 	background: var(--primary);
 	border-radius: 50%;
 }
@@ -1829,7 +1829,7 @@ h1 {
 	gap: var(--space-2);
 	padding: var(--space-3);
 	background: var(--surface);
-	border: 0.0625rem solid var(--border);
+	border: 1px solid var(--border);
 	border-radius: var(--radius-lg);
 	box-shadow: var(--shadow);
 }
@@ -1871,7 +1871,7 @@ h1 {
 	margin-top: var(--space-3);
 	font-size: var(--text-xs);
 	color: var(--text-3);
-	border-top: 0.0625rem solid var(--border);
+	border-top: 1px solid var(--border);
 }
 
 .field {
@@ -2012,7 +2012,7 @@ h1 {
 		gap: var(--space-2);
 		padding: var(--space-2) var(--space-3) max(var(--space-2), env(safe-area-inset-bottom));
 		background: var(--surface);
-		border-top: 0.0625rem solid var(--border);
+		border-top: 1px solid var(--border);
 		box-shadow: var(--shadow);
 	}
 
@@ -2026,7 +2026,7 @@ h1 {
 	}
 
 	.toast {
-		bottom: calc(4.625rem + var(--space-3));
+		bottom: calc(4.63rem + var(--space-3));
 	}
 }
 

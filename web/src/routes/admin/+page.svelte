@@ -358,7 +358,7 @@ async function invite(): Promise<void> {
 
 .roster {
 	padding-top: var(--space-2);
-	border-top: 0.0625rem solid var(--border);
+	border-top: 1px solid var(--border);
 }
 
 .roster th:nth-child(1) {
@@ -374,7 +374,7 @@ async function invite(): Promise<void> {
 }
 
 .roster th:nth-child(4) {
-	width: 11.875rem;
+	width: 11.88rem;
 }
 
 .roster td strong {

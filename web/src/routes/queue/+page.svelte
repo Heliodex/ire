@@ -1184,7 +1184,7 @@ h1 {
 .stats div {
 	min-width: 5.25rem;
 	padding: var(--space-2) var(--space-3);
-	border-left: 0.0625rem solid var(--border);
+	border-left: 1px solid var(--border);
 }
 
 .stats div:first-child {
@@ -1276,9 +1276,9 @@ h1 {
 .row {
 	position: relative;
 	display: grid;
-	grid-template-columns: 4rem minmax(0, 1fr) minmax(6.875rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+	grid-template-columns: 4rem minmax(0, 1fr) minmax(6.88rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
 			8.75rem,
-			11.875rem
+			11.88rem
 		);
 	gap: var(--space-3);
 	align-items: center;
@@ -1287,14 +1287,14 @@ h1 {
 	text-align: left;
 	background: transparent;
 	border: 0;
-	border-bottom: 0.0625rem solid var(--border);
+	border-bottom: 1px solid var(--border);
 }
 
 .column-head {
 	display: grid;
-	grid-template-columns: 4rem minmax(0, 1fr) minmax(6.875rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+	grid-template-columns: 4rem minmax(0, 1fr) minmax(6.88rem, 10rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
 			8.75rem,
-			11.875rem
+			11.88rem
 		);
 	gap: var(--space-3);
 	align-items: center;
@@ -1303,7 +1303,7 @@ h1 {
 	font-weight: 700;
 	color: var(--text-3);
 	background: var(--surface-2);
-	border-bottom: 0.0625rem solid var(--border);
+	border-bottom: 1px solid var(--border);
 }
 
 .column-head .sort {
@@ -1373,7 +1373,7 @@ h1 {
 	position: absolute;
 	inset: 0 auto 0 0;
 	z-index: 1;
-	width: 0.1875rem;
+	width: 0.19rem;
 	content: "";
 	background: var(--primary);
 }
@@ -1523,7 +1523,7 @@ a.maker-name:hover {
 .dots {
 	display: flex;
 	flex-wrap: nowrap;
-	gap: 0.1875rem;
+	gap: 0.19rem;
 	align-items: center;
 	overflow: hidden;
 }
@@ -1535,8 +1535,8 @@ a.status {
 }
 
 a.checks {
-	padding: 0.25rem 0.375rem;
-	margin: -0.25rem -0.375rem;
+	padding: 0.25rem 0.38rem;
+	margin: -0.25rem -0.38rem;
 }
 
 a.checks:hover {
@@ -1546,8 +1546,8 @@ a.checks:hover {
 
 a.checks:focus-visible,
 a.status:focus-visible {
-	outline: 0.125rem solid var(--accent-blue);
-	outline-offset: 0.125rem;
+	outline: 2px solid var(--accent-blue);
+	outline-offset: 2px;
 }
 
 .tab-count {
@@ -1557,7 +1557,7 @@ a.status:focus-visible {
 
 .dot-more {
 	flex: none;
-	font-size: 0.625rem;
+	font-size: 0.63rem;
 	font-weight: 700;
 	line-height: 1;
 	color: var(--text-3);
@@ -1566,23 +1566,23 @@ a.status:focus-visible {
 
 .dot-group {
 	display: flex;
-	gap: 0.0625rem;
+	gap: 1px;
 }
 
 .dot-group + .dot-group {
 	padding-left: 0.25rem;
-	border-left: 0.0625rem solid var(--border-2);
+	border-left: 1px solid var(--border-2);
 }
 
 .dot {
 	display: grid;
 	flex: none;
 	place-items: center;
-	width: 0.6875rem;
-	height: 0.6875rem;
+	width: 0.69rem;
+	height: 0.69rem;
 	color: var(--text-2);
 	background: var(--border-2);
-	border-radius: 0.125rem;
+	border-radius: 2px;
 }
 
 .dot[data-tone="approved"],
@@ -1613,23 +1613,23 @@ a.status:focus-visible {
 	z-index: var(--layer-toast);
 	display: flex;
 	flex-direction: column;
-	gap: 0.1875rem;
+	gap: 0.19rem;
 	width: max-content;
 	max-width: 16.5rem;
 	padding: var(--space-2) var(--space-3);
 	pointer-events: none;
 	background: var(--surface);
-	border: 0.0625rem solid var(--border-2);
+	border: 1px solid var(--border-2);
 	border-radius: var(--radius-md);
 	box-shadow: var(--shadow);
 }
 
 .check-tip.above {
-	transform: translate(-50%, calc(-100% - 0.375rem));
+	transform: translate(-50%, calc(-100% - 0.38rem));
 }
 
 .check-tip.below {
-	transform: translate(-50%, 0.375rem);
+	transform: translate(-50%, 0.38rem);
 }
 
 .tip-head {
@@ -1679,13 +1679,13 @@ a.status:focus-visible {
 	color: var(--text);
 }
 
-@media (min-width: 47.5625rem) {
+@media (min-width: 47.56rem) {
 	.checks {
 		align-items: flex-end;
 	}
 }
 
-@media (min-width: 64.0625rem) {
+@media (min-width: 64.06rem) {
 	.ship-title {
 		grid-row: 1;
 		grid-column: 2;
@@ -1730,7 +1730,7 @@ a.status:focus-visible {
 @media (min-width: 80rem) {
 	.row,
 	.column-head {
-		grid-template-columns: 4rem minmax(0, 1fr) minmax(6.875rem, 11.875rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+		grid-template-columns: 4rem minmax(0, 1fr) minmax(6.88rem, 11.88rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
 				8.75rem,
 				18.75rem
 			);
@@ -1740,7 +1740,7 @@ a.status:focus-visible {
 @media (min-width: 87.5rem) {
 	.row,
 	.column-head {
-		grid-template-columns: 4rem minmax(0, 1fr) minmax(6.875rem, 11.875rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
+		grid-template-columns: 4rem minmax(0, 1fr) minmax(6.88rem, 11.88rem) 6rem 4rem 1.75rem 8.5rem 4rem minmax(
 				12.5rem,
 				30rem
 			);
@@ -1753,15 +1753,15 @@ a.status:focus-visible {
 	}
 
 	.dot {
-		width: 0.5625rem;
-		height: 0.5625rem;
+		width: 0.56rem;
+		height: 0.56rem;
 	}
 
 	.row {
 		grid-template-areas:
 			"thumb title badges checks"
 			"thumb facts facts facts";
-		grid-template-columns: 4rem minmax(0, 1fr) 10.625rem 10rem;
+		grid-template-columns: 4rem minmax(0, 1fr) 10.63rem 10rem;
 		row-gap: var(--space-1);
 		column-gap: var(--space-3);
 	}
@@ -1790,7 +1790,7 @@ a.status:focus-visible {
 	.facts {
 		display: grid;
 		grid-area: facts;
-		grid-template-columns: minmax(7.5rem, 1fr) 2.25rem 9.375rem;
+		grid-template-columns: minmax(7.5rem, 1fr) 2.25rem 9.38rem;
 		gap: var(--space-2);
 		align-items: center;
 	}
@@ -1804,12 +1804,12 @@ a.status:focus-visible {
 	}
 }
 
-@media (min-width: 47.5625rem) and (max-width: 64rem) {
+@media (min-width: 47.56rem) and (max-width: 64rem) {
 	.row {
 		grid-template-areas:
 			"thumb name maker badges"
 			"thumb version timing checks";
-		grid-template-columns: 4rem minmax(0, 15rem) 13rem minmax(11.875rem, 1fr);
+		grid-template-columns: 4rem minmax(0, 15rem) 13rem minmax(11.88rem, 1fr);
 	}
 
 	.ship-title {
@@ -1900,7 +1900,7 @@ a.status:focus-visible {
 			"name name"
 			"maker theme";
 		grid-template-columns: minmax(0, 1fr) auto;
-		gap: 0.125rem var(--space-2);
+		gap: 2px var(--space-2);
 		align-items: baseline;
 	}
 
@@ -1994,10 +1994,10 @@ a.status:focus-visible {
 	}
 }
 
-@media (max-width: 23.125rem) {
+@media (max-width: 23.13rem) {
 	.counts {
 		flex-wrap: wrap;
-		gap: 0.1875rem;
+		gap: 0.19rem;
 	}
 
 	.checks .fast {

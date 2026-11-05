@@ -47,16 +47,16 @@ $effect((): void => {
 .avatar {
 	display: block;
 	flex: none;
-	width: 1.625rem;
-	height: 1.625rem;
+	width: 1.63rem;
+	height: 1.63rem;
 	overflow: hidden;
-	font-size: 0.625rem;
+	font-size: 0.63rem;
 	font-weight: 800;
 	color: var(--text-2);
 	object-fit: cover;
 	background: var(--surface-2);
-	border: 0.0625rem solid var(--border);
-	border-radius: 0.4375rem;
+	border: 1px solid var(--border);
+	border-radius: 0.44rem;
 }
 
 .avatar.placeholder {
@@ -68,28 +68,28 @@ $effect((): void => {
 .avatar.xs {
 	width: 1.25rem;
 	height: 1.25rem;
-	font-size: 0.53125rem;
-	border-radius: 0.3125rem;
+	font-size: 0.53rem;
+	border-radius: 0.31rem;
 }
 
 .avatar.sm {
-	width: 1.625rem;
-	height: 1.625rem;
-	font-size: 0.625rem;
-	border-radius: 0.4375rem;
+	width: 1.63rem;
+	height: 1.63rem;
+	font-size: 0.63rem;
+	border-radius: 0.44rem;
 }
 
 .avatar.md {
-	width: 1.875rem;
-	height: 1.875rem;
-	font-size: 0.6875rem;
+	width: 1.88rem;
+	height: 1.88rem;
+	font-size: 0.69rem;
 	border-radius: 0.5rem;
 }
 
 .avatar.lg {
-	width: 3.625rem;
-	height: 3.625rem;
-	font-size: 1.125rem;
+	width: 3.63rem;
+	height: 3.63rem;
+	font-size: 1.13rem;
 	border-radius: 0.75rem;
 }
 </style>

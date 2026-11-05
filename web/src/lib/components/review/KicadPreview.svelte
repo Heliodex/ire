@@ -103,7 +103,7 @@ $effect((): (() => void) => {
 	display: block;
 	width: 100%;
 	height: 30rem;
-	border: 0.0625rem solid var(--border);
+	border: 1px solid var(--border);
 	border-radius: var(--radius-md);
 }
 

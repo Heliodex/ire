@@ -244,7 +244,7 @@ h1 {
 :where(.stats) div {
 	min-width: 5.75rem;
 	padding: var(--space-2) var(--space-3);
-	border-left: 0.0625rem solid var(--border);
+	border-left: 1px solid var(--border);
 }
 
 :where(.stats) div:first-child {
@@ -280,7 +280,7 @@ h1 {
 	align-items: baseline;
 	justify-content: space-between;
 	padding: var(--space-3) var(--space-4);
-	border-bottom: 0.0625rem solid var(--border);
+	border-bottom: 1px solid var(--border);
 }
 
 .card-head h2 {
@@ -294,7 +294,7 @@ h1 {
 }
 
 .row {
-	border-bottom: 0.0625rem solid var(--border);
+	border-bottom: 1px solid var(--border);
 }
 
 .row:last-child {
@@ -366,7 +366,7 @@ pre {
 	overflow-wrap: anywhere;
 	white-space: pre-wrap;
 	background: var(--surface-2);
-	border: 0.0625rem solid var(--border);
+	border: 1px solid var(--border);
 	border-radius: var(--radius-sm);
 }
 
