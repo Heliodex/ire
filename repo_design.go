@@ -61,6 +61,7 @@ func (d designFiles) all() []string {
 // summary names the kinds present, such as "2 PCB, 1 CAD and 4 firmware files".
 func (d designFiles) summary() string {
 	parts := []string{}
+
 	for _, group := range []struct {
 		label string
 		files []string

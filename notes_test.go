@@ -15,6 +15,7 @@ func TestNotesAreSharedAndRemovable(t *testing.T) {
 	admin := login(t, application, "admin@example.com")
 
 	body, _ := json.Marshal(contract.NoteRequest{Body: "The maker reused the last board. Check the schematic.", SubjectType: noteSubjectProject})
+
 	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/notes", body, reviewer, nil)
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create note = %d: %s", created.Code, created.Body.String())
@@ -52,6 +53,7 @@ func TestNoteRejectsEmptyBody(t *testing.T) {
 	reviewer := login(t, application, "reviewer@example.com")
 
 	body, _ := json.Marshal(contract.NoteRequest{Body: "   ", SubjectType: noteSubjectMaker})
+
 	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/notes", body, reviewer, nil)
 	if created.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("blank note = %d: %s", created.Code, created.Body.String())

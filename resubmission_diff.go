@@ -12,6 +12,8 @@ import (
 )
 
 // resubmissionDiff compares a ship with the version it replaced: the previous decision, new commits, file changes, journal entries and BOM changes.
+//
+//nolint:nilnil // A first version has no diff and is not an error.
 func (a *reviewApp) resubmissionDiff(ctx context.Context, ship submissionRow, current *contract.Evidence, journals []contract.JournalEntry) (*contract.Resubmission, error) {
 	if ship.PreviousID == "" {
 		return nil, nil
@@ -45,7 +47,10 @@ func (a *reviewApp) resubmissionDiff(ctx context.Context, ship submissionRow, cu
 
 	if current != nil {
 		diff.Commits = current.Commits
-		diff.AddedFiles, diff.RemovedFiles = changedPaths(previousEvidence, hasPreviousEvidence, *current)
+
+		if hasPreviousEvidence {
+			diff.AddedFiles, diff.RemovedFiles = changedPaths(previousEvidence, *current)
+		}
 	}
 
 	previousJournals, err := a.loadJournals(ctx, previous.ID)
@@ -73,12 +78,10 @@ func (a *reviewApp) resubmissionDiff(ctx context.Context, ship submissionRow, cu
 }
 
 // changedPaths lists the files added and removed since the previous snapshot.
-func changedPaths(previous contract.Evidence, hasPrevious bool, current contract.Evidence) (added, removed []string) {
+func changedPaths(previous, current contract.Evidence) (added, removed []string) {
 	before := map[string]bool{}
-	if hasPrevious {
-		for _, file := range previous.Files {
-			before[file.Path] = true
-		}
+	for _, file := range previous.Files {
+		before[file.Path] = true
 	}
 
 	after := map[string]bool{}
@@ -111,6 +114,7 @@ func changedJournals(previous, current []contract.JournalEntry) (added, changed 
 
 	for _, entry := range current {
 		summary := contract.ResubmissionEntry{At: entry.At, Seconds: entry.Seconds, Title: entry.Title}
+
 		match, ok := before[journalKey(entry)]
 		if !ok {
 			added = append(added, summary)

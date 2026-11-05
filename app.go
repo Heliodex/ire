@@ -263,6 +263,7 @@ func (a *reviewApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(path, "/review/") {
 			page = "/review"
 		}
+
 		if strings.HasPrefix(path, "/reviewers/") {
 			page = "/reviewers"
 		}

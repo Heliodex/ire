@@ -81,6 +81,7 @@ func TestJournalAdjustmentRequiresClaimAndVersion(t *testing.T) {
 	}
 
 	staleBody, _ := json.Marshal(contract.JournalReviewRequest{ApprovedSeconds: entry.Seconds, Version: 99})
+
 	stale := do(t, application, http.MethodPatch, path, staleBody, reviewer, nil)
 	if stale.Code != http.StatusConflict || !strings.Contains(stale.Body.String(), "stale_version") {
 		t.Fatalf("stale = %d: %s", stale.Code, stale.Body.String())

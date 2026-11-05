@@ -12,8 +12,6 @@ import (
 )
 
 // handleJournalReview records a reviewer's approved time and deflation note for one journal entry.
-//
-//nolint:funlen // The guards, read, transaction and response belong to one edit.
 func (a *reviewApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
 	if !ok {

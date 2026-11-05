@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 
 	"review/contract"
@@ -60,10 +61,10 @@ func TestResubmissionDiffShowsWhatChanged(t *testing.T) {
 	if len(diff.Commits) != 1 || diff.Commits[0].Sha != "abc123" {
 		t.Errorf("commits = %+v", diff.Commits)
 	}
-	if !contains(diff.AddedFiles, "firmware/main.ino") {
+	if !slices.Contains(diff.AddedFiles, "firmware/main.ino") {
 		t.Errorf("added files = %v", diff.AddedFiles)
 	}
-	if !contains(diff.RemovedFiles, "board.kicad_pcb") {
+	if !slices.Contains(diff.RemovedFiles, "board.kicad_pcb") {
 		t.Errorf("removed files = %v", diff.RemovedFiles)
 	}
 	if len(diff.NewEntries) == 0 {
@@ -72,15 +73,4 @@ func TestResubmissionDiffShowsWhatChanged(t *testing.T) {
 	if len(diff.BomAdded) == 0 || len(diff.BomRemoved) == 0 {
 		t.Errorf("BOM changes = added %v, removed %v", diff.BomAdded, diff.BomRemoved)
 	}
-}
-
-// contains reports whether a list carries a value.
-func contains(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-
-	return false
 }

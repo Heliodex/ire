@@ -19,6 +19,7 @@ func TestQueueRoutesResubmissionToPreviousReviewer(t *testing.T) {
 	}
 
 	now := application.nowText()
+
 	statements := []string{
 		`update submission set priority = 0`,
 		`update submission set status = 'decided', decided_at = '` + now + `' where id = 'sub_fixture_1'`,
