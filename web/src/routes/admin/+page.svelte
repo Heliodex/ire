@@ -351,6 +351,22 @@ async function invite(): Promise<void> {
 	border-top: 1px solid var(--border);
 }
 
+.roster th:nth-child(1) {
+	width: 45%;
+}
+
+.roster th:nth-child(2) {
+	width: 220px;
+}
+
+.roster th:nth-child(3) {
+	width: 88px;
+}
+
+.roster th:nth-child(4) {
+	width: 190px;
+}
+
 .roster td strong {
 	display: block;
 }
