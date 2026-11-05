@@ -73,7 +73,7 @@ describe("fetchQueue", () => {
 		stubFetch(
 			200,
 			{
-				counts: { checking: 0, claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
+				counts: { checking: 0, claimed: 0, fast: 0, mine: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
 				hasMore: false,
 				items: [],
 			},
@@ -95,7 +95,7 @@ describe("fetchQueue", () => {
 		stubFetch(
 			200,
 			{
-				counts: { checking: 0, claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
+				counts: { checking: 0, claimed: 0, fast: 0, mine: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
 				hasMore: false,
 				items: [],
 			},

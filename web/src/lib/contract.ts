@@ -235,6 +235,8 @@ export const queueCountsSchema = pipe(
 	object({
 		checking: nonNegative,
 		claimed: nonNegative,
+		fast: nonNegative,
+		mine: nonNegative,
 		needsAttention: nonNegative,
 		ready: nonNegative,
 		stage2Hold: nonNegative,

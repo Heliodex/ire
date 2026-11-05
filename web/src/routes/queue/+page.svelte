@@ -42,17 +42,30 @@ function queueState(): QueueState {
 }
 
 const emptyQueue: Queue = {
-	counts: { checking: 0, claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
+	counts: { checking: 0, claimed: 0, fast: 0, mine: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
 	hasMore: false,
 	items: [],
 }
 const savedQueue = browser ? queueState().read() : null
 
-const filters: { key: Filter; label: string; short: string }[] = [
+const filters: { key: Exclude<Filter, "attention">; label: string; short: string }[] = [
 	{ key: "all", label: "All open", short: "All" },
 	{ key: "fast", label: "Fast lane", short: "Fast" },
 	{ key: "mine", label: "Mine", short: "Mine" },
 ]
+
+// tabCount totals the server badges behind one filter tab.
+function tabCount(key: Exclude<Filter, "attention">): number {
+	const { counts } = queue
+	switch (key) {
+		case "all":
+			return counts.checking + counts.ready + counts.claimed + counts.needsAttention
+		case "fast":
+			return counts.fast
+		case "mine":
+			return counts.mine
+	}
+}
 
 let queue = $state<Queue>(savedQueue?.queue ?? emptyQueue)
 // A stored visit can still name the retired attention tab; fall back to the full list.
@@ -673,28 +686,28 @@ function filterByStatus(item: QueueItem, event: MouseEvent): void {
 	<div aria-label="Filters and stages" class="ui-seg filters" role="tablist" bind:this={filterTabs}>
 		{#each filters as option (option.key)}
 			<button
-				aria-label={option.label}
+				aria-label={`${option.label}, ${tabCount(option.key)} ships`}
 				aria-selected={stage === 1 && filter === option.key}
 				onclick={(): Promise<void> => choose(option.key)}
 				role="tab"
 				type="button"
 				class:active={stage === 1 && filter === option.key}
 			>
-				<span class="label-full">{option.label}</span>
-				<span class="label-short">{option.short}</span>
+				<span class="label-full">{option.label} <span class="tab-count">{tabCount(option.key)}</span></span>
+				<span class="label-short">{option.short} <span class="tab-count">{tabCount(option.key)}</span></span>
 			</button>
 		{/each}
 		{#if canSecondPass}
 			<button
-				aria-label={`Second pass ${queue.counts.stage2Hold}`}
+				aria-label={`Second pass, ${queue.counts.stage2Hold} ships`}
 				aria-selected={stage === 2}
 				onclick={chooseSecondPass}
 				role="tab"
 				type="button"
 				class:active={stage === 2}
 			>
-				<span class="label-full">Second pass {queue.counts.stage2Hold}</span>
-				<span class="label-short">Pass 2 · {queue.counts.stage2Hold}</span>
+				<span class="label-full">Second pass <span class="tab-count">{queue.counts.stage2Hold}</span></span>
+				<span class="label-short">Pass 2 <span class="tab-count">{queue.counts.stage2Hold}</span></span>
 			</button>
 		{/if}
 	</div>
@@ -1407,6 +1420,11 @@ a.checks:focus-visible,
 a.status:focus-visible {
 	outline: 2px solid var(--accent-blue);
 	outline-offset: 2px;
+}
+
+.tab-count {
+	font-weight: 600;
+	color: var(--text-3);
 }
 
 .dot-more {

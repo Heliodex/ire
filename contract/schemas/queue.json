@@ -12,6 +12,14 @@
 					"type": "integer",
 					"minimum": 0
 				},
+				"fast": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"mine": {
+					"type": "integer",
+					"minimum": 0
+				},
 				"needsAttention": {
 					"type": "integer",
 					"minimum": 0
@@ -28,6 +36,8 @@
 			"required": [
 				"checking",
 				"claimed",
+				"fast",
+				"mine",
 				"needsAttention",
 				"ready",
 				"stage2Hold"

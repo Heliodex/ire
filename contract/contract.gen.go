@@ -2524,6 +2524,12 @@ type QueueCounts struct {
 	// Claimed corresponds to the JSON schema field "claimed".
 	Claimed int `json:"claimed" yaml:"claimed" mapstructure:"claimed"`
 
+	// Fast corresponds to the JSON schema field "fast".
+	Fast int `json:"fast" yaml:"fast" mapstructure:"fast"`
+
+	// Mine corresponds to the JSON schema field "mine".
+	Mine int `json:"mine" yaml:"mine" mapstructure:"mine"`
+
 	// NeedsAttention corresponds to the JSON schema field "needsAttention".
 	NeedsAttention int `json:"needsAttention" yaml:"needsAttention" mapstructure:"needsAttention"`
 
@@ -2546,6 +2552,12 @@ func (j *QueueCounts) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["claimed"]; raw != nil && !ok {
 		return fmt.Errorf("field claimed in QueueCounts: required")
 	}
+	if _, ok := raw["fast"]; raw != nil && !ok {
+		return fmt.Errorf("field fast in QueueCounts: required")
+	}
+	if _, ok := raw["mine"]; raw != nil && !ok {
+		return fmt.Errorf("field mine in QueueCounts: required")
+	}
 	if _, ok := raw["needsAttention"]; raw != nil && !ok {
 		return fmt.Errorf("field needsAttention in QueueCounts: required")
 	}
@@ -2565,6 +2577,12 @@ func (j *QueueCounts) UnmarshalJSON(value []byte) error {
 	}
 	if 0 > plain.Claimed {
 		return fmt.Errorf("field %s: must be >= %v", "claimed", 0)
+	}
+	if 0 > plain.Fast {
+		return fmt.Errorf("field %s: must be >= %v", "fast", 0)
+	}
+	if 0 > plain.Mine {
+		return fmt.Errorf("field %s: must be >= %v", "mine", 0)
 	}
 	if 0 > plain.NeedsAttention {
 		return fmt.Errorf("field %s: must be >= %v", "needsAttention", 0)

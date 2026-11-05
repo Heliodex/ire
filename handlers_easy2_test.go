@@ -169,14 +169,32 @@ func TestReleaseWithoutClaim(t *testing.T) {
 // TestQueueCounts covers the counts helper behind the queue header.
 func TestQueueCounts(t *testing.T) {
 	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
 
-	counts, err := application.queueCounts(t.Context(), programID)
+	counts, err := application.queueCounts(t.Context(), programID, "usr_reviewer", application.nowText())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if counts.Ready+counts.Claimed+counts.NeedsAttention+counts.Checking+counts.Stage2Hold == 0 {
 		t.Error("fixture queue should have counted ships")
+	}
+
+	if counts.Fast < 0 || counts.Mine != 0 {
+		t.Errorf("fast/mine before claim = %d/%d, want fast >= 0 and mine 0", counts.Fast, counts.Mine)
+	}
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	after, err := application.queueCounts(t.Context(), programID, "usr_reviewer", application.nowText())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if after.Mine != 1 {
+		t.Errorf("mine after claim = %d, want 1", after.Mine)
 	}
 
 	var _ contract.QueueResponse

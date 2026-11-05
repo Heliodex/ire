@@ -107,7 +107,7 @@ function item(id: string, claimedBy?: string): QueueItem {
 // stubQueue answers the queue endpoint with the given items and records every request URL.
 function stubQueue(items: QueueItem[], seen: string[], status = 200): void {
 	const queue = {
-		counts: { checking: 0, claimed: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
+		counts: { checking: 0, claimed: 0, fast: 0, mine: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
 		hasMore: false,
 		items,
 	}
