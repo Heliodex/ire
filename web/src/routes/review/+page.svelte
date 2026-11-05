@@ -997,6 +997,35 @@ async function saveDraftNow(): Promise<void> {
 		</aside>
 	</div>
 
+	{#if !readOnly && !reviewed}
+		<div class="mobile-actions">
+			<button
+				class="ui-button ok"
+				disabled={deciding || !canApprove || !canDecide}
+				onclick={(): Promise<void> => decide("approved")}
+				type="button"
+			>
+				{deciding ? "Saving…" : secondPass ? "Confirm" : "Approve"}
+			</button>
+			<button
+				class="ui-button changes"
+				disabled={deciding || !canDecide}
+				onclick={(): Promise<void> => decide("changes")}
+				type="button"
+			>
+				Changes
+			</button>
+			<button
+				class="ui-button danger"
+				disabled={deciding || !canDecide}
+				onclick={(): Promise<void> => decide("rejected")}
+				type="button"
+			>
+				Reject
+			</button>
+		</div>
+	{/if}
+
 	{#if toast}
 		<div class="toast" role="status">{toast}</div>
 	{/if}
@@ -1478,6 +1507,10 @@ h1 {
 	color: var(--text-3);
 }
 
+.mobile-actions {
+	display: none;
+}
+
 .toast {
 	position: fixed;
 	bottom: var(--space-5);
@@ -1501,11 +1534,35 @@ h1 {
 @media (max-width: 980px) {
 	.layout {
 		grid-template-columns: 1fr;
+		padding-bottom: 76px;
 	}
 
 	.rail {
 		position: static;
 		padding-top: 0;
+	}
+
+	.mobile-actions {
+		position: fixed;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		z-index: var(--layer-dialog);
+		display: grid;
+		grid-template-columns: 1.15fr 1fr 0.85fr;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3) max(var(--space-2), env(safe-area-inset-bottom));
+		background: var(--surface);
+		border-top: 1px solid var(--border);
+		box-shadow: var(--shadow);
+	}
+
+	.mobile-actions .ui-button {
+		min-width: 0;
+	}
+
+	.toast {
+		bottom: calc(74px + var(--space-3));
 	}
 }
 
@@ -1517,20 +1574,6 @@ h1 {
 	.ship-head {
 		flex-direction: column;
 		align-items: flex-start;
-	}
-
-	.ship-tabs {
-		flex-wrap: nowrap;
-		overflow-x: auto;
-		scrollbar-width: none;
-	}
-
-	.ship-tabs::-webkit-scrollbar {
-		display: none;
-	}
-
-	.ship-tabs button {
-		flex: none;
 	}
 }
 </style>
