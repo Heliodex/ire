@@ -6,10 +6,13 @@ A review service for Half Life hardware ships. This is the working vertical slic
 
 - Ari-compatible ingest at `POST /api/ingest/{program}` with HMAC over the raw body, timestamp support, replay protection and `409 already_queued`.
 - Ari-compatible status at `GET /api/ingest/{program}/status`, withdraw, and the native `reviews?since` / `events?since` recovery feeds.
-- A stage 1 queue with claims, heartbeats, drafts, warning acknowledgements, blocking checks, decisions and idempotency keys.
+- A stage 1 queue with claims, heartbeats, drafts, warning acknowledgements, blocking checks, decisions and idempotency keys. The previous reviewer sees a resubmission first, and other reviewers only see a fresh one behind the rest of the queue; age hints and a previous-reviewer badge make that visible.
+- Per-entry time adjudication: while a ship is claimed, each journal entry can be counted down with a staff-only deflation note. The entry edits save as you type and keep the ship's approved total and the decision rail in step.
+- A resubmission diff on the overview: the previous decision and note, new commits, added and removed files, new or edited journal entries and BOM changes.
+- Internal notes on the ship, its project or its maker. Project and maker notes follow later versions, and the author or an admin can remove one.
 - A stage 2 hold policy for approvals: a warning, a held tier, or hours above the claim waits for the second pass and emits no webhook. Changes and rejections are final and always deliver. The stage 1 endpoints refuse a ship that is already on the second pass.
 - A second-pass queue for organisers, with claim, confirm, reject, changes, send-back and override-with-reason actions, stage history and one final outbound event. Reviewers can read a held ship but cannot decide it.
-- Real GitHub checks for new ingests, queued as a durable supervisor job so ingest returns immediately: repository access, README and image count, BOM file, design files and commit history. Fixtures keep their prescribed results.
+- Real GitHub checks for new ingests, queued as a durable supervisor job so ingest returns immediately: repository access, README and image count, BOM file or README table, PCB/CAD/firmware/Gerber design file groups, empty placeholder files and commit history. Fixtures keep their prescribed results.
 - Hack Club Auth sign-in for roster members over OpenID Connect discovery, PKCE, nonce and a verified RS256 ID token. Development sign-in remains for local use.
 - A cached repository snapshot per ship: README, capped file tree, commit list and head SHA, shown in the Evidence tab. Organisers can refresh it without re-running the checks.
 - Signed HTTP outbound delivery to a real receiver; the in-process receiver is only the default development target.
@@ -109,6 +112,9 @@ The check job stores a snapshot in `repo_snapshot`: the README (capped at 200 KB
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/heartbeat` | Session |
 | `DELETE` | `/api/v1/programs/{program}/submissions/{id}/claim` | Session |
 | `PUT` | `/api/v1/programs/{program}/submissions/{id}/draft` | Session |
+| `PATCH` | `/api/v1/programs/{program}/submissions/{id}/journal/{entry}` | Session with the claim |
+| `POST` | `/api/v1/programs/{program}/submissions/{id}/notes` | Session |
+| `DELETE` | `/api/v1/programs/{program}/notes/{id}` | Author or admin |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/decision` | Session |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/send-back` | Organiser or admin |
 | `GET` | `/api/v1/programs/{program}/outbox` | Session |
