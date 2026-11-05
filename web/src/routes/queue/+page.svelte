@@ -28,8 +28,16 @@ import {
 } from "../../lib/queue-state"
 import { makerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
+import { rowWindow, windowPads } from "../../lib/virtual-list"
 
 const sortKeys: SortKey[] = ["ship", "maker", "status", "type", "version", "claimed", "age", "checks"]
+
+// virtualizeAfter mounts every row below this count; longer lists render only the viewport window.
+const virtualizeAfter = 80
+// rowOverscan renders this far beyond the viewport so fast scrolling never shows a gap.
+const rowOverscan = 800
+// fallbackRowHeight estimates unmeasured rows until the running mean takes over.
+const fallbackRowHeight = 48
 
 // wideChecks renders up to twenty check dots at the wide layout, where the checks column has room. Narrower layouts keep eliding at eleven.
 let wideChecks = $state(false)
@@ -92,6 +100,12 @@ let sortKey = $state<SortKey | null>(
 let sortDir = $state<1 | -1>(savedQueue?.sortDir === -1 ? -1 : 1)
 let filterTabs = $state<HTMLDivElement | null>(null)
 let listElement = $state<HTMLDivElement | null>(null)
+// measuredHeights remembers one rendered row height per ship, so heights survive filtering.
+let measuredHeights = new SvelteMap<string, number>()
+// listTop tracks the list's viewport offset so the render window follows scrolling.
+let listTop = $state(0)
+let viewportHeight = $state(0)
+let scrollQueued = false
 let loadingMore = $state(false)
 let checkTip = $state<CheckTip | null>(null)
 let spaceHeld = $state(false)
@@ -131,6 +145,41 @@ const visible = $derived(
 		)
 	}),
 )
+
+// estimatedHeight averages the measured rows so unmeasured ones start close to reality.
+const estimatedHeight = $derived.by(() => {
+	let sum = 0
+	let count = 0
+	for (const height of measuredHeights.values()) {
+		sum += height
+		count += 1
+	}
+
+	return count === 0 ? fallbackRowHeight : sum / count
+})
+
+// rowOffsets holds one top offset per visible row plus the total height, from measured rows or the running estimate.
+const rowOffsets = $derived.by(() => {
+	const offsets: number[] = Array.from({ length: visible.length + 1 }, () => 0)
+	let top = 0
+	for (const [index, item] of visible.entries()) {
+		offsets[index] = top
+		top += measuredHeights.get(item.id) ?? estimatedHeight
+	}
+	offsets[visible.length] = top
+
+	return offsets
+})
+
+// windowedRows mounts only the rows around the viewport, or everything when the list is short.
+const windowedRows = $derived.by(() => {
+	if (visible.length <= virtualizeAfter) return { bottomPad: 0, rows: visible, start: 0, topPad: 0 }
+
+	const range = rowWindow(rowOffsets, -listTop, viewportHeight, rowOverscan)
+	const pads = windowPads(rowOffsets, range)
+
+	return { bottomPad: pads.bottom, rows: visible.slice(range.start, range.end), start: range.start, topPad: pads.top }
+})
 
 // toggleSort cycles a column through ascending, descending and unsorted, reloading every page server-side so appended rows keep arriving at the end.
 function toggleSort(key: SortKey): void {
@@ -231,6 +280,38 @@ async function restorePosition(top: number): Promise<void> {
 function onQueueScroll(): void {
 	hideCheckTip()
 	scheduleSave()
+	if (scrollQueued) return
+
+	scrollQueued = true
+	requestAnimationFrame((): void => {
+		scrollQueued = false
+		if (listElement) listTop = listElement.getBoundingClientRect().top
+	})
+}
+
+// measureRow records one rendered row height, keyed by ship so filtering keeps it.
+function measureRow(node: HTMLElement, id: string): { destroy(): void } {
+	function record(): void {
+		const height = node.offsetHeight
+		if (height > 0 && measuredHeights.get(id) !== height) measuredHeights.set(id, height)
+	}
+	record()
+	const observer = new ResizeObserver(record)
+	observer.observe(node)
+
+	return {
+		destroy: (): void => observer.disconnect(),
+	}
+}
+
+// revealSelected scrolls the cursor row into view, whether or not it is mounted.
+function revealSelected(): void {
+	if (!listElement || selected < 0 || selected >= visible.length) return
+
+	const top = listElement.getBoundingClientRect().top + rowOffsets[selected]
+	const height = measuredHeights.get(visible[selected].id) ?? estimatedHeight
+	if (top < 0) window.scrollBy({ top })
+	else if (top + height > viewportHeight) window.scrollBy({ top: top + height - viewportHeight })
 }
 
 $effect((): void => {
@@ -270,6 +351,14 @@ onMount((): (() => void) => {
 	}
 
 	fullQuery.addEventListener("change", onFullChange)
+
+	viewportHeight = window.innerHeight
+
+	function onResize(): void {
+		viewportHeight = window.innerHeight
+	}
+
+	window.addEventListener("resize", onResize)
 
 	if (savedQueue) void restorePosition(savedQueue.scrollY)
 	void boot()
@@ -373,6 +462,7 @@ onMount((): (() => void) => {
 		document.removeEventListener("visibilitychange", onVisibilityChange)
 		wideQuery.removeEventListener("change", onWideChange)
 		fullQuery.removeEventListener("change", onFullChange)
+		window.removeEventListener("resize", onResize)
 	}
 })
 
@@ -582,9 +672,7 @@ async function moveSelection(step: number): Promise<void> {
 	}
 
 	selected = next
-
-	await tick()
-	listElement?.querySelector<HTMLElement>('.row[aria-current="true"]')?.scrollIntoView({ block: "nearest" })
+	revealSelected()
 }
 
 // ageTone marks ships that have waited longer than the queue target.
@@ -865,15 +953,19 @@ function filterByStatus(item: QueueItem, event: MouseEvent): void {
 					{/if}
 				</button>
 			</div>
-			{#each visible as item, index (item.id)}
+			{#if windowedRows.topPad > 0}
+				<div aria-hidden="true" class="vspacer" style:height={`${windowedRows.topPad}px`}></div>
+			{/if}
+			{#each windowedRows.rows as item, index (item.id)}
 				<button
-					aria-current={index === selected}
+					aria-current={windowedRows.start + index === selected}
 					class="row"
 					disabled={opening !== "" || !isSelectable(item)}
 					onclick={(): Promise<void> => open(item)}
 					type="button"
-					class:selected={index === selected}
+					class:selected={windowedRows.start + index === selected}
 					class:unavailable={!isSelectable(item)}
+					use:measureRow={item.id}
 				>
 					<span class="thumb">
 						<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
@@ -1014,6 +1106,9 @@ function filterByStatus(item: QueueItem, event: MouseEvent): void {
 					</a>
 				</button>
 			{/each}
+			{#if windowedRows.bottomPad > 0}
+				<div aria-hidden="true" class="vspacer" style:height={`${windowedRows.bottomPad}px`}></div>
+			{/if}
 		</div>
 		{#if queue.hasMore}
 			<div aria-live="polite" class="more" use:autoLoad>
