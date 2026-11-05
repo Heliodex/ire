@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test"
 import {
 	checkGroupLabel,
+	checkOverflow,
 	checkStatusLabel,
 	checkTone,
 	groupChecks,
 	isBlocking,
 	isWarning,
 	overallChecks,
+	visibleChecks,
 } from "../src/lib/checks"
 
 describe("checkTone", () => {
@@ -82,5 +84,21 @@ describe("groupChecks", () => {
 
 		expect(grouped.map(group => group.group)).toEqual(["repo", "fraud", "custom"])
 		expect(grouped[0].items.map(item => item.key)).toEqual(["b", "d"])
+	})
+})
+
+describe("visibleChecks", () => {
+	const checks = Array.from({ length: 25 }, (_, index) => ({ key: `c${index}`, severity: "info", status: "pass" }))
+
+	test("caps dots per mode and shows all in full mode", () => {
+		expect(visibleChecks(checks, "compact")).toHaveLength(11)
+		expect(visibleChecks(checks, "wide")).toHaveLength(20)
+		expect(visibleChecks(checks, "full")).toHaveLength(25)
+	})
+
+	test("counts the hidden dots", () => {
+		expect(checkOverflow(checks, "compact")).toBe(14)
+		expect(checkOverflow(checks, "wide")).toBe(5)
+		expect(checkOverflow(checks, "full")).toBe(0)
 	})
 })

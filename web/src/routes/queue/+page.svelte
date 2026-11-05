@@ -5,7 +5,15 @@ import { browser } from "$app/env"
 import { goto } from "$app/navigation"
 import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import { checkGroupLabel, checkStatusLabel, checkTone, groupChecks } from "../../lib/checks"
+import {
+	type CheckDotMode,
+	checkGroupLabel,
+	checkOverflow,
+	checkStatusLabel,
+	checkTone,
+	groupChecks,
+	visibleChecks,
+} from "../../lib/checks"
 import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
@@ -21,11 +29,11 @@ import { session } from "../../lib/session.svelte.js"
 
 const sortKeys: SortKey[] = ["ship", "maker", "status", "type", "version", "claimed", "age", "checks"]
 
-const maxCheckDots = 11
-const maxWideCheckDots = 20
-
-// wideChecks renders up to twenty check dots at the widest layout, where the checks column has room. Narrower layouts keep eliding at eleven; both cap so the dots never run into the age column.
+// wideChecks renders up to twenty check dots at the wide layout, where the checks column has room. Narrower layouts keep eliding at eleven.
 let wideChecks = $state(false)
+// fullChecks renders every dot above 1400px, where the checks column expands to fit them all.
+let fullChecks = $state(false)
+const dotMode = $derived<CheckDotMode>(fullChecks ? "full" : wideChecks ? "wide" : "compact")
 
 // queueState persists the visit in tab storage. It is built per call so sessionStorage is only touched on the client.
 function queueState(): QueueState {
@@ -235,6 +243,15 @@ onMount((): (() => void) => {
 
 	wideQuery.addEventListener("change", onWideChange)
 
+	const fullQuery = window.matchMedia("(min-width: 1400px)")
+	fullChecks = fullQuery.matches
+
+	function onFullChange(event: MediaQueryListEvent): void {
+		fullChecks = event.matches
+	}
+
+	fullQuery.addEventListener("change", onFullChange)
+
 	if (savedQueue) void restorePosition(savedQueue.scrollY)
 	void boot()
 
@@ -336,6 +353,7 @@ onMount((): (() => void) => {
 		window.removeEventListener("pagehide", onPageHide)
 		document.removeEventListener("visibilitychange", onVisibilityChange)
 		wideQuery.removeEventListener("change", onWideChange)
+		fullQuery.removeEventListener("change", onFullChange)
 	}
 })
 
@@ -902,9 +920,7 @@ async function open(item: QueueItem): Promise<void> {
 								class="dots"
 								role="img"
 							>
-								{#each groupChecks(
-									item.checks.slice(0, wideChecks ? maxWideCheckDots : maxCheckDots),
-								) as group (group.group)}
+								{#each groupChecks(visibleChecks(item.checks, dotMode)) as group (group.group)}
 									<span class="dot-group">
 										{#each group.items as check (check.key)}
 											<span
@@ -919,13 +935,13 @@ async function open(item: QueueItem): Promise<void> {
 										{/each}
 									</span>
 								{/each}
-								{#if item.checks.length > (wideChecks ? maxWideCheckDots : maxCheckDots)}
+								{#if checkOverflow(item.checks, dotMode) > 0}
 									<span
 										aria-hidden="true"
 										class="dot-more"
-										title={`${item.checks.length - (wideChecks ? maxWideCheckDots : maxCheckDots)} more checks`}
+										title={`${checkOverflow(item.checks, dotMode)} more checks`}
 									>
-										+{item.checks.length - (wideChecks ? maxWideCheckDots : maxCheckDots)}
+										+{checkOverflow(item.checks, dotMode)}
 									</span>
 								{/if}
 							</span>
@@ -1513,6 +1529,13 @@ h1 {
 	.row,
 	.column-head {
 		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(140px, 300px);
+	}
+}
+
+@media (min-width: 1400px) {
+	.row,
+	.column-head {
+		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(200px, 480px);
 	}
 }
 

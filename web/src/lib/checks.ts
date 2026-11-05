@@ -70,6 +70,24 @@ export function overallChecks(checks: CheckLike[]): string {
 	return "pass"
 }
 
+// checkDotMode selects the dot cap from the viewport: full above 1400px, wide above 1280px, compact below.
+export type CheckDotMode = "compact" | "wide" | "full"
+
+export const maxCheckDots = 11
+export const maxWideCheckDots = 20
+
+// visibleChecks caps the dots so they never run into the age column, except in full mode where the column expands to fit them all.
+export function visibleChecks<T extends CheckLike>(checks: T[], mode: CheckDotMode): T[] {
+	if (mode === "full") return checks
+
+	return checks.slice(0, mode === "wide" ? maxWideCheckDots : maxCheckDots)
+}
+
+// checkOverflow counts the dots hidden behind the +N badge.
+export function checkOverflow(checks: CheckLike[], mode: CheckDotMode): number {
+	return checks.length - visibleChecks(checks, mode).length
+}
+
 // groupChecks returns checks in the review's group order.
 export function groupChecks<T extends { group: string }>(checks: T[]): { group: string; items: T[] }[] {
 	const order = ["repo", "evidence", "demo", "identity", "duplicate", "fraud"]
