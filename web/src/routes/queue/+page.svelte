@@ -345,8 +345,8 @@ async function open(item: QueueItem): Promise<void> {
 		{/if}
 	</div>
 	<label class="search">
-		<span class="visually-hidden">Search the queue</span>
-		<input class="ui-input" placeholder="Search project or maker…" type="search" bind:value={search}>
+		<span class="visually-hidden">Filter open ships</span>
+		<input class="ui-input" placeholder="Filter open ships…" type="search" bind:value={search}>
 	</label>
 </div>
 
@@ -684,8 +684,7 @@ h1 {
 }
 
 .row.selected {
-	background: var(--surface-2);
-	box-shadow: inset 3px 0 0 var(--primary);
+	background: var(--surface-3);
 }
 
 .row:disabled {
@@ -794,12 +793,12 @@ h1 {
 .dots {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 4px;
+	gap: 5px;
 }
 
 .dot {
-	width: 7px;
-	height: 7px;
+	width: 8px;
+	height: 8px;
 	background: var(--border-2);
 	border-radius: 50%;
 }
@@ -956,6 +955,22 @@ h1 {
 
 	.search {
 		flex: 1 1 100%;
+	}
+
+	.filters {
+		flex-wrap: nowrap;
+		width: 100%;
+		max-width: 100%;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	.filters::-webkit-scrollbar {
+		display: none;
+	}
+
+	.filters button {
+		flex: none;
 	}
 
 	.row {

@@ -165,8 +165,8 @@ onMount((): (() => void) => {
 		{/each}
 	</div>
 	<label class="search">
-		<span class="visually-hidden">Search reviewed projects</span>
-		<input class="ui-input" placeholder="Search reviewed project or maker…" type="search" bind:value={search}>
+		<span class="visually-hidden">Filter reviewed ships</span>
+		<input class="ui-input" placeholder="Filter reviewed ships…" type="search" bind:value={search}>
 	</label>
 </div>
 

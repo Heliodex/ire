@@ -1518,5 +1518,19 @@ h1 {
 		flex-direction: column;
 		align-items: flex-start;
 	}
+
+	.ship-tabs {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	.ship-tabs::-webkit-scrollbar {
+		display: none;
+	}
+
+	.ship-tabs button {
+		flex: none;
+	}
 }
 </style>
