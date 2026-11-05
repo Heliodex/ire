@@ -67,6 +67,96 @@ let checksOutdated = $state(false)
 let coverFailed = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 
+interface CachedBundle {
+	bundle: Bundle
+	savedAt: number
+	version: number
+}
+
+interface BundleCacheIndexEntry {
+	id: string
+	savedAt: number
+}
+
+const bundleCacheVersion = 1
+const maxCachedBundles = 3
+const maxCachedBundleBytes = 1_500_000
+
+// bundleCacheKey scopes cached ships to the signed-in reviewer.
+function bundleCacheKey(target: string): string {
+	return `review:bundle:${program}:${session.me?.user.email ?? "anonymous"}:${target}`
+}
+
+function bundleCacheIndexKey(): string {
+	return `review:bundle:${program}:${session.me?.user.email ?? "anonymous"}:index`
+}
+
+// readBundleCacheIndex lists cached ships, newest first, so old entries can be evicted.
+function readBundleCacheIndex(): BundleCacheIndexEntry[] {
+	try {
+		const raw = sessionStorage.getItem(bundleCacheIndexKey())
+		if (!raw) return []
+
+		const entries = JSON.parse(raw) as BundleCacheIndexEntry[]
+		if (!Array.isArray(entries)) return []
+
+		return entries.filter(entry => entry && typeof entry.id === "string" && typeof entry.savedAt === "number")
+	} catch {
+		return []
+	}
+}
+
+// readBundleCache returns a recently saved copy so the same ship opens without waiting for the network.
+function readBundleCache(target: string): Bundle | null {
+	try {
+		const raw = sessionStorage.getItem(bundleCacheKey(target))
+		if (!raw) return null
+
+		const cached = JSON.parse(raw) as CachedBundle
+		if (cached.version !== bundleCacheVersion) return null
+		if (typeof cached.savedAt !== "number" || Date.now() - cached.savedAt > 24 * 60 * 60 * 1000) return null
+		if (cached.bundle?.submission?.id !== target) return null
+
+		return cached.bundle
+	} catch {
+		return null
+	}
+}
+
+// writeBundleCache keeps the last few ships and skips oversized bundles that would fill the tab's storage.
+function writeBundleCache(target: string, next: Bundle): void {
+	try {
+		const savedAt = Date.now()
+		const payload = JSON.stringify({ bundle: next, savedAt, version: bundleCacheVersion } satisfies CachedBundle)
+
+		if (payload.length > maxCachedBundleBytes) {
+			sessionStorage.removeItem(bundleCacheKey(target))
+			return
+		}
+
+		const index = [{ id: target, savedAt }, ...readBundleCacheIndex().filter(entry => entry.id !== target)]
+		for (const entry of index.slice(maxCachedBundles)) sessionStorage.removeItem(bundleCacheKey(entry.id))
+
+		sessionStorage.setItem(bundleCacheKey(target), payload)
+		sessionStorage.setItem(bundleCacheIndexKey(), JSON.stringify(index.slice(0, maxCachedBundles)))
+	} catch {
+		// Storage can be unavailable or full; the page still works without a cache.
+	}
+}
+
+// removeBundleCache drops a copy the reviewer can no longer open.
+function removeBundleCache(target: string): void {
+	try {
+		sessionStorage.removeItem(bundleCacheKey(target))
+		sessionStorage.setItem(
+			bundleCacheIndexKey(),
+			JSON.stringify(readBundleCacheIndex().filter(entry => entry.id !== target)),
+		)
+	} catch {
+		// Storage can be unavailable; the next read will simply miss.
+	}
+}
+
 const submission = $derived(bundle?.submission ?? null)
 const reviewed = $derived(submission?.status === "decided" || submission?.status === "withdrawn")
 const secondPass = $derived(!reviewed && (submission?.stage === 2 || submission?.status === "stage2_hold"))
@@ -145,6 +235,10 @@ afterNavigate((): void => {
 	if (previous && previous !== next) ignore(releaseShip(previous))
 
 	claimedId = ""
+
+	const cached = readBundleCache(next)
+	if (cached) showCachedBundle(cached)
+
 	void load(next)
 })
 
@@ -277,13 +371,32 @@ async function boot(): Promise<void> {
 		return
 	}
 
+	const cached = readBundleCache(id)
+	if (cached) showCachedBundle(cached)
+
 	await load()
 }
 
+// showCachedBundle paints the last copy while the fresh bundle loads behind it.
+function showCachedBundle(cached: Bundle): void {
+	bundle = cached
+	loading = false
+	error = ""
+	actionError = ""
+	note = cached.draft?.note ?? ""
+	internalNote = cached.draft?.internalNote ?? ""
+	hourInit()
+}
+
 async function load(target = id): Promise<void> {
+	const sameShip = bundle?.submission.id === target
+
 	try {
-		note = ""
-		internalNote = ""
+		if (!sameShip) {
+			note = ""
+			internalNote = ""
+		}
+
 		actionError = ""
 
 		const fetched = await fetchBundle(target)
@@ -303,6 +416,7 @@ async function load(target = id): Promise<void> {
 		}
 
 		bundle = next
+		writeBundleCache(target, next)
 		claimedId = canClaim ? target : ""
 
 		// Restore the server-side draft so a refresh or another device does not lose typed notes.
@@ -317,7 +431,19 @@ async function load(target = id): Promise<void> {
 			void goto("/")
 			return
 		}
-		if (target === id) error = err instanceof Error ? err.message : "Could not open this ship."
+
+		if (target !== id) return
+
+		const message = err instanceof Error ? err.message : "Could not open this ship."
+		if (err instanceof ApiError && (err.code === "forbidden" || err.code === "not_found")) {
+			removeBundleCache(target)
+			bundle = null
+			error = message
+			return
+		}
+
+		if (sameShip) flash(`Could not refresh this ship. ${message}`)
+		else error = message
 	} finally {
 		if (target === id) loading = false
 	}
@@ -382,6 +508,7 @@ async function refreshEvidenceNow(): Promise<void> {
 	try {
 		const evidence = await refreshRepositoryEvidence(bundle.submission.id)
 		bundle = { ...bundle, evidence }
+		writeBundleCache(bundle.submission.id, bundle)
 		flash("Evidence refreshed.")
 	} catch (err) {
 		evidenceError = err instanceof Error ? err.message : "Could not refresh the evidence."
