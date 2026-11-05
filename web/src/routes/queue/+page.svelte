@@ -1329,12 +1329,7 @@ h1 {
 @media (min-width: 1280px) {
 	.row,
 	.column-head {
-		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(140px, 190px);
-	}
-
-	.dots {
-		flex-wrap: wrap;
-		overflow: visible;
+		grid-template-columns: 64px minmax(0, 1fr) minmax(110px, 190px) 96px 64px 28px 136px 64px minmax(140px, 300px);
 	}
 }
 
