@@ -474,6 +474,11 @@ function toggleAck(key: string): void {
 	else acknowledgements = [...acknowledgements, key]
 }
 
+// ackLabel turns a stored check key into the heading the reviewer saw in Checks.
+function ackLabel(key: string): string {
+	return bundle?.checks.find(check => check.key === key)?.label ?? key
+}
+
 function acknowledgeAll(): void {
 	acknowledgements = warnings.map(check => check.key)
 }
@@ -757,7 +762,7 @@ async function saveDraftNow(): Promise<void> {
 					<p>{heldReview.noteToMaker}</p>
 				{/if}
 				{#if heldReview.acknowledgements.length > 0}
-					<p class="acks">Acknowledged: {heldReview.acknowledgements.join(", ")}</p>
+					<p class="acks">Acknowledged: {heldReview.acknowledgements.map(ackLabel).join(", ")}</p>
 				{/if}
 			</div>
 		{/if}
