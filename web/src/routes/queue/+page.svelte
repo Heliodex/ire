@@ -323,6 +323,7 @@ async function open(item: QueueItem): Promise<void> {
 	<div aria-label="Filters and stages" class="ui-seg filters" role="tablist" bind:this={filterTabs}>
 		{#each filters as option (option.key)}
 			<button
+				aria-label={option.label}
 				aria-selected={stage === 1 && filter === option.key}
 				onclick={(): Promise<void> => choose(option.key)}
 				role="tab"
@@ -335,6 +336,7 @@ async function open(item: QueueItem): Promise<void> {
 		{/each}
 		{#if canSecondPass}
 			<button
+				aria-label={`Second pass ${queue.counts.stage2Hold}`}
 				aria-selected={stage === 2}
 				onclick={chooseSecondPass}
 				role="tab"

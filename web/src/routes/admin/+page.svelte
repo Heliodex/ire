@@ -225,7 +225,7 @@ async function invite(): Promise<void> {
 	<section aria-labelledby="audit-title" class="ui-card padded audit">
 		<div class="section-head">
 			<h2 id="audit-title">Recent actions</h2>
-			<button class="link" onclick={refresh} type="button">Refresh</button>
+			<button class="ui-button quiet sm" onclick={refresh} type="button">Refresh</button>
 		</div>
 
 		{#if audit.length === 0}
@@ -349,14 +349,5 @@ tr.inactive {
 code {
 	font-family: var(--font-mono);
 	font-size: var(--text-xs);
-}
-
-.link {
-	padding: 0;
-	font: inherit;
-	color: var(--primary);
-	cursor: pointer;
-	background: none;
-	border: 0;
 }
 </style>
