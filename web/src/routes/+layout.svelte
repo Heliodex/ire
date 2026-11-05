@@ -29,6 +29,7 @@ const navRoutes = $derived([
 	"/deliveries",
 	...(showAdmin ? ["/admin"] : []),
 	...(showAudit ? ["/audit"] : []),
+	"/docs",
 ])
 
 // isQueueRoute keeps the review screen under the queue tab without catching /reviewed.
@@ -47,24 +48,41 @@ function tabIndex(path: string): number {
 	if (path.startsWith("/deliveries")) return 2
 	if (showAdmin && path.startsWith("/admin")) return 3
 	if (showAudit && path.startsWith("/audit")) return showAdmin ? 4 : 3
+	if (path.startsWith("/docs")) return navRoutes.length - 1
 
 	return -1
 }
 
-// onKeydown moves between the main sections with [ and ].
-function onKeydown(event: KeyboardEvent): void {
-	if (!session.me) return
-	if (event.key !== "[" && event.key !== "]") return
-	if (event.ctrlKey || event.metaKey || event.altKey) return
-
-	const { target } = event
-	if (
+// isTyping reports whether a key event belongs to an editable field.
+function isTyping(target: EventTarget | null): boolean {
+	return (
 		target instanceof HTMLInputElement
 		|| target instanceof HTMLTextAreaElement
 		|| target instanceof HTMLSelectElement
 		|| (target instanceof HTMLElement && target.isContentEditable)
 	)
+}
+
+// onKeydown moves between the main sections with [ and ], or Alt+1-6 for a direct jump.
+function onKeydown(event: KeyboardEvent): void {
+	if (!session.me) return
+	if (isTyping(event.target)) return
+
+	if (event.altKey && !event.ctrlKey && !event.metaKey) {
+		const match = /^(?:Digit|Numpad)([1-6])$/.exec(event.code)
+		if (!match) return
+
+		const destination = navRoutes[Number(match[1]) - 1]
+		if (!destination) return
+
+		event.preventDefault()
+		void goto(destination)
+
 		return
+	}
+
+	if (event.key !== "[" && event.key !== "]") return
+	if (event.ctrlKey || event.metaKey || event.altKey) return
 
 	const current = tabIndex(page.url.pathname)
 	const step = event.key === "]" ? 1 : -1
@@ -198,18 +216,21 @@ async function signOut(): Promise<void> {
 			<nav aria-label="Sections">
 				<a
 					aria-current={isQueueRoute(page.url.pathname) ? "page" : undefined}
+					aria-keyshortcuts="Alt+1"
 					href="/queue"
 					class:active={isQueueRoute(page.url.pathname)}
 					>Queue</a
 				>
 				<a
 					aria-current={isReviewedRoute(page.url.pathname) ? "page" : undefined}
+					aria-keyshortcuts="Alt+2"
 					href="/reviewed"
 					class:active={isReviewedRoute(page.url.pathname)}
 					>Reviewed</a
 				>
 				<a
 					aria-current={page.url.pathname.startsWith("/deliveries") ? "page" : undefined}
+					aria-keyshortcuts="Alt+3"
 					href="/deliveries"
 					class:active={page.url.pathname.startsWith("/deliveries")}
 					>Deliveries</a
@@ -217,6 +238,7 @@ async function signOut(): Promise<void> {
 				{#if showAdmin}
 					<a
 						aria-current={page.url.pathname.startsWith("/admin") ? "page" : undefined}
+						aria-keyshortcuts="Alt+4"
 						href="/admin"
 						class:active={page.url.pathname.startsWith("/admin")}
 						>Admin</a
@@ -225,6 +247,7 @@ async function signOut(): Promise<void> {
 				{#if showAudit}
 					<a
 						aria-current={page.url.pathname.startsWith("/audit") ? "page" : undefined}
+						aria-keyshortcuts={`Alt+${showAdmin ? 5 : 4}`}
 						href="/audit"
 						class:active={page.url.pathname.startsWith("/audit")}
 						>Audit</a
@@ -232,6 +255,7 @@ async function signOut(): Promise<void> {
 				{/if}
 				<a
 					aria-current={page.url.pathname.startsWith("/docs") ? "page" : undefined}
+					aria-keyshortcuts={`Alt+${navRoutes.length}`}
 					href="/docs"
 					class:active={page.url.pathname.startsWith("/docs")}
 					>Docs</a
