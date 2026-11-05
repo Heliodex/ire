@@ -66,7 +66,6 @@ function isTyping(target: EventTarget | null): boolean {
 // onKeydown moves between the main sections with [ and ], or Alt+1-6 for a direct jump.
 function onKeydown(event: KeyboardEvent): void {
 	if (!session.me) return
-	if (isTyping(event.target)) return
 
 	if (event.altKey && !event.ctrlKey && !event.metaKey) {
 		const match = /^(?:Digit|Numpad)([1-6])$/.exec(event.code)
@@ -81,6 +80,7 @@ function onKeydown(event: KeyboardEvent): void {
 		return
 	}
 
+	if (isTyping(event.target)) return
 	if (event.key !== "[" && event.key !== "]") return
 	if (event.ctrlKey || event.metaKey || event.altKey) return
 
