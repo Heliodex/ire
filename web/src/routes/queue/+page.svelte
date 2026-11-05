@@ -956,8 +956,9 @@ h1 {
 		display: none;
 	}
 
-	.dots {
-		display: none;
+	.dot {
+		width: 9px;
+		height: 9px;
 	}
 
 	.row {
@@ -1025,6 +1026,11 @@ h1 {
 
 	.search {
 		flex: 1 1 100%;
+	}
+
+	.dot {
+		width: 8px;
+		height: 8px;
 	}
 
 	.row {
@@ -1112,6 +1118,12 @@ h1 {
 		flex: 0 0 88px;
 		min-width: 0;
 		padding: var(--space-1) var(--space-2);
+	}
+}
+
+@media (max-width: 400px) {
+	.dots {
+		display: none;
 	}
 }
 
