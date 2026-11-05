@@ -28,6 +28,7 @@ type fakeHCA struct {
 	email       string
 	subject     string
 	displayName string
+	picture     string
 }
 
 // newFakeHCA starts the provider and returns its live URL.
@@ -44,6 +45,7 @@ func newFakeHCA(t *testing.T) *fakeHCA {
 		email:       "reviewer@example.com",
 		subject:     "ident!reviewer",
 		displayName: "Rae Reviewer",
+		picture:     "https://cdn.example.com/rae.png",
 	}
 	provider.server = httptest.NewServer(http.HandlerFunc(provider.handle))
 	t.Cleanup(provider.server.Close)
@@ -104,9 +106,10 @@ func (f *fakeHCA) handle(w http.ResponseWriter, r *http.Request) {
 		}
 
 		writeTestJSON(w, map[string]string{
-			"sub":   f.subject,
-			"email": f.email,
-			"name":  f.displayName,
+			"sub":     f.subject,
+			"email":   f.email,
+			"name":    f.displayName,
+			"picture": f.picture,
 		})
 	default:
 		http.NotFound(w, r)
@@ -208,6 +211,10 @@ func TestHCAOAuthFlow(t *testing.T) {
 	me := decode[contract.MeResponse](t, do(t, application, http.MethodGet, "/api/v1/me", nil, sessionCookie, nil))
 	if me.User.Email != "reviewer@example.com" {
 		t.Fatalf("me = %+v", me.User)
+	}
+
+	if me.User.AvatarURL == nil || *me.User.AvatarURL != provider.picture {
+		t.Fatalf("avatar = %+v, want %q", me.User.AvatarURL, provider.picture)
 	}
 
 	var boundUser string

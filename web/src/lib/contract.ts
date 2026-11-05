@@ -90,6 +90,7 @@ export const meResponseSchema = pipe(
 		programs: array(membershipSchema),
 		readOnly: boolean(),
 		user: object({
+			avatarUrl: optionalString,
 			email: pipe(string(), minLength(1)),
 			id: pipe(string(), minLength(1)),
 			name: optionalString,
@@ -105,6 +106,7 @@ const memberRole = pipe(string(), regex(/^(reviewer|organizer|admin|auditor)$/, 
 export const memberSchema = pipe(
 	object({
 		active: boolean(),
+		avatarUrl: optionalString,
 		createdAt: timestamp,
 		email: pipe(string(), minLength(1)),
 		id: pipe(string(), minLength(1)),
@@ -151,6 +153,7 @@ export const reviewerStatsSchema = pipe(
 export const reviewerProfileSchema = pipe(
 	object({
 		active: optional(boolean()),
+		avatarUrl: optionalString,
 		email: pipe(string(), minLength(1)),
 		id: optionalString,
 		joinedAt: optionalString,
@@ -185,6 +188,7 @@ export const updateMemberSchema = pipe(
 export const auditEntrySchema = pipe(
 	object({
 		action: pipe(string(), minLength(1)),
+		actorAvatarUrl: optionalString,
 		actorEmail: optionalString,
 		actorName: optionalString,
 		afterJson: optionalString,

@@ -51,17 +51,17 @@ func (a *reviewApp) reviewerProfile(ctx context.Context, programID, key string) 
 	profile := contract.ReviewerProfile{Email: key, Permissions: []string{}, Reviews: []contract.ReviewerReview{}, Tracks: []string{}}
 
 	var (
-		id, email, name, role, tracks, permissions, joined, lastLogin string
-		active                                                        int
+		id, email, name, avatar, role, tracks, permissions, joined, lastLogin string
+		active                                                                int
 	)
 
-	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(m.role, ''),
-			coalesce(m.active, 0), coalesce(m.tracks, '[]'), coalesce(m.permissions, '[]'),
+	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''),
+			coalesce(m.role, ''), coalesce(m.active, 0), coalesce(m.tracks, '[]'), coalesce(m.permissions, '[]'),
 			u.created_at, coalesce(u.last_login_at, '')
 		from user u
 		left join membership m on m.user_id = u.id and m.program_id = ?
 		where u.id = ? or lower(u.email) = lower(?)
-		limit 1`, programID, key, key).Scan(&id, &email, &name, &role, &active, &tracks, &permissions, &joined, &lastLogin)
+		limit 1`, programID, key, key).Scan(&id, &email, &name, &avatar, &role, &active, &tracks, &permissions, &joined, &lastLogin)
 	if err != nil && !errors.Is(err, storage.ErrNoRows) {
 		return profile, err
 	}
@@ -70,6 +70,7 @@ func (a *reviewApp) reviewerProfile(ctx context.Context, programID, key string) 
 		profile.ID = optionalText(id)
 		profile.Email = email
 		profile.Name = optionalText(name)
+		profile.AvatarURL = optionalText(avatar)
 		profile.JoinedAt = optionalText(joined)
 		profile.LastLoginAt = optionalText(lastLogin)
 		profile.Tracks = unmarshalStrings(tracks)

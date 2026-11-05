@@ -10,6 +10,9 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"actorAvatarUrl": {
+						"type": "string"
+					},
 					"actorEmail": {
 						"type": "string"
 					},

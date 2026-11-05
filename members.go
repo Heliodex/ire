@@ -228,9 +228,9 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 		args = append(args, a.now().AddDate(0, 0, -days).Format(timestampFormat))
 	}
 
-	query := `select a.id, coalesce(a.actor_email, ''), coalesce(au.name, ''), a.action, coalesce(a.target_type, ''),
-			coalesce(a.target_id, ''), coalesce(tu.email, ts.title, ''), coalesce(a.before_json, ''),
-			coalesce(a.after_json, ''), coalesce(a.reason, ''), a.created_at
+	query := `select a.id, coalesce(a.actor_email, ''), coalesce(au.name, ''), coalesce(au.avatar_url, ''),
+			a.action, coalesce(a.target_type, ''), coalesce(a.target_id, ''), coalesce(tu.email, ts.title, ''),
+			coalesce(a.before_json, ''), coalesce(a.after_json, ''), coalesce(a.reason, ''), a.created_at
 		from audit_log a
 		left join user au on au.id = a.actor_id
 		left join user tu on a.target_type = 'user' and tu.id = a.target_id
@@ -252,9 +252,9 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var entry contract.AuditEntry
 
-		var actor, actorName, targetType, targetID, targetLabel, before, after, reason string
+		var actor, actorName, actorAvatar, targetType, targetID, targetLabel, before, after, reason string
 
-		if err := rows.Scan(&entry.ID, &actor, &actorName, &entry.Action, &targetType, &targetID, &targetLabel,
+		if err := rows.Scan(&entry.ID, &actor, &actorName, &actorAvatar, &entry.Action, &targetType, &targetID, &targetLabel,
 			&before, &after, &reason, &entry.CreatedAt); err != nil {
 			writeStorage(w, err)
 
@@ -263,6 +263,7 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 
 		entry.ActorEmail = optionalText(actor)
 		entry.ActorName = optionalText(actorName)
+		entry.ActorAvatarURL = optionalText(actorAvatar)
 		entry.TargetType = optionalText(targetType)
 		entry.TargetID = optionalText(targetID)
 		entry.TargetLabel = optionalText(targetLabel)
@@ -288,7 +289,7 @@ func (a *reviewApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 
 // listMembers reads the roster in a stable order.
 func (a *reviewApp) listMembers(ctx context.Context, programID string) ([]contract.Member, error) {
-	rows, err := a.store.Query(ctx, `select u.id, u.email, coalesce(u.name, ''), m.role, m.active, m.created_at, coalesce(u.last_login_at, '')
+	rows, err := a.store.Query(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.active, m.created_at, coalesce(u.last_login_at, '')
 		from membership m join user u on u.id = m.user_id
 		where m.program_id = ? order by m.active desc, m.role, u.email`, programID)
 	if err != nil {
@@ -301,13 +302,14 @@ func (a *reviewApp) listMembers(ctx context.Context, programID string) ([]contra
 	for rows.Next() {
 		var member contract.Member
 
-		var name, lastLogin string
+		var name, avatar, lastLogin string
 
-		if err := rows.Scan(&member.ID, &member.Email, &name, &member.Role, &member.Active, &member.CreatedAt, &lastLogin); err != nil {
+		if err := rows.Scan(&member.ID, &member.Email, &name, &avatar, &member.Role, &member.Active, &member.CreatedAt, &lastLogin); err != nil {
 			return nil, err
 		}
 
 		member.Name = optionalText(name)
+		member.AvatarURL = optionalText(avatar)
 		member.LastLoginAt = optionalText(lastLogin)
 		members = append(members, member)
 	}
@@ -319,12 +321,12 @@ func (a *reviewApp) listMembers(ctx context.Context, programID string) ([]contra
 func (a *reviewApp) memberByUserID(ctx context.Context, programID, userID string) (contract.Member, bool, error) {
 	var member contract.Member
 
-	var name, lastLogin string
+	var name, avatar, lastLogin string
 
-	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), m.role, m.active, m.created_at, coalesce(u.last_login_at, '')
+	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.active, m.created_at, coalesce(u.last_login_at, '')
 		from membership m join user u on u.id = m.user_id
 		where m.program_id = ? and m.user_id = ?`, programID, userID).
-		Scan(&member.ID, &member.Email, &name, &member.Role, &member.Active, &member.CreatedAt, &lastLogin)
+		Scan(&member.ID, &member.Email, &name, &avatar, &member.Role, &member.Active, &member.CreatedAt, &lastLogin)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return contract.Member{}, false, nil
@@ -334,6 +336,7 @@ func (a *reviewApp) memberByUserID(ctx context.Context, programID, userID string
 	}
 
 	member.Name = optionalText(name)
+	member.AvatarURL = optionalText(avatar)
 	member.LastLoginAt = optionalText(lastLogin)
 
 	return member, true, nil

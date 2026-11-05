@@ -65,6 +65,16 @@ func (a *reviewApp) redirectURI(r *http.Request) string {
 	return app.PublicURL(r) + "/auth/callback"
 }
 
+// safeAvatarURL accepts only absolute http(s) pictures from the identity provider.
+func safeAvatarURL(value string) string {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") {
+		return ""
+	}
+
+	return parsed.String()
+}
+
 // handleAuthConfig tells the login screen which sign-in methods exist.
 func (a *reviewApp) handleAuthConfig(w http.ResponseWriter, _ *http.Request) {
 	app.WriteJSON(w, http.StatusOK, contract.AuthConfig{
@@ -234,6 +244,10 @@ func (a *reviewApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 		_, _ = a.store.Exec(r.Context(), `update user set name = ? where id = ?`, identity.Name, person.ID)
 	}
 
+	if picture := safeAvatarURL(identity.Picture); picture != "" {
+		_, _ = a.store.Exec(r.Context(), `update user set avatar_url = ? where id = ?`, picture, person.ID)
+	}
+
 	_, _ = a.store.Exec(r.Context(), `update user set last_login_at = ? where id = ?`, a.nowText(), person.ID)
 
 	if old, ok := reviewSessions.Token(r); ok {
@@ -299,13 +313,13 @@ func (a *reviewApp) takeLoginFlow(ctx context.Context, state string) (loginFlow,
 func (a *reviewApp) memberByEmail(ctx context.Context, email string) (reviewer, bool, error) {
 	var person reviewer
 
-	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), m.role, m.program_id
+	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
 		from user u
 		join membership m on m.user_id = u.id
 		join program p on p.id = m.program_id
 		where lower(u.email) = ? and m.active = 1 and p.active = 1
 		order by p.name limit 1`, email).
-		Scan(&person.ID, &person.Email, &person.Name, &person.Role, &person.ProgramID)
+		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return reviewer{}, false, nil
@@ -328,14 +342,14 @@ func (a *reviewApp) memberBySubject(ctx context.Context, subject string) (review
 
 	var person reviewer
 
-	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), m.role, m.program_id
+	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
 		from user_identity i
 		join user u on u.id = i.user_id
 		join membership m on m.user_id = u.id
 		join program p on p.id = m.program_id
 		where i.provider = 'hca' and i.subject = ? and m.active = 1 and p.active = 1
 		order by p.name limit 1`, subject).
-		Scan(&person.ID, &person.Email, &person.Name, &person.Role, &person.ProgramID)
+		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return reviewer{}, false, nil

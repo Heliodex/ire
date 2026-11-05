@@ -4,6 +4,9 @@
 		"active": {
 			"type": "boolean"
 		},
+		"avatarUrl": {
+			"type": "string"
+		},
 		"email": {
 			"type": "string",
 			"minLength": 1

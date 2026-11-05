@@ -38,6 +38,9 @@
 		"user": {
 			"type": "object",
 			"properties": {
+				"avatarUrl": {
+					"type": "string"
+				},
 				"email": {
 					"type": "string",
 					"minLength": 1

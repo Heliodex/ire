@@ -11,6 +11,9 @@ type AuditEntry struct {
 	// Action corresponds to the JSON schema field "action".
 	Action string `json:"action" yaml:"action" mapstructure:"action"`
 
+	// ActorAvatarURL corresponds to the JSON schema field "actorAvatarUrl".
+	ActorAvatarURL *string `json:"actorAvatarUrl,omitempty,omitzero" yaml:"actorAvatarUrl,omitempty" mapstructure:"actorAvatarUrl,omitempty"`
+
 	// ActorEmail corresponds to the JSON schema field "actorEmail".
 	ActorEmail *string `json:"actorEmail,omitempty,omitzero" yaml:"actorEmail,omitempty" mapstructure:"actorEmail,omitempty"`
 
@@ -1745,6 +1748,9 @@ type MeResponse struct {
 }
 
 type MeResponseUser struct {
+	// AvatarURL corresponds to the JSON schema field "avatarUrl".
+	AvatarURL *string `json:"avatarUrl,omitempty,omitzero" yaml:"avatarUrl,omitempty" mapstructure:"avatarUrl,omitempty"`
+
 	// Email corresponds to the JSON schema field "email".
 	Email string `json:"email" yaml:"email" mapstructure:"email"`
 
@@ -1809,6 +1815,9 @@ func (j *MeResponse) UnmarshalJSON(value []byte) error {
 type Member struct {
 	// Active corresponds to the JSON schema field "active".
 	Active bool `json:"active" yaml:"active" mapstructure:"active"`
+
+	// AvatarURL corresponds to the JSON schema field "avatarUrl".
+	AvatarURL *string `json:"avatarUrl,omitempty,omitzero" yaml:"avatarUrl,omitempty" mapstructure:"avatarUrl,omitempty"`
 
 	// CreatedAt corresponds to the JSON schema field "createdAt".
 	CreatedAt string `json:"createdAt" yaml:"createdAt" mapstructure:"createdAt"`
@@ -3174,6 +3183,9 @@ func (j *ReviewedResponse) UnmarshalJSON(value []byte) error {
 type ReviewerProfile struct {
 	// Active corresponds to the JSON schema field "active".
 	Active *bool `json:"active,omitempty,omitzero" yaml:"active,omitempty" mapstructure:"active,omitempty"`
+
+	// AvatarURL corresponds to the JSON schema field "avatarUrl".
+	AvatarURL *string `json:"avatarUrl,omitempty,omitzero" yaml:"avatarUrl,omitempty" mapstructure:"avatarUrl,omitempty"`
 
 	// Email corresponds to the JSON schema field "email".
 	Email string `json:"email" yaml:"email" mapstructure:"email"`

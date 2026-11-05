@@ -9,6 +9,9 @@
 					"active": {
 						"type": "boolean"
 					},
+					"avatarUrl": {
+						"type": "string"
+					},
 					"createdAt": {
 						"type": "string",
 						"minLength": 1

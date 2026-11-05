@@ -21,6 +21,7 @@ type reviewer struct {
 	ID        string
 	Email     string
 	Name      string
+	AvatarURL string
 	Role      string
 	ProgramID string
 }
@@ -45,7 +46,7 @@ func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (rev
 
 	sessionID := session.Hash(token)
 
-	row := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), m.role, m.program_id
+	row := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
 		from session s
 		join user u on u.id = s.user_id
 		join membership m on m.user_id = u.id
@@ -55,7 +56,7 @@ func (a *reviewApp) currentReviewer(w http.ResponseWriter, r *http.Request) (rev
 		limit 1`, sessionID, a.nowText())
 
 	var person reviewer
-	if err := row.Scan(&person.ID, &person.Email, &person.Name, &person.Role, &person.ProgramID); err != nil {
+	if err := row.Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID); err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			app.WriteError(w, http.StatusUnauthorized, "session expired, sign in again")
 			return reviewer{}, false
@@ -123,9 +124,10 @@ func (a *reviewApp) meResponse(ctx context.Context, person reviewer) contract.Me
 	response := contract.MeResponse{
 		ReadOnly: a.config.Shadow,
 		User: contract.MeResponseUser{
-			ID:    person.ID,
-			Email: person.Email,
-			Name:  stringPtr(person.Name),
+			ID:        person.ID,
+			Email:     person.Email,
+			Name:      stringPtr(person.Name),
+			AvatarURL: optionalText(person.AvatarURL),
 		},
 		Programs: []contract.Membership{},
 	}
@@ -172,11 +174,11 @@ func (a *reviewApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 
 	var person reviewer
 
-	err := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), m.role, m.program_id
+	err := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
 		from user u join membership m on m.user_id = u.id
 		where u.email = ? and m.active = 1
 		limit 1`, email).
-		Scan(&person.ID, &person.Email, &person.Name, &person.Role, &person.ProgramID)
+		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			app.WriteError(w, http.StatusUnauthorized, "no reviewer account with that email")
