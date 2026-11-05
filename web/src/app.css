@@ -10,6 +10,7 @@
 	--text: #1d1d22;
 	--text-2: #56565f;
 	--text-3: #606069;
+	--input: #ffffff;
 	--primary: #ec3750;
 	--primary-soft: #fdecef;
 	--ring: rgba(236, 55, 80, 0.32);
@@ -83,6 +84,7 @@
 	--text: #f4f4f8;
 	--text-2: #b6b6c6;
 	--text-3: #9494a8;
+	--input: #1b1b23;
 	--primary: #ff4a63;
 	--primary-soft: rgba(236, 55, 80, 0.16);
 	--ring: rgba(255, 74, 99, 0.4);
@@ -386,7 +388,7 @@ kbd {
 	padding: 0 var(--space-3);
 	color: var(--text);
 	outline: none;
-	background: var(--surface);
+	background: var(--input);
 	border: 1px solid var(--border-2);
 	border-radius: var(--radius-sm);
 }
