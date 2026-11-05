@@ -24,6 +24,7 @@ import {
 } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
+import { type BundleCache, createBundleCache } from "../../lib/bundle-cache"
 import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
@@ -86,94 +87,10 @@ let showAllEvents = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 let prefetchTimer: ReturnType<typeof setTimeout> | null = null
 
-interface CachedBundle {
-	bundle: Bundle
-	savedAt: number
-	version: number
-}
-
-interface BundleCacheIndexEntry {
-	id: string
-	savedAt: number
-}
-
-const bundleCacheVersion = 1
-const maxCachedBundles = 3
-const maxCachedBundleBytes = 1_500_000
-
-// bundleCacheKey scopes cached ships to the signed-in reviewer.
-function bundleCacheKey(target: string): string {
-	return `review:bundle:${program}:${session.me?.user.email ?? "anonymous"}:${target}`
-}
-
-function bundleCacheIndexKey(): string {
-	return `review:bundle:${program}:${session.me?.user.email ?? "anonymous"}:index`
-}
-
-// readBundleCacheIndex lists cached ships, newest first, so old entries can be evicted.
-function readBundleCacheIndex(): BundleCacheIndexEntry[] {
-	try {
-		const raw = sessionStorage.getItem(bundleCacheIndexKey())
-		if (!raw) return []
-
-		const entries = JSON.parse(raw) as BundleCacheIndexEntry[]
-		if (!Array.isArray(entries)) return []
-
-		return entries.filter(entry => entry && typeof entry.id === "string" && typeof entry.savedAt === "number")
-	} catch {
-		return []
-	}
-}
-
-// readBundleCache returns a recently saved copy so the same ship opens without waiting for the network.
-function readBundleCache(target: string): Bundle | null {
-	try {
-		const raw = sessionStorage.getItem(bundleCacheKey(target))
-		if (!raw) return null
-
-		const cached = JSON.parse(raw) as CachedBundle
-		if (cached.version !== bundleCacheVersion) return null
-		if (typeof cached.savedAt !== "number" || Date.now() - cached.savedAt > 24 * 60 * 60 * 1000) return null
-		if (cached.bundle?.submission?.id !== target) return null
-
-		return cached.bundle
-	} catch {
-		return null
-	}
-}
-
-// writeBundleCache keeps the last few ships and skips oversized bundles that would fill the tab's storage.
-function writeBundleCache(target: string, next: Bundle): void {
-	try {
-		const savedAt = Date.now()
-		const payload = JSON.stringify({ bundle: next, savedAt, version: bundleCacheVersion } satisfies CachedBundle)
-
-		if (payload.length > maxCachedBundleBytes) {
-			sessionStorage.removeItem(bundleCacheKey(target))
-			return
-		}
-
-		const index = [{ id: target, savedAt }, ...readBundleCacheIndex().filter(entry => entry.id !== target)]
-		for (const entry of index.slice(maxCachedBundles)) sessionStorage.removeItem(bundleCacheKey(entry.id))
-
-		sessionStorage.setItem(bundleCacheKey(target), payload)
-		sessionStorage.setItem(bundleCacheIndexKey(), JSON.stringify(index.slice(0, maxCachedBundles)))
-	} catch {
-		// Storage can be unavailable or full; the page still works without a cache.
-	}
-}
-
-// removeBundleCache drops a copy the reviewer can no longer open.
-function removeBundleCache(target: string): void {
-	try {
-		sessionStorage.removeItem(bundleCacheKey(target))
-		sessionStorage.setItem(
-			bundleCacheIndexKey(),
-			JSON.stringify(readBundleCacheIndex().filter(entry => entry.id !== target)),
-		)
-	} catch {
-		// Storage can be unavailable; the next read will simply miss.
-	}
+// bundleCache scopes cached ships to the signed-in reviewer. It is built per call so a
+// changed session is picked up, and sessionStorage is only touched on the client.
+function bundleCache(): BundleCache {
+	return createBundleCache(program, session.me?.user.email ?? "anonymous", sessionStorage)
 }
 
 const submission = $derived(bundle?.submission ?? null)
@@ -262,7 +179,7 @@ afterNavigate((): void => {
 
 	claimedId = ""
 
-	const cached = readBundleCache(next)
+	const cached = bundleCache().read(next)
 	if (cached) showCachedBundle(cached)
 
 	void load(next)
@@ -398,7 +315,7 @@ async function boot(): Promise<void> {
 		return
 	}
 
-	const cached = readBundleCache(id)
+	const cached = bundleCache().read(id)
 	if (cached) showCachedBundle(cached)
 
 	await load()
@@ -434,11 +351,11 @@ async function prefetchNext(currentID: string, stage: number): Promise<void> {
 			item =>
 				item.id !== currentID
 				&& (!item.claimedBy || item.claimedBy === session.me?.user.email)
-				&& !readBundleCache(item.id),
+				&& !bundleCache().read(item.id),
 		)
 		if (!next) return
 
-		writeBundleCache(next.id, await fetchBundle(next.id))
+		bundleCache().write(next.id, await fetchBundle(next.id))
 	} catch {
 		// Prefetching is best effort; opening the ship still loads it normally.
 	}
@@ -472,7 +389,7 @@ async function load(target = id): Promise<void> {
 		}
 
 		bundle = next
-		writeBundleCache(target, next)
+		bundleCache().write(target, next)
 		claimedId = canClaim ? target : ""
 
 		// Restore the server-side draft so a refresh or another device does not lose typed notes.
@@ -493,7 +410,7 @@ async function load(target = id): Promise<void> {
 
 		const message = err instanceof Error ? err.message : "Could not open this ship."
 		if (err instanceof ApiError && (err.code === "forbidden" || err.code === "not_found")) {
-			removeBundleCache(target)
+			bundleCache().remove(target)
 			bundle = null
 			error = message
 			return
@@ -570,7 +487,7 @@ async function refreshEvidenceNow(): Promise<void> {
 	try {
 		const evidence = await refreshRepositoryEvidence(bundle.submission.id)
 		bundle = { ...bundle, evidence }
-		writeBundleCache(bundle.submission.id, bundle)
+		bundleCache().write(bundle.submission.id, bundle)
 		flash("Evidence refreshed.")
 	} catch (err) {
 		evidenceError = err instanceof Error ? err.message : "Could not refresh the evidence."
