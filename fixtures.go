@@ -90,14 +90,12 @@ func checkCountsFor(checks []contract.CheckResult) checkCounts {
 	return counts
 }
 
-// seedFixtures inserts the three demo ships: a clean approval, a ship with warnings, and one the checks refuse.
+// demoFixtures returns the three demo ships reseeded by seedFixtures: a clean approval,
+// a ship with warnings, and one the checks refuse.
 //
 //nolint:dupl,goconst,mnd // The fixture lists are deliberately literal: prices, durations and near-identical check rows are demo data.
-func (a *ireApp) seedFixtures(ctx context.Context) error {
-	now := a.now()
-	base := now.Add(-3 * time.Hour)
-
-	fixtures := []fixture{
+func demoFixtures(base time.Time) []fixture {
+	return []fixture{
 		{
 			externalID:   "fix-clean:design",
 			title:        "Starbie",
@@ -210,6 +208,13 @@ func (a *ireApp) seedFixtures(ctx context.Context) error {
 			},
 		},
 	}
+}
+
+// seedFixtures inserts the demo ships, skipping the ids that already exist.
+func (a *ireApp) seedFixtures(ctx context.Context) error {
+	now := a.now()
+
+	fixtures := demoFixtures(now.Add(-3 * time.Hour))
 
 	for index := range fixtures {
 		// A partial seed leaves earlier fixtures behind; skip the ids that already exist instead of failing on the primary key.
