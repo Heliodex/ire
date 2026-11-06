@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test"
 import type { QueueItem } from "../src/lib/api"
-import { hasStructuredQuery, matchesQueueQuery, parseQueueQuery, queueFilterSegments } from "../src/lib/queue-filter"
+import {
+	hasStructuredQuery,
+	matchesQueueQuery,
+	parseQueueQuery,
+	queueFilterSegments,
+	sortQueueFilterTokens,
+} from "../src/lib/queue-filter"
 
 const emptyChecks = { error: 0, fail: 0, overall: "pass", pass: 0, running: 0, warn: 0 }
 
@@ -130,6 +136,27 @@ describe("queueFilterSegments", () => {
 			{ filter: false, text: "status:nope" },
 			{ filter: false, text: " " },
 			{ filter: false, text: "week:" },
+		])
+	})
+})
+
+describe("sortQueueFilterTokens", () => {
+	test("puts recognised filters first in alphabetical order", () => {
+		expect(sortQueueFilterTokens(["ver:1", "tea", "TYPE:CAD", "age:>=4h", "timer", "week:1"])).toEqual([
+			"age:>=4h",
+			"TYPE:CAD",
+			"ver:1",
+			"week:1",
+			"tea",
+			"timer",
+		])
+	})
+
+	test("keeps unknown tokens with the plain terms", () => {
+		expect(sortQueueFilterTokens(["status:nope", "type:pcb", "timer"])).toEqual([
+			"type:pcb",
+			"status:nope",
+			"timer",
 		])
 	})
 })

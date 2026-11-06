@@ -19,7 +19,13 @@ import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
-import { hasStructuredQuery, matchesQueueQuery, parseQueueQuery, queueFilterSegments } from "../../lib/queue-filter"
+import {
+	hasStructuredQuery,
+	matchesQueueQuery,
+	parseQueueQuery,
+	queueFilterSegments,
+	sortQueueFilterTokens,
+} from "../../lib/queue-filter"
 import {
 	createQueueState,
 	type QueueFilter as Filter,
@@ -799,7 +805,7 @@ function setFilterToken(key: string, value: string): void {
 	// Activating the same filter again clears just that filter.
 	if (existing.length !== 1 || existing[0]?.toLowerCase() !== token.toLowerCase()) next.push(token)
 
-	setSearchValue(next.join(" "))
+	setSearchValue(sortQueueFilterTokens(next).join(" "))
 }
 
 // filterByStatus adds status:ready and its sibling filters when a status badge is activated.

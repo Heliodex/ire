@@ -235,6 +235,20 @@ export function queueFilterSegments(input: string): QueueFilterSegment[] {
 	return segments
 }
 
+// sortQueueFilterTokens puts recognised filters first in alphabetical order, keeping plain terms after.
+export function sortQueueFilterTokens(tokens: string[]): string[] {
+	const special: string[] = []
+	const plain: string[] = []
+
+	for (const token of tokens)
+		if (hasStructuredQuery(parseQueueQuery(token))) special.push(token)
+		else plain.push(token)
+
+	special.sort((left, right) => left.toLowerCase().localeCompare(right.toLowerCase()))
+
+	return [...special, ...plain]
+}
+
 // hasStructuredQuery reports whether the reader used one of the key:value filters.
 export function hasStructuredQuery(query: QueueQuery): boolean {
 	return (
