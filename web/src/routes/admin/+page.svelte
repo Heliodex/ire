@@ -791,7 +791,15 @@ code {
 	}
 
 	.login-cell {
+		display: flex;
+		gap: var(--space-2);
+		align-items: baseline;
+		justify-content: space-between;
 		font-size: var(--text-xs);
+	}
+
+	.login-cell .cell-label {
+		padding-bottom: 0;
 	}
 
 	/* The permission matrix becomes one card per role. */
