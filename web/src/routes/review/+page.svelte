@@ -710,37 +710,43 @@ async function saveDraftNow(): Promise<void> {
 			<section class="content">
 				{@render shipTabs({ checks: preview.checkCount })}
 
-				{#if tab === "overview"}
-					<article class="ui-card padded overview">
-						{#if preview.thumbnailUrl && !previewCoverFailed}
-							<img
-								alt={`${preview.title} project image`}
-								class="cover"
-								decoding="async"
-								loading="lazy"
-								onerror={(): void => {
-									previewCoverFailed = true
-								}}
-								src={preview.thumbnailUrl}
-							>
-						{/if}
-						<div class="stats">
-							<div><span>Claimed</span><strong>{formatHours(preview.hoursClaimedSeconds)}</strong></div>
-							<div>
-								<span>Journals</span><strong>{formatHours(preview.hoursJournalSeconds ?? 0)}</strong>
+				<div class="tab-content">
+					{#if tab === "overview"}
+						<article class="ui-card padded overview">
+							{#if preview.thumbnailUrl && !previewCoverFailed}
+								<img
+									alt={`${preview.title} project image`}
+									class="cover"
+									decoding="async"
+									loading="lazy"
+									onerror={(): void => {
+										previewCoverFailed = true
+									}}
+									src={preview.thumbnailUrl}
+								>
+							{/if}
+							<div class="stats">
+								<div>
+									<span>Claimed</span><strong>{formatHours(preview.hoursClaimedSeconds)}</strong>
+								</div>
+								<div>
+									<span>Journals</span
+									><strong>{formatHours(preview.hoursJournalSeconds ?? 0)}</strong>
+								</div>
+								<div>
+									<span>Hackatime</span
+									><strong>{formatHours(preview.hoursHackatimeSeconds ?? 0)}</strong>
+								</div>
+								<div><span>BOM</span><strong>{formatMoney(preview.bomTotalCents ?? 0)}</strong></div>
 							</div>
-							<div>
-								<span>Hackatime</span><strong>{formatHours(preview.hoursHackatimeSeconds ?? 0)}</strong>
-							</div>
-							<div><span>BOM</span><strong>{formatMoney(preview.bomTotalCents ?? 0)}</strong></div>
+							<LoadingState message="Loading ship…" />
+						</article>
+					{:else}
+						<div class="ui-card padded">
+							<LoadingState message="Loading ship…" />
 						</div>
-						<LoadingState message="Loading ship…" />
-					</article>
-				{:else}
-					<div class="ui-card padded">
-						<LoadingState message="Loading ship…" />
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</section>
 
 			<aside class="rail">
@@ -907,333 +913,352 @@ async function saveDraftNow(): Promise<void> {
 				journal: bundle.journals.length,
 			})}
 
-			{#if tab === "overview"}
-				<article class="ui-card padded overview">
-					{#if submission.thumbnailUrl && !coverFailed}
-						<img
-							alt={`${submission.title} project image`}
-							class="cover"
-							decoding="async"
-							loading="lazy"
-							onerror={(): void => {
-								coverFailed = true
-							}}
-							src={submission.thumbnailUrl}
-						>
-					{:else}
-						<div class="cover-empty">
-							<svg aria-hidden="true" fill="none" height="26" viewBox="0 0 24 24" width="26">
-								<rect
-									height="16"
-									rx="2"
-									stroke="currentColor"
-									stroke-width="1.6"
-									width="18"
-									x="3"
-									y="4"
-								/>
-								<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
-								<path
-									d="m4 17 4.5-4.5 3 3L15 12l5 5"
-									stroke="currentColor"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="1.6"
-								/>
-							</svg>
-							<strong
-								>{submission.thumbnailUrl ? "Project image unavailable" : "No project image"}</strong
+			<div class="tab-content">
+				{#if tab === "overview"}
+					<article class="ui-card padded overview">
+						{#if submission.thumbnailUrl && !coverFailed}
+							<img
+								alt={`${submission.title} project image`}
+								class="cover"
+								decoding="async"
+								loading="lazy"
+								onerror={(): void => {
+									coverFailed = true
+								}}
+								src={submission.thumbnailUrl}
 							>
-							<span>
-								{submission.thumbnailUrl
-									? "The image link could not be loaded."
-									: "This ship does not include a project image."}
-							</span>
+						{:else}
+							<div class="cover-empty">
+								<svg aria-hidden="true" fill="none" height="26" viewBox="0 0 24 24" width="26">
+									<rect
+										height="16"
+										rx="2"
+										stroke="currentColor"
+										stroke-width="1.6"
+										width="18"
+										x="3"
+										y="4"
+									/>
+									<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
+									<path
+										d="m4 17 4.5-4.5 3 3L15 12l5 5"
+										stroke="currentColor"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="1.6"
+									/>
+								</svg>
+								<strong
+									>{submission.thumbnailUrl
+										? "Project image unavailable"
+										: "No project image"}</strong
+								>
+								<span>
+									{submission.thumbnailUrl
+										? "The image link could not be loaded."
+										: "This ship does not include a project image."}
+								</span>
+							</div>
+						{/if}
+						{#if bundle.resubmission}
+							{const diff = bundle.resubmission}
+							<div class="section resubmission">
+								<h3>Since v{diff.previousVersion}</h3>
+								{#if diff.previousDecision || diff.previousNote}
+									<div class="prior-row">
+										{#if diff.previousDecision}
+											<span
+												class="ui-badge"
+												data-tone={statusTone(
+													diff.previousDecision === "approved" ? "approved" : "changes",
+												)}
+												>{decisionLabel(diff.previousDecision)}</span
+											>
+										{/if}
+										{#if diff.previousNote}
+											<p>{diff.previousNote}</p>
+										{/if}
+										{#if diff.previousReviewer || diff.previousReviewedAt}
+											<small>
+												{diff.previousReviewer ?? "Reviewer"}
+												{#if diff.previousReviewedAt}
+													· {formatDateTime(diff.previousReviewedAt)}
+												{/if}
+											</small>
+										{/if}
+									</div>
+								{/if}
+								<div class="stats">
+									<div><span>Commits</span><strong>{diff.commits.length}</strong></div>
+									<div>
+										<span>Files</span
+										><strong>+{diff.addedFiles.length} / -{diff.removedFiles.length}</strong>
+									</div>
+									<div>
+										<span>New entries</span
+										><strong
+											>{diff.newEntries.length}
+											{diff.changedEntries.length > 0
+												? ` · ${diff.changedEntries.length} edited`
+												: ""}</strong
+										>
+									</div>
+									<div>
+										<span>BOM</span
+										><strong
+											>{diff.bomAdded.length}
+											added
+											{diff.bomPriceChanges.length > 0
+												? ` · ${diff.bomPriceChanges.length} repriced`
+												: ""}</strong
+										>
+									</div>
+								</div>
+								{#if diff.commits.length > 0}
+									<details>
+										<summary>
+											{diff.commits.length}
+											new commit{diff.commits.length === 1 ? "" : "s"}
+										</summary>
+										<ul class="change-list">
+											{#each diff.commits.slice(0, 10) as commit (commit.sha)}
+												<li>
+													<code class="ui-mono">{commit.sha.slice(0, 7)}</code>
+													{commit.message}
+												</li>
+											{/each}
+										</ul>
+									</details>
+								{/if}
+								{#if diff.addedFiles.length + diff.removedFiles.length > 0}
+									<details>
+										<summary>
+											{diff.addedFiles.length}
+											added, {diff.removedFiles.length} removed
+										</summary>
+										<ul class="change-list">
+											{#each diff.addedFiles.slice(0, 20) as file (file)}
+												<li class="added">+ {file}</li>
+											{/each}
+											{#each diff.removedFiles.slice(0, 20) as file (file)}
+												<li class="removed">- {file}</li>
+											{/each}
+										</ul>
+									</details>
+								{/if}
+								{#if diff.bomAdded.length + diff.bomRemoved.length + diff.bomPriceChanges.length > 0}
+									<details>
+										<summary>BOM changes</summary>
+										<ul class="change-list">
+											{#each diff.bomAdded as part (part)}
+												<li class="added">+ {part}</li>
+											{/each}
+											{#each diff.bomRemoved as part (part)}
+												<li class="removed">- {part}</li>
+											{/each}
+											{#each diff.bomPriceChanges as change (change.name)}
+												<li>
+													{change.name}: {formatMoneyAmount(change.beforeCents)} →
+													{formatMoneyAmount(change.afterCents)}
+												</li>
+											{/each}
+										</ul>
+									</details>
+								{/if}
+							</div>
+						{/if}
+						<h2>What the maker built</h2>
+						<p class="description">{submission.description || "No description was sent."}</p>
+
+						<div class="stats">
+							<div>
+								<span>Claimed</span><strong>{formatHours(submission.hoursClaimedSeconds)}</strong>
+							</div>
+							<div>
+								<span>Journals</span><strong>{formatHours(submission.hoursJournalSeconds)}</strong>
+							</div>
+							<div>
+								<span>Hackatime</span><strong>{formatHours(submission.hoursHackatimeSeconds)}</strong>
+							</div>
+							<div><span>BOM</span><strong>{formatMoney(submission.bomTotalCents)}</strong></div>
 						</div>
-					{/if}
-					{#if bundle.resubmission}
-						{const diff = bundle.resubmission}
-						<div class="section resubmission">
-							<h3>Since v{diff.previousVersion}</h3>
-							{#if diff.previousDecision || diff.previousNote}
-								<div class="prior-row">
-									{#if diff.previousDecision}
+
+						{#if bundle.priorReviews.length > 0}
+							<div class="section">
+								<h3>Prior review</h3>
+								{#each bundle.priorReviews as prior (prior.at)}
+									{const priorHref = reviewerHref(
+										prior.reviewer?.includes("@") ? prior.reviewer : null,
+									)}
+									<div class="prior-row">
 										<span
 											class="ui-badge"
 											data-tone={statusTone(
-												diff.previousDecision === "approved" ? "approved" : "changes",
+												prior.result.toLowerCase().includes("approved")
+													? "approved"
+													: "changes",
 											)}
-											>{decisionLabel(diff.previousDecision)}</span
+											>{decisionLabel(prior.result)}</span
+										>
+										<p>{prior.feedback}</p>
+										<small>
+											{#if priorHref}
+												<a data-sveltekit-reload href={priorHref}>{prior.reviewer}</a>
+											{:else}
+												{prior.reviewer ?? "Reviewer"}
+											{/if}
+											· {formatDateTime(prior.at)}
+										</small>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<div class="section">
+							<h3>Timeline</h3>
+							{#each visibleEvents as event (event.id)}
+								<div class="event">
+									<span class="dot"></span>
+									<div>
+										<strong>{humanEvent(event.kind)}</strong>
+										{#if event.actorEmail}
+											<span> · {event.actorEmail}</span>
+										{/if}
+										<small>{formatDateTime(event.createdAt)}</small>
+									</div>
+								</div>
+							{/each}
+							{#if bundle.events.length > 6}
+								<button
+									class="link more-events"
+									onclick={(): void => {
+										showAllEvents = !showAllEvents
+									}}
+									type="button"
+								>
+									{showAllEvents ? "Show fewer events" : `Show all ${bundle.events.length} events`}
+								</button>
+							{/if}
+						</div>
+
+						<div class="section">
+							<h3>Internal notes</h3>
+							<NotesCard
+								canDelete={canDeleteNote}
+								notes={bundle.notes}
+								onAdd={addNote}
+								onRemove={removeNote}
+							/>
+						</div>
+					</article>
+				{:else if tab === "checks"}
+					<ChecksTab
+						{acknowledgements}
+						checks={bundle.checks}
+						onAcknowledgeAll={acknowledgeAll}
+						onToggle={toggleAck}
+					/>
+				{:else if tab === "journal"}
+					{#if bundle.journals.length === 0}
+						<div class="ui-card ui-empty">
+							<strong>No journal entries</strong>
+							<span>Half Life sent no written evidence with this ship.</span>
+						</div>
+					{:else}
+						<div class="journals">
+							{#each bundle.journals as entry (entry.id)}
+								<article class="ui-card padded journal">
+									<div class="journal-head">
+										<strong>{entry.title || "Work session"}</strong>
+										<span>{formatHours(entry.seconds)} · {formatDateTime(entry.at)}</span>
+									</div>
+									{#if entry.clipCount > 0}
+										<span class="ui-badge" data-tone="approved"
+											>{entry.clipCount}
+											clip{entry.clipCount === 1 ? "" : "s"}
+											· {formatHours(entry.coveredSeconds)} covered</span
 										>
 									{/if}
-									{#if diff.previousNote}
-										<p>{diff.previousNote}</p>
+									<p>{entry.text || "No written entry."}</p>
+									{#if entry.mediaCount > 0}
+										<small
+											>{entry.mediaCount}
+											image{entry.mediaCount === 1 ? "" : "s"}
+											attached</small
+										>
 									{/if}
-									{#if diff.previousReviewer || diff.previousReviewedAt}
-										<small>
-											{diff.previousReviewer ?? "Reviewer"}
-											{#if diff.previousReviewedAt}
-												· {formatDateTime(diff.previousReviewedAt)}
-											{/if}
-										</small>
-									{/if}
-								</div>
-							{/if}
-							<div class="stats">
-								<div><span>Commits</span><strong>{diff.commits.length}</strong></div>
-								<div>
-									<span>Files</span
-									><strong>+{diff.addedFiles.length} / -{diff.removedFiles.length}</strong>
-								</div>
-								<div>
-									<span>New entries</span
-									><strong
-										>{diff.newEntries.length}
-										{diff.changedEntries.length > 0
-											? ` · ${diff.changedEntries.length} edited`
-											: ""}</strong
-									>
-								</div>
-								<div>
-									<span>BOM</span
-									><strong
-										>{diff.bomAdded.length}
-										added
-										{diff.bomPriceChanges.length > 0
-											? ` · ${diff.bomPriceChanges.length} repriced`
-											: ""}</strong
-									>
-								</div>
-							</div>
-							{#if diff.commits.length > 0}
-								<details>
-									<summary>
-										{diff.commits.length}
-										new commit{diff.commits.length === 1 ? "" : "s"}
-									</summary>
-									<ul class="change-list">
-										{#each diff.commits.slice(0, 10) as commit (commit.sha)}
-											<li>
-												<code class="ui-mono">{commit.sha.slice(0, 7)}</code>
-												{commit.message}
-											</li>
-										{/each}
-									</ul>
-								</details>
-							{/if}
-							{#if diff.addedFiles.length + diff.removedFiles.length > 0}
-								<details>
-									<summary>
-										{diff.addedFiles.length}
-										added, {diff.removedFiles.length} removed
-									</summary>
-									<ul class="change-list">
-										{#each diff.addedFiles.slice(0, 20) as file (file)}
-											<li class="added">+ {file}</li>
-										{/each}
-										{#each diff.removedFiles.slice(0, 20) as file (file)}
-											<li class="removed">- {file}</li>
-										{/each}
-									</ul>
-								</details>
-							{/if}
-							{#if diff.bomAdded.length + diff.bomRemoved.length + diff.bomPriceChanges.length > 0}
-								<details>
-									<summary>BOM changes</summary>
-									<ul class="change-list">
-										{#each diff.bomAdded as part (part)}
-											<li class="added">+ {part}</li>
-										{/each}
-										{#each diff.bomRemoved as part (part)}
-											<li class="removed">- {part}</li>
-										{/each}
-										{#each diff.bomPriceChanges as change (change.name)}
-											<li>
-												{change.name}: {formatMoneyAmount(change.beforeCents)} →
-												{formatMoneyAmount(change.afterCents)}
-											</li>
-										{/each}
-									</ul>
-								</details>
-							{/if}
-						</div>
-					{/if}
-					<h2>What the maker built</h2>
-					<p class="description">{submission.description || "No description was sent."}</p>
-
-					<div class="stats">
-						<div><span>Claimed</span><strong>{formatHours(submission.hoursClaimedSeconds)}</strong></div>
-						<div><span>Journals</span><strong>{formatHours(submission.hoursJournalSeconds)}</strong></div>
-						<div>
-							<span>Hackatime</span><strong>{formatHours(submission.hoursHackatimeSeconds)}</strong>
-						</div>
-						<div><span>BOM</span><strong>{formatMoney(submission.bomTotalCents)}</strong></div>
-					</div>
-
-					{#if bundle.priorReviews.length > 0}
-						<div class="section">
-							<h3>Prior review</h3>
-							{#each bundle.priorReviews as prior (prior.at)}
-								{const priorHref = reviewerHref(prior.reviewer?.includes("@") ? prior.reviewer : null)}
-								<div class="prior-row">
-									<span
-										class="ui-badge"
-										data-tone={statusTone(
-											prior.result.toLowerCase().includes("approved") ? "approved" : "changes",
-										)}
-										>{decisionLabel(prior.result)}</span
-									>
-									<p>{prior.feedback}</p>
-									<small>
-										{#if priorHref}
-											<a data-sveltekit-reload href={priorHref}>{prior.reviewer}</a>
-										{:else}
-											{prior.reviewer ?? "Reviewer"}
-										{/if}
-										· {formatDateTime(prior.at)}
-									</small>
-								</div>
+									<JournalTime
+										editable={canAdjustEntries}
+										{entry}
+										onSaved={entrySaved}
+										shipId={submission.id}
+										version={submission.version}
+									/>
+								</article>
 							{/each}
 						</div>
 					{/if}
-
-					<div class="section">
-						<h3>Timeline</h3>
-						{#each visibleEvents as event (event.id)}
-							<div class="event">
-								<span class="dot"></span>
-								<div>
-									<strong>{humanEvent(event.kind)}</strong>
-									{#if event.actorEmail}
-										<span> · {event.actorEmail}</span>
-									{/if}
-									<small>{formatDateTime(event.createdAt)}</small>
-								</div>
-							</div>
-						{/each}
-						{#if bundle.events.length > 6}
-							<button
-								class="link more-events"
-								onclick={(): void => {
-									showAllEvents = !showAllEvents
-								}}
-								type="button"
-							>
-								{showAllEvents ? "Show fewer events" : `Show all ${bundle.events.length} events`}
-							</button>
-						{/if}
-					</div>
-
-					<div class="section">
-						<h3>Internal notes</h3>
-						<NotesCard
-							canDelete={canDeleteNote}
-							notes={bundle.notes}
-							onAdd={addNote}
-							onRemove={removeNote}
-						/>
-					</div>
-				</article>
-			{:else if tab === "checks"}
-				<ChecksTab
-					{acknowledgements}
-					checks={bundle.checks}
-					onAcknowledgeAll={acknowledgeAll}
-					onToggle={toggleAck}
-				/>
-			{:else if tab === "journal"}
-				{#if bundle.journals.length === 0}
-					<div class="ui-card ui-empty">
-						<strong>No journal entries</strong>
-						<span>Half Life sent no written evidence with this ship.</span>
-					</div>
-				{:else}
-					<div class="journals">
-						{#each bundle.journals as entry (entry.id)}
-							<article class="ui-card padded journal">
-								<div class="journal-head">
-									<strong>{entry.title || "Work session"}</strong>
-									<span>{formatHours(entry.seconds)} · {formatDateTime(entry.at)}</span>
-								</div>
-								{#if entry.clipCount > 0}
-									<span class="ui-badge" data-tone="approved"
-										>{entry.clipCount}
-										clip{entry.clipCount === 1 ? "" : "s"}
-										· {formatHours(entry.coveredSeconds)} covered</span
-									>
-								{/if}
-								<p>{entry.text || "No written entry."}</p>
-								{#if entry.mediaCount > 0}
-									<small>{entry.mediaCount} image{entry.mediaCount === 1 ? "" : "s"} attached</small>
-								{/if}
-								<JournalTime
-									editable={canAdjustEntries}
-									{entry}
-									onSaved={entrySaved}
-									shipId={submission.id}
-									version={submission.version}
-								/>
-							</article>
-						{/each}
-					</div>
-				{/if}
-			{:else if tab === "bom"}
-				{#if bundle.bom.length === 0}
-					<div class="ui-card ui-empty">
-						<strong>No BOM lines</strong>
-						<span>Half Life sent no priced parts with this ship.</span>
-					</div>
-				{:else}
-					<div class="ui-card table-wrap">
-						<table class="ui-table">
-							<thead>
-								<tr>
-									<th>Part</th>
-									<th>Purpose</th>
-									<th class="num">Qty</th>
-									<th class="num">Unit (US$)</th>
-									<th>Vendor</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each bundle.bom as line (line.name)}
+				{:else if tab === "bom"}
+					{#if bundle.bom.length === 0}
+						<div class="ui-card ui-empty">
+							<strong>No BOM lines</strong>
+							<span>Half Life sent no priced parts with this ship.</span>
+						</div>
+					{:else}
+						<div class="ui-card table-wrap">
+							<table class="ui-table">
+								<thead>
 									<tr>
-										<td>
-											{#if line.link}
-												<a href={line.link} rel="noreferrer" target="_blank">{line.name} ↗</a>
-											{:else}
-												{line.name}
-											{/if}
-										</td>
-										<td>{line.purpose ?? "–"}</td>
-										<td class="num">{line.quantity}</td>
-										<td class="num">{formatMoneyAmount(line.unitCostCents)}</td>
-										<td>{line.vendor ?? "–"}</td>
+										<th>Part</th>
+										<th>Purpose</th>
+										<th class="num">Qty</th>
+										<th class="num">Unit (US$)</th>
+										<th>Vendor</th>
 									</tr>
-								{/each}
-							</tbody>
-							<tfoot>
-								<tr>
-									<td colspan="3">Total (US$)</td>
-									<td class="num">{formatMoneyAmount(submission.bomTotalCents)}</td>
-									<td></td>
-								</tr>
-							</tfoot>
-						</table>
-					</div>
+								</thead>
+								<tbody>
+									{#each bundle.bom as line (line.name)}
+										<tr>
+											<td>
+												{#if line.link}
+													<a href={line.link} rel="noreferrer" target="_blank"
+														>{line.name}
+														↗</a
+													>
+												{:else}
+													{line.name}
+												{/if}
+											</td>
+											<td>{line.purpose ?? "–"}</td>
+											<td class="num">{line.quantity}</td>
+											<td class="num">{formatMoneyAmount(line.unitCostCents)}</td>
+											<td>{line.vendor ?? "–"}</td>
+										</tr>
+									{/each}
+								</tbody>
+								<tfoot>
+									<tr>
+										<td colspan="3">Total (US$)</td>
+										<td class="num">{formatMoneyAmount(submission.bomTotalCents)}</td>
+										<td></td>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+					{/if}
+				{:else if tab === "evidence"}
+					<EvidenceTab
+						canRefresh={canSecondPass}
+						error={evidenceError}
+						evidence={bundle.evidence}
+						onRefresh={refreshEvidenceNow}
+						refreshing={refreshingEvidence}
+						submissionId={bundle.submission.id}
+					/>
+				{:else if tab === "history"}
+					<HistoryTab reviews={bundle.reviews} />
 				{/if}
-			{:else if tab === "evidence"}
-				<EvidenceTab
-					canRefresh={canSecondPass}
-					error={evidenceError}
-					evidence={bundle.evidence}
-					onRefresh={refreshEvidenceNow}
-					refreshing={refreshingEvidence}
-					submissionId={bundle.submission.id}
-				/>
-			{:else if tab === "history"}
-				<HistoryTab reviews={bundle.reviews} />
-			{/if}
+			</div>
 		</section>
 
 		<aside class="rail">
@@ -1736,8 +1761,7 @@ h1 {
 	gap: var(--space-2);
 }
 
-.content > .ui-card,
-.content > .journals {
+.tab-content {
 	margin-top: var(--space-3);
 }
 
