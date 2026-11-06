@@ -24,6 +24,7 @@ export interface QueueQuery {
 	checks: ChecksFilter | null
 	status: string | null
 	text: string[]
+	time: NumericFilter | null
 	type: string | null
 	version: NumericFilter | null
 	week: NumericFilter | null
@@ -98,15 +99,21 @@ function parseComparison(value: string): NumericFilter | null {
 	return { op: parseOp(match[1], "="), value: Number(match[2]) }
 }
 
-// parseAge reads a comparison and a duration such as >1d, >=12h or 30m. A bare duration means "at least".
-function parseAge(value: string): NumericFilter | null {
-	const match = /^([<>]=?|=|!=)?(\d+(?:\.\d+)?)([smhdw])$/.exec(value.toLowerCase())
+// parseDuration reads a comparison and one or more units, such as >1d, >=12h, 30m or 6h24m0s.
+// A bare duration means "at least".
+function parseDuration(value: string, fallback: CompareOp): NumericFilter | null {
+	const match = /^([<>]=?|=|!=)?((?:\d+(?:\.\d+)?[smhdw])+)$/.exec(value.toLowerCase())
 	if (!match) return null
 
-	const unit = durationUnits[match[3]]
-	if (unit === undefined) return null
+	let total = 0
+	for (const part of (match[2] ?? "").matchAll(/(\d+(?:\.\d+)?)([smhdw])/g)) {
+		const unit = durationUnits[part[2]]
+		if (unit === undefined) return null
 
-	return { op: parseOp(match[1], ">="), value: Number(match[2]) * unit }
+		total += Number(part[1]) * unit
+	}
+
+	return { op: parseOp(match[1], fallback), value: total }
 }
 
 // parseChecks reads presence filters like checks:warn or count comparisons like checks:warn<3 and checks:>=10.
@@ -140,6 +147,7 @@ export function parseQueueQuery(input: string): QueueQuery {
 		checks: null,
 		status: null,
 		text: [],
+		time: null,
 		type: null,
 		version: null,
 		week: null,
@@ -159,8 +167,14 @@ export function parseQueueQuery(input: string): QueueQuery {
 
 		switch (key) {
 			case "age": {
-				const age = parseAge(value)
+				const age = parseDuration(value, ">=")
 				if (age) query.age = age
+				else query.text.push(token.toLowerCase())
+				break
+			}
+			case "time": {
+				const time = parseDuration(value, ">=")
+				if (time) query.time = time
 				else query.text.push(token.toLowerCase())
 				break
 			}
@@ -200,11 +214,33 @@ export function parseQueueQuery(input: string): QueueQuery {
 	return query
 }
 
+export interface QueueFilterSegment {
+	filter: boolean
+	text: string
+}
+
+// queueFilterSegments splits the filter box for the highlighted overlay, marking recognised tokens.
+export function queueFilterSegments(input: string): QueueFilterSegment[] {
+	const segments: QueueFilterSegment[] = []
+
+	for (const part of input.split(/(\s+)/)) {
+		if (part === "") continue
+
+		segments.push({
+			filter: !/^\s+$/.test(part) && hasStructuredQuery(parseQueueQuery(part)),
+			text: part,
+		})
+	}
+
+	return segments
+}
+
 // hasStructuredQuery reports whether the reader used one of the key:value filters.
 export function hasStructuredQuery(query: QueueQuery): boolean {
 	return (
 		query.age !== null
 		|| query.checks !== null
+		|| query.time !== null
 		|| query.status !== null
 		|| query.type !== null
 		|| query.version !== null
@@ -215,6 +251,7 @@ export function hasStructuredQuery(query: QueueQuery): boolean {
 // matchesQueueQuery applies every structured filter and plain term to one ship.
 export function matchesQueueQuery(item: QueueItem, query: QueueQuery): boolean {
 	if (query.age !== null && !matchesAge(item, query.age)) return false
+	if (query.time !== null && !matchesNumber(item.hoursClaimedSeconds * 1000, query.time)) return false
 	if (query.version !== null && !matchesNumber(item.version, query.version)) return false
 	if (query.week !== null && (item.week === undefined || !matchesNumber(item.week, query.week))) return false
 	if (query.type !== null && (item.theme ?? "").trim().toLowerCase() !== query.type) return false

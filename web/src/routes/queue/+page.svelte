@@ -19,7 +19,7 @@ import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
-import { hasStructuredQuery, matchesQueueQuery, parseQueueQuery } from "../../lib/queue-filter"
+import { hasStructuredQuery, matchesQueueQuery, parseQueueQuery, queueFilterSegments } from "../../lib/queue-filter"
 import {
 	createQueueState,
 	type QueueFilter as Filter,
@@ -112,6 +112,9 @@ let loadingMore = $state(false)
 let checkTip = $state<CheckTip | null>(null)
 let spaceHeld = $state(false)
 let restoring = savedQueue !== null
+let filterHelp = $state<HTMLDialogElement | null>(null)
+let filterInput = $state<HTMLInputElement | null>(null)
+let filterHighlight = $state<HTMLSpanElement | null>(null)
 
 interface CheckTip {
 	above: boolean
@@ -137,6 +140,7 @@ const canSecondPass = $derived(role === "organizer" || role === "admin")
 const readOnly = $derived(session.me?.readOnly ?? false)
 
 const queueQuery = $derived(parseQueueQuery(search))
+const filterSegments = $derived(queueFilterSegments(search))
 const visible = $derived(queue.items.filter(item => matchesQueueQuery(item, queueQuery)))
 
 // estimatedHeight averages the measured rows so unmeasured ones start close to reality.
@@ -755,6 +759,16 @@ function filterHref(key: string, value: string | number): string {
 	return `/queue?search=${encodeURIComponent(token)}`
 }
 
+// syncFilterScroll keeps the highlighted copy under the input when long filters scroll sideways.
+function syncFilterScroll(): void {
+	if (filterInput && filterHighlight) filterHighlight.scrollLeft = filterInput.scrollLeft
+}
+
+$effect((): void => {
+	void search
+	syncFilterScroll()
+})
+
 // searchTokens returns the current filter box split into whitespace-separated tokens.
 function searchTokens(): string[] {
 	const query = search.trim()
@@ -811,6 +825,49 @@ function filterByVersion(item: QueueItem, event: MouseEvent): void {
 	event.stopPropagation()
 	setFilterToken("ver", String(item.version))
 }
+
+// compactDuration renders a filter-friendly duration such as 6h24m0s or 3d1h0m0s.
+function compactDuration(seconds: number): string {
+	const total = Math.max(0, Math.round(seconds))
+	const days = Math.floor(total / 86_400)
+	const hours = Math.floor((total % 86_400) / 3_600)
+	const minutes = Math.floor((total % 3_600) / 60)
+	const secs = total % 60
+	let out = ""
+
+	if (days > 0) out += `${days}d`
+	if (hours > 0 || days > 0) out += `${hours}h`
+	if (minutes > 0 || hours > 0 || days > 0) out += `${minutes}m`
+
+	return `${out}${secs}s`
+}
+
+// timeFilter asks for ships with more claimed time than this one.
+function timeFilter(item: QueueItem): string {
+	return `>${compactDuration(item.hoursClaimedSeconds)}`
+}
+
+// ageFilter asks for ships older than this one, using its exact age rather than the rounded label.
+function ageFilter(item: QueueItem): string {
+	const ingested = Date.parse(item.ingestedAt)
+	if (Number.isNaN(ingested)) return ">0s"
+
+	return `>${compactDuration((Date.now() - ingested) / 1000)}`
+}
+
+// filterByTime adds time:>6h when the claimed hours are activated.
+function filterByTime(item: QueueItem, event: MouseEvent): void {
+	event.preventDefault()
+	event.stopPropagation()
+	setFilterToken("time", timeFilter(item))
+}
+
+// filterByAge adds age:>2h when the age is activated.
+function filterByAge(item: QueueItem, event: MouseEvent): void {
+	event.preventDefault()
+	event.stopPropagation()
+	setFilterToken("age", ageFilter(item))
+}
 </script>
 
 <svelte:head>
@@ -865,22 +922,106 @@ function filterByVersion(item: QueueItem, event: MouseEvent): void {
 			</button>
 		{/if}
 	</div>
-	<label class="search">
-		<span class="visually-hidden">Filter open ships</span>
-		<input
-			aria-label="Filter open ships by text or week, checks, type, status, age and version"
-			class="ui-input"
-			oninput={(): void => {
-				error = ""
-				actionError = ""
-			}}
-			placeholder="Filter ships (type:cad, week:1…)"
-			title="Try week:1, type:cad, status:ready, checks:warn, age:>1d or ver:2"
-			type="search"
-			bind:value={search}
+	<div class="filter-box">
+		<button
+			aria-haspopup="dialog"
+			aria-label="Filter syntax help"
+			class="ui-icon-button help"
+			onclick={(): void => filterHelp?.showModal()}
+			title="Filter syntax help"
+			type="button"
 		>
-	</label>
+			?
+		</button>
+		<label class="search">
+			<span class="visually-hidden">Filter open ships</span>
+			<span class="filter-field">
+				<span aria-hidden="true" class="highlight" bind:this={filterHighlight}>
+					<span class="highlight-text">
+						{#each filterSegments as segment, index (index)}
+							{#if segment.filter}
+								<span class="filter-token">{segment.text}</span>
+							{:else}
+								{segment.text}
+							{/if}
+						{/each}
+					</span>
+				</span>
+				<input
+					aria-label="Filter open ships by text or week, checks, type, status, age, claimed time and version"
+					class="ui-input"
+					oninput={(): void => {
+						error = ""
+						actionError = ""
+						requestAnimationFrame(syncFilterScroll)
+					}}
+					onscroll={syncFilterScroll}
+					placeholder="Filter ships (type:cad, week:1…)"
+					title="Try week:1, type:cad, status:ready, checks:warn, age:>1d, time:>6h or ver:2"
+					type="search"
+					bind:this={filterInput}
+					bind:value={search}
+				>
+			</span>
+		</label>
+	</div>
 </div>
+
+<dialog aria-labelledby="filter-help-title" class="filter-help" bind:this={filterHelp}>
+	<div class="filter-help-body">
+		<header>
+			<h2 id="filter-help-title">Filter syntax</h2>
+			<button
+				aria-label="Close filter help"
+				class="ui-icon-button"
+				onclick={(): void => filterHelp?.close()}
+				type="button"
+			>
+				×
+			</button>
+		</header>
+
+		<p>Combine filters with spaces. Plain terms still search the ship title, maker, status and type.</p>
+
+		<dl class="syntax">
+			<div>
+				<dt><code>week:1</code></dt>
+				<dd>Week 1 ships. Compare with <code>week:&gt;1</code>.</dd>
+			</div>
+			<div>
+				<dt><code>type:cad</code></dt>
+				<dd>One project type. Clicking a type label adds this.</dd>
+			</div>
+			<div>
+				<dt><code>status:ready</code></dt>
+				<dd>One status, such as <code>ready</code>, <code>claimed</code> or <code>needs_attention</code>.</dd>
+			</div>
+			<div>
+				<dt><code>checks:warn</code></dt>
+				<dd>Any warning. Counts compare with <code>checks:warn&lt;3</code> or <code>checks:&gt;=10</code>.</dd>
+			</div>
+			<div>
+				<dt><code>age:&gt;1d</code></dt>
+				<dd>
+					Older than a duration. Units are <code>s</code>, <code>m</code>, <code>h</code>, <code>d</code> and
+					<code>w</code>.
+				</dd>
+			</div>
+			<div>
+				<dt><code>time:&gt;6h</code></dt>
+				<dd>More than this much claimed time.</dd>
+			</div>
+			<div>
+				<dt><code>ver:2</code> / <code>ver:&gt;5</code></dt>
+				<dd>Exact version or a version comparison.</dd>
+			</div>
+		</dl>
+
+		<p class="hint">
+			Status, type, version, claimed time and age labels in the queue also add their filter when activated.
+		</p>
+	</div>
+</dialog>
 
 {#if actionError || error}
 	<div class="ui-notice error-notice" data-tone="bad" role="alert">
@@ -1150,8 +1291,25 @@ function filterByVersion(item: QueueItem, event: MouseEvent): void {
 							v{item.version}
 						</a>
 						<span class="timing">
-							<span class="hours">{formatDuration(item.hoursClaimedSeconds)} claimed</span>
-							<span class="age {ageTone(item.ingestedAt)}">{timeAgo(item.ingestedAt)}</span>
+							<a
+								aria-label={`Show ships with more than ${formatDuration(item.hoursClaimedSeconds)} claimed`}
+								class="hours"
+								href={filterHref("time", timeFilter(item))}
+								onclick={(event: MouseEvent): void => filterByTime(item, event)}
+								title={`Show ships with more than ${formatDuration(item.hoursClaimedSeconds)} claimed`}
+							>
+								{formatDuration(item.hoursClaimedSeconds)}
+								claimed
+							</a>
+							<a
+								aria-label={`Show ships older than ${timeAgo(item.ingestedAt)}`}
+								class="age {ageTone(item.ingestedAt)}"
+								href={filterHref("age", ageFilter(item))}
+								onclick={(event: MouseEvent): void => filterByAge(item, event)}
+								title={`Show ships older than ${timeAgo(item.ingestedAt)}`}
+							>
+								{timeAgo(item.ingestedAt)}
+							</a>
 						</span>
 					</div>
 					<a
@@ -1322,8 +1480,165 @@ h1 {
 	padding-bottom: var(--space-4);
 }
 
+.filter-box {
+	display: flex;
+	flex: 0 1 auto;
+	gap: var(--space-2);
+	align-items: center;
+}
+
+.help {
+	flex: none;
+	font-size: var(--text-sm);
+	font-weight: 800;
+	background: var(--surface);
+	border: 1px solid var(--border-2);
+}
+
 .search {
 	flex: 0 1 16.25rem;
+}
+
+.filter-field {
+	position: relative;
+	display: block;
+	width: 100%;
+	height: var(--control-md);
+	background: var(--input);
+	border: 1px solid var(--border-2);
+	border-radius: var(--radius-sm);
+}
+
+.filter-field:focus-within {
+	border-color: var(--primary);
+}
+
+.filter-field input {
+	position: relative;
+	z-index: 1;
+	height: 100%;
+	padding: 0 var(--space-3);
+	color: transparent;
+	letter-spacing: inherit;
+	caret-color: var(--text);
+	background: transparent;
+	border: 0;
+	border-radius: inherit;
+}
+
+.filter-field input::placeholder {
+	color: var(--text-3);
+}
+
+.filter-field input::selection {
+	color: var(--text);
+	background: var(--primary-soft);
+}
+
+.highlight {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	padding: 0 var(--space-3);
+	overflow: hidden;
+	color: var(--text);
+	white-space: pre;
+	pointer-events: none;
+	user-select: none;
+}
+
+.highlight-text {
+	flex: none;
+	white-space: pre;
+}
+
+.filter-token {
+	font-weight: 600;
+	color: var(--primary);
+}
+
+.filter-help {
+	width: min(34rem, calc(100vw - 2rem));
+	max-height: calc(100vh - 2rem);
+	padding: 0;
+	color: var(--text);
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-lg);
+}
+
+.filter-help::backdrop {
+	background: rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(2px);
+}
+
+.filter-help-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	max-height: calc(100vh - 2rem);
+	padding: var(--space-4);
+	overflow-y: auto;
+}
+
+.filter-help header {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+	justify-content: space-between;
+}
+
+.filter-help h2 {
+	font-size: var(--text-xl);
+}
+
+.filter-help p {
+	font-size: var(--text-sm);
+	color: var(--text-2);
+}
+
+.filter-help .syntax {
+	display: grid;
+	gap: var(--space-2);
+	padding: 0;
+	margin: 0;
+}
+
+.filter-help .syntax div {
+	display: grid;
+	grid-template-columns: 9.5rem minmax(0, 1fr);
+	gap: var(--space-2);
+	padding-top: var(--space-2);
+	border-top: 1px solid var(--border);
+}
+
+.filter-help .syntax dt {
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text);
+}
+
+.filter-help .syntax dd {
+	margin: 0;
+	font-size: var(--text-xs);
+	line-height: 1.5;
+	color: var(--text-2);
+}
+
+.filter-help code {
+	padding: 0.1rem 0.3rem;
+	font-family: var(--font-mono);
+	font-size: 0.92em;
+	color: var(--text);
+	background: var(--surface-2);
+	border-radius: 0.25rem;
+}
+
+.filter-help .hint {
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 
 .filters {
@@ -1535,6 +1850,17 @@ a.version {
 }
 
 a.version:hover {
+	color: var(--text);
+	text-decoration: underline;
+}
+
+a.hours,
+a.age {
+	text-decoration: none;
+}
+
+a.hours:hover,
+a.age:hover {
 	color: var(--text);
 	text-decoration: underline;
 }
@@ -2001,8 +2327,12 @@ a.status:focus-visible {
 		min-width: 0;
 	}
 
-	.search {
+	.filter-box {
 		flex: 1 1 100%;
+	}
+
+	.filter-box .search {
+		flex: 1 1 auto;
 	}
 
 	.dot {
@@ -2127,6 +2457,13 @@ a.status:focus-visible {
 
 	.checks .fast {
 		display: none;
+	}
+}
+
+@media (max-width: 32rem) {
+	.filter-help .syntax div {
+		grid-template-columns: 1fr;
+		gap: var(--space-1);
 	}
 }
 </style>

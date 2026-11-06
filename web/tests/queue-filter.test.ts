@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test"
 import type { QueueItem } from "../src/lib/api"
-import { hasStructuredQuery, matchesQueueQuery, parseQueueQuery } from "../src/lib/queue-filter"
+import { hasStructuredQuery, matchesQueueQuery, parseQueueQuery, queueFilterSegments } from "../src/lib/queue-filter"
 
 const emptyChecks = { error: 0, fail: 0, overall: "pass", pass: 0, running: 0, warn: 0 }
 
@@ -32,6 +32,7 @@ describe("parseQueueQuery", () => {
 			checks: null,
 			status: null,
 			text: [],
+			time: null,
 			type: null,
 			version: null,
 			week: { op: "=", value: 1 },
@@ -41,6 +42,7 @@ describe("parseQueueQuery", () => {
 			checks: null,
 			status: null,
 			text: [],
+			time: null,
 			type: "cad",
 			version: null,
 			week: null,
@@ -50,6 +52,7 @@ describe("parseQueueQuery", () => {
 			checks: null,
 			status: "ready",
 			text: [],
+			time: null,
 			type: null,
 			version: null,
 			week: null,
@@ -59,6 +62,8 @@ describe("parseQueueQuery", () => {
 	test("reads age, version and check comparisons", () => {
 		expect(parseQueueQuery("age:>1d").age).toEqual({ op: ">", value: 86_400_000 })
 		expect(parseQueueQuery("age:12h").age).toEqual({ op: ">=", value: 43_200_000 })
+		expect(parseQueueQuery("age:>2h30m").age).toEqual({ op: ">", value: 9_000_000 })
+		expect(parseQueueQuery("time:>6h24m0s").time).toEqual({ op: ">", value: 23_040_000 })
 		expect(parseQueueQuery("ver:2").version).toEqual({ op: "=", value: 2 })
 		expect(parseQueueQuery("ver:>5").version).toEqual({ op: ">", value: 5 })
 		expect(parseQueueQuery("checks:warn<3").checks).toEqual({
@@ -88,6 +93,7 @@ describe("parseQueueQuery", () => {
 			checks: null,
 			status: "needs_attention",
 			text: ["timer"],
+			time: null,
 			type: "pcb",
 			version: null,
 			week: { op: "=", value: 1 },
@@ -100,10 +106,31 @@ describe("parseQueueQuery", () => {
 			checks: null,
 			status: null,
 			text: ["week:", "one", "checks:maybe", "status:unknown", "type:", "age:1y", "ver:>"],
+			time: null,
 			type: null,
 			version: null,
 			week: null,
 		})
+	})
+})
+
+describe("queueFilterSegments", () => {
+	test("marks recognised filters and keeps plain text and spacing", () => {
+		expect(queueFilterSegments("week:1 tea type:cad")).toEqual([
+			{ filter: true, text: "week:1" },
+			{ filter: false, text: " " },
+			{ filter: false, text: "tea" },
+			{ filter: false, text: " " },
+			{ filter: true, text: "type:cad" },
+		])
+	})
+
+	test("leaves unknown or incomplete filters as normal text", () => {
+		expect(queueFilterSegments("status:nope week:")).toEqual([
+			{ filter: false, text: "status:nope" },
+			{ filter: false, text: " " },
+			{ filter: false, text: "week:" },
+		])
 	})
 })
 
@@ -115,6 +142,7 @@ describe("hasStructuredQuery", () => {
 		expect(hasStructuredQuery(parseQueueQuery("type:cad"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("status:ready"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("age:>1d"))).toBe(true)
+		expect(hasStructuredQuery(parseQueueQuery("time:>6h"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("ver:2"))).toBe(true)
 	})
 })
@@ -134,6 +162,13 @@ describe("matchesQueueQuery", () => {
 		expect(matchesQueueQuery(itemOf({ version: 3 }), parseQueueQuery("ver:2"))).toBe(false)
 		expect(matchesQueueQuery(itemOf({ version: 6 }), parseQueueQuery("ver:>5"))).toBe(true)
 		expect(matchesQueueQuery(itemOf({ version: 5 }), parseQueueQuery("ver:>5"))).toBe(false)
+	})
+
+	test("filters claimed time comparisons", () => {
+		const item = itemOf({ hoursClaimedSeconds: 6 * 3600 + 24 * 60 })
+		expect(matchesQueueQuery(item, parseQueueQuery("time:>6h"))).toBe(true)
+		expect(matchesQueueQuery(item, parseQueueQuery("time:>6h24m"))).toBe(false)
+		expect(matchesQueueQuery(item, parseQueueQuery("time:>=6h24m"))).toBe(true)
 	})
 
 	test("filters by age", () => {
