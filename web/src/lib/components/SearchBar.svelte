@@ -67,7 +67,8 @@ function onPointerDown(event: PointerEvent): void {
 	open = false
 }
 
-// onInput shows a cached query immediately, then refreshes it in the background.
+// onInput shows a cached query immediately, then refreshes it in the background. When nothing is cached for the new
+// text, the previous rows stay up (marked loading) instead of blanking the list.
 function onInput(): void {
 	if (timer) clearTimeout(timer)
 
@@ -93,16 +94,16 @@ function onInput(): void {
 	const suggested = (cached ?? cache.match(text)).slice(0, maxSearchResults)
 	const showing = cached !== undefined || suggested.length > 0
 
+	loading = !showing
+
 	if (showing) {
 		results = suggested
 		selected = suggested.length > 0 ? 0 : -1
-		loading = false
 		limit = Math.max(limit, suggested.length)
-	} else {
-		results = []
-		selected = -1
-		loading = true
-	}
+	} else if (results.length > 0)
+		// Keep the previous rows visible until this query's results replace them.
+		selected = Math.min(Math.max(selected, 0), results.length - 1)
+	else selected = -1
 
 	timer = setTimeout((): void => {
 		timer = null
@@ -307,10 +308,15 @@ function openResult(result: SearchResult): void {
 
 	{#if showResults}
 		<div class="results ui-card">
-			<div class="options" id="project-search-results" role="listbox" bind:this={listbox}>
-				{#if message}
-					<div class="message">{message}</div>
-				{:else}
+			<div
+				aria-busy={loading}
+				aria-multiselectable="false"
+				class="options"
+				id="project-search-results"
+				role="listbox"
+				bind:this={listbox}
+			>
+				{#if results.length > 0}
 					{#each results as result, index (result.id)}
 						<button
 							aria-selected={index === selected}
@@ -375,6 +381,8 @@ function openResult(result: SearchResult): void {
 							</span>
 						</button>
 					{/each}
+				{:else if message}
+					<div class="message">{message}</div>
 				{/if}
 			</div>
 			<div class="hint">
@@ -384,7 +392,9 @@ function openResult(result: SearchResult): void {
 				to open ·
 				<kbd class="ui-kbd">Esc</kbd>
 				to close
-				{#if extending}
+				{#if loading}
+					· Searching…
+				{:else if extending}
 					· Loading more…
 				{/if}
 			</div>
