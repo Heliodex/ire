@@ -1,5 +1,5 @@
 <script lang="ts">
-import { onMount } from "svelte"
+import { onMount, tick } from "svelte"
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
 import { fetchMe, logout } from "../lib/api"
@@ -16,6 +16,9 @@ let { children }: LayoutProps = $props()
 
 let ready = $state(false)
 let signingOut = $state(false)
+let moreOpen = $state(false)
+let sectionsRow: HTMLElement | null = $state(null)
+let fitting = false
 
 const readOnly = $derived(session.me?.readOnly ?? false)
 const showAdmin = $derived(
@@ -64,6 +67,78 @@ const navItems = $derived.by((): NavItem[] => {
 	return sections
 })
 
+let overflowCount = $state(0)
+let lastRowWidth = 0
+const visibleItems = $derived(navItems.slice(0, Math.max(navItems.length - overflowCount, 0)))
+const overflowItems = $derived(navItems.slice(Math.max(navItems.length - overflowCount, 0)))
+
+// The layout persists across pages, so the overflow menu closes on navigation.
+$effect((): void => {
+	void page.url.pathname
+	moreOpen = false
+})
+
+// refitAfterFonts remeasures once webfonts settle: a late font swap widens the
+// links without resizing the row, so the observer never fires for it.
+async function refitAfterFonts(): Promise<void> {
+	await document.fonts.ready
+	await fitSections()
+}
+
+// fitSections hides trailing sections under More until the row fits without scrolling.
+async function fitSections(): Promise<void> {
+	if (!sectionsRow || fitting) return
+	fitting = true
+
+	try {
+		overflowCount = 0
+		await tick()
+
+		const row = sectionsRow
+		if (!row) return
+
+		lastRowWidth = row.clientWidth
+		for (let guard = navItems.length; guard > 0; guard--) {
+			const overflow = row.scrollWidth - row.clientWidth
+			if (overflow <= 1 || overflowCount >= navItems.length) break
+			overflowCount += 1
+			await tick()
+		}
+	} finally {
+		fitting = false
+	}
+}
+
+$effect((): (() => void) | undefined => {
+	void navItems.length
+	const row = sectionsRow
+
+	if (!row) return undefined
+
+	const observer = new ResizeObserver((): void => {
+		// Fitting only changes what overflows, never the row width, so a
+		// notification without a width change needs no new fit.
+		if (row.clientWidth === lastRowWidth) return
+		void fitSections()
+	})
+	observer.observe(row)
+	void fitSections()
+	void refitAfterFonts()
+
+	return (): void => observer.disconnect()
+})
+
+function toggleMore(): void {
+	moreOpen = !moreOpen
+}
+
+// closeMoreOnOutsideClick dismisses the overflow menu on any pointer outside it.
+function closeMoreOnOutsideClick(event: PointerEvent): void {
+	if (!moreOpen) return
+	if (event.target instanceof Element && event.target.closest(".sections-more")) return
+	moreOpen = false
+}
+
 // isTyping reports whether a key event belongs to an editable field.
 function isTyping(target: EventTarget | null): boolean {
 	return (
@@ -78,6 +153,10 @@ function isTyping(target: EventTarget | null): boolean {
 function onKeydown(event: KeyboardEvent): void {
 	if (!session.me) return
 
+	if (event.key === "Escape") {
+		moreOpen = false
+		return
+	}
 	if (event.altKey && !event.ctrlKey && !event.metaKey) {
 		const match = /^(?:Digit|Numpad)([1-7])$/.exec(event.code)
 		if (!match) return
@@ -140,7 +219,7 @@ async function signOut(): Promise<void> {
 	<meta content="Ire queue for Half Life hardware ships" name="description">
 </svelte:head>
 
-<svelte:window onkeydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} onpointerdown={closeMoreOnOutsideClick} />
 
 <a class="skip-link" href="#main-content">Skip to content</a>
 
@@ -238,8 +317,59 @@ async function signOut(): Promise<void> {
 				</div>
 			{/if}
 
-			<nav aria-label="Sections" class="sections-row">
-				{@render sectionLinks()}
+			<nav aria-label="Sections" class="sections-row" bind:this={sectionsRow}>
+				{#each visibleItems as item (item.href)}
+					<a
+						aria-current={item.active ? "page" : undefined}
+						aria-keyshortcuts={`Alt+${navItems.indexOf(item) + 1}`}
+						href={item.href}
+						class:active={item.active}
+						>{item.label}</a
+					>
+				{/each}
+				{#if overflowItems.length > 0}
+					<div class="sections-more">
+						<button
+							aria-expanded={moreOpen}
+							aria-haspopup="true"
+							class="ui-button ghost sm more-button"
+							onclick={toggleMore}
+							type="button"
+						>
+							<span>More</span>
+							<svg
+								aria-hidden="true"
+								class="chevron"
+								class:open={moreOpen}
+								fill="none"
+								height="14"
+								viewBox="0 0 24 24"
+								width="14"
+							>
+								<path
+									d="m6 9 6 6 6-6"
+									stroke="currentColor"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+								/>
+							</svg>
+						</button>
+						{#if moreOpen}
+							<div class="menu-panel ui-card">
+								{#each overflowItems as item (item.href)}
+									<a
+										aria-current={item.active ? "page" : undefined}
+										aria-keyshortcuts={`Alt+${navItems.indexOf(item) + 1}`}
+										class:active={item.active}
+										href={item.href}
+										>{item.label}</a
+									>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</nav>
 		{/if}
 	</header>
@@ -369,9 +499,57 @@ header {
 }
 
 .sections-row {
+	position: relative;
 	display: flex;
 	gap: var(--space-4);
-	overflow-x: auto;
+	align-items: center;
+}
+
+.sections-more {
+	position: relative;
+	flex: none;
+	margin-left: auto;
+}
+
+.more-button {
+	gap: var(--space-1);
+}
+
+.more-button .chevron {
+	flex: none;
+	color: var(--text-3);
+	transition: transform 0.15s;
+}
+
+.more-button .chevron.open {
+	transform: rotate(180deg);
+}
+
+.menu-panel {
+	position: absolute;
+	top: calc(100% + var(--space-1));
+	right: 0;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-width: 12rem;
+	padding: var(--space-1);
+	box-shadow: var(--shadow-lg);
+}
+
+.menu-panel a {
+	padding: var(--space-2) var(--space-3);
+	border-bottom: 0;
+	border-radius: var(--radius-sm);
+}
+
+.menu-panel a:hover {
+	background: var(--surface-2);
+}
+
+.menu-panel a.active {
+	background: var(--surface-2);
 }
 
 /* The inline copy takes the empty space beside the brand only on very wide screens. */
