@@ -82,7 +82,7 @@ create table membership (
     id              text primary key,
     program_id      text not null references program(id) on delete cascade,
     user_id         text not null references user(id) on delete cascade,
-    role            text not null check (role in ('admin','organizer','reviewer','auditor')),
+    role            text not null,
     tracks          text not null default '["hardware"]',
     permissions     text not null default '[]',
     active          integer not null default 1,
@@ -92,7 +92,31 @@ create table membership (
 );
 ```
 
-`tracks` and `permissions` are JSON arrays. Role is the primary gate; permissions are for future granularity (for example `VIEW_PII`, `MANAGE_CHECKS`). Do not let a permission silently widen a role; the authz layer reads both.
+```sql
+create table role_definition (
+    id              text primary key,
+    program_id      text not null references program(id) on delete cascade,
+    name            text not null,
+    permissions     text not null default '[]',
+    locked          integer not null default 0,
+    created_at      text not null,
+    unique (program_id, name)
+);
+```
+
+`tracks` is a JSON array of track names. Roles are defined per programme in
+`role_definition`; `membership.role` names one. Every gate checks a
+permission (`review`, `second_pass`, `checks_manage`, `view_pii`,
+`note_manage`, `roster_manage`, `audit_read`, `session_revoke`,
+`role_manage`), and the locked admin role holds the `*` wildcard for all of
+them. Admins edit non-locked roles and add new ones from the admin page; every
+role change is audited. A permission never widens a role: the authz layer
+reads the role's permission set directly.
+
+Migration statements replay in full on every deploy, so each one must be
+rerun-safe (`create table if not exists`, `insert or ignore`, rebuilds that
+preserve rows). Never use bare `alter table ... add column`: fold new columns
+into the `create table` instead.
 
 ### `invite`
 
@@ -278,7 +302,9 @@ create table journal_entry (
     markdown        text,
     media           text,                       -- JSON array of {type,url,alt}
     timelapses      text,                       -- JSON array of {provider,externalId,url,thumbnailUrl,coveredSeconds}
-    sort            integer not null default 0
+    sort            integer not null default 0,
+    approved_seconds integer,                   -- reviewer-adjudicated entry time
+    reviewer_note   text                         -- deflation note for the entry
 );
 
 create index journal_submission_idx on journal_entry(submission_id, at);
