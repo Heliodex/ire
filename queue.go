@@ -244,6 +244,12 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Query().Get("stream") == "1" {
+		a.streamQueue(w, r, person, params)
+
+		return
+	}
+
 	limit := parseLimit(r)
 
 	query, args := a.queueListQuery(params, person, limit, parseOffset(r))

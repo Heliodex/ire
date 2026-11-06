@@ -33,6 +33,7 @@ import {
 	type SavedQueueState,
 	type QueueSortKey as SortKey,
 } from "../../lib/queue-state"
+import { streamQueue } from "../../lib/queue-stream"
 import { makerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 import { rowWindow, windowPads } from "../../lib/virtual-list"
@@ -89,6 +90,9 @@ let filter = $state<Filter>(
 let stage = $state(savedQueue?.stage ?? 1)
 // Arriving on the page always shows the list loader until the first fetch settles, even when a saved copy is restored.
 let loading = $state(true)
+// streaming is true while the first page arrives as NDJSON; load-more waits until the stream has finished.
+let streaming = $state(false)
+let streamController: AbortController | null = null
 let opening = $state("")
 let error = $state("")
 let actionError = $state("")
@@ -457,6 +461,7 @@ onMount((): (() => void) => {
 	return (): void => {
 		clearInterval(timer)
 		stream?.close()
+		cancelStream()
 		if (pending) clearTimeout(pending)
 		if (saveTimer) {
 			clearTimeout(saveTimer)
@@ -490,7 +495,7 @@ async function boot(): Promise<void> {
 		return
 	}
 
-	await load(filter, stage, savedQueue !== null)
+	await loadStreaming()
 
 	if (savedQueue) await restorePosition(savedQueue.scrollY)
 }
@@ -500,8 +505,107 @@ function cacheKey(targetStage: number, targetFilter: Filter): string {
 	return `${targetStage}:${targetFilter}:${sortKey ?? ""}:${sortDir}`
 }
 
+// cancelStream stops an in-flight first page when the view changes underneath it.
+function cancelStream(): void {
+	streamController?.abort()
+	streamController = null
+	streaming = false
+}
+
+// loadStreaming fills the first page from the NDJSON endpoint, so each batch of ships paints as it arrives.
+async function loadStreaming(): Promise<void> {
+	const target = filter
+	const targetStage = stage
+	const wantSort = sortKey
+	const wantDir = sortDir
+	const key = cacheKey(targetStage, target)
+	const previous = queue.items
+	const limit = Math.min(Math.max(previous.length, 50), 100)
+	const items: QueueItem[] = []
+	let { counts } = queue
+	let hasMore = false
+	let first = true
+	let stale = false
+
+	cancelStream()
+	const controller = new AbortController()
+	streamController = controller
+	streaming = true
+
+	function current(): boolean {
+		return target === filter && targetStage === stage && wantSort === sortKey && wantDir === sortDir
+	}
+
+	try {
+		await streamQueue(
+			target,
+			targetStage,
+			limit,
+			wantSort,
+			wantDir,
+			{
+				onCounts: value => {
+					if (!current()) return
+
+					counts = value
+					queue = { ...queue, counts }
+				},
+				onMeta: value => {
+					hasMore = value
+				},
+				onShips: batch => {
+					if (!current()) {
+						stale = true
+						controller.abort()
+
+						return
+					}
+
+					items.push(...batch)
+					queue = { counts, hasMore, items: [...items] }
+
+					if (first) {
+						first = false
+						loading = false
+					}
+				},
+			},
+			controller.signal,
+		)
+
+		if (stale || !current()) return
+
+		// Keep rows loaded past the streamed page so re-entering the page cannot shrink the list.
+		if (previous.length > items.length) {
+			const seen = new Set(items.map(item => item.id))
+			items.push(...previous.slice(items.length).filter(item => !seen.has(item.id)))
+		}
+
+		queue = { counts, hasMore, items }
+		cache.set(key, queue)
+		selected = Math.min(selected, Math.max(queue.items.length - 1, 0))
+		error = ""
+	} catch (err) {
+		if (controller.signal.aborted) return
+		if (err instanceof ApiError && err.code === "unauthorized") {
+			void goto("/")
+			return
+		}
+		if (items.length === 0) error = err instanceof Error ? err.message : "Could not load the queue."
+	} finally {
+		if (streamController === controller) {
+			streamController = null
+			streaming = false
+		}
+
+		if (!controller.signal.aborted && current()) loading = false
+	}
+}
+
 // checkTone maps a check result to a dot tone. A failure with warning severity stays orange, matching the review screen.
 async function load(target = filter, targetStage = stage, keepRows = false): Promise<void> {
+	cancelStream()
+
 	const key = cacheKey(targetStage, target)
 	const wantSort = sortKey
 	const wantDir = sortDir
@@ -535,7 +639,7 @@ async function load(target = filter, targetStage = stage, keepRows = false): Pro
 
 // loadMore appends the next page without losing the rows already on screen.
 async function loadMore(): Promise<void> {
-	if (loadingMore || !queue.hasMore) return
+	if (loadingMore || !queue.hasMore || streaming) return
 
 	const targetFilter = filter
 	const targetStage = stage
@@ -571,7 +675,16 @@ async function loadMore(): Promise<void> {
 // or runs out of queue. The debounce stops half-typed filters from walking the whole queue.
 $effect((): (() => void) | undefined => {
 	if (!hasStructuredQuery(queueQuery)) return
-	if (visible.length > 0 || loading || loadingMore || !queue.hasMore || error !== "" || actionError !== "") return
+	if (
+		visible.length > 0
+		|| loading
+		|| loadingMore
+		|| streaming
+		|| !queue.hasMore
+		|| error !== ""
+		|| actionError !== ""
+	)
+		return
 
 	const timer = setTimeout((): void => void loadMore(), 250)
 
@@ -581,6 +694,8 @@ $effect((): (() => void) | undefined => {
 // autoLoad fills the next pages while the sentinel is near the viewport.
 function autoLoad(node: HTMLElement): { destroy(): void } {
 	async function fill(): Promise<void> {
+		if (streaming) return
+
 		const targetFilter = filter
 		const targetStage = stage
 		const wantSort = sortKey

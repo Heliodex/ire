@@ -34,6 +34,11 @@ func acceptsGzip(r *http.Request) bool {
 	return false
 }
 
+// compressibleJSON reports whether a content type carries JSON that benefits from compression, including NDJSON streams.
+func compressibleJSON(contentType string) bool {
+	return strings.HasPrefix(contentType, "application/json") || strings.HasPrefix(contentType, "application/x-ndjson")
+}
+
 // gzipWriter compresses only JSON bodies; redirects, files and static pages pass through untouched.
 type gzipWriter struct {
 	http.ResponseWriter
@@ -49,7 +54,7 @@ func (w *gzipWriter) WriteHeader(status int) {
 	}
 
 	w.wroteHeader = true
-	w.compressing = strings.HasPrefix(w.Header().Get("Content-Type"), "application/json")
+	w.compressing = compressibleJSON(w.Header().Get("Content-Type"))
 
 	if w.compressing {
 		w.Header().Set("Content-Encoding", "gzip")
