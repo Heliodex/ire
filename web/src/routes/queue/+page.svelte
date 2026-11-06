@@ -1485,7 +1485,7 @@ h1 {
 	flex: 1 1 16.25rem;
 	gap: var(--space-2);
 	align-items: center;
-	max-width: 22rem;
+	max-width: 26rem;
 }
 
 .help {
@@ -2446,9 +2446,15 @@ a.status:focus-visible {
 	}
 }
 
-@media (min-width: 80rem) {
+@media (min-width: 64rem) {
 	.filter-box {
 		max-width: 28rem;
+	}
+}
+
+@media (min-width: 80rem) {
+	.filter-box {
+		max-width: 32rem;
 	}
 }
 
