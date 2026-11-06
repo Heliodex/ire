@@ -135,6 +135,18 @@ async function signOut(): Promise<void> {
 
 <a class="skip-link" href="#main-content">Skip to content</a>
 
+{#snippet sectionLinks()}
+	{#each navItems as item, index (item.href)}
+		<a
+			aria-current={item.active ? "page" : undefined}
+			aria-keyshortcuts={`Alt+${index + 1}`}
+			href={item.href}
+			class:active={item.active}
+			>{item.label}</a
+		>
+	{/each}
+{/snippet}
+
 <div class="shell">
 	<header>
 		<div class="top">
@@ -145,6 +157,12 @@ async function signOut(): Promise<void> {
 					<small>Half Life hardware</small>
 				</span>
 			</a>
+
+			{#if session.me}
+				<nav aria-label="Sections" class="sections-inline">
+					{@render sectionLinks()}
+				</nav>
+			{/if}
 
 			<div class="spacer"></div>
 
@@ -211,16 +229,8 @@ async function signOut(): Promise<void> {
 				</div>
 			{/if}
 
-			<nav aria-label="Sections">
-				{#each navItems as item, index (item.href)}
-					<a
-						aria-current={item.active ? "page" : undefined}
-						aria-keyshortcuts={`Alt+${index + 1}`}
-						href={item.href}
-						class:active={item.active}
-						>{item.label}</a
-					>
-				{/each}
+			<nav aria-label="Sections" class="sections-row">
+				{@render sectionLinks()}
 			</nav>
 		{/if}
 	</header>
@@ -278,7 +288,7 @@ header {
 }
 
 .top,
-nav {
+.sections-row {
 	width: 100%;
 	padding-inline: var(--space-4);
 }
@@ -349,9 +359,18 @@ nav {
 	color: var(--text);
 }
 
-nav {
+.sections-row {
 	display: flex;
 	gap: var(--space-4);
+	overflow-x: auto;
+}
+
+/* The inline copy takes the empty space beside the brand only on very wide screens. */
+.sections-inline {
+	display: none;
+	gap: var(--space-4);
+	align-items: center;
+	min-width: 0;
 	overflow-x: auto;
 }
 
@@ -383,7 +402,7 @@ main {
 
 @media (max-width: 40rem) {
 	.top,
-	nav {
+	.sections-row {
 		padding-inline: var(--space-3);
 	}
 
@@ -401,6 +420,17 @@ main {
 
 	main {
 		padding: var(--space-4) var(--space-3) var(--space-6);
+	}
+}
+
+/* Wide screens have room to lift the section links into the header row. */
+@media (min-width: 100rem) {
+	.sections-inline {
+		display: flex;
+	}
+
+	.sections-row {
+		display: none;
 	}
 }
 </style>
