@@ -467,9 +467,77 @@ func schemaStatements() []storage.Statement {
 	return out
 }
 
+// lateColumns are columns added to a table after it first shipped. Their create statement carries them, which keeps a replay safe, but `create table if not exists` cannot add them to a database that already has the table. migrate asks the live schema which are missing and appends one alter for each, so an older database upgrades and a current one is left alone.
+var lateColumns = []struct {
+	table  string
+	column string
+	sql    string
+}{
+	{
+		table:  "journal_entry",
+		column: "approved_seconds",
+		sql:    `alter table journal_entry add column approved_seconds integer`,
+	},
+	{
+		table:  "journal_entry",
+		column: "reviewer_note",
+		sql:    `alter table journal_entry add column reviewer_note text`,
+	},
+}
+
+// lateColumnStatements returns the alters the live database still needs. A table that is not there yet is skipped: its create statement already holds every column, and adding them again would fail.
+func lateColumnStatements(ctx context.Context, store *storage.Client) ([]storage.Statement, error) {
+	known := map[string]map[string]bool{}
+	out := make([]storage.Statement, 0, len(lateColumns))
+
+	for _, late := range lateColumns {
+		columns, seen := known[late.table]
+		if !seen {
+			rows, err := store.Query(ctx, `select name from pragma_table_info(?)`, late.table)
+			if err != nil {
+				return nil, err
+			}
+
+			columns = map[string]bool{}
+
+			for rows.Next() {
+				var name string
+				if err := rows.Scan(&name); err != nil {
+					_ = rows.Close()
+					return nil, err
+				}
+
+				columns[name] = true
+			}
+
+			err = rows.Err()
+			_ = rows.Close()
+
+			if err != nil {
+				return nil, err
+			}
+
+			known[late.table] = columns
+		}
+
+		if len(columns) > 0 && !columns[late.column] {
+			out = append(out, storage.Statement{SQL: late.sql})
+		}
+	}
+
+	return out, nil
+}
+
 // migrate applies the prototype schema and then seeds the programme and demo ships.
 func (a *ireApp) migrate(ctx context.Context) error {
-	if err := a.store.Migrate(ctx, schemaVersion, schemaStatements()...); err != nil {
+	statements := schemaStatements()
+
+	late, err := lateColumnStatements(ctx, a.store)
+	if err != nil {
+		return err
+	}
+
+	if err := a.store.Migrate(ctx, schemaVersion, append(statements, late...)...); err != nil {
 		return err
 	}
 
