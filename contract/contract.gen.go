@@ -1155,6 +1155,215 @@ func (j *FakeDelivery) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type ImportResult struct {
+	// Failed corresponds to the JSON schema field "failed".
+	Failed []ImportResultFailedElem `json:"failed" yaml:"failed" mapstructure:"failed"`
+
+	// Imported corresponds to the JSON schema field "imported".
+	Imported int `json:"imported" yaml:"imported" mapstructure:"imported"`
+
+	// Skipped corresponds to the JSON schema field "skipped".
+	Skipped int `json:"skipped" yaml:"skipped" mapstructure:"skipped"`
+}
+
+type ImportResultFailedElem struct {
+	// Error corresponds to the JSON schema field "error".
+	Error string `json:"error" yaml:"error" mapstructure:"error"`
+
+	// ExternalID corresponds to the JSON schema field "external_id".
+	ExternalID string `json:"external_id" yaml:"external_id" mapstructure:"external_id"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ImportResultFailedElem) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["error"]; raw != nil && !ok {
+		return fmt.Errorf("field error in ImportResultFailedElem: required")
+	}
+	if _, ok := raw["external_id"]; raw != nil && !ok {
+		return fmt.Errorf("field external_id in ImportResultFailedElem: required")
+	}
+	type Plain ImportResultFailedElem
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.Error)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "error", 1)
+	}
+	*j = ImportResultFailedElem(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ImportResult) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["failed"]; raw != nil && !ok {
+		return fmt.Errorf("field failed in ImportResult: required")
+	}
+	if _, ok := raw["imported"]; raw != nil && !ok {
+		return fmt.Errorf("field imported in ImportResult: required")
+	}
+	if _, ok := raw["skipped"]; raw != nil && !ok {
+		return fmt.Errorf("field skipped in ImportResult: required")
+	}
+	type Plain ImportResult
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Imported {
+		return fmt.Errorf("field %s: must be >= %v", "imported", 0)
+	}
+	if 0 > plain.Skipped {
+		return fmt.Errorf("field %s: must be >= %v", "skipped", 0)
+	}
+	*j = ImportResult(plain)
+	return nil
+}
+
+type ImportReview struct {
+	// Acknowledgements corresponds to the JSON schema field "acknowledgements".
+	Acknowledgements []string `json:"acknowledgements,omitempty,omitzero" yaml:"acknowledgements,omitempty" mapstructure:"acknowledgements,omitempty"`
+
+	// DecidedAt corresponds to the JSON schema field "decided_at".
+	DecidedAt string `json:"decided_at" yaml:"decided_at" mapstructure:"decided_at"`
+
+	// Decision corresponds to the JSON schema field "decision".
+	Decision string `json:"decision" yaml:"decision" mapstructure:"decision"`
+
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hours_approved_seconds".
+	HoursApprovedSeconds int `json:"hours_approved_seconds" yaml:"hours_approved_seconds" mapstructure:"hours_approved_seconds"`
+
+	// InternalNote corresponds to the JSON schema field "internal_note".
+	InternalNote *string `json:"internal_note,omitempty,omitzero" yaml:"internal_note,omitempty" mapstructure:"internal_note,omitempty"`
+
+	// NoteToMaker corresponds to the JSON schema field "note_to_maker".
+	NoteToMaker *string `json:"note_to_maker,omitempty,omitzero" yaml:"note_to_maker,omitempty" mapstructure:"note_to_maker,omitempty"`
+
+	// ReviewerEmail corresponds to the JSON schema field "reviewer_email".
+	ReviewerEmail string `json:"reviewer_email" yaml:"reviewer_email" mapstructure:"reviewer_email"`
+
+	// ReviewerName corresponds to the JSON schema field "reviewer_name".
+	ReviewerName *string `json:"reviewer_name,omitempty,omitzero" yaml:"reviewer_name,omitempty" mapstructure:"reviewer_name,omitempty"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ImportReview) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["decided_at"]; raw != nil && !ok {
+		return fmt.Errorf("field decided_at in ImportReview: required")
+	}
+	if _, ok := raw["decision"]; raw != nil && !ok {
+		return fmt.Errorf("field decision in ImportReview: required")
+	}
+	if _, ok := raw["hours_approved_seconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hours_approved_seconds in ImportReview: required")
+	}
+	if _, ok := raw["reviewer_email"]; raw != nil && !ok {
+		return fmt.Errorf("field reviewer_email in ImportReview: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in ImportReview: required")
+	}
+	type Plain ImportReview
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.DecidedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "decided_at", 1)
+	}
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
+	}
+	if 0 > plain.HoursApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hours_approved_seconds", 0)
+	}
+	if utf8.RuneCountInString(string(plain.ReviewerEmail)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "reviewer_email", 1)
+	}
+	if 2 < plain.Stage {
+		return fmt.Errorf("field %s: must be <= %v", "stage", 2)
+	}
+	if 1 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 1)
+	}
+	*j = ImportReview(plain)
+	return nil
+}
+
+type ImportShip struct {
+	// Reviews corresponds to the JSON schema field "reviews".
+	Reviews []ImportReview `json:"reviews" yaml:"reviews" mapstructure:"reviews"`
+
+	// Ship corresponds to the JSON schema field "ship".
+	Ship IngestRequest `json:"ship" yaml:"ship" mapstructure:"ship"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version *int `json:"version,omitempty,omitzero" yaml:"version,omitempty" mapstructure:"version,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ImportShip) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["reviews"]; raw != nil && !ok {
+		return fmt.Errorf("field reviews in ImportShip: required")
+	}
+	if _, ok := raw["ship"]; raw != nil && !ok {
+		return fmt.Errorf("field ship in ImportShip: required")
+	}
+	type Plain ImportShip
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if plain.Version != nil && 1 > *plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 1)
+	}
+	*j = ImportShip(plain)
+	return nil
+}
+
+type ImportShipsRequest struct {
+	// Ships corresponds to the JSON schema field "ships".
+	Ships []ImportShip `json:"ships" yaml:"ships" mapstructure:"ships"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ImportShipsRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["ships"]; raw != nil && !ok {
+		return fmt.Errorf("field ships in ImportShipsRequest: required")
+	}
+	type Plain ImportShipsRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = ImportShipsRequest(plain)
+	return nil
+}
+
 type IngestAccepted struct {
 	// ID corresponds to the JSON schema field "id".
 	ID string `json:"id" yaml:"id" mapstructure:"id"`

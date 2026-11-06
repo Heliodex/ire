@@ -1,0 +1,40 @@
+{
+	"type": "object",
+	"properties": {
+		"failed": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"error": {
+						"type": "string",
+						"minLength": 1
+					},
+					"external_id": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"error",
+					"external_id"
+				]
+			}
+		},
+		"imported": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"skipped": {
+			"type": "integer",
+			"minimum": 0
+		}
+	},
+	"required": [
+		"failed",
+		"imported",
+		"skipped"
+	],
+	"title": "ImportResult",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/import-result.json"
+}

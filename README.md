@@ -99,6 +99,7 @@ The check job stores a snapshot in `repo_snapshot`: the README (capped at 200 KB
 | `GET` | `/api/v1/auth/config` | Public method discovery |
 | `GET` | `/metrics` | Prometheus counters (machine bearer token) |
 | `GET` | `/api/v1/programs/{program}/parity` | Open queue with hours, BOM and checks for the Half Life parity script (machine bearer token) |
+| `POST` | `/api/v1/programs/{program}/import-reviewed` | Backfill ships already decided in Ari, with their review history (machine bearer token) |
 | `GET` | `/auth/login` | Hack Club Auth start |
 | `GET` | `/auth/callback` | Hack Club Auth callback |
 | `POST` | `/api/v1/logout` | Session |
@@ -131,6 +132,12 @@ curl -X POST http://ire.localhost:8080/api/ingest/half-life \
 ```
 
 The current `@hackclub/ari` SDK sends the legacy body-only signature, so the seeded programme allows it. New senders should send `X-Ari-Timestamp` (Unix seconds) and sign `timestamp.body`; timestamps older than five minutes are rejected.
+
+### Importing already-decided ships
+
+`POST /api/v1/programs/{program}/import-reviewed` backfills ships that Ari decided before Ire took over. It uses the ingest bearer token and takes `{ "ships": [{ "ship": <normal ingest body>, "version": 1, "reviews": [...] }] }`, where each review has `stage`, `decision`, `hours_approved_seconds`, `reviewer_email`, `decided_at` and optional notes. The reviews are in decision order and the last one is final.
+
+The ship is stored decided with its journals, BOM and review history, without running checks or writing outbound deliveries. If an open copy already exists, it is decided in place so its version does not change. Replays skip ships that are already decided, so a backfill can be retried safely.
 
 ## Development
 

@@ -907,6 +907,45 @@ export const ingestResponseSchema = pipe(
 	title("IngestAccepted"),
 )
 
+// A historical review sent with an already-decided ship: Ari's decision, reviewer and approved time.
+export const importReviewSchema = pipe(
+	object({
+		acknowledgements: optional(array(string())),
+		decided_at: timestamp,
+		decision: decisionValues,
+		hours_approved_seconds: nonNegative,
+		internal_note: optionalString,
+		note_to_maker: optionalString,
+		reviewer_email: pipe(string(), minLength(1)),
+		reviewer_name: optionalString,
+		stage: pipe(number(), integer(), minValue(1), maxValue(2)),
+	}),
+	title("ImportReview"),
+)
+
+export const importReviewedShipSchema = pipe(
+	object({
+		reviews: array(importReviewSchema),
+		ship: ingestRequestSchema,
+		version: optional(pipe(number(), integer(), minValue(1))),
+	}),
+	title("ImportShip"),
+)
+
+export const importReviewedRequestSchema = pipe(
+	object({ ships: array(importReviewedShipSchema) }),
+	title("ImportShipsRequest"),
+)
+
+export const importReviewedResponseSchema = pipe(
+	object({
+		failed: array(object({ error: pipe(string(), minLength(1)), external_id: string() })),
+		imported: nonNegative,
+		skipped: nonNegative,
+	}),
+	title("ImportResult"),
+)
+
 export const withdrawRequestSchema = pipe(
 	object({ external_id: pipe(string(), minLength(1)) }),
 	title("WithdrawRequest"),
@@ -1089,6 +1128,7 @@ export const requestSchemas = Object.freeze([
 	journalReviewRequestSchema,
 	noteRequestSchema,
 	ingestRequestSchema,
+	importReviewedRequestSchema,
 	inviteMemberSchema,
 	updateMemberSchema,
 	withdrawRequestSchema,
@@ -1106,6 +1146,7 @@ export const responseSchemas = Object.freeze([
 	errorResponseSchema,
 	eventsResponseSchema,
 	fakeDeliveriesResponseSchema,
+	importReviewedResponseSchema,
 	ingestResponseSchema,
 	journalReviewResponseSchema,
 	makerProfileSchema,
