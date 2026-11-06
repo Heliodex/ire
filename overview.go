@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"slices"
 	"time"
 
 	"ire/contract"
@@ -182,7 +183,21 @@ func (a *ireApp) overviewLeaderboard(ctx context.Context, programID, monthAgo st
 	return leaders, rows.Err()
 }
 
-// overviewDaily fills the last two weeks of completed reviews, including empty days.
+// overviewMedian picks the middle value, averaging the two middle values of an even set.
+func overviewMedian(sorted []int64) int64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+
+	mid := len(sorted) / 2
+	if len(sorted)%2 == 1 {
+		return sorted[mid]
+	}
+
+	return (sorted[mid-1] + sorted[mid]) / 2
+}
+
+// overviewDaily fills the last two weeks with ingested and decided counts, including empty days.
 func (a *ireApp) overviewDaily(ctx context.Context, programID, twoWeeksAgo string, now time.Time) ([]contract.OverviewDay, error) {
 	rows, err := a.store.Query(ctx, `select substr(r.created_at, 1, 10), count(*)
 		from review r join submission s on s.id = r.submission_id
@@ -193,7 +208,7 @@ func (a *ireApp) overviewDaily(ctx context.Context, programID, twoWeeksAgo strin
 	}
 	defer rows.Close()
 
-	dayCounts := map[string]int{}
+	dayDecided := map[string]int{}
 
 	for rows.Next() {
 		var day string
@@ -204,10 +219,36 @@ func (a *ireApp) overviewDaily(ctx context.Context, programID, twoWeeksAgo strin
 			return nil, err
 		}
 
-		dayCounts[day] = count
+		dayDecided[day] = count
 	}
 
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	ingestRows, err := a.store.Query(ctx, `select substr(ingested_at, 1, 10), count(*) from submission
+		where program_id = ? and ingested_at >= ?
+		group by substr(ingested_at, 1, 10) order by substr(ingested_at, 1, 10)`, programID, twoWeeksAgo)
+	if err != nil {
+		return nil, err
+	}
+	defer ingestRows.Close()
+
+	dayIngested := map[string]int{}
+
+	for ingestRows.Next() {
+		var day string
+
+		var count int
+
+		if err := ingestRows.Scan(&day, &count); err != nil {
+			return nil, err
+		}
+
+		dayIngested[day] = count
+	}
+
+	if err := ingestRows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -215,10 +256,86 @@ func (a *ireApp) overviewDaily(ctx context.Context, programID, twoWeeksAgo strin
 
 	for i := range overviewDailyDays {
 		day := now.AddDate(0, 0, i-overviewDailyDays+1).Format("2006-01-02")
-		days = append(days, contract.OverviewDay{Date: day, Count: dayCounts[day]})
+		days = append(days, contract.OverviewDay{Date: day, Decided: dayDecided[day], Ingested: dayIngested[day]})
 	}
 
 	return days, nil
+}
+
+// overviewTurnaround medians the ingest-to-first-open and ingest-to-decision gaps of the recent month's final reviews.
+func (a *ireApp) overviewTurnaround(ctx context.Context, programID, monthAgo string) (contract.OverviewTurnaround, error) {
+	rows, err := a.store.Query(ctx, `select s.ingested_at, coalesce(s.first_opened_at, ''), r.created_at
+		from review r join submission s on s.id = r.submission_id
+		where s.program_id = ? and r.is_final = 1 and r.invalidated_at is null and r.created_at >= ?
+		order by r.created_at asc`, programID, monthAgo)
+	if err != nil {
+		return contract.OverviewTurnaround{}, err
+	}
+	defer rows.Close()
+
+	var firstGaps, decisionGaps []int64
+
+	for rows.Next() {
+		var ingested, opened, decided string
+
+		if err := rows.Scan(&ingested, &opened, &decided); err != nil {
+			return contract.OverviewTurnaround{}, err
+		}
+
+		start, err := time.Parse(timestampFormat, ingested)
+		if err != nil {
+			continue
+		}
+
+		if end, err := time.Parse(timestampFormat, decided); err == nil {
+			decisionGaps = append(decisionGaps, max(end.Sub(start).Milliseconds(), 0))
+		}
+
+		if opened != "" {
+			if first, err := time.Parse(timestampFormat, opened); err == nil {
+				firstGaps = append(firstGaps, max(first.Sub(start).Milliseconds(), 0))
+			}
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return contract.OverviewTurnaround{}, err
+	}
+
+	slices.Sort(firstGaps)
+	slices.Sort(decisionGaps)
+
+	return contract.OverviewTurnaround{
+		Decisions:        len(decisionGaps),
+		MedianDecisionMS: int(overviewMedian(decisionGaps)),
+		MedianFirstMS:    int(overviewMedian(firstGaps)),
+	}, nil
+}
+
+// overviewOutcomes splits the recent month's final reviews by decision.
+func (a *ireApp) overviewOutcomes(ctx context.Context, programID, monthAgo string) ([]contract.OverviewOutcome, error) {
+	rows, err := a.store.Query(ctx, `select r.decision, count(*)
+		from review r join submission s on s.id = r.submission_id
+		where s.program_id = ? and r.is_final = 1 and r.invalidated_at is null and r.created_at >= ?
+		group by r.decision order by r.decision`, programID, monthAgo)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	outcomes := []contract.OverviewOutcome{}
+
+	for rows.Next() {
+		var row contract.OverviewOutcome
+
+		if err := rows.Scan(&row.Decision, &row.Count); err != nil {
+			return nil, err
+		}
+
+		outcomes = append(outcomes, row)
+	}
+
+	return outcomes, rows.Err()
 }
 
 // overviewResponse gathers the programme health readout behind the overview page.
@@ -232,6 +349,7 @@ func (a *ireApp) overviewResponse(ctx context.Context, programID string) (contra
 		ByStatus:    []contract.OverviewStatus{},
 		Daily:       []contract.OverviewDay{},
 		Leaderboard: []contract.OverviewLeader{},
+		Outcomes:    []contract.OverviewOutcome{},
 	}
 
 	wait, err := a.overviewWait(ctx, programID, now)
@@ -259,6 +377,16 @@ func (a *ireApp) overviewResponse(ctx context.Context, programID string) (contra
 		return response, err
 	}
 
+	turnaround, err := a.overviewTurnaround(ctx, programID, monthAgo)
+	if err != nil {
+		return response, err
+	}
+
+	outcomes, err := a.overviewOutcomes(ctx, programID, monthAgo)
+	if err != nil {
+		return response, err
+	}
+
 	response.Wait = wait
 	response.ByStatus = statuses
 	response.NeedsReview = totals.needsReview
@@ -266,6 +394,8 @@ func (a *ireApp) overviewResponse(ctx context.Context, programID string) (contra
 	response.ReviewedToday = totals.reviewedToday
 	response.Leaderboard = leaders
 	response.Daily = daily
+	response.Turnaround = turnaround
+	response.Outcomes = outcomes
 
 	return response, nil
 }
