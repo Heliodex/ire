@@ -108,7 +108,7 @@ async function refresh(): Promise<void> {
 	}
 }
 
-async function save(member: Member, nextRole: string, active: boolean): Promise<void> {
+async function save(member: Member, nextRole: string, active: boolean): Promise<boolean> {
 	saving = member.id
 	error = ""
 	notice = ""
@@ -121,8 +121,12 @@ async function save(member: Member, nextRole: string, active: boolean): Promise<
 			response => response.entries,
 			() => audit,
 		)
+
+		return true
 	} catch (err) {
 		error = err instanceof Error ? err.message : "Could not save this member."
+
+		return false
 	} finally {
 		saving = ""
 	}
@@ -157,7 +161,7 @@ function roleHas(def: RoleDefinition, permission: string): boolean {
 	return def.locked || def.permissions.includes(permission)
 }
 
-async function saveRolePermissions(def: RoleDefinition, permission: string, granted: boolean): Promise<void> {
+async function saveRolePermissions(def: RoleDefinition, permission: string, granted: boolean): Promise<boolean> {
 	const next = granted ? [...def.permissions, permission] : def.permissions.filter(item => item !== permission)
 	savingRole = def.name
 	error = ""
@@ -167,8 +171,12 @@ async function saveRolePermissions(def: RoleDefinition, permission: string, gran
 		const updated = await updateRole(def.name, { permissions: next })
 		roleDefs = roleDefs.map(item => (item.name === updated.name ? updated : item))
 		notice = `Saved the ${updated.name} role.`
+
+		return true
 	} catch (err) {
 		error = err instanceof Error ? err.message : "Could not save this role."
+
+		return false
 	} finally {
 		savingRole = ""
 	}
@@ -310,7 +318,7 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 								<MemberRole
 									busy={saving === member.id}
 									{member}
-									onSave={(nextRole, active): Promise<void> => save(member, nextRole, active)}
+									onSave={(nextRole, active): Promise<boolean> => save(member, nextRole, active)}
 									{roleLabel}
 									roles={roleNames}
 								/>
@@ -322,7 +330,9 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 										class="ui-toggle"
 										onchange={(event): void => {
 											const input = event.currentTarget as HTMLInputElement
-											void save(member, member.role, input.checked)
+											void save(member, member.role, input.checked).then(saved => {
+												if (!saved) input.checked = member.active
+											})
 										}}
 										type="checkbox"
 									>
@@ -414,7 +424,11 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 											disabled={def.locked || savingRole === def.name}
 											onchange={(event): void => {
 												const input = event.currentTarget as HTMLInputElement
-												void saveRolePermissions(def, permission.value, input.checked)
+												void saveRolePermissions(def, permission.value, input.checked).then(
+													saved => {
+														if (!saved) input.checked = roleHas(def, permission.value)
+													},
+												)
 											}}
 											title={def.locked ? "The admin role always allows everything" : undefined}
 											type="checkbox"
@@ -458,7 +472,9 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 									disabled={def.locked || savingRole === def.name}
 									onchange={(event): void => {
 										const input = event.currentTarget as HTMLInputElement
-										void saveRolePermissions(def, permission.value, input.checked)
+										void saveRolePermissions(def, permission.value, input.checked).then(saved => {
+											if (!saved) input.checked = roleHas(def, permission.value)
+										})
 									}}
 									type="checkbox"
 								>

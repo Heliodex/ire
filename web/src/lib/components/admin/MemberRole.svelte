@@ -4,7 +4,7 @@ import type { Member } from "../../api"
 interface Props {
 	busy: boolean
 	member: Member
-	onSave(role: string, active: boolean): Promise<void>
+	onSave(role: string, active: boolean): Promise<boolean>
 	roleLabel(name: string): string
 	roles: string[]
 }
@@ -23,7 +23,12 @@ $effect((): void => {
 		aria-label={`Role for ${member.email}`}
 		class="ui-input"
 		disabled={busy}
-		onchange={(): void => void onSave(role, member.active)}
+		onchange={(): void => {
+			const next = role
+			void onSave(next, member.active).then(saved => {
+				if (!saved) role = member.role
+			})
+		}}
 		bind:value={role}
 	>
 		{#each roles as option (option)}
