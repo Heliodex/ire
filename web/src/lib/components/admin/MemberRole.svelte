@@ -3,13 +3,14 @@ import type { Member } from "../../api"
 
 interface Props {
 	busy: boolean
+	locked: boolean
 	member: Member
 	onSave(role: string, active: boolean): Promise<boolean>
 	roleLabel(name: string): string
 	roles: string[]
 }
 
-let { busy, member, onSave, roleLabel, roles }: Props = $props()
+let { busy, locked, member, onSave, roleLabel, roles }: Props = $props()
 
 let role = $state("")
 
@@ -22,7 +23,8 @@ $effect((): void => {
 	<select
 		aria-label={`Role for ${member.email}`}
 		class="ui-input"
-		disabled={busy}
+		disabled={busy || locked}
+		title={locked ? "A programme needs at least one active admin" : undefined}
 		onchange={(): void => {
 			const next = role
 			void onSave(next, member.active).then(saved => {

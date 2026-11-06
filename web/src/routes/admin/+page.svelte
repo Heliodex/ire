@@ -26,6 +26,7 @@ import {
 	permissionCatalog,
 	permissionRoleManage,
 	permissionRosterManage,
+	permissionWildcard,
 	programPermissions,
 } from "../../lib/permissions"
 import { reviewerHref } from "../../lib/reviewer"
@@ -59,6 +60,21 @@ const permissions = $derived(programPermissions(session.me, program))
 const canRoster = $derived(hasPermission(permissions, permissionRosterManage))
 const canRoles = $derived(hasPermission(permissions, permissionRoleManage))
 const roleNames = $derived(roleDefs.map(def => def.name))
+
+// adminHolders counts the active members whose role allows everything, so the
+// last one cannot be deactivated or demoted from the UI. The server guards the
+// same rule; this only keeps an impossible action from flashing an error.
+const adminHolders = $derived(members.filter(member => member.active && grantsWildcard(member.role)))
+
+// grantsWildcard reports whether a role name allows everything.
+function grantsWildcard(role: string): boolean {
+	return roleDefs.find(def => def.name === role)?.permissions.includes(permissionWildcard) ?? false
+}
+
+// isLastAdmin reports whether the member is the only active admin holder left.
+function isLastAdmin(member: Member): boolean {
+	return member.active && grantsWildcard(member.role) && adminHolders.length <= 1
+}
 
 onMount((): void => {
 	void boot()
@@ -317,6 +333,7 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 								</td>
 								<MemberRole
 									busy={saving === member.id}
+									locked={isLastAdmin(member)}
 									{member}
 									onSave={(nextRole, active): Promise<boolean> => save(member, nextRole, active)}
 									{roleLabel}
@@ -328,6 +345,10 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 										aria-label={`Active for ${member.email}`}
 										checked={member.active}
 										class="ui-toggle"
+										disabled={saving === member.id || isLastAdmin(member)}
+										title={isLastAdmin(member)
+											? "A programme needs at least one active admin"
+											: undefined}
 										onchange={(event): void => {
 											const input = event.currentTarget as HTMLInputElement
 											void save(member, member.role, input.checked).then(saved => {
