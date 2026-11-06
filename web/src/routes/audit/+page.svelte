@@ -1,8 +1,17 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import { SvelteMap } from "svelte/reactivity"
+import { browser } from "$app/env"
 import { goto } from "$app/navigation"
 import { type AuditEntry, fetchAudit, fetchMe, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
+import {
+	type AuditFilters,
+	auditFilterKey,
+	type CachedAuditView,
+	createAuditCache,
+	isFreshAuditView,
+} from "../../lib/audit-cache"
 import AuditRow from "../../lib/components/audit/AuditRow.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { session } from "../../lib/session.svelte.js"
@@ -34,11 +43,18 @@ let days = $state(0)
 let query = $state("")
 let loading = $state(true)
 let loadingMore = $state(false)
+let revalidating = $state(false)
 let hasMore = $state(false)
 let error = $state("")
 let forbidden = $state(false)
 let request = 0
 let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+// auditCache persists the first page per filter and the last selection in tab storage. It is
+// built lazily so sessionStorage is only touched on the client.
+const auditCache = browser ? createAuditCache(program, sessionStorage) : null
+// views keeps the same first pages in memory, so switching back never waits for storage or the network.
+const views = new SvelteMap<string, CachedAuditView>()
 
 const anyFilter = $derived(action !== "" || days !== 0 || query.trim() !== "")
 
@@ -49,6 +65,39 @@ onMount((): (() => void) => {
 		if (searchTimer) clearTimeout(searchTimer)
 	}
 })
+
+function currentFilters(): AuditFilters {
+	return { action, days, query }
+}
+
+// readCachedView returns a fresh first page for these filters from memory, then tab storage.
+function readCachedView(filters: AuditFilters): CachedAuditView | null {
+	const key = auditFilterKey(filters)
+	const stored = views.get(key)
+
+	if (stored && isFreshAuditView(stored)) return stored
+	views.delete(key)
+
+	const cached = auditCache?.readView(filters) ?? null
+	if (cached) views.set(key, cached)
+
+	return cached
+}
+
+// showCachedView paints a stored page while the fresh request runs behind it.
+function showCachedView(view: CachedAuditView): void {
+	const { entries: cachedEntries, hasMore: more } = view
+	entries = cachedEntries
+	hasMore = more
+	loading = false
+	loadingMore = false
+	error = ""
+	forbidden = false
+}
+
+function saveFilters(): void {
+	auditCache?.writeFilters(currentFilters())
+}
 
 async function boot(): Promise<void> {
 	try {
@@ -65,30 +114,72 @@ async function boot(): Promise<void> {
 		return
 	}
 
+	const saved = auditCache?.readFilters()
+	if (saved) {
+		const { action: savedAction, days: savedDays, query: savedQuery } = saved
+		if (actionOptions.some(option => option.value === savedAction)) action = savedAction
+		if (ageOptions.some(option => option.value === savedDays)) days = savedDays
+		query = savedQuery
+	}
+
+	const cached = readCachedView(currentFilters())
+	if (cached) {
+		showCachedView(cached)
+		void load(true, true)
+		return
+	}
+
 	await load(true)
 }
 
-async function load(reset: boolean): Promise<void> {
+async function load(reset: boolean, background = false): Promise<void> {
+	const filters = currentFilters()
+	const key = auditFilterKey(filters)
 	const current = ++request
+	// Revalidating a cached view fetches at most the same first page, then merges the older
+	// cached rows so a background refresh never shrinks what the reader has already loaded.
+	const shown = background && reset ? entries : null
+	const limit = shown ? Math.min(Math.max(shown.length, 50), 100) : 50
 
-	if (reset) loading = true
-	else loadingMore = true
+	if (reset) loadingMore = false
+
+	if (background) revalidating = true
+	else {
+		revalidating = false
+		if (reset) loading = true
+		else loadingMore = true
+	}
 
 	try {
-		const page = await fetchAudit(reset ? 0 : entries.length, 50, {
-			...(action === "" ? {} : { action }),
-			...(days === 0 ? {} : { days }),
-			...(query.trim() === "" ? {} : { q: query }),
+		const page = await fetchAudit(reset ? 0 : entries.length, limit, {
+			...(filters.action === "" ? {} : { action: filters.action }),
+			...(filters.days === 0 ? {} : { days: filters.days }),
+			...(filters.query.trim() === "" ? {} : { q: filters.query }),
 		})
 
 		if (current !== request) return
 
 		const { entries: nextEntries, hasMore: more } = page
-		const seen = new Set(reset ? [] : entries.map(entry => entry.id))
-		entries = reset ? nextEntries : [...entries, ...nextEntries.filter(entry => !seen.has(entry.id))]
+		let merged = nextEntries
+
+		if (reset && shown && shown.length > 0 && more) {
+			const seen = new Set(nextEntries.map(entry => entry.id))
+			merged = [...nextEntries, ...shown.filter(entry => !seen.has(entry.id))]
+		}
+
+		if (!reset) {
+			const seen = new Set(entries.map(entry => entry.id))
+			merged = [...entries, ...nextEntries.filter(entry => !seen.has(entry.id))]
+		}
+
+		entries = merged
 		hasMore = more
 		error = ""
 		forbidden = false
+
+		const view: CachedAuditView = { entries: merged, hasMore: more, savedAt: Date.now() }
+		views.set(key, view)
+		auditCache?.writeView(filters, { entries: view.entries, hasMore: view.hasMore })
 	} catch (err) {
 		if (current !== request) return
 
@@ -99,17 +190,28 @@ async function load(reset: boolean): Promise<void> {
 
 		if (err instanceof ApiError && (err.code === "forbidden" || err.code === "http_error")) {
 			forbidden = err.message === "only admins and auditors can read the audit log"
-			if (!forbidden) error = err.message
-		} else error = err instanceof Error ? err.message : "Could not load the audit log."
+			if (!forbidden && !background) error = err.message
+		} else if (!background || entries.length === 0)
+			error = err instanceof Error ? err.message : "Could not load the audit log."
 	} finally {
 		if (current === request) {
 			loading = false
 			loadingMore = false
+			revalidating = false
 		}
 	}
 }
 
 function reload(): void {
+	saveFilters()
+
+	const cached = readCachedView(currentFilters())
+	if (cached) {
+		showCachedView(cached)
+		void load(true, true)
+		return
+	}
+
 	void load(true)
 }
 
@@ -172,6 +274,9 @@ function clearFilters(): void {
 		<span class="count" role="status">
 			{#if !loading}
 				{entries.length}{entries.length === 1 ? " event" : " events"}
+				{#if revalidating}
+					· updating…
+				{/if}
 			{/if}
 		</span>
 	</div>
@@ -199,7 +304,7 @@ function clearFilters(): void {
 			{/if}
 		</div>
 	{:else}
-		<ol class="ui-card audit-list">
+		<ol aria-busy={revalidating} class="ui-card audit-list">
 			{#each entries as entry (entry.id)}
 				<AuditRow {entry} />
 			{/each}
