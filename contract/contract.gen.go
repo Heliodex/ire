@@ -2421,11 +2421,14 @@ func (j *OutboxRow) UnmarshalJSON(value []byte) error {
 }
 
 type OverviewDay struct {
-	// Count corresponds to the JSON schema field "count".
-	Count int `json:"count" yaml:"count" mapstructure:"count"`
-
 	// Date corresponds to the JSON schema field "date".
 	Date string `json:"date" yaml:"date" mapstructure:"date"`
+
+	// Decided corresponds to the JSON schema field "decided".
+	Decided int `json:"decided" yaml:"decided" mapstructure:"decided"`
+
+	// Ingested corresponds to the JSON schema field "ingested".
+	Ingested int `json:"ingested" yaml:"ingested" mapstructure:"ingested"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -2434,22 +2437,28 @@ func (j *OverviewDay) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
-	if _, ok := raw["count"]; raw != nil && !ok {
-		return fmt.Errorf("field count in OverviewDay: required")
-	}
 	if _, ok := raw["date"]; raw != nil && !ok {
 		return fmt.Errorf("field date in OverviewDay: required")
+	}
+	if _, ok := raw["decided"]; raw != nil && !ok {
+		return fmt.Errorf("field decided in OverviewDay: required")
+	}
+	if _, ok := raw["ingested"]; raw != nil && !ok {
+		return fmt.Errorf("field ingested in OverviewDay: required")
 	}
 	type Plain OverviewDay
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
 	}
-	if 0 > plain.Count {
-		return fmt.Errorf("field %s: must be >= %v", "count", 0)
-	}
 	if utf8.RuneCountInString(string(plain.Date)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "date", 1)
+	}
+	if 0 > plain.Decided {
+		return fmt.Errorf("field %s: must be >= %v", "decided", 0)
+	}
+	if 0 > plain.Ingested {
+		return fmt.Errorf("field %s: must be >= %v", "ingested", 0)
 	}
 	*j = OverviewDay(plain)
 	return nil
@@ -2487,6 +2496,41 @@ func (j *OverviewLeader) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type OverviewOutcome struct {
+	// Count corresponds to the JSON schema field "count".
+	Count int `json:"count" yaml:"count" mapstructure:"count"`
+
+	// Decision corresponds to the JSON schema field "decision".
+	Decision string `json:"decision" yaml:"decision" mapstructure:"decision"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OverviewOutcome) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["count"]; raw != nil && !ok {
+		return fmt.Errorf("field count in OverviewOutcome: required")
+	}
+	if _, ok := raw["decision"]; raw != nil && !ok {
+		return fmt.Errorf("field decision in OverviewOutcome: required")
+	}
+	type Plain OverviewOutcome
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Count {
+		return fmt.Errorf("field %s: must be >= %v", "count", 0)
+	}
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
+	}
+	*j = OverviewOutcome(plain)
+	return nil
+}
+
 type OverviewResponse struct {
 	// ByStatus corresponds to the JSON schema field "byStatus".
 	ByStatus []OverviewStatus `json:"byStatus" yaml:"byStatus" mapstructure:"byStatus"`
@@ -2503,8 +2547,14 @@ type OverviewResponse struct {
 	// NewToday corresponds to the JSON schema field "newToday".
 	NewToday int `json:"newToday" yaml:"newToday" mapstructure:"newToday"`
 
+	// Outcomes corresponds to the JSON schema field "outcomes".
+	Outcomes []OverviewOutcome `json:"outcomes" yaml:"outcomes" mapstructure:"outcomes"`
+
 	// ReviewedToday corresponds to the JSON schema field "reviewedToday".
 	ReviewedToday int `json:"reviewedToday" yaml:"reviewedToday" mapstructure:"reviewedToday"`
+
+	// Turnaround corresponds to the JSON schema field "turnaround".
+	Turnaround OverviewTurnaround `json:"turnaround" yaml:"turnaround" mapstructure:"turnaround"`
 
 	// Wait corresponds to the JSON schema field "wait".
 	Wait OverviewWait `json:"wait" yaml:"wait" mapstructure:"wait"`
@@ -2531,8 +2581,14 @@ func (j *OverviewResponse) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["newToday"]; raw != nil && !ok {
 		return fmt.Errorf("field newToday in OverviewResponse: required")
 	}
+	if _, ok := raw["outcomes"]; raw != nil && !ok {
+		return fmt.Errorf("field outcomes in OverviewResponse: required")
+	}
 	if _, ok := raw["reviewedToday"]; raw != nil && !ok {
 		return fmt.Errorf("field reviewedToday in OverviewResponse: required")
+	}
+	if _, ok := raw["turnaround"]; raw != nil && !ok {
+		return fmt.Errorf("field turnaround in OverviewResponse: required")
 	}
 	if _, ok := raw["wait"]; raw != nil && !ok {
 		return fmt.Errorf("field wait in OverviewResponse: required")
@@ -2587,6 +2643,50 @@ func (j *OverviewStatus) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 	*j = OverviewStatus(plain)
+	return nil
+}
+
+type OverviewTurnaround struct {
+	// Decisions corresponds to the JSON schema field "decisions".
+	Decisions int `json:"decisions" yaml:"decisions" mapstructure:"decisions"`
+
+	// MedianDecisionMS corresponds to the JSON schema field "medianDecisionMs".
+	MedianDecisionMS int `json:"medianDecisionMs" yaml:"medianDecisionMs" mapstructure:"medianDecisionMs"`
+
+	// MedianFirstMS corresponds to the JSON schema field "medianFirstMs".
+	MedianFirstMS int `json:"medianFirstMs" yaml:"medianFirstMs" mapstructure:"medianFirstMs"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OverviewTurnaround) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["decisions"]; raw != nil && !ok {
+		return fmt.Errorf("field decisions in OverviewTurnaround: required")
+	}
+	if _, ok := raw["medianDecisionMs"]; raw != nil && !ok {
+		return fmt.Errorf("field medianDecisionMs in OverviewTurnaround: required")
+	}
+	if _, ok := raw["medianFirstMs"]; raw != nil && !ok {
+		return fmt.Errorf("field medianFirstMs in OverviewTurnaround: required")
+	}
+	type Plain OverviewTurnaround
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Decisions {
+		return fmt.Errorf("field %s: must be >= %v", "decisions", 0)
+	}
+	if 0 > plain.MedianDecisionMS {
+		return fmt.Errorf("field %s: must be >= %v", "medianDecisionMs", 0)
+	}
+	if 0 > plain.MedianFirstMS {
+		return fmt.Errorf("field %s: must be >= %v", "medianFirstMs", 0)
+	}
+	*j = OverviewTurnaround(plain)
 	return nil
 }
 

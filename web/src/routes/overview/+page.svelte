@@ -4,7 +4,7 @@ import { goto } from "$app/navigation"
 import { fetchMe, fetchOverview, type Overview } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import LoadingState from "../../lib/components/LoadingState.svelte"
-import { humanStatus, statusTone } from "../../lib/format"
+import { decisionLabel, humanStatus, statusTone } from "../../lib/format"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
@@ -32,8 +32,9 @@ const waitRows = $derived(
 )
 
 const openTotal = $derived(overview?.byStatus.reduce((sum, row) => sum + row.count, 0) ?? 0)
-const dayMax = $derived(Math.max(1, ...(overview?.daily.map(day => day.count) ?? [1])))
+const dayMax = $derived(Math.max(1, ...(overview?.daily.flatMap(day => [day.decided, day.ingested]) ?? [1])))
 const boardMax = $derived(Math.max(1, ...(overview?.leaderboard.map(row => row.count) ?? [1])))
+const outcomeTotal = $derived(overview?.outcomes.reduce((sum, row) => sum + row.count, 0) ?? 0)
 
 onMount((): (() => void) => {
 	let cancelled = false
@@ -129,14 +130,22 @@ onMount((): (() => void) => {
 	</section>
 
 	<div class="panels">
-		<section aria-label="Reviews per day" class="ui-card padded panel">
-			<h2>Reviews completed</h2>
-			<p>Last 14 days</p>
+		<section aria-label="Queue flow per day" class="ui-card padded panel">
+			<h2>Queue flow</h2>
+			<p>Ingested vs decided · last 14 days</p>
+			<div class="legend" aria-hidden="true">
+				<span class="legend-item"><span class="dot decided"></span>Decided</span>
+				<span class="legend-item"><span class="dot ingested"></span>Ingested</span>
+			</div>
 			<div class="bars">
 				{#each overview.daily as day (day.date)}
-					<div class="bar-col" title={`${day.date}: ${day.count} review${day.count === 1 ? "" : "s"}`}>
+					<div
+						class="bar-col"
+						title={`${day.date}: ${day.ingested} ingested, ${day.decided} decided`}
+					>
 						<div class="bar-track">
-							<div class="bar-fill" style:height={`${(day.count / dayMax) * 100}%`}></div>
+							<div class="bar-fill decided" style:height={`${(day.decided / dayMax) * 100}%`}></div>
+							<div class="bar-fill ingested" style:height={`${(day.ingested / dayMax) * 100}%`}></div>
 						</div>
 						<span class="bar-tick">{day.date.slice(5)}</span>
 					</div>
@@ -158,6 +167,55 @@ onMount((): (() => void) => {
 					</li>
 				{/each}
 			</ul>
+		</section>
+	</div>
+
+	<div class="panels flip">
+		<section aria-label="Review turnaround" class="ui-card padded panel">
+			<h2>Turnaround</h2>
+			<p>
+				{#if overview.turnaround.decisions > 0}
+					Across {overview.turnaround.decisions} decision{overview.turnaround.decisions === 1 ? "" : "s"} in 30 days
+				{:else}
+					No decisions in the last 30 days
+				{/if}
+			</p>
+			<div class="wait-rows">
+				<div class="wait-row">
+					<span class="wait-label">To first review</span>
+					<span class="wait-value"
+						>{overview.turnaround.decisions > 0 ? formatWait(overview.turnaround.medianFirstMs) : "–"}</span
+					>
+				</div>
+				<div class="wait-row">
+					<span class="wait-label">To decision</span>
+					<span class="wait-value"
+						>{overview.turnaround.decisions > 0 ? formatWait(overview.turnaround.medianDecisionMs) : "–"}</span
+					>
+				</div>
+			</div>
+		</section>
+
+		<section aria-label="Decisions by outcome" class="ui-card padded panel">
+			<h2>Outcomes</h2>
+			<p>Final decisions · last 30 days</p>
+			{#if overview.outcomes.length === 0}
+				<span class="muted">No decisions in the last 30 days.</span>
+			{:else}
+				<ul class="breakdown">
+					{#each overview.outcomes as row (row.decision)}
+						<li>
+							<span class="ui-badge" data-tone={statusTone(row.decision)}>{decisionLabel(row.decision)}</span>
+							<span class="meter"
+								><span
+									style:width={`${outcomeTotal > 0 ? (row.count / outcomeTotal) * 100 : 0}%`}
+								></span></span
+							>
+							<span class="amount">{row.count}</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 		</section>
 	</div>
 
@@ -287,6 +345,39 @@ h1 {
 	padding-bottom: var(--space-4);
 }
 
+.panels.flip {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+.legend {
+	display: flex;
+	gap: var(--space-3);
+	padding-top: var(--space-2);
+	font-size: var(--text-xs);
+	color: var(--text-2);
+}
+
+.legend-item {
+	display: inline-flex;
+	gap: var(--space-1);
+	align-items: center;
+}
+
+.dot {
+	flex: none;
+	width: var(--space-2);
+	height: var(--space-2);
+	border-radius: 3px;
+}
+
+.dot.decided {
+	background: var(--primary);
+}
+
+.dot.ingested {
+	background: var(--accent-blue);
+}
+
 .panel {
 	min-width: 0;
 }
@@ -311,6 +402,7 @@ h1 {
 .bar-track {
 	display: flex;
 	flex: 1;
+	gap: 2px;
 	align-items: flex-end;
 	width: 100%;
 	min-height: 4rem;
@@ -319,10 +411,17 @@ h1 {
 }
 
 .bar-fill {
-	width: 100%;
+	flex: 1;
 	min-height: 2px;
-	background: var(--primary);
 	border-radius: var(--radius-sm);
+}
+
+.bar-fill.decided {
+	background: var(--primary);
+}
+
+.bar-fill.ingested {
+	background: var(--accent-blue);
 }
 
 .bar-tick {
