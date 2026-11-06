@@ -296,6 +296,10 @@ async function invite(): Promise<void> {
 	color: var(--text-2);
 }
 
+.ui-notice {
+	margin-bottom: var(--space-4);
+}
+
 .member-link {
 	display: flex;
 	gap: var(--space-2);
