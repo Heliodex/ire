@@ -1,10 +1,10 @@
-import { array, boolean, literal, object, safeParse, string, variant } from "valibot"
+import { array, boolean, literal, number, object, safeParse, string, variant } from "valibot"
 import type { Queue } from "./api"
 import { ApiError } from "./api-error"
 import { program } from "./api-runtime"
 import { errorResponseSchema, queueCountsSchema, queueItemSchema } from "./contract"
 
-const metaEventSchema = object({ hasMore: boolean(), type: literal("meta") })
+const metaEventSchema = object({ hasMore: boolean(), items: number(), type: literal("meta") })
 const shipsEventSchema = object({ items: array(queueItemSchema), type: literal("ships") })
 const countsEventSchema = object({ counts: queueCountsSchema, type: literal("counts") })
 const failureEventSchema = object({ error: string(), type: literal("error") })
@@ -19,7 +19,7 @@ const queueEventSchema = variant("type", [
 
 export interface QueueStreamHandlers {
 	onCounts(counts: Queue["counts"]): void
-	onMeta(hasMore: boolean): void
+	onMeta(hasMore: boolean, items: number): void
 	onShips(items: Queue["items"]): void
 }
 
@@ -46,7 +46,7 @@ export function applyQueueLine(line: string, handlers: QueueStreamHandlers): boo
 
 	switch (event.type) {
 		case "meta":
-			handlers.onMeta(event.hasMore)
+			handlers.onMeta(event.hasMore, event.items)
 
 			return false
 		case "ships":

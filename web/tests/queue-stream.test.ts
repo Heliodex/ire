@@ -13,7 +13,7 @@ function streamFetch(input: RequestInfo | URL): Promise<Response> {
 	requested = input instanceof Request ? input.url : String(input)
 
 	const chunks = [
-		`{"type":"meta","hasMore":false}\n{"type":"ships","items":[`,
+		`{"type":"meta","hasMore":false,"items":1}\n{"type":"ships","items":[`,
 		`${JSON.stringify(queue.items[0])}]}\n{"ty`,
 		`pe":"done"}\n`,
 	]
@@ -41,6 +41,7 @@ interface RecordedHandlers extends QueueStreamHandlers {
 	counts: Queue["counts"][]
 	hasMore: boolean[]
 	items: Queue["items"][]
+	meta: number[]
 }
 
 function recorder(): RecordedHandlers {
@@ -48,11 +49,13 @@ function recorder(): RecordedHandlers {
 		counts: [],
 		hasMore: [],
 		items: [],
+		meta: [],
 		onCounts(value: Queue["counts"]): void {
 			seen.counts.push(value)
 		},
-		onMeta(value: boolean): void {
+		onMeta(value: boolean, total: number): void {
 			seen.hasMore.push(value)
+			seen.meta.push(total)
 		},
 		onShips(value: Queue["items"]): void {
 			seen.items.push(value)
@@ -80,11 +83,12 @@ describe("applyQueueLine", () => {
 	test("hands meta, ships and counts to the page", () => {
 		const handlers = recorder()
 
-		expect(applyQueueLine(`{"type":"meta","hasMore":true}`, handlers)).toBe(false)
+		expect(applyQueueLine(`{"type":"meta","hasMore":true,"items":1}`, handlers)).toBe(false)
 		expect(applyQueueLine(JSON.stringify({ items: queue.items, type: "ships" }), handlers)).toBe(false)
 		expect(applyQueueLine(JSON.stringify({ counts: queue.counts, type: "counts" }), handlers)).toBe(false)
 
 		expect(handlers.hasMore).toEqual([true])
+		expect(handlers.meta).toEqual([1])
 		expect(handlers.items).toEqual([queue.items])
 		expect(handlers.counts).toEqual([queue.counts])
 	})

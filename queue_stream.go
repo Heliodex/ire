@@ -17,6 +17,7 @@ const queueStreamBatch = 10
 type queueStreamMeta struct {
 	Type    string `json:"type"`
 	HasMore bool   `json:"hasMore"`
+	Items   int    `json:"items"`
 }
 
 type queueStreamShips struct {
@@ -80,7 +81,7 @@ func (a *ireApp) streamQueue(w http.ResponseWriter, r *http.Request, person revi
 		items = items[:limit]
 	}
 
-	writeQueueEvent(w, queueStreamMeta{Type: "meta", HasMore: hasMore})
+	writeQueueEvent(w, queueStreamMeta{Type: "meta", HasMore: hasMore, Items: len(items)})
 
 	for start := 0; start < len(items); start += queueStreamBatch {
 		batch := items[start:min(start+queueStreamBatch, len(items))]

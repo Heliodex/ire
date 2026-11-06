@@ -524,6 +524,7 @@ async function loadStreaming(): Promise<void> {
 	const items: QueueItem[] = []
 	let { counts } = queue
 	let hasMore = false
+	let expected = 0
 	let first = true
 	let stale = false
 
@@ -550,8 +551,9 @@ async function loadStreaming(): Promise<void> {
 					counts = value
 					queue = { ...queue, counts }
 				},
-				onMeta: value => {
+				onMeta: (value, total) => {
 					hasMore = value
+					expected = total
 				},
 				onShips: batch => {
 					if (!current()) {
@@ -575,6 +577,13 @@ async function loadStreaming(): Promise<void> {
 
 		if (stale || !current()) return
 
+		if (items.length < expected) {
+			// The stream ended before its announced page, so fetch the rest the ordinary way.
+			await load(target, targetStage, true)
+
+			return
+		}
+
 		// Keep rows loaded past the streamed page so re-entering the page cannot shrink the list.
 		if (previous.length > items.length) {
 			const seen = new Set(items.map(item => item.id))
@@ -591,7 +600,9 @@ async function loadStreaming(): Promise<void> {
 			void goto("/")
 			return
 		}
-		if (items.length === 0) error = err instanceof Error ? err.message : "Could not load the queue."
+
+		// A broken stream leaves the page on the rows already painted; fetch the whole page instead.
+		await load(target, targetStage, true)
 	} finally {
 		if (streamController === controller) {
 			streamController = null
