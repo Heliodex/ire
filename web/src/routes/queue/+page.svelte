@@ -1482,9 +1482,10 @@ h1 {
 
 .filter-box {
 	display: flex;
-	flex: 0 1 auto;
+	flex: 1 1 16.25rem;
 	gap: var(--space-2);
 	align-items: center;
+	max-width: 22rem;
 }
 
 .help {
@@ -1496,7 +1497,8 @@ h1 {
 }
 
 .search {
-	flex: 0 1 16.25rem;
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .filter-field {
@@ -2329,6 +2331,7 @@ a.status:focus-visible {
 
 	.filter-box {
 		flex: 1 1 100%;
+		max-width: none;
 	}
 
 	.filter-box .search {
@@ -2440,6 +2443,12 @@ a.status:focus-visible {
 		flex: 0 0 5.5rem;
 		min-width: 0;
 		padding: var(--space-1) var(--space-2);
+	}
+}
+
+@media (min-width: 80rem) {
+	.filter-box {
+		max-width: 28rem;
 	}
 }
 
