@@ -23,7 +23,7 @@ export interface QueueState {
 	write(state: Omit<SavedQueueState, "savedAt" | "version">): void
 }
 
-const stateVersion = 1
+const stateVersion = 2
 const maxStateAge = 24 * 60 * 60 * 1000
 
 // isQueueFilter narrows a cached filter value.

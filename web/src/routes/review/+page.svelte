@@ -726,11 +726,13 @@ async function saveDraftNow(): Promise<void> {
 						{/if}
 						<div class="stats">
 							<div><span>Claimed</span><strong>{formatHours(preview.hoursClaimedSeconds)}</strong></div>
-							<div><span>Journals</span><strong>{formatHours(preview.hoursJournalSeconds)}</strong></div>
 							<div>
-								<span>Hackatime</span><strong>{formatHours(preview.hoursHackatimeSeconds)}</strong>
+								<span>Journals</span><strong>{formatHours(preview.hoursJournalSeconds ?? 0)}</strong>
 							</div>
-							<div><span>BOM</span><strong>{formatMoney(preview.bomTotalCents)}</strong></div>
+							<div>
+								<span>Hackatime</span><strong>{formatHours(preview.hoursHackatimeSeconds ?? 0)}</strong>
+							</div>
+							<div><span>BOM</span><strong>{formatMoney(preview.bomTotalCents ?? 0)}</strong></div>
 						</div>
 						<LoadingState message="Loading ship…" />
 					</article>
