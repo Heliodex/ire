@@ -71,7 +71,6 @@ function onInput(): void {
 
 	const text = query.trim()
 	const id = ++sequence
-	const cached = cache.get(text)
 
 	error = ""
 	limit = initialSearchLimit
@@ -87,11 +86,16 @@ function onInput(): void {
 
 	open = true
 
-	if (cached !== undefined) {
-		results = cached
-		selected = cached.length > 0 ? 0 : -1
+	// Exact hits come first; otherwise reuse rows from earlier queries that still match the new text.
+	const cached = cache.get(text)
+	const suggested = (cached ?? cache.match(text)).slice(0, maxSearchResults)
+	const showing = cached !== undefined || suggested.length > 0
+
+	if (showing) {
+		results = suggested
+		selected = suggested.length > 0 ? 0 : -1
 		loading = false
-		limit = Math.max(limit, cached.length)
+		limit = Math.max(limit, suggested.length)
 	} else {
 		results = []
 		selected = -1
@@ -100,7 +104,7 @@ function onInput(): void {
 
 	timer = setTimeout((): void => {
 		timer = null
-		void search(text, id, cached !== undefined, limit)
+		void search(text, id, showing, limit)
 	}, debounceMs)
 }
 
@@ -283,75 +287,77 @@ function openResult(result: SearchResult): void {
 	<kbd aria-hidden="true" class="ui-kbd shortcut">/</kbd>
 
 	{#if showResults}
-		<div class="results ui-card" id="project-search-results" role="listbox" bind:this={listbox}>
-			{#if message}
-				<div class="message">{message}</div>
-			{:else}
-				{#each results as result, index (result.id)}
-					<button
-						aria-selected={index === selected}
-						class="result"
-						id={`project-search-${index}`}
-						onclick={(): void => openResult(result)}
-						onmouseenter={(): void => {
-							selected = index
-						}}
-						role="option"
-						tabindex="-1"
-						type="button"
-						class:active={index === selected}
-					>
-						<span class="thumb">
-							{#if result.thumbnailUrl}
-								<img alt="" decoding="async" loading="lazy" src={result.thumbnailUrl}>
-							{:else}
-								<svg aria-hidden="true" fill="none" height="14" viewBox="0 0 24 24" width="14">
-									<rect
-										height="16"
-										rx="2"
-										stroke="currentColor"
-										stroke-width="1.6"
-										width="18"
-										x="3"
-										y="4"
-									/>
-									<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
-									<path
-										d="m4 17 4.5-4.5 3 3L15 12l5 5"
-										stroke="currentColor"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="1.6"
-									/>
-								</svg>
-							{/if}
-						</span>
-						<span class="copy">
-							<span class="title">{result.title}</span>
-							<span class="meta">{result.makerName} · {result.externalId}</span>
-						</span>
-						<span class="details">
-							{#if result.stage === 2}
-								<span class="fact pass">Pass 2</span>
-							{/if}
-							{#if result.theme}
-								<span class="fact">{result.theme}</span>
-							{/if}
-							<span class="fact">v{result.version}</span>
-							{#if result.week}
-								<span class="fact">Week {result.week}</span>
-							{/if}
-							{#if result.hoursClaimedSeconds > 0}
-								<span class="fact">{formatDuration(result.hoursClaimedSeconds)} claimed</span>
-							{/if}
-							<span class="fact">{timeAgo(result.ingestedAt)}</span>
-						</span>
-						<span class="ui-badge status" data-tone={statusTone(result.status)}>
-							{humanStatus(result.status)}
-						</span>
-					</button>
-				{/each}
-			{/if}
+		<div class="results ui-card">
+			<div class="options" id="project-search-results" role="listbox" bind:this={listbox}>
+				{#if message}
+					<div class="message">{message}</div>
+				{:else}
+					{#each results as result, index (result.id)}
+						<button
+							aria-selected={index === selected}
+							class="result"
+							id={`project-search-${index}`}
+							onclick={(): void => openResult(result)}
+							onmouseenter={(): void => {
+								selected = index
+							}}
+							role="option"
+							tabindex="-1"
+							type="button"
+							class:active={index === selected}
+						>
+							<span class="thumb">
+								{#if result.thumbnailUrl}
+									<img alt="" decoding="async" loading="lazy" src={result.thumbnailUrl}>
+								{:else}
+									<svg aria-hidden="true" fill="none" height="14" viewBox="0 0 24 24" width="14">
+										<rect
+											height="16"
+											rx="2"
+											stroke="currentColor"
+											stroke-width="1.6"
+											width="18"
+											x="3"
+											y="4"
+										/>
+										<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
+										<path
+											d="m4 17 4.5-4.5 3 3L15 12l5 5"
+											stroke="currentColor"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="1.6"
+										/>
+									</svg>
+								{/if}
+							</span>
+							<span class="copy">
+								<span class="title">{result.title}</span>
+								<span class="meta">{result.makerName} · {result.externalId}</span>
+							</span>
+							<span class="details">
+								{#if result.stage === 2}
+									<span class="fact pass">Pass 2</span>
+								{/if}
+								{#if result.theme}
+									<span class="fact">{result.theme}</span>
+								{/if}
+								<span class="fact">v{result.version}</span>
+								{#if result.week}
+									<span class="fact">Week {result.week}</span>
+								{/if}
+								{#if result.hoursClaimedSeconds > 0}
+									<span class="fact">{formatDuration(result.hoursClaimedSeconds)} claimed</span>
+								{/if}
+								<span class="fact">{timeAgo(result.ingestedAt)}</span>
+							</span>
+							<span class="ui-badge status" data-tone={statusTone(result.status)}>
+								{humanStatus(result.status)}
+							</span>
+						</button>
+					{/each}
+				{/if}
+			</div>
 			<div class="hint">
 				<kbd class="ui-kbd">↑</kbd><kbd class="ui-kbd">↓</kbd>
 				to move ·
@@ -406,10 +412,18 @@ function openResult(result: SearchResult): void {
 	right: 0;
 	left: 0;
 	z-index: var(--layer-dialog);
+	display: flex;
+	flex-direction: column;
 	max-height: min(70vh, 40rem);
+	overflow: hidden;
+	box-shadow: var(--shadow);
+}
+
+.options {
+	position: relative;
+	min-height: 0;
 	overflow-x: hidden;
 	overflow-y: auto;
-	box-shadow: var(--shadow);
 }
 
 .result {
@@ -509,10 +523,12 @@ function openResult(result: SearchResult): void {
 }
 
 .hint {
+	flex: none;
 	padding: var(--space-2) var(--space-3);
 	font-size: var(--text-xs);
 	color: var(--text-3);
 	background: var(--surface-2);
+	border-top: 1px solid var(--border);
 }
 
 @media (max-width: 40rem) {
