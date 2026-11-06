@@ -6,29 +6,17 @@ import { formatDateTime } from "../../format"
 interface Props {
 	canDelete(note: Note): boolean
 	notes: Note[]
-	onAdd(subjectType: string, body: string): Promise<void>
+	onAdd(body: string): Promise<void>
 	onRemove(note: Note): Promise<void>
 }
 
 let { canDelete, notes, onAdd, onRemove }: Props = $props()
 
-const SUBJECT_LABELS: { [_: string]: string } = {
-	maker: "Maker",
-	project: "Project",
-	submission: "This ship",
-}
-
-let subject = $state("submission")
 let body = $state("")
 let saving = $state(false)
 let error = $state("")
 
-// subjectLabel names the scope a note persists across.
-function subjectLabel(value: string): string {
-	return SUBJECT_LABELS[value] ?? value
-}
-
-// submit stores the note and clears the form.
+// submit stores the note on this ship and clears the form.
 async function submit(): Promise<void> {
 	if (body.trim() === "") return
 
@@ -36,7 +24,7 @@ async function submit(): Promise<void> {
 	error = ""
 
 	try {
-		await onAdd(subject, body.trim())
+		await onAdd(body.trim())
 		body = ""
 	} catch (err) {
 		error = err instanceof Error ? err.message : "Could not save this note."
@@ -54,7 +42,6 @@ async function submit(): Promise<void> {
 			{#each notes as note (note.id)}
 				<li>
 					<div class="note-head">
-						<span class="ui-badge">{subjectLabel(note.subjectType)}</span>
 						<strong>{note.authorName ?? note.authorEmail}</strong>
 						<small>{formatDateTime(note.createdAt)}</small>
 						{#if canDelete(note)}
@@ -80,16 +67,11 @@ async function submit(): Promise<void> {
 			void submit()
 		}}
 	>
-		<label class="field">
-			<span>On</span>
-			<select class="ui-input" bind:value={subject}>
-				<option value="submission">This ship</option>
-				<option value="project">The project</option>
-				<option value="maker">The maker</option>
-			</select>
-		</label>
-		<label class="field note-body">
-			<span>Note <span class="hint">{body.length} / {maxNote}</span></span>
+		<label class="note-body">
+			<span class="note-label">
+				<span>Note</span>
+				<span class="hint">{body.length} / {maxNote}</span>
+			</span>
 			<textarea
 				aria-label="Internal note"
 				class="ui-input"
@@ -164,8 +146,12 @@ async function submit(): Promise<void> {
 	padding-top: var(--space-2);
 }
 
-.note-form .field {
-	width: 9rem;
+.note-label {
+	display: flex;
+	gap: var(--space-2);
+	align-items: baseline;
+	justify-content: space-between;
+	width: 100%;
 }
 
 .note-form .note-body {

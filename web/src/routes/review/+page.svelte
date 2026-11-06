@@ -598,11 +598,11 @@ function entrySaved(seconds: number): void {
 	hours = Math.round((seconds / 3600) * 100) / 100
 }
 
-// addNote stores an internal note and shows it immediately.
-async function addNote(subjectType: string, body: string): Promise<void> {
+// addNote stores an internal note on this ship and shows it immediately.
+async function addNote(body: string): Promise<void> {
 	if (!submission) return
 
-	const entry = await createNote(submission.id, { body, subjectType })
+	const entry = await createNote(submission.id, { body, subjectType: "submission" })
 	if (bundle) bundle.notes = [entry, ...bundle.notes]
 }
 
