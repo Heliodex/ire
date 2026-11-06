@@ -94,7 +94,8 @@ let selected = $state(
 			)
 		: 0,
 )
-let search = $state(savedQueue?.search ?? searchFromURL())
+const urlSearch = searchFromURL()
+let search = $state(urlSearch !== "" ? urlSearch : (savedQueue?.search ?? ""))
 let sortKey = $state<SortKey | null>(
 	savedQueue && sortKeys.includes(savedQueue.sortKey as SortKey) ? (savedQueue.sortKey as SortKey) : null,
 )
