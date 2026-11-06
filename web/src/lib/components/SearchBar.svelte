@@ -257,11 +257,12 @@ function openResult(result: SearchResult): void {
 	open = false
 	input?.blur()
 	rememberReviewPreview({
-		hoursClaimedSeconds: result.hoursClaimedSeconds,
 		id: result.id,
+		makerEmail: result.makerEmail,
 		makerName: result.makerName,
+		makerSlackId: result.makerSlackId,
+		requestedTier: result.requestedTier,
 		status: result.status,
-		theme: result.theme,
 		title: result.title,
 		version: result.version,
 		week: result.week,

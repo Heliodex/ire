@@ -888,12 +888,12 @@ async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 		saveQueueState()
 		rememberReviewPreview({
 			claimedBy: item.claimedBy,
-			hoursClaimedSeconds: item.hoursClaimedSeconds,
 			id: item.id,
 			makerEmail: item.makerEmail,
 			makerName: item.makerName,
+			makerSlackId: item.makerSlackId,
+			requestedTier: item.requestedTier,
 			status: item.status,
-			theme: item.theme,
 			title: item.title,
 			version: item.version,
 			week: item.week,

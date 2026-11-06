@@ -3,7 +3,6 @@ import { type ReviewPreview, readReviewPreview, rememberReviewPreview } from "..
 
 function preview(id: string, overrides: Partial<ReviewPreview> = {}): ReviewPreview {
 	return {
-		hoursClaimedSeconds: 0,
 		id,
 		makerName: "Maker",
 		status: "ready",
@@ -15,7 +14,12 @@ function preview(id: string, overrides: Partial<ReviewPreview> = {}): ReviewPrev
 
 describe("review previews", () => {
 	test("remembers the row a queue visit already loaded", () => {
-		const item = preview("sub_preview_1", { makerEmail: "ada@example.com", theme: "pcb", week: 2 })
+		const item = preview("sub_preview_1", {
+			makerEmail: "ada@example.com",
+			makerSlackId: "U123",
+			requestedTier: "2",
+			week: 2,
+		})
 
 		rememberReviewPreview(item)
 

@@ -155,12 +155,18 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"makerSlackId": {
+						"type": "string"
+					},
 					"previousReviewer": {
 						"type": "string"
 					},
 					"priority": {
 						"type": "integer",
 						"minimum": 0
+					},
+					"requestedTier": {
+						"type": "string"
 					},
 					"stage": {
 						"type": "integer",

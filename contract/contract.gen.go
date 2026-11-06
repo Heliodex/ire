@@ -3003,11 +3003,17 @@ type QueueItem struct {
 	// MakerName corresponds to the JSON schema field "makerName".
 	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
 
+	// MakerSlackID corresponds to the JSON schema field "makerSlackId".
+	MakerSlackID *string `json:"makerSlackId,omitempty,omitzero" yaml:"makerSlackId,omitempty" mapstructure:"makerSlackId,omitempty"`
+
 	// PreviousReviewer corresponds to the JSON schema field "previousReviewer".
 	PreviousReviewer *string `json:"previousReviewer,omitempty,omitzero" yaml:"previousReviewer,omitempty" mapstructure:"previousReviewer,omitempty"`
 
 	// Priority corresponds to the JSON schema field "priority".
 	Priority int `json:"priority" yaml:"priority" mapstructure:"priority"`
+
+	// RequestedTier corresponds to the JSON schema field "requestedTier".
+	RequestedTier *string `json:"requestedTier,omitempty,omitzero" yaml:"requestedTier,omitempty" mapstructure:"requestedTier,omitempty"`
 
 	// Stage corresponds to the JSON schema field "stage".
 	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
@@ -4308,8 +4314,17 @@ type SearchResult struct {
 	// IngestedAt corresponds to the JSON schema field "ingestedAt".
 	IngestedAt string `json:"ingestedAt" yaml:"ingestedAt" mapstructure:"ingestedAt"`
 
+	// MakerEmail corresponds to the JSON schema field "makerEmail".
+	MakerEmail *string `json:"makerEmail,omitempty,omitzero" yaml:"makerEmail,omitempty" mapstructure:"makerEmail,omitempty"`
+
 	// MakerName corresponds to the JSON schema field "makerName".
 	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
+
+	// MakerSlackID corresponds to the JSON schema field "makerSlackId".
+	MakerSlackID *string `json:"makerSlackId,omitempty,omitzero" yaml:"makerSlackId,omitempty" mapstructure:"makerSlackId,omitempty"`
+
+	// RequestedTier corresponds to the JSON schema field "requestedTier".
+	RequestedTier *string `json:"requestedTier,omitempty,omitzero" yaml:"requestedTier,omitempty" mapstructure:"requestedTier,omitempty"`
 
 	// Stage corresponds to the JSON schema field "stage".
 	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`

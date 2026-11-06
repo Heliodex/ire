@@ -37,7 +37,6 @@ import { maxNote } from "../../lib/contract"
 import {
 	decisionLabel,
 	formatDateTime,
-	formatDuration,
 	formatHours,
 	formatMoney,
 	formatMoneyAmount,
@@ -653,14 +652,14 @@ async function saveDraftNow(): Promise<void> {
 					{#if preview.makerEmail}
 						· {preview.makerEmail}
 					{/if}
-					{#if preview.theme}
-						<span>· {preview.theme}</span>
+					{#if preview.makerSlackId}
+						<span> · {preview.makerSlackId}</span>
 					{/if}
 					{#if preview.week}
-						<span>· Week {preview.week}</span>
+						<span> · Week {preview.week}</span>
 					{/if}
-					{#if preview.hoursClaimedSeconds > 0}
-						<span>· {formatDuration(preview.hoursClaimedSeconds)} claimed</span>
+					{#if preview.requestedTier}
+						<span> · Tier {preview.requestedTier}</span>
 					{/if}
 				</p>
 			</div>

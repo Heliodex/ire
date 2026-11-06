@@ -22,9 +22,18 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"makerEmail": {
+						"type": "string"
+					},
 					"makerName": {
 						"type": "string",
 						"minLength": 1
+					},
+					"makerSlackId": {
+						"type": "string"
+					},
+					"requestedTier": {
+						"type": "string"
 					},
 					"stage": {
 						"type": "integer",

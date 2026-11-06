@@ -49,7 +49,8 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := a.store.Query(r.Context(), `select s.id, s.external_id, s.title, coalesce(s.maker_name, ''),
 			s.status, s.stage, coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''),
-			coalesce(s.week, 0), s.version, s.hours_claimed_seconds, s.ingested_at
+			coalesce(s.week, 0), s.version, s.hours_claimed_seconds, s.ingested_at,
+			coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, '')
 		from submission s
 		where s.program_id = ?
 		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`+stageClause+`
@@ -78,13 +79,15 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			item                    contract.SearchResult
-			theme, thumb, makerName string
-			week                    int
+			item                         contract.SearchResult
+			theme, thumb, makerName      string
+			makerEmail, makerSlack, tier string
+			week                         int
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &makerName,
 			&item.Status, &item.Stage, &theme, &thumb, &week,
-			&item.Version, &item.HoursClaimedSeconds, &item.IngestedAt); err != nil {
+			&item.Version, &item.HoursClaimedSeconds, &item.IngestedAt,
+			&makerEmail, &makerSlack, &tier); err != nil {
 			writeStorage(w, err)
 
 			return
@@ -95,6 +98,18 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		item.MakerName = makerName
+
+		if makerEmail != "" {
+			item.MakerEmail = &makerEmail
+		}
+
+		if makerSlack != "" {
+			item.MakerSlackID = &makerSlack
+		}
+
+		if tier != "" {
+			item.RequestedTier = &tier
+		}
 
 		if week > 0 {
 			item.Week = &week
