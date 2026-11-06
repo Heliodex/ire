@@ -142,6 +142,7 @@ const visible = $derived(
 			item.title.toLowerCase().includes(needle)
 			|| item.makerName.toLowerCase().includes(needle)
 			|| humanStatus(item.status).toLowerCase().includes(needle)
+			|| (item.theme ?? "").toLowerCase().includes(needle)
 		)
 	}),
 )
@@ -735,18 +736,31 @@ function searchFromURL(): string {
 	return page.url.searchParams.get("search") ?? ""
 }
 
-// filterByStatus narrows the text search to one status when its badge is activated; activating it again clears the search. The filter lives in the URL so it survives reloads and links.
-function filterByStatus(item: QueueItem, event: MouseEvent): void {
+// setSearchFilter narrows the text search to one value, such as a status or type; activating the
+// same value again clears it. The filter lives in the URL so it survives reloads and links.
+function setSearchFilter(value: string, event: MouseEvent): void {
 	event.preventDefault()
 	event.stopPropagation()
-	const label = humanStatus(item.status)
-	search = search === label ? "" : label
+	search = search === value ? "" : value
 	selected = 0
 
 	const url = new URL(page.url.href)
 	if (search === "") url.searchParams.delete("search")
 	else url.searchParams.set("search", search)
 	history.replaceState(history.state, "", url)
+}
+
+// filterByStatus narrows the queue to one status when its badge is activated.
+function filterByStatus(item: QueueItem, event: MouseEvent): void {
+	setSearchFilter(humanStatus(item.status), event)
+}
+
+// filterByTheme narrows the queue to one project type when its label is activated.
+function filterByTheme(item: QueueItem, event: MouseEvent): void {
+	const theme = item.theme?.trim() ?? ""
+	if (theme === "") return
+
+	setSearchFilter(theme, event)
 }
 </script>
 
@@ -1008,7 +1022,19 @@ function filterByStatus(item: QueueItem, event: MouseEvent): void {
 								{item.makerName}
 							</a>
 						</span>
-						<span class="inline-theme">{item.theme ?? ""}</span>
+						<span class="inline-theme">
+							{#if item.theme}
+								<a
+									aria-label={`Show only ${item.theme} ships`}
+									class="inline-theme-link"
+									href={`/queue?search=${encodeURIComponent(item.theme)}`}
+									onclick={(event: MouseEvent): void => filterByTheme(item, event)}
+									title={`Show only ${item.theme} ships`}
+								>
+									{item.theme}
+								</a>
+							{/if}
+						</span>
 					</span>
 					<span class="badges">
 						<a
@@ -1028,7 +1054,17 @@ function filterByStatus(item: QueueItem, event: MouseEvent): void {
 									: "Resubmission"}
 							</span>
 						{/if}
-						<span class="theme">{item.theme ?? ""}</span>
+						{#if item.theme}
+							<a
+								aria-label={`Show only ${item.theme} ships`}
+								class="theme"
+								href={`/queue?search=${encodeURIComponent(item.theme)}`}
+								onclick={(event: MouseEvent): void => filterByTheme(item, event)}
+								title={`Show only ${item.theme} ships`}
+							>
+								{item.theme}
+							</a>
+						{/if}
 					</span>
 					<div class="facts">
 						<span class="maker fact-maker">
@@ -1410,6 +1446,18 @@ h1 {
 	font-size: var(--text-xs);
 	color: var(--text-3);
 	white-space: nowrap;
+}
+
+a.theme,
+.inline-theme-link {
+	color: var(--text-3);
+	text-decoration: none;
+}
+
+a.theme:hover,
+.inline-theme-link:hover {
+	color: var(--text);
+	text-decoration: underline;
 }
 
 .facts {
