@@ -33,7 +33,7 @@ func (a *ireApp) queueRepositoryChecks(ctx context.Context, submissionID string,
 	app.Warnf("checks job enqueue failed, running inline: %v", err)
 
 	ship, loadErr := a.loadSubmission(ctx, submissionID)
-	if loadErr != nil || ship.Version != version || ship.Status != statusChecking {
+	if loadErr != nil || ship.Version != version || (ship.Status != statusChecking && ship.Status != statusNeedsAttention) {
 		return
 	}
 
@@ -86,7 +86,8 @@ func (a *ireApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// A newer version, a decision or a withdrawal owns the ship now; the job has nothing left to write.
-	if ship.Version != job.Version || ship.Status != statusChecking || ship.RepoURL == "" {
+	// A ship the stale sweep moved to needs_attention still waits on this job, so let the checks land and settle its status.
+	if ship.Version != job.Version || (ship.Status != statusChecking && ship.Status != statusNeedsAttention) || ship.RepoURL == "" {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -208,7 +209,8 @@ func (a *ireApp) collectRepositoryChecks(ctx context.Context, ship submissionRow
 		}
 	}
 
-	checks, err := a.loadCheckResults(ctx, ship.ID, ship.Version)
+	// Summarise the same newest-per-key rows the review page shows, so the queue's counts cannot disagree with its dots.
+	checks, err := a.latestChecks(ctx, ship.ID, ship.Version)
 	if err != nil {
 		return err
 	}
@@ -225,9 +227,11 @@ func (a *ireApp) collectRepositoryChecks(ctx context.Context, ship submissionRow
 		status = statusNeedsAttention
 	}
 
-	result, err := a.store.Exec(ctx, `update submission set status = ?, check_summary = ?, updated_at = ?
-		where id = ? and version = ? and status = 'checking'`,
-		status, string(summaryJSON), now, ship.ID, ship.Version)
+	// Always persist the summary: the stale sweep may have moved the ship out of checking while this job waited, and the queue reads the stored counts. Only a ship still waiting on checks may change status; a claim or decision owns it otherwise.
+	result, err := a.store.Exec(ctx, `update submission set check_summary = ?,
+		status = case when status in ('checking','needs_attention') then ? else status end, updated_at = ?
+		where id = ? and version = ?`,
+		string(summaryJSON), status, now, ship.ID, ship.Version)
 	if err != nil {
 		return err
 	}
@@ -264,36 +268,4 @@ func (a *ireApp) loadCheckRun(ctx context.Context, submissionID string, version 
 	run.Error = optionalText(failure)
 
 	return run, true, nil
-}
-
-// loadCheckResults reads the current rows for one submission version.
-func (a *ireApp) loadCheckResults(ctx context.Context, submissionID string, version int) ([]contract.CheckResult, error) {
-	rows, err := a.store.Query(ctx, `select check_key, label, group_key, status, severity, summary, coalesce(detail, ''), coalesce(data, ''), checked_at
-		from check_result where submission_id = ? and version = ? order by checked_at asc, id asc`, submissionID, version)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var checks []contract.CheckResult
-
-	for rows.Next() {
-		var (
-			check        contract.CheckResult
-			detail, data string
-		)
-		if err := rows.Scan(&check.Key, &check.Label, &check.Group, &check.Status, &check.Severity, &check.Summary, &detail, &data, &check.CheckedAt); err != nil {
-			return nil, err
-		}
-
-		if detail != "" {
-			check.Detail = &detail
-		}
-
-		check.Source = sourceFromData(data)
-
-		checks = append(checks, check)
-	}
-
-	return checks, rows.Err()
 }

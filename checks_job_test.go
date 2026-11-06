@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"ire/contract"
 
@@ -202,4 +203,227 @@ func TestIngestFallsBackWhenQueueFails(t *testing.T) {
 	if bundle.Evidence == nil {
 		t.Fatal("fallback did not store evidence")
 	}
+}
+
+// queuedCheckSummary reads one ship's check counts from the queue.
+func queuedCheckSummary(t *testing.T, application *ireApp, submissionID string) contract.CheckSummary {
+	t.Helper()
+
+	cookie := login(t, application, "reviewer@example.com")
+	queue := decode[contract.QueueResponse](t, do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all", nil, cookie, nil))
+
+	for _, item := range queue.Items {
+		if item.ID == submissionID {
+			return item.CheckSummary
+		}
+	}
+
+	t.Fatalf("ship %s is missing from the queue", submissionID)
+
+	return contract.CheckSummary{}
+}
+
+// TestChecksLandAfterStaleSweep covers a job that arrives after the sweep moved the ship to needs_attention: the checks and the queue summary must still be written, and a clean run must return the ship to ready.
+func TestChecksLandAfterStaleSweep(t *testing.T) {
+	github := fakeGitHub(t)
+
+	application := newTestApp(t)
+	application.config.DisableRepoChecks = false
+	application.config.GitHubAPIBase = github.URL
+	application.config.EnableJobs = true
+	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) { return true, nil }
+
+	body := ingestBody("queued:design")
+	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
+
+	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	}))
+
+	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 11, 0, 0, time.UTC) }
+	postTick(t, application)
+
+	if status := shipStatus(t, application, created.ID); status != statusNeedsAttention {
+		t.Fatalf("status after the stale sweep = %q, want needs_attention", status)
+	}
+
+	runCheckJob(t, application, created.ID)
+
+	if status := shipStatus(t, application, created.ID); status != statusReady {
+		t.Fatalf("status after the late job = %q, want ready", status)
+	}
+
+	summary := queuedCheckSummary(t, application, created.ID)
+	if summary.Error != 0 || summary.Fail != 0 {
+		t.Fatalf("late job summary = %+v, want no errors or failures", summary)
+	}
+
+	if summary.Pass == 0 {
+		t.Fatalf("late job summary = %+v, want passing checks", summary)
+	}
+}
+
+// TestChecksSettleAfterSweepWithoutClobberingClaim covers a late job landing while another reviewer has already claimed the swept ship: the counts still refresh but the claim survives.
+func TestChecksSettleAfterSweepWithoutClobberingClaim(t *testing.T) {
+	github := fakeGitHub(t)
+
+	application := newTestApp(t)
+	application.config.DisableRepoChecks = false
+	application.config.GitHubAPIBase = github.URL
+	application.config.EnableJobs = true
+	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) { return true, nil }
+
+	body := ingestBody("queued:design")
+	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
+
+	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	}))
+
+	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 11, 0, 0, time.UTC) }
+	postTick(t, application)
+
+	cookie := login(t, application, "reviewer@example.com")
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/"+created.ID+"/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	runCheckJob(t, application, created.ID)
+
+	if status := shipStatus(t, application, created.ID); status != statusReady {
+		t.Fatalf("status after the late job = %q, want ready", status)
+	}
+
+	var claims int
+	if err := application.store.QueryRow(context.Background(), `select count(*) from claim where submission_id = ?`, created.ID).Scan(&claims); err != nil {
+		t.Fatal(err)
+	}
+
+	if claims != 1 {
+		t.Fatalf("claims after the late job = %d, want the reviewer's claim kept", claims)
+	}
+
+	if summary := queuedCheckSummary(t, application, created.ID); summary.Error != 0 || summary.Pass == 0 {
+		t.Fatalf("late job summary = %+v, want the refreshed checks", summary)
+	}
+}
+
+// TestCheckSummaryIgnoresSupersededRows covers the queue counts following the newest row per key, so an older error cannot outlive the pass that replaced it.
+func TestCheckSummaryIgnoresSupersededRows(t *testing.T) {
+	github := fakeGitHub(t)
+
+	application := newTestApp(t)
+	application.config.DisableRepoChecks = false
+	application.config.GitHubAPIBase = github.URL
+	application.config.EnableJobs = true
+	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) { return true, nil }
+
+	body := ingestBody("queued:design")
+	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
+
+	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	}))
+
+	if _, err := application.store.Exec(context.Background(), `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, data, checked_at)
+		values (?, ?, 1, 'repo.description', 'Project description', 'repo', 'error', 'warn', 'Stale failure', '', '', '2026-11-03T11:00:00Z')`,
+		newID("chk"), created.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	runCheckJob(t, application, created.ID)
+
+	summary := queuedCheckSummary(t, application, created.ID)
+	if summary.Error != 0 {
+		t.Fatalf("summary = %+v, want the superseded error ignored", summary)
+	}
+}
+
+// TestTickKeepsFreshCheckRun covers the stale sweep leaving a just-queued retry alone, so its job can still land.
+func TestTickKeepsFreshCheckRun(t *testing.T) {
+	fake := newFlakyGitHub(t)
+	fake.failMeta.Store(true)
+
+	var jobs []app.JobRequest
+
+	application := retryTestApp(t, fake, &jobs)
+	id := ingestRetryShip(t, application, "retry:fresh", "example/retry")
+	runCheckJob(t, application, id)
+
+	if status := shipStatus(t, application, id); status != statusNeedsAttention {
+		t.Fatalf("status after the failed run = %q, want needs_attention", status)
+	}
+
+	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 6, 0, 0, time.UTC) }
+	postTick(t, application)
+
+	if status := shipStatus(t, application, id); status != statusChecking {
+		t.Fatalf("status after the retry = %q, want checking", status)
+	}
+
+	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 7, 0, 0, time.UTC) }
+	postTick(t, application)
+
+	if status := shipStatus(t, application, id); status != statusChecking {
+		t.Fatalf("status after a fresh retry = %q, want checking", status)
+	}
+}
+
+// TestQueueCountsFollowChecks covers a stored summary that lagged behind the check rows: the queue must show the counts its own dots draw.
+func TestQueueCountsFollowChecks(t *testing.T) {
+	github := fakeGitHub(t)
+
+	application := newTestApp(t)
+	application.config.DisableRepoChecks = false
+	application.config.GitHubAPIBase = github.URL
+	application.config.EnableJobs = true
+	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) { return true, nil }
+
+	body := ingestBody("queued:design")
+	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
+
+	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", body),
+	}))
+
+	if _, err := application.store.Exec(context.Background(), `update submission set check_summary = ? where id = ?`,
+		`{"overall":"warn","pass":10,"warn":3,"fail":0,"error":1,"running":0}`, created.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	cookie := login(t, application, "reviewer@example.com")
+	queue := decode[contract.QueueResponse](t, do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all", nil, cookie, nil))
+
+	for _, item := range queue.Items {
+		if item.ID != created.ID {
+			continue
+		}
+
+		var pass, warn, fail, errored int
+
+		for _, check := range item.Checks {
+			switch check.Status {
+			case statusPass:
+				pass++
+			case statusWarn:
+				warn++
+			case statusFail:
+				fail++
+			case statusError:
+				errored++
+			}
+		}
+
+		if item.CheckSummary.Error != errored || item.CheckSummary.Fail != fail || item.CheckSummary.Warn != warn || item.CheckSummary.Pass != pass {
+			t.Fatalf("summary = %+v, dots count pass=%d warn=%d fail=%d error=%d", item.CheckSummary, pass, warn, fail, errored)
+		}
+
+		if item.CheckSummary.Error != 0 {
+			t.Fatalf("summary = %+v, want the stale error ignored", item.CheckSummary)
+		}
+
+		return
+	}
+
+	t.Fatalf("ship %s is missing from the queue", created.ID)
 }

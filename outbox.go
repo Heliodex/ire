@@ -82,8 +82,15 @@ func (a *ireApp) handleTick(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, _ = a.store.Exec(r.Context(), `delete from session where expires_at <= ?`, now)
+
+	// A run queued or started within the stale window still owns the ship. Keying only on ingest time would sweep every retry back to needs_attention before its job could land.
+	staleBefore := a.later(-checkStaleAfter)
 	_, _ = a.store.Exec(r.Context(), `update submission set status = 'needs_attention', updated_at = ?
-		where status = 'checking' and ingested_at < ?`, now, a.later(-checkStaleAfter))
+		where status = 'checking' and ingested_at < ?
+		  and not exists (
+			select 1 from check_run r
+			where r.submission_id = submission.id and r.version = submission.version and r.started_at >= ?
+		  )`, now, staleBefore, staleBefore)
 
 	a.retryErroredChecks(r.Context())
 

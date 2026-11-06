@@ -213,6 +213,25 @@ func scanQueueItem(rows *storage.Rows) (contract.QueueItem, error) {
 	return item, nil
 }
 
+// queueCheckSummary counts the check rows the queue draws, so the displayed counts always agree with the dots and the review page even when a stored summary lagged behind a late check run.
+func queueCheckSummary(checks []contract.QueueCheck) contract.CheckSummary {
+	results := make([]contract.CheckResult, len(checks))
+	for i, check := range checks {
+		results[i] = contract.CheckResult{Status: check.Status, Severity: check.Severity}
+	}
+
+	counts := checkCountsFor(results)
+
+	return contract.CheckSummary{
+		Overall: counts.Overall,
+		Pass:    counts.Pass,
+		Warn:    counts.Warn,
+		Fail:    counts.Fail,
+		Error:   counts.Error,
+		Running: counts.Running,
+	}
+}
+
 // handleQueue returns the stage 1 work list, counts and claim state in one response.
 func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewer(w, r)
@@ -268,6 +287,7 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 
 	for i := range response.Items {
 		response.Items[i].Checks = checks[response.Items[i].ID]
+		response.Items[i].CheckSummary = queueCheckSummary(response.Items[i].Checks)
 	}
 
 	counts, err := a.queueCounts(r.Context(), person.ProgramID, person.ID, a.nowText())
