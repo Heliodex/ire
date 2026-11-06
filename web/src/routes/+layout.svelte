@@ -370,7 +370,10 @@ header {
 	display: none;
 	gap: var(--space-4);
 	align-items: center;
+	align-self: flex-end;
 	min-width: 0;
+	padding-left: var(--space-5);
+	margin-bottom: calc(-1 * var(--space-2));
 	overflow-x: auto;
 }
 
