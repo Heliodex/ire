@@ -1952,6 +1952,7 @@ h1 {
 	padding-top: var(--space-2);
 	font-size: var(--text-sm);
 	color: var(--text-2);
+	overflow-wrap: anywhere;
 	white-space: pre-wrap;
 }
 
