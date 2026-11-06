@@ -123,7 +123,6 @@ let checkTip = $state<CheckTip | null>(null)
 let spaceHeld = $state(false)
 let restoring = savedQueue !== null
 let filterHelp = $state<HTMLDialogElement | null>(null)
-let filterHelpButton = $state<HTMLButtonElement | null>(null)
 let filterInput = $state<HTMLInputElement | null>(null)
 let filterHighlight = $state<HTMLSpanElement | null>(null)
 
@@ -409,12 +408,6 @@ onMount((): (() => void) => {
 	}
 
 	function onKeydown(event: KeyboardEvent): void {
-		if (event.key === "Escape" && filterHelp?.open) {
-			filterHelp.close()
-
-			return
-		}
-
 		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
 
 		if (event.key === " ") {
@@ -459,19 +452,6 @@ onMount((): (() => void) => {
 
 	window.addEventListener("keyup", onKeyup)
 
-	// A non-modal dialog leaves the page interactive, so a press anywhere else dismisses it.
-	function onHelpPointerDown(event: PointerEvent): void {
-		if (!filterHelp?.open) return
-
-		const { target } = event
-		if (!(target instanceof Node) || filterHelp.contains(target)) return
-		if (filterHelpButton?.contains(target)) return
-
-		filterHelp.close()
-	}
-
-	document.addEventListener("pointerdown", onHelpPointerDown)
-
 	function onBlur(): void {
 		spaceHeld = false
 	}
@@ -490,7 +470,6 @@ onMount((): (() => void) => {
 		window.removeEventListener("keydown", onKeydown)
 		window.removeEventListener("keyup", onKeyup)
 		window.removeEventListener("blur", onBlur)
-		document.removeEventListener("pointerdown", onHelpPointerDown)
 		window.removeEventListener("pagehide", onPageHide)
 		document.removeEventListener("visibilitychange", onVisibilityChange)
 		wideQuery.removeEventListener("change", onWideChange)
@@ -1100,13 +1079,9 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 			aria-haspopup="dialog"
 			aria-label="Filter syntax help"
 			class="ui-icon-button help"
-			onclick={(): void => {
-				if (filterHelp?.open) filterHelp.close()
-				else filterHelp?.show()
-			}}
+			onclick={(): void => filterHelp?.showModal()}
 			title="Filter syntax help"
 			type="button"
-			bind:this={filterHelpButton}
 		>
 			?
 		</button>
@@ -1145,7 +1120,18 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 	</div>
 </div>
 
-<dialog aria-labelledby="filter-help-title" class="filter-help" bind:this={filterHelp}>
+<dialog
+	aria-labelledby="filter-help-title"
+	class="filter-help"
+	onclick={(event): void => {
+		// A modal dialog retargets clicks on its backdrop to the dialog element itself.
+		if (event.target === filterHelp) filterHelp?.close()
+	}}
+	onkeydown={(event): void => {
+		if (event.key === "Escape") filterHelp?.close()
+	}}
+	bind:this={filterHelp}
+>
 	<div class="filter-help-body">
 		<header>
 			<h2 id="filter-help-title">Filter syntax</h2>
@@ -1755,18 +1741,19 @@ h1 {
 }
 
 .filter-help {
-	position: fixed;
-	inset: 0;
-	z-index: var(--layer-toast);
 	width: min(34rem, calc(100vw - 2rem));
 	max-height: calc(100vh - 2rem);
 	padding: 0;
-	margin: auto;
 	color: var(--text);
 	background: var(--surface);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-lg);
 	box-shadow: var(--shadow-lg);
+}
+
+.filter-help::backdrop {
+	background: rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(2px);
 }
 
 .filter-help-body {
