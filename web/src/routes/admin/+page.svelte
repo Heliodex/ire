@@ -408,7 +408,7 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 										<input
 											aria-label={`${permission.label} for the ${def.name} role`}
 											checked={roleHas(def, permission.value)}
-											class="ui-switch"
+											class="ui-checkbox"
 											disabled={def.locked || savingRole === def.name}
 											onchange={(event): void => {
 												const input = event.currentTarget as HTMLInputElement
