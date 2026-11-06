@@ -132,7 +132,6 @@ async function save(member: Member, nextRole: string, active: boolean): Promise<
 	try {
 		const updated = await updateMember(member.id, nextRole, active)
 		members = members.map(item => (item.id === updated.id ? updated : item))
-		notice = `Saved ${updated.email}.`
 		audit = await fetchAudit().then(
 			response => response.entries,
 			() => audit,
@@ -186,7 +185,6 @@ async function saveRolePermissions(def: RoleDefinition, permission: string, gran
 	try {
 		const updated = await updateRole(def.name, { permissions: next })
 		roleDefs = roleDefs.map(item => (item.name === updated.name ? updated : item))
-		notice = `Saved the ${updated.name} role.`
 
 		return true
 	} catch (err) {
