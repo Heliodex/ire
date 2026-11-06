@@ -128,7 +128,7 @@ function decidedCount(submissions: MakerSubmission[], decision: string): number 
 				{#each profile.submissions as ship (ship.id)}
 					<li>
 						<div class="ship-head">
-							<a class="ship" data-sveltekit-reload href={`/review/${encodeURIComponent(ship.id)}`}>
+							<a class="ship" href={`/review/${encodeURIComponent(ship.id)}`}>
 								{ship.title}
 							</a>
 							<span class="ui-badge" data-tone={statusTone(ship.status)}>{humanStatus(ship.status)}</span>

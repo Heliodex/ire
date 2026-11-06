@@ -205,7 +205,7 @@ onMount((): (() => void) => {
 		{:else}
 			<div class="ui-card list">
 				{#each visible as item (item.id)}
-					<a class="row" data-sveltekit-reload href={`/review/${encodeURIComponent(item.id)}?from=reviewed`}>
+					<a class="row" href={`/review/${encodeURIComponent(item.id)}?from=reviewed`}>
 						<span class="thumb">
 							{#if item.thumbnailUrl}
 								<img alt="" decoding="async" loading="lazy" src={item.thumbnailUrl}>

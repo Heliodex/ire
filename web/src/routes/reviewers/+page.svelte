@@ -219,11 +219,7 @@ function activeTone(active: boolean | undefined): string {
 				{#each profile.reviews as review (review.id)}
 					<li class:invalidated={review.invalidatedAt}>
 						<div class="review-head">
-							<a
-								class="ship"
-								data-sveltekit-reload
-								href={`/review/${encodeURIComponent(review.submissionId)}`}
-							>
+							<a class="ship" href={`/review/${encodeURIComponent(review.submissionId)}`}>
 								{review.submissionTitle}
 							</a>
 							<span class="ui-badge" data-tone={statusTone(review.decision)}>{review.decision}</span>
