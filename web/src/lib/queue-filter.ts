@@ -216,7 +216,9 @@ export function parseQueueQuery(input: string): QueueQuery {
 
 export interface QueueFilterSegment {
 	filter: boolean
+	key: string
 	text: string
+	value: string
 }
 
 // queueFilterSegments splits the filter box for the highlighted overlay, marking recognised tokens.
@@ -226,9 +228,14 @@ export function queueFilterSegments(input: string): QueueFilterSegment[] {
 	for (const part of input.split(/(\s+)/)) {
 		if (part === "") continue
 
+		const filter = !/^\s+$/.test(part) && hasStructuredQuery(parseQueueQuery(part))
+		const colon = part.indexOf(":")
+
 		segments.push({
-			filter: !/^\s+$/.test(part) && hasStructuredQuery(parseQueueQuery(part)),
+			filter,
+			key: filter ? part.slice(0, colon) : "",
 			text: part,
+			value: filter ? part.slice(colon + 1) : "",
 		})
 	}
 
@@ -247,6 +254,20 @@ export function sortQueueFilterTokens(tokens: string[]): string[] {
 	special.sort((left, right) => left.toLowerCase().localeCompare(right.toLowerCase()))
 
 	return [...special, ...plain]
+}
+
+// setQueueFilterToken adds one filter, replacing any existing filter with the same key.
+// Activating the same value again removes it.
+export function setQueueFilterToken(input: string, key: string, value: string): string {
+	const token = `${key}:${value}`
+	const prefix = `${key.toLowerCase()}:`
+	const tokens = input.trim() === "" ? [] : input.trim().split(/\s+/)
+	const existing = tokens.filter(item => item.toLowerCase().startsWith(prefix))
+	const next = tokens.filter(item => !item.toLowerCase().startsWith(prefix))
+
+	if (existing.length !== 1 || existing[0]?.toLowerCase() !== token.toLowerCase()) next.push(token)
+
+	return sortQueueFilterTokens(next).join(" ")
 }
 
 // hasStructuredQuery reports whether the reader used one of the key:value filters.

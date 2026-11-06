@@ -5,6 +5,7 @@ import {
 	matchesQueueQuery,
 	parseQueueQuery,
 	queueFilterSegments,
+	setQueueFilterToken,
 	sortQueueFilterTokens,
 } from "../src/lib/queue-filter"
 
@@ -123,20 +124,38 @@ describe("parseQueueQuery", () => {
 describe("queueFilterSegments", () => {
 	test("marks recognised filters and keeps plain text and spacing", () => {
 		expect(queueFilterSegments("week:1 tea type:cad")).toEqual([
-			{ filter: true, text: "week:1" },
-			{ filter: false, text: " " },
-			{ filter: false, text: "tea" },
-			{ filter: false, text: " " },
-			{ filter: true, text: "type:cad" },
+			{ filter: true, key: "week", text: "week:1", value: "1" },
+			{ filter: false, key: "", text: " ", value: "" },
+			{ filter: false, key: "", text: "tea", value: "" },
+			{ filter: false, key: "", text: " ", value: "" },
+			{ filter: true, key: "type", text: "type:cad", value: "cad" },
 		])
 	})
 
 	test("leaves unknown or incomplete filters as normal text", () => {
 		expect(queueFilterSegments("status:nope week:")).toEqual([
-			{ filter: false, text: "status:nope" },
-			{ filter: false, text: " " },
-			{ filter: false, text: "week:" },
+			{ filter: false, key: "", text: "status:nope", value: "" },
+			{ filter: false, key: "", text: " ", value: "" },
+			{ filter: false, key: "", text: "week:", value: "" },
 		])
+	})
+})
+
+describe("setQueueFilterToken", () => {
+	test("replaces an existing filter of the same type", () => {
+		expect(setQueueFilterToken("type:pcb ver:1 open", "ver", "2")).toBe("type:pcb ver:2 open")
+	})
+
+	test("removes the filter when the same value is activated again", () => {
+		expect(setQueueFilterToken("type:pcb ver:1 open", "ver", "1")).toBe("type:pcb open")
+	})
+
+	test("sorts the new filter into the special filters", () => {
+		expect(setQueueFilterToken("type:pcb ver:1 open", "age", ">=4h47m")).toBe("age:>=4h47m type:pcb ver:1 open")
+	})
+
+	test("keeps plain terms after the special filters", () => {
+		expect(setQueueFilterToken("open type:pcb", "ver", "1")).toBe("type:pcb ver:1 open")
 	})
 })
 

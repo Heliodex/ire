@@ -24,7 +24,7 @@ import {
 	matchesQueueQuery,
 	parseQueueQuery,
 	queueFilterSegments,
-	sortQueueFilterTokens,
+	setQueueFilterToken,
 } from "../../lib/queue-filter"
 import {
 	createQueueState,
@@ -775,12 +775,6 @@ $effect((): void => {
 	syncFilterScroll()
 })
 
-// searchTokens returns the current filter box split into whitespace-separated tokens.
-function searchTokens(): string[] {
-	const query = search.trim()
-	return query === "" ? [] : query.split(/\s+/)
-}
-
 // setSearchValue writes the filter box, resets the cursor and keeps the URL shareable.
 function setSearchValue(value: string): void {
 	search = value.trim()
@@ -796,16 +790,7 @@ function setSearchValue(value: string): void {
 
 // setFilterToken adds or replaces one key:value filter without dropping the other terms.
 function setFilterToken(key: string, value: string): void {
-	const token = `${key}:${value}`
-	const prefix = `${key.toLowerCase()}:`
-	const tokens = searchTokens()
-	const existing = tokens.filter(item => item.toLowerCase().startsWith(prefix))
-	const next = tokens.filter(item => !item.toLowerCase().startsWith(prefix))
-
-	// Activating the same filter again clears just that filter.
-	if (existing.length !== 1 || existing[0]?.toLowerCase() !== token.toLowerCase()) next.push(token)
-
-	setSearchValue(sortQueueFilterTokens(next).join(" "))
+	setSearchValue(setQueueFilterToken(search, key, value))
 }
 
 // filterByStatus adds status:ready and its sibling filters when a status badge is activated.
@@ -946,13 +931,10 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 			<span class="filter-field">
 				<span aria-hidden="true" class="highlight" bind:this={filterHighlight}>
 					<span class="highlight-text">
-						{#each filterSegments as segment, index (index)}
+						{#each filterSegments as segment, index (`${index}:${segment.text}`)}
 							{#if segment.filter}
-								{const colon = segment.text.indexOf(":")}
-								{const key = segment.text.slice(0, colon)}
-								{const value = segment.text.slice(colon + 1)}
-								<span class="filter-key">{key}</span><span class="filter-colon">:</span
-								><span class="filter-value">{value}</span>
+								<span class="filter-key">{segment.key}</span><span class="filter-colon">:</span
+								><span class="filter-value">{segment.value}</span>
 							{:else}
 								{segment.text}
 							{/if}
