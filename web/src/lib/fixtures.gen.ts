@@ -434,6 +434,7 @@ const queueResponseFixture: InferOutput<typeof queueResponseSchema> = {
 	"hasMore": false,
 	"items": [
 		{
+			"bomTotalCents": 0,
 			"checkRun": {
 				"attempts": 0,
 				"error": "error",
@@ -462,6 +463,8 @@ const queueResponseFixture: InferOutput<typeof queueResponseSchema> = {
 			"claimedBy": "claimedBy",
 			"externalId": "externalId",
 			"hoursClaimedSeconds": 0,
+			"hoursHackatimeSeconds": 0,
+			"hoursJournalSeconds": 0,
 			"id": "id",
 			"ingestedAt": "2026-01-01T00:00:00Z",
 			"makerAvatarUrl": "makerAvatarUrl",
@@ -901,8 +904,11 @@ export function fakeReviewsResponse(
 const searchResponseFixture: InferOutput<typeof searchResponseSchema> = {
 	"results": [
 		{
+			"bomTotalCents": 0,
 			"externalId": "externalId",
 			"hoursClaimedSeconds": 0,
+			"hoursHackatimeSeconds": 0,
+			"hoursJournalSeconds": 0,
 			"id": "id",
 			"ingestedAt": "2026-01-01T00:00:00Z",
 			"makerName": "makerName",

@@ -257,6 +257,10 @@ function openResult(result: SearchResult): void {
 	open = false
 	input?.blur()
 	rememberReviewPreview({
+		bomTotalCents: result.bomTotalCents,
+		hoursClaimedSeconds: result.hoursClaimedSeconds,
+		hoursHackatimeSeconds: result.hoursHackatimeSeconds,
+		hoursJournalSeconds: result.hoursJournalSeconds,
 		id: result.id,
 		makerEmail: result.makerEmail,
 		makerName: result.makerName,

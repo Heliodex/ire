@@ -112,6 +112,14 @@ const previewChecks = $derived(preview?.checks ?? [])
 const previewWarnings = $derived(previewChecks.filter(isWarning))
 const previewBlocking = $derived(previewChecks.filter(isBlocking))
 const previewPass = $derived(previewChecks.filter(check => check.status === "pass").length)
+const previewTimeSegments = $derived.by((): TimeSegment[] => {
+	const segments: TimeSegment[] = [
+		{ label: "Journalled", tone: "journals", value: preview?.hoursJournalSeconds ?? 0 },
+		{ label: "Hackatimed", tone: "hackatime", value: preview?.hoursHackatimeSeconds ?? 0 },
+	]
+
+	return segments.filter(segment => segment.value > 0)
+})
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const canApprove = $derived(!reviewed && blocking.length === 0 && (secondPass || missingAcks.length === 0))
 const approvedSeconds = $derived(Math.max(0, Math.round((Number(hours) || 0) * 3600)))
@@ -716,6 +724,14 @@ async function saveDraftNow(): Promise<void> {
 								src={preview.thumbnailUrl}
 							>
 						{/if}
+						<div class="stats">
+							<div><span>Claimed</span><strong>{formatHours(preview.hoursClaimedSeconds)}</strong></div>
+							<div><span>Journals</span><strong>{formatHours(preview.hoursJournalSeconds)}</strong></div>
+							<div>
+								<span>Hackatime</span><strong>{formatHours(preview.hoursHackatimeSeconds)}</strong>
+							</div>
+							<div><span>BOM</span><strong>{formatMoney(preview.bomTotalCents)}</strong></div>
+						</div>
 						<LoadingState message="Loading ship…" />
 					</article>
 				{:else}
@@ -730,10 +746,14 @@ async function saveDraftNow(): Promise<void> {
 					{#if readOnly}
 						<section class="ui-card padded decision">
 							<h2>Read-only shadow</h2>
-							<div class="preview-time">
-								<span>Time evidence</span>
-								<div class="preview-time-bar"></div>
-							</div>
+							{#if previewTimeSegments.length > 0}
+								<TimeEvidenceBar segments={previewTimeSegments} />
+							{:else}
+								<div class="preview-time">
+									<span>Time evidence</span>
+									<div class="preview-time-bar"></div>
+								</div>
+							{/if}
 							<p class="policy">
 								This copy is here for review and parity only. Claims, drafts and decisions stay in Ari,
 								and Ire sends nothing to the maker.

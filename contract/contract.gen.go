@@ -2970,6 +2970,9 @@ func (j *QueueCounts) UnmarshalJSON(value []byte) error {
 }
 
 type QueueItem struct {
+	// BomTotalCents corresponds to the JSON schema field "bomTotalCents".
+	BomTotalCents int `json:"bomTotalCents" yaml:"bomTotalCents" mapstructure:"bomTotalCents"`
+
 	// CheckRun corresponds to the JSON schema field "checkRun".
 	CheckRun *CheckRun `json:"checkRun,omitempty,omitzero" yaml:"checkRun,omitempty" mapstructure:"checkRun,omitempty"`
 
@@ -2987,6 +2990,13 @@ type QueueItem struct {
 
 	// HoursClaimedSeconds corresponds to the JSON schema field "hoursClaimedSeconds".
 	HoursClaimedSeconds int `json:"hoursClaimedSeconds" yaml:"hoursClaimedSeconds" mapstructure:"hoursClaimedSeconds"`
+
+	// HoursHackatimeSeconds corresponds to the JSON schema field
+	// "hoursHackatimeSeconds".
+	HoursHackatimeSeconds int `json:"hoursHackatimeSeconds" yaml:"hoursHackatimeSeconds" mapstructure:"hoursHackatimeSeconds"`
+
+	// HoursJournalSeconds corresponds to the JSON schema field "hoursJournalSeconds".
+	HoursJournalSeconds int `json:"hoursJournalSeconds" yaml:"hoursJournalSeconds" mapstructure:"hoursJournalSeconds"`
 
 	// ID corresponds to the JSON schema field "id".
 	ID string `json:"id" yaml:"id" mapstructure:"id"`
@@ -3043,6 +3053,9 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
+	if _, ok := raw["bomTotalCents"]; raw != nil && !ok {
+		return fmt.Errorf("field bomTotalCents in QueueItem: required")
+	}
 	if _, ok := raw["checkSummary"]; raw != nil && !ok {
 		return fmt.Errorf("field checkSummary in QueueItem: required")
 	}
@@ -3054,6 +3067,12 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["hoursClaimedSeconds"]; raw != nil && !ok {
 		return fmt.Errorf("field hoursClaimedSeconds in QueueItem: required")
+	}
+	if _, ok := raw["hoursHackatimeSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursHackatimeSeconds in QueueItem: required")
+	}
+	if _, ok := raw["hoursJournalSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursJournalSeconds in QueueItem: required")
 	}
 	if _, ok := raw["id"]; raw != nil && !ok {
 		return fmt.Errorf("field id in QueueItem: required")
@@ -3087,11 +3106,20 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
 	}
+	if 0 > plain.BomTotalCents {
+		return fmt.Errorf("field %s: must be >= %v", "bomTotalCents", 0)
+	}
 	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 	if 0 > plain.HoursClaimedSeconds {
 		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
+	}
+	if 0 > plain.HoursHackatimeSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursHackatimeSeconds", 0)
+	}
+	if 0 > plain.HoursJournalSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursJournalSeconds", 0)
 	}
 	if utf8.RuneCountInString(string(plain.ID)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
@@ -4302,11 +4330,21 @@ func (j *SearchResponse) UnmarshalJSON(value []byte) error {
 }
 
 type SearchResult struct {
+	// BomTotalCents corresponds to the JSON schema field "bomTotalCents".
+	BomTotalCents int `json:"bomTotalCents" yaml:"bomTotalCents" mapstructure:"bomTotalCents"`
+
 	// ExternalID corresponds to the JSON schema field "externalId".
 	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
 
 	// HoursClaimedSeconds corresponds to the JSON schema field "hoursClaimedSeconds".
 	HoursClaimedSeconds int `json:"hoursClaimedSeconds" yaml:"hoursClaimedSeconds" mapstructure:"hoursClaimedSeconds"`
+
+	// HoursHackatimeSeconds corresponds to the JSON schema field
+	// "hoursHackatimeSeconds".
+	HoursHackatimeSeconds int `json:"hoursHackatimeSeconds" yaml:"hoursHackatimeSeconds" mapstructure:"hoursHackatimeSeconds"`
+
+	// HoursJournalSeconds corresponds to the JSON schema field "hoursJournalSeconds".
+	HoursJournalSeconds int `json:"hoursJournalSeconds" yaml:"hoursJournalSeconds" mapstructure:"hoursJournalSeconds"`
 
 	// ID corresponds to the JSON schema field "id".
 	ID string `json:"id" yaml:"id" mapstructure:"id"`
@@ -4354,11 +4392,20 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
+	if _, ok := raw["bomTotalCents"]; raw != nil && !ok {
+		return fmt.Errorf("field bomTotalCents in SearchResult: required")
+	}
 	if _, ok := raw["externalId"]; raw != nil && !ok {
 		return fmt.Errorf("field externalId in SearchResult: required")
 	}
 	if _, ok := raw["hoursClaimedSeconds"]; raw != nil && !ok {
 		return fmt.Errorf("field hoursClaimedSeconds in SearchResult: required")
+	}
+	if _, ok := raw["hoursHackatimeSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursHackatimeSeconds in SearchResult: required")
+	}
+	if _, ok := raw["hoursJournalSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursJournalSeconds in SearchResult: required")
 	}
 	if _, ok := raw["id"]; raw != nil && !ok {
 		return fmt.Errorf("field id in SearchResult: required")
@@ -4386,11 +4433,20 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
 	}
+	if 0 > plain.BomTotalCents {
+		return fmt.Errorf("field %s: must be >= %v", "bomTotalCents", 0)
+	}
 	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 	if 0 > plain.HoursClaimedSeconds {
 		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
+	}
+	if 0 > plain.HoursHackatimeSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursHackatimeSeconds", 0)
+	}
+	if 0 > plain.HoursJournalSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursJournalSeconds", 0)
 	}
 	if utf8.RuneCountInString(string(plain.ID)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)

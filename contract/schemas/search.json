@@ -6,11 +6,23 @@
 			"items": {
 				"type": "object",
 				"properties": {
+					"bomTotalCents": {
+						"type": "integer",
+						"minimum": 0
+					},
 					"externalId": {
 						"type": "string",
 						"minLength": 1
 					},
 					"hoursClaimedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"hoursHackatimeSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"hoursJournalSeconds": {
 						"type": "integer",
 						"minimum": 0
 					},
@@ -62,8 +74,11 @@
 					}
 				},
 				"required": [
+					"bomTotalCents",
 					"externalId",
 					"hoursClaimedSeconds",
+					"hoursHackatimeSeconds",
+					"hoursJournalSeconds",
 					"id",
 					"ingestedAt",
 					"makerName",

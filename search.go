@@ -49,7 +49,8 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := a.store.Query(r.Context(), `select s.id, s.external_id, s.title, coalesce(s.maker_name, ''),
 			s.status, s.stage, coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''),
-			coalesce(s.week, 0), s.version, s.hours_claimed_seconds, s.ingested_at,
+			coalesce(s.week, 0), s.version, s.hours_claimed_seconds,
+			s.hours_journal_seconds, s.hours_hackatime_seconds, s.bom_total_cents, s.ingested_at,
 			coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, '')
 		from submission s
 		where s.program_id = ?
@@ -86,7 +87,8 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &makerName,
 			&item.Status, &item.Stage, &theme, &thumb, &week,
-			&item.Version, &item.HoursClaimedSeconds, &item.IngestedAt,
+			&item.Version, &item.HoursClaimedSeconds,
+			&item.HoursJournalSeconds, &item.HoursHackatimeSeconds, &item.BomTotalCents, &item.IngestedAt,
 			&makerEmail, &makerSlack, &tier); err != nil {
 			writeStorage(w, err)
 

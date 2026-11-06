@@ -4,8 +4,11 @@ import { createSearchCache } from "../src/lib/search-cache"
 
 function result(id: string, overrides: Partial<SearchResult> = {}): SearchResult {
 	return {
+		bomTotalCents: 0,
 		externalId: id,
 		hoursClaimedSeconds: 0,
+		hoursHackatimeSeconds: 0,
+		hoursJournalSeconds: 0,
 		id,
 		ingestedAt: "2026-01-01T00:00:00Z",
 		makerName: "Maker",

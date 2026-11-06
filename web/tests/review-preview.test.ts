@@ -3,6 +3,10 @@ import { type ReviewPreview, readReviewPreview, rememberReviewPreview } from "..
 
 function preview(id: string, overrides: Partial<ReviewPreview> = {}): ReviewPreview {
 	return {
+		bomTotalCents: 0,
+		hoursClaimedSeconds: 0,
+		hoursHackatimeSeconds: 0,
+		hoursJournalSeconds: 0,
 		id,
 		makerName: "Maker",
 		status: "ready",

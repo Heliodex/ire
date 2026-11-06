@@ -5,9 +5,13 @@ import type { QueueItem } from "./api"
 // ReviewPreview is the part of a row the queue or search already knows, so the review page can show it while the
 // full bundle loads. It mirrors the fields the loaded header and rail show.
 export interface ReviewPreview {
+	bomTotalCents: number
 	checkCount?: number
 	checks?: QueueItem["checks"]
 	claimedBy?: string
+	hoursClaimedSeconds: number
+	hoursHackatimeSeconds: number
+	hoursJournalSeconds: number
 	id: string
 	makerEmail?: string
 	makerName: string

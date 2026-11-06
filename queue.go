@@ -97,6 +97,7 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 	now := a.nowText()
 	query := `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
 			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, ''), s.hours_claimed_seconds,
+			s.hours_journal_seconds, s.hours_hackatime_seconds, s.bom_total_cents,
 			coalesce(s.check_summary, ''), s.ingested_at, coalesce(u.email, ''),
 			coalesce(r.status, ''), coalesce(r.attempts, 0), coalesce(r.started_at, ''), coalesce(r.finished_at, ''),
 			coalesce(r.error, ''), coalesce(r.runner_version, ''), coalesce(prev_review.reviewer_email, '')
@@ -162,7 +163,9 @@ func scanQueueItem(rows *storage.Rows) (contract.QueueItem, error) {
 		week, runAttempts                                        int
 	)
 	if err := rows.Scan(&item.ID, &item.ExternalID, &item.Version, &item.Status, &item.Stage, &item.Priority,
-		&item.Title, &theme, &thumbnail, &week, &makerName, &item.MakerEmail, &makerSlack, &tier, &item.HoursClaimedSeconds, &summaryJSON, &item.IngestedAt, &claimedBy,
+		&item.Title, &theme, &thumbnail, &week, &makerName, &item.MakerEmail, &makerSlack, &tier, &item.HoursClaimedSeconds,
+		&item.HoursJournalSeconds, &item.HoursHackatimeSeconds, &item.BomTotalCents,
+		&summaryJSON, &item.IngestedAt, &claimedBy,
 		&runStatus, &runAttempts, &runStarted, &runFinished, &runError, &runVersion, &previousReviewer); err != nil {
 		return contract.QueueItem{}, err
 	}

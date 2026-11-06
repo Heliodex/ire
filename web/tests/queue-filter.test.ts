@@ -13,10 +13,13 @@ const emptyChecks = { error: 0, fail: 0, overall: "pass", pass: 0, running: 0, w
 
 function itemOf(overrides: Partial<QueueItem> = {}): QueueItem {
 	return {
+		bomTotalCents: 0,
 		checkSummary: emptyChecks,
 		checks: [],
 		externalId: "ext_1",
 		hoursClaimedSeconds: 0,
+		hoursHackatimeSeconds: 0,
+		hoursJournalSeconds: 0,
 		id: "sub_1",
 		ingestedAt: "2026-02-01T12:00:00Z",
 		makerEmail: "ada@example.com",

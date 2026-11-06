@@ -88,11 +88,14 @@ describe("bundle cache", () => {
 
 function item(id: string, claimedBy?: string): QueueItem {
 	return {
+		bomTotalCents: 0,
 		checkSummary: { error: 0, fail: 0, overall: "pass", pass: 1, running: 0, warn: 0 },
 		checks: [],
 		claimedBy,
 		externalId: id,
 		hoursClaimedSeconds: 3600,
+		hoursHackatimeSeconds: 0,
+		hoursJournalSeconds: 0,
 		id,
 		ingestedAt: "2026-01-01T00:00:00Z",
 		makerEmail: "maker@example.com",

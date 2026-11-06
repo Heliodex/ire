@@ -52,6 +52,10 @@
 			"items": {
 				"type": "object",
 				"properties": {
+					"bomTotalCents": {
+						"type": "integer",
+						"minimum": 0
+					},
 					"checkRun": {
 						"type": "object",
 						"properties": {
@@ -136,6 +140,14 @@
 						"type": "integer",
 						"minimum": 0
 					},
+					"hoursHackatimeSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"hoursJournalSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
 					"id": {
 						"type": "string",
 						"minLength": 1
@@ -195,10 +207,13 @@
 					}
 				},
 				"required": [
+					"bomTotalCents",
 					"checkSummary",
 					"checks",
 					"externalId",
 					"hoursClaimedSeconds",
+					"hoursHackatimeSeconds",
+					"hoursJournalSeconds",
 					"id",
 					"ingestedAt",
 					"makerEmail",

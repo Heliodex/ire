@@ -286,12 +286,15 @@ export const queueCheckSchema = pipe(
 
 export const queueItemSchema = pipe(
 	object({
+		bomTotalCents: nonNegative,
 		checkRun: optional(checkRunSchema),
 		checkSummary: checkSummarySchema,
 		checks: array(queueCheckSchema),
 		claimedBy: optionalString,
 		externalId: pipe(string(), minLength(1)),
 		hoursClaimedSeconds: nonNegative,
+		hoursHackatimeSeconds: nonNegative,
+		hoursJournalSeconds: nonNegative,
 		id: pipe(string(), minLength(1)),
 		ingestedAt: timestamp,
 		makerAvatarUrl: optionalString,
@@ -367,8 +370,11 @@ export const overviewResponseSchema = pipe(
 
 export const searchResultSchema = pipe(
 	object({
+		bomTotalCents: nonNegative,
 		externalId: pipe(string(), minLength(1)),
 		hoursClaimedSeconds: nonNegative,
+		hoursHackatimeSeconds: nonNegative,
+		hoursJournalSeconds: nonNegative,
 		id: pipe(string(), minLength(1)),
 		ingestedAt: timestamp,
 		makerEmail: optionalString,
