@@ -75,8 +75,8 @@ function toValidationError(issues: readonly BaseIssue<unknown>[]): ValidationErr
 	return new ValidationError(fields)
 }
 
-// parseJSON parses a response through the contract schema, including API errors.
-async function parseJSON<T>(response: Response, schema: GenericSchema<T>): Promise<T> {
+// parseJSON parses a response through the contract schema, including API errors. Exported for the generated client.
+export async function parseJSON<T>(response: Response, schema: GenericSchema<T>): Promise<T> {
 	const data: unknown = await response.json().catch(() => null)
 
 	if (!response.ok) {
@@ -91,8 +91,8 @@ async function parseJSON<T>(response: Response, schema: GenericSchema<T>): Promi
 	return parsed.output
 }
 
-// requestVoid performs a request whose success has no body.
-async function requestVoid(path: string, init: RequestInit): Promise<void> {
+// requestVoid performs a request whose success has no body. Exported for the generated client.
+export async function requestVoid(path: string, init: RequestInit): Promise<void> {
 	const response = await fetch(path, init)
 	if (response.ok) return
 
