@@ -23,38 +23,34 @@ import {
 	sendBackRequestSchema,
 	sendBackResultSchema,
 	submissionFileResponseSchema,
-} from "../web/src/lib/contract"
+} from "../web/src/lib/contract";
 
 export interface EndpointParam {
-	default?: string
-	in: "path" | "query" | "body" | "init"
-	map?: { [_: string]: string }
-	name: string
-	optional?: boolean
-	type: string
-	value?: string
-	when?: string
-	wire?: string
-	wrap?: boolean
+	default?: string;
+	in: "path" | "query" | "body" | "init";
+	map?: { [_: string]: string };
+	name: string;
+	optional?: boolean;
+	type: string;
+	value?: string;
+	when?: string;
+	wire?: string;
+	wrap?: boolean;
 }
 
 export interface Endpoint {
-	doc?: string
-	keepalive?: boolean | string
-	method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
-	name: string
-	params?: EndpointParam[]
-	path: string
-	response: "void" | { schema: unknown; select?: string[] }
+	doc?: string;
+	keepalive?: boolean | string;
+	method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+	name: string;
+	params?: EndpointParam[];
+	path: string;
+	response: "void" | { schema: unknown; select?: string[] };
 }
 
-// The endpoint registry is the second half of the contract: schemas describe the shapes,
-// entries describe how to call them. `wt contract` turns each entry into a typed fetch
-// wrapper in web/src/lib/api.gen.ts. Keep the doc lines – they become the code comments.
+// The endpoint registry is the second half of the contract: schemas describe the shapes, entries describe how to call them. `wt contract` turns each entry into a typed fetch wrapper in web/src/lib/api.gen.ts. Keep the doc lines – they become the code comments.
 //
-// saveDraft and fetchAudit stay hand-written in web/src/lib/api.ts: the draft fills
-// per-field defaults and the audit keeps its filters object, neither of which the
-// registry expresses.
+// saveDraft and fetchAudit stay hand-written in web/src/lib/api.ts: the draft fills per-field defaults and the audit keeps its filters object, neither of which the registry expresses.
 export const endpoints: Endpoint[] = Object.freeze([
 	{
 		doc: "fetchAuthConfig returns which sign-in methods are enabled.",
@@ -95,7 +91,13 @@ export const endpoints: Endpoint[] = Object.freeze([
 			{ default: "1", in: "query", name: "stage", type: "number" },
 			{ default: "0", in: "query", name: "offset", type: "number" },
 			{ default: "50", in: "query", name: "limit", type: "number" },
-			{ default: "null", in: "query", name: "sort", optional: true, type: "string | null" },
+			{
+				default: "null",
+				in: "query",
+				name: "sort",
+				optional: true,
+				type: "string | null",
+			},
 			{
 				default: "1",
 				in: "query",
@@ -198,7 +200,11 @@ export const endpoints: Endpoint[] = Object.freeze([
 			{ in: "path", name: "program", type: "string", value: "program" },
 			{ in: "path", name: "id", type: "string" },
 			{ in: "path", name: "entry", type: "string" },
-			{ in: "body", name: "request", type: "InferOutput<typeof journalReviewRequestSchema>" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof journalReviewRequestSchema>",
+			},
 			{ default: "false", in: "init", name: "keepalive", type: "boolean" },
 		],
 		path: "/api/v1/programs/{program}/submissions/{id}/journal/{entry}",
@@ -211,7 +217,11 @@ export const endpoints: Endpoint[] = Object.freeze([
 		params: [
 			{ in: "path", name: "program", type: "string", value: "program" },
 			{ in: "path", name: "id", type: "string" },
-			{ in: "body", name: "request", type: "InferOutput<typeof noteRequestSchema>" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof noteRequestSchema>",
+			},
 		],
 		path: "/api/v1/programs/{program}/submissions/{id}/notes",
 		response: { schema: noteCreatedSchema, select: ["note"] },
@@ -234,7 +244,11 @@ export const endpoints: Endpoint[] = Object.freeze([
 		params: [
 			{ in: "path", name: "program", type: "string", value: "program" },
 			{ in: "path", name: "id", type: "string" },
-			{ in: "body", name: "request", type: "InferOutput<typeof decisionRequestSchema>" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof decisionRequestSchema>",
+			},
 		],
 		path: "/api/v1/programs/{program}/submissions/{id}/decision",
 		response: { schema: decisionResultSchema },
@@ -335,7 +349,11 @@ export const endpoints: Endpoint[] = Object.freeze([
 		params: [
 			{ in: "path", name: "program", type: "string", value: "program" },
 			{ in: "path", name: "id", type: "string" },
-			{ in: "body", name: "request", type: "InferOutput<typeof sendBackRequestSchema>" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof sendBackRequestSchema>",
+			},
 		],
 		path: "/api/v1/programs/{program}/submissions/{id}/send-back",
 		response: { schema: sendBackResultSchema },
@@ -359,4 +377,4 @@ export const endpoints: Endpoint[] = Object.freeze([
 		path: "/api/v1/dev/outbox/received",
 		response: { schema: fakeDeliveriesResponseSchema, select: ["deliveries"] },
 	},
-])
+]);
