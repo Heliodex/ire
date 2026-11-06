@@ -137,7 +137,7 @@ func newIreApp(store *storage.Client, client *http.Client, cfg config) *ireApp {
 
 // handler exposes the routes to the wasm wiring or a test.
 func (a *ireApp) handler() http.Handler {
-	return a.withRateLimit(a.mux)
+	return a.withCompression(a.withRateLimit(a.mux))
 }
 
 // now returns the app's clock in UTC.
