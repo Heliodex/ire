@@ -1,5 +1,5 @@
 <script lang="ts">
-import { onMount, tick } from "svelte"
+import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
 import { fetchMe, logout } from "../lib/api"
@@ -17,8 +17,6 @@ let { children }: LayoutProps = $props()
 let ready = $state(false)
 let signingOut = $state(false)
 let moreOpen = $state(false)
-let sectionsRow: HTMLElement | null = $state(null)
-let fitting = false
 
 const readOnly = $derived(session.me?.readOnly ?? false)
 const showAdmin = $derived(
@@ -67,68 +65,16 @@ const navItems = $derived.by((): NavItem[] => {
 	return sections
 })
 
-let overflowCount = $state(0)
-let lastRowWidth = 0
-let fitted = $state(false)
-const visibleItems = $derived(navItems.slice(0, Math.max(navItems.length - overflowCount, 0)))
-const overflowItems = $derived(navItems.slice(Math.max(navItems.length - overflowCount, 0)))
+// visibleTabCount is how many tabs stay inline on small screens; the rest live
+// under More. The split is static so the server and client render the same
+// row and nothing ever shifts or needs measuring.
+const visibleTabCount = 4
+const overflowItems = $derived(navItems.slice(visibleTabCount))
 
 // The layout persists across pages, so the overflow menu closes on navigation.
 $effect((): void => {
 	void page.url.pathname
 	moreOpen = false
-})
-
-// refitAfterFonts remeasures once webfonts settle: a late font swap widens the
-// links without resizing the row, so the observer never fires for it.
-async function refitAfterFonts(): Promise<void> {
-	await document.fonts.ready
-	await fitSections()
-}
-
-// fitSections hides trailing sections under More until the row fits without scrolling.
-async function fitSections(): Promise<void> {
-	if (!sectionsRow || fitting) return
-	fitting = true
-
-	try {
-		overflowCount = 0
-		await tick()
-
-		const row = sectionsRow
-		if (!row) return
-
-		lastRowWidth = row.clientWidth
-		for (let guard = navItems.length; guard > 0; guard--) {
-			const overflow = row.scrollWidth - row.clientWidth
-			if (overflow <= 1 || overflowCount >= navItems.length) break
-			overflowCount += 1
-			await tick()
-		}
-
-		fitted = true
-	} finally {
-		fitting = false
-	}
-}
-
-$effect((): (() => void) | undefined => {
-	void navItems.length
-	const row = sectionsRow
-
-	if (!row) return undefined
-
-	const observer = new ResizeObserver((): void => {
-		// Fitting only changes what overflows, never the row width, so a
-		// notification without a width change needs no new fit.
-		if (row.clientWidth === lastRowWidth) return
-		void fitSections()
-	})
-	observer.observe(row)
-	void fitSections()
-	void refitAfterFonts()
-
-	return (): void => observer.disconnect()
 })
 
 function toggleMore(): void {
@@ -320,11 +266,11 @@ async function signOut(): Promise<void> {
 				</div>
 			{/if}
 
-			<nav aria-label="Sections" class="sections-row" class:fitted={fitted} bind:this={sectionsRow}>
-				{#each visibleItems as item (item.href)}
+			<nav aria-label="Sections" class="sections-row">
+				{#each navItems as item, index (item.href)}
 					<a
 						aria-current={item.active ? "page" : undefined}
-						aria-keyshortcuts={`Alt+${navItems.indexOf(item) + 1}`}
+						aria-keyshortcuts={`Alt+${index + 1}`}
 						href={item.href}
 						class:active={item.active}
 						>{item.label}</a
@@ -360,10 +306,10 @@ async function signOut(): Promise<void> {
 						</button>
 						{#if moreOpen}
 							<div class="menu-panel ui-card">
-								{#each overflowItems as item (item.href)}
+								{#each overflowItems as item, index (item.href)}
 									<a
 										aria-current={item.active ? "page" : undefined}
-										aria-keyshortcuts={`Alt+${navItems.indexOf(item) + 1}`}
+										aria-keyshortcuts={`Alt+${visibleTabCount + index + 1}`}
 										class:active={item.active}
 										href={item.href}
 										><span>{item.label}</span></a
@@ -506,19 +452,11 @@ header {
 	display: flex;
 	gap: var(--space-4);
 	align-items: center;
-	min-height: 1.75rem;
-}
-
-/* The server renders every tab, so the row stays hidden until the first fit
-swaps the overflowing ones under More. The height is reserved throughout. */
-@media (scripting: enabled) {
-	.sections-row:not(.fitted) {
-		visibility: hidden;
-	}
 }
 
 .sections-more {
 	position: relative;
+	display: none;
 	flex: none;
 	margin-left: auto;
 }
@@ -613,6 +551,16 @@ main {
 	.top,
 	.sections-row {
 		padding-inline: var(--space-3);
+	}
+
+	/* Small screens keep the first tabs inline and pool the rest under More. */
+	.sections-row > a:nth-of-type(n + 5) {
+		display: none;
+	}
+
+	.sections-more {
+		display: block;
+		margin-left: auto;
 	}
 
 	.top {
