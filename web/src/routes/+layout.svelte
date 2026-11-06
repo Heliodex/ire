@@ -541,7 +541,6 @@ header {
 .menu-panel a {
 	padding: var(--space-2) var(--space-3);
 	border-bottom: 2px solid transparent;
-	border-radius: var(--radius-sm);
 }
 
 .menu-panel a:hover {
