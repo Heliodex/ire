@@ -48,7 +48,7 @@ import {
 import { hasPermission, permissionNoteManage, permissionSecondPass, programPermissions } from "../../lib/permissions"
 import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
 import { reviewerHref } from "../../lib/reviewer"
-import { session } from "../../lib/session.svelte.js"
+import { dropSignIn, session } from "../../lib/session.svelte.js"
 
 const tabKeys = ["overview", "journal", "checks", "bom", "evidence", "history"] as const
 type Tab = (typeof tabKeys)[number]
@@ -422,6 +422,7 @@ async function load(target = id): Promise<void> {
 		void checkHead()
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}

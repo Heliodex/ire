@@ -38,7 +38,7 @@ import {
 import { streamQueue } from "../../lib/queue-stream"
 import { rememberReviewPreview } from "../../lib/review-preview"
 import { makerHref } from "../../lib/reviewer"
-import { session } from "../../lib/session.svelte.js"
+import { dropSignIn, session } from "../../lib/session.svelte.js"
 import { rowWindow, windowPads } from "../../lib/virtual-list"
 
 const sortKeys: SortKey[] = ["ship", "maker", "status", "type", "version", "claimed", "age", "checks"]
@@ -615,6 +615,7 @@ async function loadStreaming(): Promise<void> {
 	} catch (err) {
 		if (controller.signal.aborted) return
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}
@@ -703,6 +704,7 @@ async function load(target = filter, targetStage = stage, keepRows = false): Pro
 		error = ""
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}

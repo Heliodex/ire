@@ -6,6 +6,7 @@ import { ApiError } from "../../lib/api-error"
 import Avatar from "../../lib/components/Avatar.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatHours, statusTone } from "../../lib/format"
+import { dropSignIn } from "../../lib/session.svelte.js"
 
 const roleInfo: { [_: string]: { detail: string; label: string } } = {
 	admin: {
@@ -60,6 +61,7 @@ async function load(target: string): Promise<void> {
 		if (current !== request) return
 
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}
