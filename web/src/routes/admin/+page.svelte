@@ -757,7 +757,7 @@ code {
 	}
 
 	.roster td {
-		padding: 0 0 var(--space-2);
+		padding: 0 0 var(--space-3);
 		border-bottom: 0;
 	}
 
