@@ -34,6 +34,7 @@ import {
 	type QueueSortKey as SortKey,
 } from "../../lib/queue-state"
 import { streamQueue } from "../../lib/queue-stream"
+import { rememberReviewPreview } from "../../lib/review-preview"
 import { makerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 import { rowWindow, windowPads } from "../../lib/virtual-list"
@@ -885,6 +886,19 @@ async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 		if (index !== -1) selected = index
 
 		saveQueueState()
+		rememberReviewPreview({
+			claimedBy: item.claimedBy,
+			hoursClaimedSeconds: item.hoursClaimedSeconds,
+			id: item.id,
+			makerEmail: item.makerEmail,
+			makerName: item.makerName,
+			status: item.status,
+			theme: item.theme,
+			title: item.title,
+			version: item.version,
+			week: item.week,
+		})
+
 		let target = `/review/${encodeURIComponent(item.id)}`
 		if (tab) target += `?tab=${tab}`
 

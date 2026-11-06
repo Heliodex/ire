@@ -37,6 +37,7 @@ import { maxNote } from "../../lib/contract"
 import {
 	decisionLabel,
 	formatDateTime,
+	formatDuration,
 	formatHours,
 	formatMoney,
 	formatMoneyAmount,
@@ -44,6 +45,7 @@ import {
 	humanStatus,
 	statusTone,
 } from "../../lib/format"
+import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
@@ -59,6 +61,7 @@ interface TimeSegment {
 let bundle = $state<Bundle | null>(null)
 let id = $state("")
 let loading = $state(true)
+let preview = $state<ReviewPreview | null>(null)
 let error = $state("")
 let tab = $state<Tab>("overview")
 let note = $state("")
@@ -188,6 +191,8 @@ afterNavigate((): void => {
 onMount((): (() => void) => {
 	id = idFromURL()
 	tab = tabFromURL()
+	preview = readReviewPreview(id) ?? null
+
 	if (id === "") {
 		void goto("/queue")
 		return (): void => {}
@@ -628,10 +633,39 @@ async function saveDraftNow(): Promise<void> {
 </script>
 
 <svelte:head>
-	<title>{submission ? `${submission.title} · Ire` : "Ire"}</title>
+	<title>{submission ? `${submission.title} · Ire` : preview ? `${preview.title} · Ire` : "Ire"}</title>
 </svelte:head>
 
 {#if loading}
+	{#if preview}
+		<header class="ship-head">
+			<div class="head-main">
+				<p class="crumbs"><a href={backPath}>{backLabel}</a></p>
+				<div class="title-line">
+					<h1>{preview.title}</h1>
+					<span class="ui-badge" data-tone={statusTone(preview.status)}
+						>{preview.claimedBy === session.me?.user.email ? "Yours" : humanStatus(preview.status)}</span
+					>
+					<span class="version">v{preview.version}</span>
+				</div>
+				<p class="maker">
+					{preview.makerName}
+					{#if preview.makerEmail}
+						· {preview.makerEmail}
+					{/if}
+					{#if preview.theme}
+						<span>· {preview.theme}</span>
+					{/if}
+					{#if preview.week}
+						<span>· Week {preview.week}</span>
+					{/if}
+					{#if preview.hoursClaimedSeconds > 0}
+						<span>· {formatDuration(preview.hoursClaimedSeconds)} claimed</span>
+					{/if}
+				</p>
+			</div>
+		</header>
+	{/if}
 	<div class="ui-card padded">
 		<LoadingState message="Loading ship…" />
 	</div>

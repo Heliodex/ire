@@ -3,6 +3,7 @@ import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { type SearchResult, searchProjects } from "../api"
 import { formatDuration, humanStatus, statusTone, timeAgo } from "../format"
+import { rememberReviewPreview } from "../review-preview"
 import { createSearchCache } from "../search-cache"
 
 const debounceMs = 160
@@ -255,6 +256,16 @@ $effect((): void => {
 function openResult(result: SearchResult): void {
 	open = false
 	input?.blur()
+	rememberReviewPreview({
+		hoursClaimedSeconds: result.hoursClaimedSeconds,
+		id: result.id,
+		makerName: result.makerName,
+		status: result.status,
+		theme: result.theme,
+		title: result.title,
+		version: result.version,
+		week: result.week,
+	})
 	void goto(`/review/${encodeURIComponent(result.id)}`)
 }
 </script>
