@@ -312,6 +312,7 @@ function openResult(result: SearchResult): void {
 }
 
 .result {
+	position: relative;
 	display: flex;
 	gap: var(--space-3);
 	align-items: center;
@@ -326,6 +327,14 @@ function openResult(result: SearchResult): void {
 .result:hover,
 .result.active {
 	background: var(--surface-2);
+}
+
+.result.active::before {
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 0.25rem;
+	content: "";
+	background: var(--primary);
 }
 
 .thumb {
