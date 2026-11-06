@@ -13,6 +13,7 @@ import {
 	meResponseSchema,
 	noteCreatedSchema,
 	outboxResponseSchema,
+	overviewResponseSchema,
 	queueResponseSchema,
 	reviewBundleSchema,
 	reviewedResponseSchema,
@@ -106,6 +107,14 @@ export const endpoints: Endpoint[] = Object.freeze([
 		],
 		path: "/api/v1/programs/{program}/queue",
 		response: { schema: queueResponseSchema },
+	},
+	{
+		doc: "fetchOverview returns the programme health readout: wait percentiles, today counts, status breakdown, leaderboard and daily activity.",
+		method: "GET",
+		name: "fetchOverview",
+		params: [{ in: "path", name: "program", type: "string", value: "program" }],
+		path: "/api/v1/programs/{program}/overview",
+		response: { schema: overviewResponseSchema },
 	},
 	{
 		doc: "fetchReviewed returns a page of decided ships, newest first.",

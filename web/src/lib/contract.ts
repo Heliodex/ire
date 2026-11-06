@@ -315,6 +315,52 @@ export const queueResponseSchema = pipe(
 	title("QueueResponse"),
 )
 
+// ─── Overview ───────────────────────────────────────────────────────────────
+
+export const overviewWaitSchema = pipe(
+	object({
+		count: nonNegative,
+		maxMs: nonNegative,
+		oldestId: optionalString,
+		oldestTitle: optionalString,
+		p50Ms: nonNegative,
+		p95Ms: nonNegative,
+	}),
+	title("OverviewWait"),
+)
+
+export const overviewStatusSchema = pipe(
+	object({ count: nonNegative, status: pipe(string(), minLength(1)) }),
+	title("OverviewStatus"),
+)
+
+export const overviewLeaderSchema = pipe(
+	object({
+		count: nonNegative,
+		email: optionalString,
+		name: optionalString,
+	}),
+	title("OverviewLeader"),
+)
+
+export const overviewDaySchema = pipe(
+	object({ count: nonNegative, date: pipe(string(), minLength(1)) }),
+	title("OverviewDay"),
+)
+
+export const overviewResponseSchema = pipe(
+	object({
+		byStatus: array(overviewStatusSchema),
+		daily: array(overviewDaySchema),
+		leaderboard: array(overviewLeaderSchema),
+		needsReview: nonNegative,
+		newToday: nonNegative,
+		reviewedToday: nonNegative,
+		wait: overviewWaitSchema,
+	}),
+	title("OverviewResponse"),
+)
+
 // ─── Search ─────────────────────────────────────────────────────────────────
 
 export const searchResultSchema = pipe(
@@ -1052,6 +1098,7 @@ export const responseSchemas = Object.freeze([
 	membersResponseSchema,
 	noteCreatedSchema,
 	outboxResponseSchema,
+	overviewResponseSchema,
 	parityResponseSchema,
 	queueResponseSchema,
 	reviewBundleSchema,
