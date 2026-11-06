@@ -51,8 +51,11 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 			s.status, s.stage, coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''),
 			coalesce(s.week, 0), s.version, s.hours_claimed_seconds,
 			s.hours_journal_seconds, s.hours_hackatime_seconds, s.bom_total_cents, s.ingested_at,
-			coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, '')
+			coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, ''),
+			coalesce(u.email, '')
 		from submission s
+		left join claim c on c.submission_id = s.id and c.expires_at > ?
+		left join user u on u.id = c.reviewer_id
 		where s.program_id = ?
 		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`+stageClause+`
 		  and (lower(s.title) like ? escape '\'
@@ -68,7 +71,7 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 			s.updated_at desc,
 			s.id asc
 		limit ?`,
-		person.ProgramID, needle, needle, needle, needle, prefix, prefix, parseSearchLimit(r))
+		a.nowText(), person.ProgramID, needle, needle, needle, needle, prefix, prefix, parseSearchLimit(r))
 	if err != nil {
 		writeStorage(w, err)
 
@@ -83,13 +86,14 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 			item                         contract.SearchResult
 			theme, thumb, makerName      string
 			makerEmail, makerSlack, tier string
+			claimedBy                    string
 			week                         int
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &makerName,
 			&item.Status, &item.Stage, &theme, &thumb, &week,
 			&item.Version, &item.HoursClaimedSeconds,
 			&item.HoursJournalSeconds, &item.HoursHackatimeSeconds, &item.BomTotalCents, &item.IngestedAt,
-			&makerEmail, &makerSlack, &tier); err != nil {
+			&makerEmail, &makerSlack, &tier, &claimedBy); err != nil {
 			writeStorage(w, err)
 
 			return
@@ -103,6 +107,10 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		if makerEmail != "" {
 			item.MakerEmail = &makerEmail
+		}
+
+		if claimedBy != "" {
+			item.ClaimedBy = &claimedBy
 		}
 
 		if makerSlack != "" {

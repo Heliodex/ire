@@ -30,7 +30,7 @@ import {
 	programPermissions,
 } from "../../lib/permissions"
 import { reviewerHref } from "../../lib/reviewer"
-import { session } from "../../lib/session.svelte.js"
+import { dropSignIn, session } from "../../lib/session.svelte.js"
 
 const builtinRoleLabels: { [_: string]: string } = {
 	admin: "Admin",
@@ -115,6 +115,7 @@ async function refresh(): Promise<void> {
 		error = ""
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}

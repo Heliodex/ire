@@ -8,7 +8,7 @@ import LoadingState from "../../lib/components/LoadingState.svelte"
 import { decisionLabel, humanStatus, statusTone } from "../../lib/format"
 import { createOverviewCache } from "../../lib/overview-cache"
 import { reviewerHref } from "../../lib/reviewer"
-import { session } from "../../lib/session.svelte.js"
+import { dropSignIn, session } from "../../lib/session.svelte.js"
 
 let overview = $state<Overview | null>(null)
 let loading = $state(true)
@@ -60,6 +60,7 @@ onMount((): (() => void) => {
 		} catch (err) {
 			if (cancelled) return
 			if (err instanceof ApiError && err.code === "unauthorized") {
+				dropSignIn()
 				void goto("/")
 				return
 			}

@@ -14,6 +14,7 @@ import {
 	fetchMe,
 	fetchQueue,
 	heartbeat,
+	type Journal,
 	type Note,
 	program,
 	refreshRepositoryEvidence,
@@ -47,9 +48,9 @@ import {
 import { hasPermission, permissionNoteManage, permissionSecondPass, programPermissions } from "../../lib/permissions"
 import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
 import { reviewerHref } from "../../lib/reviewer"
-import { session } from "../../lib/session.svelte.js"
+import { dropSignIn, session } from "../../lib/session.svelte.js"
 
-const tabKeys = ["overview", "checks", "journal", "bom", "evidence", "history"] as const
+const tabKeys = ["overview", "journal", "checks", "bom", "evidence", "history"] as const
 type Tab = (typeof tabKeys)[number]
 
 interface TimeSegment {
@@ -88,6 +89,7 @@ let rerunError = $state("")
 let checksOutdated = $state(false)
 let coverFailed = $state(false)
 let showAllEvents = $state(false)
+let wide = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 let prefetchTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -214,6 +216,16 @@ onMount((): (() => void) => {
 
 	void boot()
 
+	// Wide screens show the journals beside the overview, so the journal tab is not a tab there.
+	const media = window.matchMedia("(min-width: 100rem)")
+	wide = media.matches
+	if (wide && tab === "journal") selectTab("overview")
+	function syncWide(event: MediaQueryListEvent): void {
+		wide = event.matches
+		if (event.matches && tab === "journal") selectTab("overview")
+	}
+	media.addEventListener("change", syncWide)
+
 	const beat = setInterval((): void => {
 		// A backgrounded tab does not need to hold the claim awake; the TTL releases it if the reviewer walks away.
 		if (document.visibilityState !== "visible" || claimedId === "") return
@@ -244,9 +256,15 @@ onMount((): (() => void) => {
 			&& !event.metaKey
 		) {
 			event.preventDefault()
-			const current = tabKeys.indexOf(tab)
+			// The journal lives beside the overview on wide screens, so it is not a tab there.
+			const order: Tab[] = wide ? tabKeys.filter(key => key !== "journal") : [...tabKeys]
+			const current = order.indexOf(tab)
+			if (current === -1) {
+				selectTab("overview")
+				return
+			}
 			const step = event.key === "ArrowRight" ? 1 : -1
-			selectTab(tabKeys[(current + step + tabKeys.length) % tabKeys.length])
+			selectTab(order[(current + step + order.length) % order.length])
 			return
 		}
 
@@ -274,6 +292,7 @@ onMount((): (() => void) => {
 		stopChecks()
 		if (prefetchTimer) clearTimeout(prefetchTimer)
 		window.removeEventListener("keydown", onKeydown)
+		media.removeEventListener("change", syncWide)
 		if (claimedId !== "") ignore(releaseShip(claimedId))
 	}
 })
@@ -403,6 +422,7 @@ async function load(target = id): Promise<void> {
 		void checkHead()
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}
@@ -654,8 +674,8 @@ async function saveDraftNow(): Promise<void> {
 	<div aria-label="Ship sections" class="ui-tabs ship-tabs" role="tablist">
 		{#each [
 			{ count: undefined, key: "overview", label: "Overview" },
-			{ count: counts.checks, key: "checks", label: "Checks" },
 			{ count: counts.journal, key: "journal", label: "Journal" },
+			{ count: counts.checks, key: "checks", label: "Checks" },
 			{ count: counts.bom, key: "bom", label: "BOM" },
 			{ count: counts.evidence, key: "evidence", label: "Evidence" },
 			{ count: counts.history, key: "history", label: "History" },
@@ -667,6 +687,7 @@ async function saveDraftNow(): Promise<void> {
 				role="tab"
 				type="button"
 				class:active={tab === item.key}
+				class:tab-journal={item.key === "journal"}
 			>
 				{item.label}
 				{#if item.count !== undefined}
@@ -675,6 +696,42 @@ async function saveDraftNow(): Promise<void> {
 			</button>
 		{/each}
 	</div>
+{/snippet}
+
+{#snippet journalList(entries: Journal[], shipId: string, version: number)}
+	{#if entries.length === 0}
+		<div class="ui-card ui-empty">
+			<strong>No journal entries</strong>
+			<span>Half Life sent no written evidence with this ship.</span>
+		</div>
+	{:else}
+		<div class="journals">
+			{#each entries as entry (entry.id)}
+				<article class="ui-card padded journal">
+					<div class="journal-head">
+						<strong>{entry.title || "Work session"}</strong>
+						<span>{formatHours(entry.seconds)} · {formatDateTime(entry.at)}</span>
+					</div>
+					{#if entry.clipCount > 0}
+						<span class="ui-badge" data-tone="approved"
+							>{entry.clipCount}
+							clip{entry.clipCount === 1 ? "" : "s"}
+							· {formatHours(entry.coveredSeconds)} covered</span
+						>
+					{/if}
+					<p>{entry.text || "No written entry."}</p>
+					{#if entry.mediaCount > 0}
+						<small
+							>{entry.mediaCount}
+							image{entry.mediaCount === 1 ? "" : "s"}
+							attached</small
+						>
+					{/if}
+					<JournalTime editable={canAdjustEntries} {entry} onSaved={entrySaved} {shipId} {version} />
+				</article>
+			{/each}
+		</div>
+	{/if}
 {/snippet}
 
 {#if loading}
@@ -1152,6 +1209,9 @@ async function saveDraftNow(): Promise<void> {
 							/>
 						</div>
 					</article>
+					<div class="split-journals">
+						{@render journalList(bundle.journals, submission.id, submission.version)}
+					</div>
 				{:else if tab === "checks"}
 					<ChecksTab
 						{acknowledgements}
@@ -1160,45 +1220,7 @@ async function saveDraftNow(): Promise<void> {
 						onToggle={toggleAck}
 					/>
 				{:else if tab === "journal"}
-					{#if bundle.journals.length === 0}
-						<div class="ui-card ui-empty">
-							<strong>No journal entries</strong>
-							<span>Half Life sent no written evidence with this ship.</span>
-						</div>
-					{:else}
-						<div class="journals">
-							{#each bundle.journals as entry (entry.id)}
-								<article class="ui-card padded journal">
-									<div class="journal-head">
-										<strong>{entry.title || "Work session"}</strong>
-										<span>{formatHours(entry.seconds)} · {formatDateTime(entry.at)}</span>
-									</div>
-									{#if entry.clipCount > 0}
-										<span class="ui-badge" data-tone="approved"
-											>{entry.clipCount}
-											clip{entry.clipCount === 1 ? "" : "s"}
-											· {formatHours(entry.coveredSeconds)} covered</span
-										>
-									{/if}
-									<p>{entry.text || "No written entry."}</p>
-									{#if entry.mediaCount > 0}
-										<small
-											>{entry.mediaCount}
-											image{entry.mediaCount === 1 ? "" : "s"}
-											attached</small
-										>
-									{/if}
-									<JournalTime
-										editable={canAdjustEntries}
-										{entry}
-										onSaved={entrySaved}
-										shipId={submission.id}
-										version={submission.version}
-									/>
-								</article>
-							{/each}
-						</div>
-					{/if}
+					{@render journalList(bundle.journals, submission.id, submission.version)}
 				{:else if tab === "bom"}
 					{#if bundle.bom.length === 0}
 						<div class="ui-card ui-empty">
@@ -1762,6 +1784,10 @@ h1 {
 	gap: var(--space-2);
 }
 
+.split-journals {
+	display: none;
+}
+
 .tab-content {
 	margin-top: var(--space-3);
 }
@@ -2243,6 +2269,24 @@ h1 {
 	}
 
 	.shortcuts-button {
+		display: none;
+	}
+}
+
+/* Wide screens show the journals beside the overview, so the journal tab hides. */
+@media (min-width: 100rem) {
+	.tab-content:has(> .split-journals) {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: var(--space-3);
+		align-items: start;
+	}
+
+	.split-journals {
+		display: block;
+	}
+
+	.ship-tabs .tab-journal {
 		display: none;
 	}
 }

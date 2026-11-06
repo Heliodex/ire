@@ -5,6 +5,7 @@ import { fetchReviewed, type ReviewedItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { decisionLabel, formatDate, formatDateTime, formatHours, statusTone } from "../../lib/format"
+import { dropSignIn } from "../../lib/session.svelte.js"
 
 type DecisionFilter = "all" | "approved" | "changes" | "rejected"
 
@@ -57,6 +58,7 @@ async function load(target = filter, keepRows = false): Promise<void> {
 		hasMore = more
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}

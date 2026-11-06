@@ -420,6 +420,7 @@ export const overviewResponseSchema = pipe(
 export const searchResultSchema = pipe(
 	object({
 		bomTotalCents: nonNegative,
+		claimedBy: optionalString,
 		externalId: pipe(string(), minLength(1)),
 		hoursClaimedSeconds: nonNegative,
 		hoursHackatimeSeconds: nonNegative,

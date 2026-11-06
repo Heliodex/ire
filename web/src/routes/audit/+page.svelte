@@ -15,7 +15,7 @@ import {
 import AuditRow from "../../lib/components/audit/AuditRow.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { hasPermission, permissionAuditRead, programPermissions } from "../../lib/permissions"
-import { session } from "../../lib/session.svelte.js"
+import { dropSignIn, session } from "../../lib/session.svelte.js"
 
 const actionOptions = [
 	{ label: "All actions", value: "" },
@@ -185,6 +185,7 @@ async function load(reset: boolean, background = false): Promise<void> {
 		if (current !== request) return
 
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}

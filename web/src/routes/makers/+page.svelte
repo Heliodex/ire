@@ -6,6 +6,7 @@ import { ApiError } from "../../lib/api-error"
 import Avatar from "../../lib/components/Avatar.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { decisionLabel, formatDateTime, formatHours, humanStatus, statusTone } from "../../lib/format"
+import { dropSignIn } from "../../lib/session.svelte.js"
 
 let email = ""
 let profile = $state<MakerProfile | null>(null)
@@ -46,6 +47,7 @@ async function load(target: string): Promise<void> {
 		if (current !== request) return
 
 		if (err instanceof ApiError && err.code === "unauthorized") {
+			dropSignIn()
 			void goto("/")
 			return
 		}
