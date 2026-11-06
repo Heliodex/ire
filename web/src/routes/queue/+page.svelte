@@ -304,14 +304,18 @@ function measureRow(node: HTMLElement, id: string): { destroy(): void } {
 	}
 }
 
-// revealSelected scrolls the cursor row into view, whether or not it is mounted.
+// revealSelected centres the cursor row in the viewport. Scroll clamping at the page ends lets
+// the selection settle towards the bottom only once there is no more room to centre it.
 function revealSelected(): void {
 	if (!listElement || selected < 0 || selected >= visible.length) return
 
 	const top = listElement.getBoundingClientRect().top + rowOffsets[selected]
 	const height = measuredHeights.get(visible[selected].id) ?? estimatedHeight
-	if (top < 0) window.scrollBy({ top })
-	else if (top + height > viewportHeight) window.scrollBy({ top: top + height - viewportHeight })
+	const delta = top + height / 2 - viewportHeight / 2
+
+	if (Math.abs(delta) < 1) return
+
+	window.scrollBy({ top: delta })
 }
 
 $effect((): void => {
