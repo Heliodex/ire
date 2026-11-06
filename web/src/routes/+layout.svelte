@@ -533,14 +533,14 @@ header {
 	display: flex;
 	flex-direction: column;
 	gap: 1px;
-	min-width: 12rem;
+	min-width: 9rem;
 	padding: var(--space-1);
 	box-shadow: var(--shadow-lg);
 }
 
 .menu-panel a {
 	padding: var(--space-2) var(--space-3);
-	border-bottom: 0;
+	border-bottom: 2px solid transparent;
 	border-radius: var(--radius-sm);
 }
 
@@ -549,7 +549,8 @@ header {
 }
 
 .menu-panel a.active {
-	background: var(--surface-2);
+	color: var(--text);
+	border-bottom-color: var(--primary);
 }
 
 /* The inline copy takes the empty space beside the brand only on very wide screens. */
