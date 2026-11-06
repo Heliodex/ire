@@ -88,8 +88,8 @@ let filter = $state<Filter>(
 	savedQueue && filters.some(option => option.key === savedQueue.filter) ? savedQueue.filter : "all",
 )
 let stage = $state(savedQueue?.stage ?? 1)
-// Arriving on the page always shows the list loader until the first fetch settles, even when a saved copy is restored.
-let loading = $state(true)
+// A restored visit paints its cached rows at once; only a first visit waits on the loader.
+let loading = $state(savedQueue === null)
 // streaming is true while the first page arrives as NDJSON; load-more waits until the stream has finished.
 let streaming = $state(false)
 let streamController: AbortController | null = null
@@ -123,6 +123,7 @@ let checkTip = $state<CheckTip | null>(null)
 let spaceHeld = $state(false)
 let restoring = savedQueue !== null
 let filterHelp = $state<HTMLDialogElement | null>(null)
+let filterHelpButton = $state<HTMLButtonElement | null>(null)
 let filterInput = $state<HTMLInputElement | null>(null)
 let filterHighlight = $state<HTMLSpanElement | null>(null)
 
@@ -408,6 +409,12 @@ onMount((): (() => void) => {
 	}
 
 	function onKeydown(event: KeyboardEvent): void {
+		if (event.key === "Escape" && filterHelp?.open) {
+			filterHelp.close()
+
+			return
+		}
+
 		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
 
 		if (event.key === " ") {
@@ -452,6 +459,19 @@ onMount((): (() => void) => {
 
 	window.addEventListener("keyup", onKeyup)
 
+	// A non-modal dialog leaves the page interactive, so a press anywhere else dismisses it.
+	function onHelpPointerDown(event: PointerEvent): void {
+		if (!filterHelp?.open) return
+
+		const { target } = event
+		if (!(target instanceof Node) || filterHelp.contains(target)) return
+		if (filterHelpButton?.contains(target)) return
+
+		filterHelp.close()
+	}
+
+	document.addEventListener("pointerdown", onHelpPointerDown)
+
 	function onBlur(): void {
 		spaceHeld = false
 	}
@@ -470,6 +490,7 @@ onMount((): (() => void) => {
 		window.removeEventListener("keydown", onKeydown)
 		window.removeEventListener("keyup", onKeyup)
 		window.removeEventListener("blur", onBlur)
+		document.removeEventListener("pointerdown", onHelpPointerDown)
 		window.removeEventListener("pagehide", onPageHide)
 		document.removeEventListener("visibilitychange", onVisibilityChange)
 		wideQuery.removeEventListener("change", onWideChange)
@@ -495,9 +516,15 @@ async function boot(): Promise<void> {
 		return
 	}
 
-	await loadStreaming()
+	if (savedQueue) {
+		// The cached rows are already on screen and positioned, so refresh them in the background.
+		void loadStreaming()
+		await restorePosition(savedQueue.scrollY)
 
-	if (savedQueue) await restorePosition(savedQueue.scrollY)
+		return
+	}
+
+	await loadStreaming()
 }
 
 // cacheKey scopes cached rows by stage, filter and sort, so a sorted view never shows rows fetched for another order.
@@ -520,6 +547,7 @@ async function loadStreaming(): Promise<void> {
 	const wantDir = sortDir
 	const key = cacheKey(targetStage, target)
 	const previous = queue.items
+	const cached = previous.length > 0
 	const limit = Math.min(Math.max(previous.length, 50), 100)
 	const items: QueueItem[] = []
 	let { counts } = queue
@@ -564,6 +592,10 @@ async function loadStreaming(): Promise<void> {
 					}
 
 					items.push(...batch)
+
+					// Cached rows stay on screen until the refresh is complete, so the list never shrinks to a batch.
+					if (cached) return
+
 					queue = { counts, hasMore, items: [...items] }
 
 					if (first) {
@@ -1068,9 +1100,13 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 			aria-haspopup="dialog"
 			aria-label="Filter syntax help"
 			class="ui-icon-button help"
-			onclick={(): void => filterHelp?.showModal()}
+			onclick={(): void => {
+				if (filterHelp?.open) filterHelp.close()
+				else filterHelp?.show()
+			}}
 			title="Filter syntax help"
 			type="button"
+			bind:this={filterHelpButton}
 		>
 			?
 		</button>
@@ -1719,19 +1755,18 @@ h1 {
 }
 
 .filter-help {
+	position: fixed;
+	inset: 0;
+	z-index: var(--layer-toast);
 	width: min(34rem, calc(100vw - 2rem));
 	max-height: calc(100vh - 2rem);
 	padding: 0;
+	margin: auto;
 	color: var(--text);
 	background: var(--surface);
 	border: 1px solid var(--border);
 	border-radius: var(--radius-lg);
 	box-shadow: var(--shadow-lg);
-}
-
-.filter-help::backdrop {
-	background: rgba(0, 0, 0, 0.55);
-	backdrop-filter: blur(2px);
 }
 
 .filter-help-body {
