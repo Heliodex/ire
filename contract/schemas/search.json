@@ -10,6 +10,9 @@
 						"type": "integer",
 						"minimum": 0
 					},
+					"claimedBy": {
+						"type": "string"
+					},
 					"externalId": {
 						"type": "string",
 						"minLength": 1

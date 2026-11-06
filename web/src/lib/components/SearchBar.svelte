@@ -5,6 +5,7 @@ import { type SearchResult, searchProjects } from "../api"
 import { formatDuration, humanStatus, statusTone, timeAgo } from "../format"
 import { rememberReviewPreview } from "../review-preview"
 import { createSearchCache } from "../search-cache"
+import { session } from "../session.svelte.js"
 
 const debounceMs = 160
 const cache = createSearchCache()
@@ -67,6 +68,37 @@ function onPointerDown(event: PointerEvent): void {
 	open = false
 }
 
+// isTaken reports whether another reviewer holds the claim, so the row cannot be opened.
+function isTaken(result: SearchResult): boolean {
+	const mine = session.me?.user.email ?? ""
+
+	return result.claimedBy !== undefined && result.claimedBy !== mine
+}
+
+// nextEnabled finds the first openable row at or after an index.
+function nextEnabled(from: number): number {
+	for (let index = from; index < results.length; index++) if (!isTaken(results[index])) return index
+
+	return -1
+}
+
+// prevEnabled finds the nearest openable row at or before an index.
+function prevEnabled(from: number): number {
+	for (let index = from; index >= 0; index--) if (!isTaken(results[index])) return index
+
+	return -1
+}
+
+// snapEnabled keeps the cursor on an openable row, preferring the current spot.
+function snapEnabled(index: number): number {
+	if (results.length === 0) return -1
+
+	const after = nextEnabled(Math.max(index, 0))
+	if (after !== -1) return after
+
+	return prevEnabled(results.length - 1)
+}
+
 // onInput shows a cached query immediately, then refreshes it in the background. When nothing is cached for the new
 // text, the previous rows stay up (marked loading) instead of blanking the list.
 function onInput(): void {
@@ -98,11 +130,11 @@ function onInput(): void {
 
 	if (showing) {
 		results = suggested
-		selected = suggested.length > 0 ? 0 : -1
+		selected = snapEnabled(0)
 		limit = Math.max(limit, suggested.length)
 	} else if (results.length > 0)
 		// Keep the previous rows visible until this query's results replace them.
-		selected = Math.min(Math.max(selected, 0), results.length - 1)
+		selected = snapEnabled(selected)
 	else selected = -1
 
 	timer = setTimeout((): void => {
@@ -121,8 +153,8 @@ async function search(text: string, id: number, revalidating: boolean, requestLi
 		limit = requestLimit
 		exhausted = found.length < requestLimit
 
-		if (revalidating) selected = found.length > 0 ? Math.min(Math.max(selected, 0), found.length - 1) : -1
-		else selected = found.length > 0 ? 0 : -1
+		if (revalidating) selected = snapEnabled(selected)
+		else selected = snapEnabled(0)
 	} catch (err) {
 		if (id !== sequence) return
 		if (revalidating) return
@@ -156,8 +188,10 @@ async function extend(): Promise<void> {
 		exhausted = found.length < next
 
 		// At the end, step onto the first new row; in the middle, keep the cursor where it is.
-		if (found.length > before && selected >= before - 1) selected = before
-		else selected = Math.min(selected, Math.max(found.length - 1, 0))
+		if (found.length > before && selected >= before - 1) {
+			const first = nextEnabled(before)
+			selected = first !== -1 ? first : snapEnabled(selected)
+		} else selected = snapEnabled(selected)
 	} catch {
 		// Keep the rows already on screen; the next press can try again.
 	} finally {
@@ -197,14 +231,15 @@ function onKeydown(event: KeyboardEvent): void {
 
 		if (results.length === 0) return
 
-		// Stop at the last row and pull in more matches instead of jumping back to the top.
-		if (selected >= results.length - 1) {
+		// Stop at the last openable row and pull in more matches instead of jumping back to the top.
+		const next = nextEnabled(selected + 1)
+		if (next === -1) {
 			void extend()
 
 			return
 		}
 
-		selected += 1
+		selected = next
 		maybeExtend()
 
 		return
@@ -220,7 +255,8 @@ function onKeydown(event: KeyboardEvent): void {
 
 		if (results.length === 0) return
 
-		selected = Math.max(0, selected - 1)
+		const prev = prevEnabled(selected - 1)
+		if (prev !== -1) selected = prev
 
 		return
 	}
@@ -255,6 +291,8 @@ $effect((): void => {
 })
 
 function openResult(result: SearchResult): void {
+	if (isTaken(result)) return
+
 	open = false
 	input?.blur()
 	rememberReviewPreview({
@@ -321,10 +359,11 @@ function openResult(result: SearchResult): void {
 						<button
 							aria-selected={index === selected}
 							class="result"
+							disabled={isTaken(result)}
 							id={`project-search-${index}`}
 							onclick={(): void => openResult(result)}
 							onmouseenter={(): void => {
-								selected = index
+								if (!isTaken(result)) selected = index
 							}}
 							role="option"
 							tabindex="-1"
@@ -471,6 +510,15 @@ function openResult(result: SearchResult): void {
 .result:hover,
 .result.active {
 	background: var(--surface-2);
+}
+
+.result:disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.result:disabled:hover {
+	background: transparent;
 }
 
 .result.active::before {

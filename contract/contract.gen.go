@@ -4741,6 +4741,9 @@ type SearchResult struct {
 	// BomTotalCents corresponds to the JSON schema field "bomTotalCents".
 	BomTotalCents int `json:"bomTotalCents" yaml:"bomTotalCents" mapstructure:"bomTotalCents"`
 
+	// ClaimedBy corresponds to the JSON schema field "claimedBy".
+	ClaimedBy *string `json:"claimedBy,omitempty,omitzero" yaml:"claimedBy,omitempty" mapstructure:"claimedBy,omitempty"`
+
 	// ExternalID corresponds to the JSON schema field "externalId".
 	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
 
