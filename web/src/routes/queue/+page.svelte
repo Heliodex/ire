@@ -88,7 +88,6 @@ let filter = $state<Filter>(
 )
 let stage = $state(savedQueue?.stage ?? 1)
 let loading = $state(!savedQueue)
-let refreshing = $state(false)
 let opening = $state("")
 let error = $state("")
 let actionError = $state("")
@@ -529,10 +528,7 @@ async function load(target = filter, targetStage = stage, keepRows = false): Pro
 		if (target === filter && targetStage === stage)
 			error = err instanceof Error ? err.message : "Could not load the queue."
 	} finally {
-		if (target === filter && targetStage === stage) {
-			loading = false
-			refreshing = false
-		}
+		if (target === filter && targetStage === stage) loading = false
 	}
 }
 
@@ -540,11 +536,22 @@ async function load(target = filter, targetStage = stage, keepRows = false): Pro
 async function loadMore(): Promise<void> {
 	if (loadingMore || !queue.hasMore) return
 
+	const targetFilter = filter
+	const targetStage = stage
+	const wantSort = sortKey
+	const wantDir = sortDir
+	const targetQueue = queue
+	const offset = queue.items.length
+
 	loadingMore = true
 	error = ""
 
 	try {
-		const next = await fetchQueue(filter, stage, queue.items.length, 50, sortKey, sortDir)
+		const next = await fetchQueue(targetFilter, targetStage, offset, 50, wantSort, wantDir)
+
+		// A tab, sort or queue change while this page was in flight makes the result stale.
+		if (targetFilter !== filter || targetStage !== stage || wantSort !== sortKey || wantDir !== sortDir) return
+		if (queue !== targetQueue) return
 
 		const seen = new Set(queue.items.map(item => item.id))
 		queue = {
@@ -563,16 +570,7 @@ async function loadMore(): Promise<void> {
 // or runs out of queue. The debounce stops half-typed filters from walking the whole queue.
 $effect((): (() => void) | undefined => {
 	if (!hasStructuredQuery(queueQuery)) return
-	if (
-		visible.length > 0
-		|| loading
-		|| loadingMore
-		|| refreshing
-		|| !queue.hasMore
-		|| error !== ""
-		|| actionError !== ""
-	)
-		return
+	if (visible.length > 0 || loading || loadingMore || !queue.hasMore || error !== "" || actionError !== "") return
 
 	const timer = setTimeout((): void => void loadMore(), 250)
 
@@ -582,13 +580,21 @@ $effect((): (() => void) | undefined => {
 // autoLoad fills the next pages while the sentinel is near the viewport.
 function autoLoad(node: HTMLElement): { destroy(): void } {
 	async function fill(): Promise<void> {
+		const targetFilter = filter
+		const targetStage = stage
+		const wantSort = sortKey
+		const wantDir = sortDir
+
 		while (queue.hasMore && !loadingMore) {
+			if (!node.isConnected) return
+			if (targetFilter !== filter || targetStage !== stage || wantSort !== sortKey || wantDir !== sortDir) return
 			if (node.getBoundingClientRect().top > window.innerHeight + 400) return
 
 			const before = queue.items.length
 			await loadMore()
 			await tick()
 
+			if (targetFilter !== filter || targetStage !== stage || wantSort !== sortKey || wantDir !== sortDir) return
 			if (queue.items.length === before) return
 		}
 	}
@@ -611,13 +617,12 @@ function refreshCache(): void {
 }
 
 async function choose(next: Filter): Promise<void> {
-	stage = 1
-
-	if (next === filter) {
-		void load(next, stage)
+	if (next === filter && stage === 1) {
+		void load(next, 1, true)
 		return
 	}
 
+	stage = 1
 	filter = next
 	selected = 0
 	error = ""
@@ -625,21 +630,23 @@ async function choose(next: Filter): Promise<void> {
 
 	const cached = cache.get(cacheKey(1, next))
 	if (cached) {
-		// Show the last copy immediately and let load() replace it without a placeholder.
+		// Show the last copy immediately and let load() refresh it without shrinking the list.
 		queue = cached
-		refreshing = false
-		void load(next, stage)
+		loading = false
+		void load(next, 1, true)
 		return
 	}
 
-	// Keep the current rows visible while the first fetch for this filter runs.
-	refreshing = true
-	await load(next, stage)
+	// Drop the previous filter's rows so they never appear under this tab while its first fetch runs.
+	queue = { ...queue, hasMore: false, items: [] }
+	loading = true
+	await load(next, 1)
 }
 
 async function chooseSecondPass(): Promise<void> {
 	if (!canSecondPass) return
 
+	const keeping = stage === 2 && filter === "all"
 	const cached = cache.get(cacheKey(2, "all"))
 	stage = 2
 	filter = "all"
@@ -649,12 +656,19 @@ async function chooseSecondPass(): Promise<void> {
 
 	if (cached) {
 		queue = cached
-		refreshing = false
-		void load(filter, stage)
+		loading = false
+		void load(filter, stage, true)
 		return
 	}
 
-	refreshing = true
+	if (keeping) {
+		void load(filter, stage, true)
+		return
+	}
+
+	// Drop the previous tab's rows so they never appear under second pass while its first fetch runs.
+	queue = { ...queue, hasMore: false, items: [] }
+	loading = true
 	await load(filter, stage)
 }
 
@@ -1045,7 +1059,7 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 	</div>
 {/if}
 
-<section aria-busy={loading || refreshing} aria-labelledby="list-title">
+<section aria-busy={loading} aria-labelledby="list-title">
 	<div class="list-head">
 		<h2 id="list-title">{stage === 2 ? "Second pass" : "Open ships"}</h2>
 		<span>
@@ -1087,7 +1101,7 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 			</div>
 		{/if}
 	{:else}
-		<div class="ui-card list" bind:this={listElement} class:refreshing>
+		<div class="ui-card list" bind:this={listElement}>
 			<div class="column-head">
 				<span></span>
 				<button
@@ -1710,11 +1724,6 @@ h1 {
 
 .list {
 	overflow: hidden;
-	transition: opacity 120ms ease;
-}
-
-.list.refreshing {
-	opacity: 0.55;
 }
 
 .row {
