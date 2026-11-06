@@ -312,7 +312,6 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 	align-items: center;
 	justify-content: space-between;
 	padding: var(--space-2) var(--space-3);
-	margin-top: var(--space-3);
 	background: var(--surface-2);
 	border-radius: var(--radius-md);
 }
