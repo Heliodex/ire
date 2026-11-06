@@ -888,6 +888,7 @@ async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 		saveQueueState()
 		rememberReviewPreview({
 			checkCount: item.checks.length,
+			checks: item.checks,
 			claimedBy: item.claimedBy,
 			id: item.id,
 			makerEmail: item.makerEmail,

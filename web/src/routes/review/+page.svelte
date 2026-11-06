@@ -108,6 +108,10 @@ const canAdjustEntries = $derived(canDecide && bundle?.claim?.isMine === 1)
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? null)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
+const previewChecks = $derived(preview?.checks ?? [])
+const previewWarnings = $derived(previewChecks.filter(isWarning))
+const previewBlocking = $derived(previewChecks.filter(isBlocking))
+const previewPass = $derived(previewChecks.filter(check => check.status === "pass").length)
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const canApprove = $derived(!reviewed && blocking.length === 0 && (secondPass || missingAcks.length === 0))
 const approvedSeconds = $derived(Math.max(0, Math.round((Number(hours) || 0) * 3600)))
@@ -694,29 +698,76 @@ async function saveDraftNow(): Promise<void> {
 			</div>
 		</header>
 
-		{@render shipTabs({ checks: preview.checkCount })}
+		<div class="layout">
+			<section class="content">
+				{@render shipTabs({ checks: preview.checkCount })}
 
-		{#if tab === "overview"}
-			<article class="ui-card padded overview">
-				{#if preview.thumbnailUrl && !previewCoverFailed}
-					<img
-						alt={`${preview.title} project image`}
-						class="cover"
-						decoding="async"
-						loading="lazy"
-						onerror={(): void => {
-							previewCoverFailed = true
-						}}
-						src={preview.thumbnailUrl}
-					>
+				{#if tab === "overview"}
+					<article class="ui-card padded overview">
+						{#if preview.thumbnailUrl && !previewCoverFailed}
+							<img
+								alt={`${preview.title} project image`}
+								class="cover"
+								decoding="async"
+								loading="lazy"
+								onerror={(): void => {
+									previewCoverFailed = true
+								}}
+								src={preview.thumbnailUrl}
+							>
+						{/if}
+						<LoadingState message="Loading ship…" />
+					</article>
+				{:else}
+					<div class="ui-card padded">
+						<LoadingState message="Loading ship…" />
+					</div>
 				{/if}
-				<LoadingState message="Loading ship…" />
-			</article>
-		{:else}
-			<div class="ui-card padded">
-				<LoadingState message="Loading ship…" />
-			</div>
-		{/if}
+			</section>
+
+			<aside class="rail">
+				<div class="rail-scroll">
+					{#if readOnly}
+						<section class="ui-card padded decision">
+							<h2>Read-only shadow</h2>
+							<div class="preview-time">
+								<span>Time evidence</span>
+								<div class="preview-time-bar"></div>
+							</div>
+							<p class="policy">
+								This copy is here for review and parity only. Claims, drafts and decisions stay in Ari,
+								and Ire sends nothing to the maker.
+							</p>
+						</section>
+					{/if}
+
+					<section class="ui-card padded summary">
+						<div class="summary-head">
+							<h2>Checks</h2>
+							<div class="summary-actions">
+								<span
+									class="ui-badge"
+									data-tone={previewChecks.length > 0
+										? statusTone(overallChecks(previewChecks))
+										: "neutral"}
+								>
+									{previewChecks.length > 0 ? overallChecks(previewChecks) : "loading"}
+								</span>
+							</div>
+						</div>
+						{#if previewChecks.length > 0}
+							<div class="summary-counts">
+								<span><strong>{previewPass}</strong> pass</span>
+								<span><strong>{previewWarnings.length}</strong> warn</span>
+								<span><strong>{previewBlocking.length}</strong> block</span>
+							</div>
+						{:else}
+							<LoadingState message="Loading checks…" />
+						{/if}
+					</section>
+				</div>
+			</aside>
+		</div>
 	{:else}
 		<div class="ui-card padded">
 			<LoadingState message="Loading ship…" />
@@ -1882,6 +1933,28 @@ h1 {
 	flex-direction: column;
 	gap: var(--space-3);
 	padding-top: var(--space-4);
+}
+
+/* The time bar is only known after the bundle arrives, so the rail preview reserves its height. */
+.preview-time {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding-top: var(--space-3);
+}
+
+.preview-time span {
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-3);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.preview-time-bar {
+	height: 0.75rem;
+	background: var(--surface-3);
+	border-radius: var(--radius-full);
 }
 
 .rail-scroll {
