@@ -1,22 +1,46 @@
 import {
 	authConfigSchema,
+	checkHeadSchema,
+	checkRunSchema,
+	claimResponseSchema,
+	decisionRequestSchema,
+	decisionResultSchema,
+	errorResponseSchema,
+	evidenceSchema,
+	fakeDeliveriesResponseSchema,
+	journalReviewResponseSchema,
+	makerProfileSchema,
+	memberSchema,
+	membersResponseSchema,
 	meResponseSchema,
+	noteCreatedSchema,
+	outboxResponseSchema,
 	queueResponseSchema,
+	reviewBundleSchema,
+	reviewedResponseSchema,
+	reviewerProfileSchema,
+	searchResponseSchema,
+	sendBackRequestSchema,
+	sendBackResultSchema,
+	submissionFileResponseSchema,
 } from "../web/src/lib/contract"
 
 export interface EndpointParam {
 	default?: string
-	in: "path" | "query" | "body"
+	in: "path" | "query" | "body" | "init"
 	map?: { [_: string]: string }
 	name: string
 	optional?: boolean
 	type: string
 	value?: string
 	when?: string
+	wire?: string
+	wrap?: boolean
 }
 
 export interface Endpoint {
 	doc?: string
+	keepalive?: boolean | string
 	method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
 	name: string
 	params?: EndpointParam[]
@@ -27,6 +51,10 @@ export interface Endpoint {
 // The endpoint registry is the second half of the contract: schemas describe the shapes,
 // entries describe how to call them. `wt contract` turns each entry into a typed fetch
 // wrapper in web/src/lib/api.gen.ts. Keep the doc lines – they become the code comments.
+//
+// saveDraft and fetchAudit stay hand-written in web/src/lib/api.ts: the draft fills
+// per-field defaults and the audit keeps its filters object, neither of which the
+// registry expresses.
 export const endpoints: Endpoint[] = Object.freeze([
 	{
 		doc: "fetchAuthConfig returns which sign-in methods are enabled.",
@@ -41,6 +69,21 @@ export const endpoints: Endpoint[] = Object.freeze([
 		name: "fetchMe",
 		path: "/api/v1/me",
 		response: { schema: meResponseSchema },
+	},
+	{
+		doc: "login is the development sign-in placeholder for Hack Club Auth.",
+		method: "POST",
+		name: "login",
+		params: [{ in: "body", name: "email", type: "string", wrap: true }],
+		path: "/api/v1/dev/login",
+		response: { schema: meResponseSchema },
+	},
+	{
+		doc: "logout deletes the session cookie.",
+		method: "POST",
+		name: "logout",
+		path: "/api/v1/logout",
+		response: "void",
 	},
 	{
 		doc: "fetchQueue returns one page of the stage 1 work list. A sort key orders every page server-side so appended rows keep arriving at the end.",
@@ -64,5 +107,256 @@ export const endpoints: Endpoint[] = Object.freeze([
 		],
 		path: "/api/v1/programs/{program}/queue",
 		response: { schema: queueResponseSchema },
+	},
+	{
+		doc: "fetchReviewed returns a page of decided ships, newest first.",
+		method: "GET",
+		name: "fetchReviewed",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ default: '"all"', in: "query", name: "decision", type: "string" },
+			{ default: "0", in: "query", name: "offset", type: "number" },
+			{ default: "50", in: "query", name: "limit", type: "number" },
+		],
+		path: "/api/v1/programs/{program}/reviewed",
+		response: { schema: reviewedResponseSchema },
+	},
+	{
+		doc: "searchProjects finds open ships by title, maker, external id or theme for the header search.",
+		method: "GET",
+		name: "searchProjects",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "query", name: "query", type: "string", wire: "q" },
+			{ default: "8", in: "query", name: "limit", type: "number" },
+		],
+		path: "/api/v1/programs/{program}/search",
+		response: { schema: searchResponseSchema, select: ["results"] },
+	},
+	{
+		doc: "fetchBundle returns everything the review screen shows.",
+		method: "GET",
+		name: "fetchBundle",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}",
+		response: { schema: reviewBundleSchema },
+	},
+	{
+		doc: "refreshRepositoryEvidence refetches the cached repository snapshot for an organiser.",
+		method: "POST",
+		name: "refreshRepositoryEvidence",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/evidence/refresh",
+		response: { schema: evidenceSchema },
+	},
+	{
+		doc: "claimShip takes or refreshes the claim.",
+		method: "POST",
+		name: "claimShip",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/claim",
+		response: { schema: claimResponseSchema, select: ["claim"] },
+	},
+	{
+		doc: "heartbeat extends the claim while the tab is open.",
+		method: "POST",
+		name: "heartbeat",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/heartbeat",
+		response: "void",
+	},
+	{
+		doc: "releaseShip gives the ship back to the queue. keepalive lets the request finish when the review page unmounts.",
+		keepalive: true,
+		method: "DELETE",
+		name: "releaseShip",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/claim",
+		response: "void",
+	},
+	{
+		doc: "reviewJournal records one entry's approved time and deflation note.",
+		keepalive: "keepalive",
+		method: "PATCH",
+		name: "reviewJournal",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "path", name: "entry", type: "string" },
+			{ in: "body", name: "request", type: "InferOutput<typeof journalReviewRequestSchema>" },
+			{ default: "false", in: "init", name: "keepalive", type: "boolean" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/journal/{entry}",
+		response: { schema: journalReviewResponseSchema },
+	},
+	{
+		doc: "createNote adds an internal note on the ship, its project or its maker.",
+		method: "POST",
+		name: "createNote",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "body", name: "request", type: "InferOutput<typeof noteRequestSchema>" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/notes",
+		response: { schema: noteCreatedSchema, select: ["note"] },
+	},
+	{
+		doc: "deleteNote removes an internal note.",
+		method: "DELETE",
+		name: "deleteNote",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/notes/{id}",
+		response: "void",
+	},
+	{
+		doc: "decideShip records the stage 1 decision.",
+		method: "POST",
+		name: "decideShip",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "body", name: "request", type: "InferOutput<typeof decisionRequestSchema>" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/decision",
+		response: { schema: decisionResultSchema },
+	},
+	{
+		doc: "rerunChecks queues a fresh repository check for an organiser.",
+		method: "POST",
+		name: "rerunChecks",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/checks/rerun",
+		response: { schema: checkRunSchema },
+	},
+	{
+		doc: "fetchMembers lists the programme roster.",
+		method: "GET",
+		name: "fetchMembers",
+		params: [{ in: "path", name: "program", type: "string", value: "program" }],
+		path: "/api/v1/programs/{program}/members",
+		response: { schema: membersResponseSchema, select: ["members"] },
+	},
+	{
+		doc: "inviteMember adds an email to the roster.",
+		method: "POST",
+		name: "inviteMember",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "body", name: "email", type: "string" },
+			{ in: "body", name: "role", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/members",
+		response: { schema: memberSchema },
+	},
+	{
+		doc: "updateMember changes a role or reactivates an account.",
+		method: "PATCH",
+		name: "updateMember",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "body", name: "role", type: "string" },
+			{ in: "body", name: "active", type: "boolean" },
+		],
+		path: "/api/v1/programs/{program}/members/{id}",
+		response: { schema: memberSchema },
+	},
+	{
+		doc: "fetchReviewerProfile returns one reviewer's roster entry, stats and recent decisions.",
+		method: "GET",
+		name: "fetchReviewerProfile",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "key", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/reviewers/{key}",
+		response: { schema: reviewerProfileSchema },
+	},
+	{
+		doc: "fetchMakerProfile returns one maker's identity and their latest ship per project.",
+		method: "GET",
+		name: "fetchMakerProfile",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "email", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/makers/{email}",
+		response: { schema: makerProfileSchema },
+	},
+	{
+		doc: "fetchCheckHead compares the snapshot with the live repository head.",
+		method: "GET",
+		name: "fetchCheckHead",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/checks/head",
+		response: { schema: checkHeadSchema },
+	},
+	{
+		doc: "fetchSubmissionFile returns the capped text of one snapshot-listed KiCad file for in-app preview.",
+		method: "GET",
+		name: "fetchSubmissionFile",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "query", name: "path", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/file",
+		response: { schema: submissionFileResponseSchema, select: ["file"] },
+	},
+	{
+		doc: "sendShipBack invalidates a held review and returns the ship to stage 1.",
+		method: "POST",
+		name: "sendShipBack",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "body", name: "request", type: "InferOutput<typeof sendBackRequestSchema>" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/send-back",
+		response: { schema: sendBackResultSchema },
+	},
+	{
+		doc: "fetchOutbox returns recent deliveries for the operations page.",
+		method: "GET",
+		name: "fetchOutbox",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "query", name: "limit", type: "number", value: "'50'" },
+		],
+		path: "/api/v1/programs/{program}/outbox",
+		response: { schema: outboxResponseSchema, select: ["deliveries"] },
+	},
+	{
+		doc: "fetchReceived returns what the in-process receiver verified.",
+		method: "GET",
+		name: "fetchReceived",
+		params: [{ in: "query", name: "limit", type: "number", value: "'50'" }],
+		path: "/api/v1/dev/outbox/received",
+		response: { schema: fakeDeliveriesResponseSchema, select: ["deliveries"] },
 	},
 ])
