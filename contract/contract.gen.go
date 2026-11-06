@@ -1917,6 +1917,9 @@ type JournalEntry struct {
 	// Markdown corresponds to the JSON schema field "markdown".
 	Markdown *string `json:"markdown,omitempty,omitzero" yaml:"markdown,omitempty" mapstructure:"markdown,omitempty"`
 
+	// Media corresponds to the JSON schema field "media".
+	Media []JournalMedia `json:"media" yaml:"media" mapstructure:"media"`
+
 	// MediaCount corresponds to the JSON schema field "mediaCount".
 	MediaCount int `json:"mediaCount" yaml:"mediaCount" mapstructure:"mediaCount"`
 
@@ -1951,6 +1954,9 @@ func (j *JournalEntry) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["id"]; raw != nil && !ok {
 		return fmt.Errorf("field id in JournalEntry: required")
 	}
+	if _, ok := raw["media"]; raw != nil && !ok {
+		return fmt.Errorf("field media in JournalEntry: required")
+	}
 	if _, ok := raw["mediaCount"]; raw != nil && !ok {
 		return fmt.Errorf("field mediaCount in JournalEntry: required")
 	}
@@ -1981,6 +1987,35 @@ func (j *JournalEntry) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "seconds", 0)
 	}
 	*j = JournalEntry(plain)
+	return nil
+}
+
+type JournalMedia struct {
+	// Alt corresponds to the JSON schema field "alt".
+	Alt *string `json:"alt,omitempty,omitzero" yaml:"alt,omitempty" mapstructure:"alt,omitempty"`
+
+	// URL corresponds to the JSON schema field "url".
+	URL string `json:"url" yaml:"url" mapstructure:"url"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *JournalMedia) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["url"]; raw != nil && !ok {
+		return fmt.Errorf("field url in JournalMedia: required")
+	}
+	type Plain JournalMedia
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.URL)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "url", 1)
+	}
+	*j = JournalMedia(plain)
 	return nil
 }
 

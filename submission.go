@@ -103,6 +103,54 @@ func (a *ireApp) latestChecks(ctx context.Context, submissionID string, version 
 	return out, rows.Err()
 }
 
+// maxJournalMedia caps the images exposed per journal entry for review display.
+const maxJournalMedia = 20
+
+// journalMediaURLs exposes an entry's image attachments for review display,
+// keeping only http(s) image URLs so maker-supplied metadata cannot inject
+// other schemes into the page.
+func journalMediaURLs(raw string) []contract.JournalMedia {
+	var records []struct {
+		Type *string `json:"type"`
+		URL  *string `json:"url"`
+		Alt  *string `json:"alt"`
+	}
+
+	if json.Unmarshal([]byte(raw), &records) != nil {
+		return []contract.JournalMedia{}
+	}
+
+	out := []contract.JournalMedia{}
+
+	for _, record := range records {
+		if record.URL == nil {
+			continue
+		}
+
+		url := strings.TrimSpace(*record.URL)
+		if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+			continue
+		}
+
+		if record.Type != nil && *record.Type != "" && *record.Type != "image" {
+			continue
+		}
+
+		alt := ""
+		if record.Alt != nil {
+			alt = *record.Alt
+		}
+
+		out = append(out, contract.JournalMedia{URL: url, Alt: optionalText(alt)})
+
+		if len(out) >= maxJournalMedia {
+			break
+		}
+	}
+
+	return out
+}
+
 // loadJournals returns journal entries with their media and clip counts.
 func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contract.JournalEntry, error) {
 	rows, err := a.store.Query(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
@@ -129,6 +177,7 @@ func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contr
 		item.Title = stringPtr(title)
 		item.Text = stringPtr(text)
 		item.Markdown = stringPtr(markdown)
+		item.Media = journalMediaURLs(mediaJSON)
 		item.MediaCount = jsonArrayLength(mediaJSON)
 		item.ClipCount = jsonArrayLength(clipsJSON)
 		item.CoveredSeconds = jsonCoveredSeconds(clipsJSON)

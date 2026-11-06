@@ -123,6 +123,7 @@ func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID str
 	item.Title = stringPtr(title)
 	item.Text = stringPtr(text)
 	item.Markdown = stringPtr(markdown)
+	item.Media = journalMediaURLs(mediaJSON)
 	item.MediaCount = jsonArrayLength(mediaJSON)
 	item.ClipCount = jsonArrayLength(clipsJSON)
 	item.CoveredSeconds = jsonCoveredSeconds(clipsJSON)

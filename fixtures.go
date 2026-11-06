@@ -113,7 +113,7 @@ func demoFixtures(base time.Time) []fixture {
 			hoursJournal: 23040,
 			priority:     30,
 			journals: []fixtureJournal{
-				{at: base.Add(2 * time.Hour).Format(timestampFormat), hours: 3, title: "Schematic and layout", text: "Placed the XIAO, the OLED header, the MPU6050 header, the DHT11 and the two switches. Routed the board on two layers and filled the back copper with GND. The DRC was clean after fixing one stray track.", clips: 2, coverS: 9000},
+				{at: base.Add(2 * time.Hour).Format(timestampFormat), hours: 3, media: 1, title: "Schematic and layout", text: "Placed the XIAO, the OLED header, the MPU6050 header, the DHT11 and the two switches. Routed the board on two layers and filled the back copper with GND. The DRC was clean after fixing one stray track.", clips: 2, coverS: 9000},
 				{at: base.Add(5 * time.Hour).Format(timestampFormat), hours: 3, title: "Firmware and panel art", text: "Added the angry face for an empty stat, drew the star trail, exported the gerbers and wrote the BOM. The board is 96 by 92 mm and the XIAO's USB port faces the edge.", clips: 1, coverS: 5400},
 			},
 			bom: []fixtureBom{

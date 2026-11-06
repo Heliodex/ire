@@ -720,7 +720,20 @@ async function saveDraftNow(): Promise<void> {
 						>
 					{/if}
 					<p>{entry.text || "No written entry."}</p>
-					{#if entry.mediaCount > 0}
+					{#if entry.media.length > 0}
+						<div class="media-grid">
+							{#each entry.media as image (image.url)}
+								<a href={image.url} rel="noreferrer" target="_blank" title="Open full image">
+									<img
+										alt={image.alt ?? "Journal image"}
+										loading="lazy"
+										referrerpolicy="no-referrer"
+										src={image.url}
+									>
+								</a>
+							{/each}
+						</div>
+					{:else if entry.mediaCount > 0}
 						<small
 							>{entry.mediaCount}
 							image{entry.mediaCount === 1 ? "" : "s"}
@@ -1973,6 +1986,28 @@ h1 {
 .journal-head span {
 	font-size: var(--text-xs);
 	color: var(--text-3);
+}
+
+.media-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+	gap: var(--space-2);
+	padding-top: var(--space-2);
+}
+
+.media-grid a {
+	display: block;
+	overflow: hidden;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
+}
+
+.media-grid img {
+	display: block;
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	object-fit: cover;
+	background: var(--surface-2);
 }
 
 .journal p {

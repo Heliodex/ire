@@ -92,3 +92,63 @@ func TestJournalAdjustmentRequiresClaimAndVersion(t *testing.T) {
 		t.Fatalf("stale = %d: %s", stale.Code, stale.Body.String())
 	}
 }
+
+// TestJournalMediaURLs exposes only safe image attachments for review display.
+func TestJournalMediaURLs(t *testing.T) {
+	media := journalMediaURLs(`[{"type":"image","url":"https://example.com/a.jpg","alt":"Board"},
+		{"url":"https://example.com/b.jpg"},
+		{"type":"video","url":"https://example.com/c.mp4"},
+		{"type":"image","url":"javascript:alert(1)"},
+		{"type":"image","url":"ftp://example.com/d.jpg"},
+		{"type":"image"},
+		{"type":"image","url":"  "}]`)
+
+	if len(media) != 2 || media[0].URL != "https://example.com/a.jpg" {
+		t.Fatalf("media = %+v", media)
+	}
+
+	if media[0].Alt == nil || *media[0].Alt != "Board" {
+		t.Fatalf("alt = %+v", media[0])
+	}
+
+	if media[1].Alt != nil {
+		t.Fatalf("missing alt should stay missing: %+v", media[1])
+	}
+
+	if got := journalMediaURLs("not json"); len(got) != 0 {
+		t.Fatalf("malformed = %+v", got)
+	}
+
+	images := make([]string, 0, maxJournalMedia+6)
+	images = append(images, "[{\"type\":\"image\",\"url\":\"https://example.com/x.jpg\"}")
+
+	for range maxJournalMedia + 5 {
+		images = append(images, "{\"type\":\"image\",\"url\":\"https://example.com/x.jpg\"}")
+	}
+
+	if got := journalMediaURLs(strings.Join(images, ",") + "]"); len(got) != maxJournalMedia {
+		t.Fatalf("capped = %d", len(got))
+	}
+}
+
+// TestJournalMediaReachesTheBundle loads the seeded attachments through the bundle path.
+func TestJournalMediaReachesTheBundle(t *testing.T) {
+	application := newTestApp(t)
+
+	journals, err := application.loadJournals(t.Context(), "sub_fixture_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, entry := range journals {
+		if len(entry.Media) > 0 {
+			if entry.Media[0].URL != "https://example.com/journal.jpg" {
+				t.Fatalf("media = %+v", entry.Media)
+			}
+
+			return
+		}
+	}
+
+	t.Fatal("fixture journals carry no media")
+}

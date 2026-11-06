@@ -30,6 +30,25 @@
 				"markdown": {
 					"type": "string"
 				},
+				"media": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"alt": {
+								"type": "string"
+							},
+							"url": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"url"
+						],
+						"title": "JournalMedia"
+					}
+				},
 				"mediaCount": {
 					"type": "integer",
 					"minimum": 0
@@ -53,6 +72,7 @@
 				"clipCount",
 				"coveredSeconds",
 				"id",
+				"media",
 				"mediaCount",
 				"seconds"
 			],

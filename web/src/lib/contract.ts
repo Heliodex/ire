@@ -528,6 +528,14 @@ export const submissionSchema = pipe(
 	title("Submission"),
 )
 
+export const journalMediaSchema = pipe(
+	object({
+		alt: optionalString,
+		url: pipe(string(), minLength(1)),
+	}),
+	title("JournalMedia"),
+)
+
 export const journalSchema = pipe(
 	object({
 		approvedSeconds: optional(pipe(number(), integer())),
@@ -536,6 +544,7 @@ export const journalSchema = pipe(
 		coveredSeconds: nonNegative,
 		id: pipe(string(), minLength(1)),
 		markdown: optionalString,
+		media: array(journalMediaSchema),
 		mediaCount: nonNegative,
 		reviewerNote: optionalString,
 		seconds: nonNegative,
