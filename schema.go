@@ -8,7 +8,7 @@ import (
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 11
+const schemaVersion = 12
 
 // schemaStatements is the prototype subset of plan/03-data-model.md: programmes, people, sessions, ships, evidence, checks, claims, reviews, drafts, timeline, audit, outbox and settings. Fraud, forms, counters and retention jobs come later.
 //
@@ -410,6 +410,40 @@ func schemaStatements() []storage.Statement {
 			verified integer not null default 0,
 			received_at text not null
 		)`,
+
+		// Role definitions name the permission set behind each roster role. Admins edit
+		// them and add new roles; the membership role check below is rebuilt to allow
+		// custom names, so role validity is enforced by the app against this table.
+		`create table if not exists role_definition (
+			id text primary key,
+			program_id text not null references program(id) on delete cascade,
+			name text not null,
+			permissions text not null default '[]',
+			locked integer not null default 0,
+			created_at text not null,
+			unique (program_id, name)
+		)`,
+
+		// The original membership table limited roles with a check constraint. Custom
+		// roles need free-form names, so the table is rebuilt without the check. Role
+		// existence is enforced by the app: roles cannot be deleted while assigned.
+		`create table if not exists membership_new (
+			id text primary key,
+			program_id text not null references program(id) on delete cascade,
+			user_id text not null references user(id) on delete cascade,
+			role text not null,
+			tracks text not null default '["hardware"]',
+			permissions text not null default '[]',
+			active integer not null default 1,
+			created_at text not null,
+			created_by text,
+			unique (program_id, user_id)
+		)`,
+		`insert or ignore into membership_new
+			(id, program_id, user_id, role, tracks, permissions, active, created_at, created_by)
+			select id, program_id, user_id, role, tracks, permissions, active, created_at, created_by from membership`,
+		`drop table membership`,
+		`alter table membership_new rename to membership`,
 	}
 
 	out := make([]storage.Statement, 0, len(statements)+8)
@@ -469,6 +503,10 @@ func (a *ireApp) seed(ctx context.Context) error {
 		return err
 	}
 
+	if err := a.seedRoleDefinitions(ctx, now); err != nil {
+		return err
+	}
+
 	settings := map[string]string{
 		"review_policy":          `{"holdOnWarn":true,"holdMinApprovedSeconds":0,"holdTiers":[2,3],"noteRequiredForChanges":true,"fraudMinStage":2}`,
 		"allow_legacy_signature": "true",
@@ -522,6 +560,28 @@ func (a *ireApp) seedPeople(ctx context.Context, now string) error {
 		if _, err := a.store.Exec(ctx, `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at) values (?, ?, ?, ?, '["hardware"]', '[]', 1, ?)
 			on conflict(program_id, user_id) do update set role = excluded.role, active = 1`,
 			"mem_"+person.id, programID, person.id, person.role, now); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// seedRoleDefinitions creates the built-in programme roles. Rows are never
+// overwritten, so admin edits to permissions survive restarts.
+func (a *ireApp) seedRoleDefinitions(ctx context.Context, now string) error {
+	defaults := defaultRolePermissions()
+	names := []string{roleAdmin, roleOrganizer, roleReviewer, roleAuditor}
+
+	for _, name := range names {
+		locked := 0
+		if name == roleAdmin {
+			locked = 1
+		}
+
+		if _, err := a.store.Exec(ctx, `insert into role_definition (id, program_id, name, permissions, locked, created_at)
+			values (?, ?, ?, ?, ?, ?) on conflict(program_id, name) do nothing`,
+			"rol_"+name, programID, name, marshalStrings(defaults[name]), locked, now); err != nil {
 			return err
 		}
 	}

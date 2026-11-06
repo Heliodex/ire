@@ -92,6 +92,27 @@ const (
 	roleAdmin     = "admin"
 	roleAuditor   = "auditor"
 
+	// permWildcard grants every permission. Only the locked admin role holds it.
+	permWildcard = "*"
+	// permReview allows claiming, drafting and deciding ships at stage 1.
+	permReview = "review"
+	// permSecondPass allows acting on held second-pass ships: stage 2 claims and decisions, send-back and fraud approval.
+	permSecondPass = "second_pass"
+	// permChecksManage allows rerunning repository checks and refreshing evidence.
+	permChecksManage = "checks_manage"
+	// permViewPII allows reading unredacted delivery payloads and other identifying details.
+	permViewPII = "view_pii"
+	// permNoteManage allows removing notes written by someone else.
+	permNoteManage = "note_manage"
+	// permRosterManage allows inviting members and changing roles and active flags.
+	permRosterManage = "roster_manage"
+	// permAuditRead allows reading the programme audit log.
+	permAuditRead = "audit_read"
+	// permSessionRevoke allows revoking another member's sessions.
+	permSessionRevoke = "session_revoke"
+	// permRoleManage allows creating roles and changing role permissions. Only admins hold it.
+	permRoleManage = "role_manage"
+
 	cookieName = "review_session"
 )
 
@@ -202,6 +223,10 @@ func (a *ireApp) routes() {
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/members", a.handleMembers)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/members", a.handleInviteMember)
 	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/members/{id}", a.handleUpdateMember)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/roles", a.handleListRoles)
+	a.mux.HandleFunc("POST /api/v1/programs/{program}/roles", a.handleCreateRole)
+	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/roles/{name}", a.handleUpdateRole)
+	a.mux.HandleFunc("DELETE /api/v1/programs/{program}/roles/{name}", a.handleDeleteRole)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/reviewers/{key}", a.handleReviewerProfile)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/makers/{email}", a.handleMakerProfile)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/audit", a.handleAudit)

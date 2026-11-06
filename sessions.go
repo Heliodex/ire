@@ -15,7 +15,7 @@ func (a *ireApp) handleRevokeSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if person.Role != roleAdmin {
+	if !person.Has(permSessionRevoke) {
 		app.WriteError(w, http.StatusForbidden, "only admins can revoke sessions")
 		return
 	}

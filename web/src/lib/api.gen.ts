@@ -2,7 +2,7 @@
 // Excluded from lint and format; verified byte-for-byte by wt contract --check.
 import type { InferOutput } from "valibot"
 import { parseJSON, program, requestVoid } from "./api-runtime"
-import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, searchResponseSchema, sendBackResultSchema, submissionFileResponseSchema, type decisionRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type sendBackRequestSchema } from "./contract"
+import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, submissionFileResponseSchema, type createRoleSchema, type decisionRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type sendBackRequestSchema, type updateRoleSchema } from "./contract"
 
 // fetchAuthConfig returns which sign-in methods are enabled.
 export async function fetchAuthConfig(): Promise<InferOutput<typeof authConfigSchema>> {
@@ -251,6 +251,49 @@ export async function updateMember(
 	})
 	const parsed = await parseJSON(response, memberSchema)
 	return parsed
+}
+
+// fetchRoles lists the programme role definitions and their permissions.
+export async function fetchRoles(): Promise<InferOutput<typeof rolesResponseSchema>["roles"]> {
+	const response = await fetch(`/api/v1/programs/${program}/roles`)
+	const parsed = await parseJSON(response, rolesResponseSchema)
+	return parsed.roles
+}
+
+// createRole adds a programme role with an explicit permission set.
+export async function createRole(
+	request: InferOutput<typeof createRoleSchema>,
+): Promise<InferOutput<typeof roleDefinitionSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/roles`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	const parsed = await parseJSON(response, roleDefinitionSchema)
+	return parsed
+}
+
+// updateRole replaces a role's permission set. Locked roles always allow everything.
+export async function updateRole(
+	name: string,
+	request: InferOutput<typeof updateRoleSchema>,
+): Promise<InferOutput<typeof roleDefinitionSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/roles/${encodeURIComponent(name)}`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "PATCH",
+	})
+	const parsed = await parseJSON(response, roleDefinitionSchema)
+	return parsed
+}
+
+// deleteRole removes a role that no roster row uses.
+export async function deleteRole(
+	name: string,
+): Promise<void> {
+	await requestVoid(`/api/v1/programs/${program}/roles/${encodeURIComponent(name)}`, {
+		method: "DELETE",
+	})
 }
 
 // fetchReviewerProfile returns one reviewer's roster entry, stats and recent decisions.

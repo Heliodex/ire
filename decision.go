@@ -316,7 +316,7 @@ func (a *ireApp) decisionGuard(w http.ResponseWriter, r *http.Request, ship subm
 
 	// A held ship is finished by an organiser at stage 2. A stage 1 ship is decided by a reviewer at stage 1.
 	secondPass := ship.Stage == 2 || ship.Status == statusStage2Hold
-	if secondPass && !canReviewSecondPass(person.Role) {
+	if secondPass && !person.Has(permSecondPass) {
 		app.WriteError(w, http.StatusForbidden, "only organisers can decide the second pass")
 		return false, nil, false
 	}

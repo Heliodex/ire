@@ -1,0 +1,17 @@
+{
+	"type": "object",
+	"properties": {
+		"roles": {
+			"type": "array",
+			"items": {
+				"$ref": "role-definition.json"
+			}
+		}
+	},
+	"required": [
+		"roles"
+	],
+	"title": "RolesResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/roles.json"
+}

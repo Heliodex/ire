@@ -19,16 +19,18 @@ var reviewSessions = session.New(cookieName, sessionTTL)
 // reviewer is the signed-in person and the membership the request acts through.
 type reviewer struct {
 	ID, Email, Name, AvatarURL, Role, ProgramID string
+	Permissions                                []string
 }
 
-// canReviewSecondPass reports whether the role may act on a held second-pass ship. Fraud and final approval are organiser work, never a stage 1 reviewer's.
-func canReviewSecondPass(role string) bool {
-	return role == roleOrganizer || role == roleAdmin
-}
+// Has reports whether the membership grants the permission. The wildcard grants everything.
+func (p reviewer) Has(permission string) bool {
+	for _, granted := range p.Permissions {
+		if granted == permWildcard || granted == permission {
+			return true
+		}
+	}
 
-// canReview reports whether a role may claim, draft or decide. Auditors are read-only.
-func canReview(role string) bool {
-	return role == roleReviewer || canReviewSecondPass(role)
+	return false
 }
 
 // currentReviewer reads the session cookie and resolves it to an active membership. It writes the 401 itself so handlers only branch on the boolean.
@@ -41,17 +43,21 @@ func (a *ireApp) currentReviewer(w http.ResponseWriter, r *http.Request) (review
 
 	sessionID := session.Hash(token)
 
-	row := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
+	row := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id, coalesce(rd.permissions, '[]')
 		from session s
 		join user u on u.id = s.user_id
 		join membership m on m.user_id = u.id
 		join program p on p.id = m.program_id
+		left join role_definition rd on rd.program_id = m.program_id and rd.name = m.role
 		where s.id = ? and s.expires_at > ? and m.active = 1 and p.active = 1
 		order by s.last_seen_at desc
 		limit 1`, sessionID, a.nowText())
 
-	var person reviewer
-	if err := row.Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID); err != nil {
+	var (
+		person      reviewer
+		permissions string
+	)
+	if err := row.Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID, &permissions); err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			app.WriteError(w, http.StatusUnauthorized, "session expired, sign in again")
 			return reviewer{}, false
@@ -61,6 +67,8 @@ func (a *ireApp) currentReviewer(w http.ResponseWriter, r *http.Request) (review
 
 		return reviewer{}, false
 	}
+
+	person.Permissions = unmarshalStrings(permissions)
 
 	return person, true
 }
@@ -127,8 +135,9 @@ func (a *ireApp) meResponse(ctx context.Context, person reviewer) contract.MeRes
 		Programs: []contract.Membership{},
 	}
 
-	rows, err := a.store.Query(ctx, `select p.id, p.slug, p.name, m.role
+	rows, err := a.store.Query(ctx, `select p.id, p.slug, p.name, m.role, coalesce(rd.permissions, '[]')
 		from membership m join program p on p.id = m.program_id
+		left join role_definition rd on rd.program_id = m.program_id and rd.name = m.role
 		where m.user_id = ? and m.active = 1 and p.active = 1
 		order by p.name`, person.ID)
 	if err != nil {
@@ -138,10 +147,14 @@ func (a *ireApp) meResponse(ctx context.Context, person reviewer) contract.MeRes
 
 	for rows.Next() {
 		var item contract.Membership
-		if err := rows.Scan(&item.ProgramID, &item.ProgramSlug, &item.ProgramName, &item.Role); err != nil {
+
+		var permissions string
+
+		if err := rows.Scan(&item.ProgramID, &item.ProgramSlug, &item.ProgramName, &item.Role, &permissions); err != nil {
 			continue
 		}
 
+		item.Permissions = unmarshalStrings(permissions)
 		response.Programs = append(response.Programs, item)
 	}
 
@@ -169,11 +182,14 @@ func (a *ireApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 
 	var person reviewer
 
-	err := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
+	var permissions string
+
+	err := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id, coalesce(rd.permissions, '[]')
 		from user u join membership m on m.user_id = u.id
+		left join role_definition rd on rd.program_id = m.program_id and rd.name = m.role
 		where u.email = ? and m.active = 1
 		limit 1`, email).
-		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID)
+		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID, &permissions)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			app.WriteError(w, http.StatusUnauthorized, "no reviewer account with that email")
@@ -184,6 +200,8 @@ func (a *ireApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	person.Permissions = unmarshalStrings(permissions)
 
 	token, err := a.createSession(r.Context(), person.ID, r.UserAgent())
 	if err != nil {

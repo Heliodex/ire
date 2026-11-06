@@ -17,7 +17,7 @@ func (a *ireApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !canReviewSecondPass(person.Role) {
+	if !person.Has(permSecondPass) {
 		app.WriteError(w, http.StatusForbidden, "only organisers can send a ship back")
 		return
 	}

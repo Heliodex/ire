@@ -212,7 +212,7 @@ func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if !found && a.canBootstrap(email) {
+	if !found && a.canBootstrap(r.Context(), email) {
 		person, found, err = a.bootstrapMember(r.Context(), email, identity.Name)
 		if err != nil {
 			writeStorage(w, err)
@@ -311,13 +311,16 @@ func (a *ireApp) takeLoginFlow(ctx context.Context, state string) (loginFlow, bo
 func (a *ireApp) memberByEmail(ctx context.Context, email string) (reviewer, bool, error) {
 	var person reviewer
 
-	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
+	var permissions string
+
+	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id, coalesce(rd.permissions, '[]')
 		from user u
 		join membership m on m.user_id = u.id
 		join program p on p.id = m.program_id
+		left join role_definition rd on rd.program_id = m.program_id and rd.name = m.role
 		where lower(u.email) = ? and m.active = 1 and p.active = 1
 		order by p.name limit 1`, email).
-		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID)
+		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID, &permissions)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return reviewer{}, false, nil
@@ -325,6 +328,8 @@ func (a *ireApp) memberByEmail(ctx context.Context, email string) (reviewer, boo
 
 		return reviewer{}, false, err
 	}
+
+	person.Permissions = unmarshalStrings(permissions)
 
 	return person, true, nil
 }
@@ -340,14 +345,17 @@ func (a *ireApp) memberBySubject(ctx context.Context, subject string) (reviewer,
 
 	var person reviewer
 
-	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id
+	var permissions string
+
+	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id, coalesce(rd.permissions, '[]')
 		from user_identity i
 		join user u on u.id = i.user_id
 		join membership m on m.user_id = u.id
 		join program p on p.id = m.program_id
+		left join role_definition rd on rd.program_id = m.program_id and rd.name = m.role
 		where i.provider = 'hca' and i.subject = ? and m.active = 1 and p.active = 1
 		order by p.name limit 1`, subject).
-		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID)
+		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID, &permissions)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return reviewer{}, false, nil
@@ -355,6 +363,8 @@ func (a *ireApp) memberBySubject(ctx context.Context, subject string) (reviewer,
 
 		return reviewer{}, false, err
 	}
+
+	person.Permissions = unmarshalStrings(permissions)
 
 	return person, true, nil
 }
@@ -401,23 +411,17 @@ func (a *ireApp) bindIdentity(ctx context.Context, userID, provider, subject str
 	return err
 }
 
-// canBootstrap reports whether this sign-in may create the first membership. Only one explicitly configured email may bootstrap; there is no wildcard, so unknown accounts can never create their own membership.
-func (a *ireApp) canBootstrap(email string) bool {
-	if !validBootstrapRole(a.config.BootstrapRole) || a.config.BootstrapEmail == "" {
+// canBootstrap reports whether this sign-in may create the first membership. Only one explicitly configured email may bootstrap; there is no wildcard, so unknown accounts can never create their own membership. The configured role must exist in the programme role definitions.
+func (a *ireApp) canBootstrap(ctx context.Context, email string) bool {
+	if a.config.BootstrapEmail == "" || a.config.BootstrapRole == "" {
 		return false
 	}
 
-	return strings.EqualFold(strings.TrimSpace(email), a.config.BootstrapEmail)
-}
-
-// validBootstrapRole limits the role a bootstrap email can receive.
-func validBootstrapRole(role string) bool {
-	switch role {
-	case roleAdmin, roleOrganizer, roleReviewer, roleAuditor:
-		return true
+	if !strings.EqualFold(strings.TrimSpace(email), a.config.BootstrapEmail) {
+		return false
 	}
 
-	return false
+	return a.validMemberRole(ctx, programID, a.config.BootstrapRole)
 }
 
 // bootstrapMember creates the configured bootstrap account and its programme membership once.

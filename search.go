@@ -43,7 +43,7 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	var stageClause string
 
-	if !canReviewSecondPass(person.Role) {
+	if !person.Has(permSecondPass) {
 		stageClause = " and s.stage = 1"
 	}
 

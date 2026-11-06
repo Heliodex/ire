@@ -66,7 +66,7 @@ func (a *ireApp) handleOutbox(w http.ResponseWriter, r *http.Request) {
 			payload := string(record.Payload)
 			item.Payload = &payload
 
-			if person.Role == roleReviewer {
+			if !person.Has(permViewPII) {
 				item.Payload = redactOutboxPayload(payload)
 			}
 		}
@@ -77,7 +77,7 @@ func (a *ireApp) handleOutbox(w http.ResponseWriter, r *http.Request) {
 	app.WriteJSON(w, http.StatusOK, response)
 }
 
-// redactOutboxPayload hides the maker's address from reviewers reading delivery debug output, matching the bundle's redaction. Organisers and admins still see the exact bytes.
+// redactOutboxPayload hides the maker's address from members without the view permission reading delivery debug output, matching the bundle's redaction.
 func redactOutboxPayload(payload string) *string {
 	var event map[string]any
 	if err := json.Unmarshal([]byte(payload), &event); err != nil {

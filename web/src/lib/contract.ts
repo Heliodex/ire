@@ -77,6 +77,7 @@ export const loginRequestSchema = pipe(
 
 export const membershipSchema = pipe(
 	object({
+		permissions: array(string()),
 		programId: pipe(string(), minLength(1)),
 		programName: pipe(string(), minLength(1)),
 		programSlug: pipe(string(), minLength(1)),
@@ -101,7 +102,9 @@ export const meResponseSchema = pipe(
 
 // ─── Admin ──────────────────────────────────────────────────────────────────
 
-const memberRole = pipe(string(), regex(/^(reviewer|organizer|admin|auditor)$/, "Choose a role."))
+// memberRole accepts any non-empty role name. The server validates it against
+// the programme role definitions, which admins can extend with custom roles.
+const memberRole = pipe(string(), minLength(1))
 
 export const memberSchema = pipe(
 	object({
@@ -212,6 +215,32 @@ export const updateMemberSchema = pipe(
 		role: memberRole,
 	}),
 	title("UpdateMember"),
+)
+
+export const roleDefinitionSchema = pipe(
+	object({
+		locked: boolean(),
+		name: pipe(string(), minLength(1)),
+		permissions: array(string()),
+	}),
+	title("RoleDefinition"),
+)
+
+export const rolesResponseSchema = pipe(object({ roles: array(roleDefinitionSchema) }), title("RolesResponse"))
+
+export const createRoleSchema = pipe(
+	object({
+		name: pipe(string(), minLength(1)),
+		permissions: array(string()),
+	}),
+	title("CreateRole"),
+)
+
+export const updateRoleSchema = pipe(
+	object({
+		permissions: array(string()),
+	}),
+	title("UpdateRole"),
 )
 
 export const auditEntrySchema = pipe(
@@ -1131,6 +1160,8 @@ export const requestSchemas = Object.freeze([
 	importReviewedRequestSchema,
 	inviteMemberSchema,
 	updateMemberSchema,
+	createRoleSchema,
+	updateRoleSchema,
 	withdrawRequestSchema,
 ])
 
@@ -1162,6 +1193,8 @@ export const responseSchemas = Object.freeze([
 	reviewedResponseSchema,
 	reviewerProfileSchema,
 	reviewsResponseSchema,
+	roleDefinitionSchema,
+	rolesResponseSchema,
 	searchResponseSchema,
 	sendBackResultSchema,
 	submissionFileResponseSchema,

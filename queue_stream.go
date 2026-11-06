@@ -102,7 +102,7 @@ func (a *ireApp) streamQueue(w http.ResponseWriter, r *http.Request, person revi
 		return
 	}
 
-	if !canReviewSecondPass(person.Role) {
+	if !person.Has(permSecondPass) {
 		counts.Stage2Hold = 0
 	}
 

@@ -105,7 +105,7 @@ func (a *ireApp) handleNoteDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if authorID != person.ID && person.Role != roleAdmin {
+	if authorID != person.ID && !person.Has(permNoteManage) {
 		app.WriteError(w, http.StatusForbidden, "only the author or an admin can remove this note")
 		return
 	}

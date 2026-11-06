@@ -32,7 +32,7 @@
 					},
 					"role": {
 						"type": "string",
-						"pattern": "^(reviewer|organizer|admin|auditor)$"
+						"minLength": 1
 					}
 				},
 				"required": [

@@ -15,7 +15,7 @@ func (a *ireApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !canReviewSecondPass(person.Role) {
+	if !person.Has(permChecksManage) {
 		app.WriteError(w, http.StatusForbidden, "only organisers can rerun checks")
 		return
 	}

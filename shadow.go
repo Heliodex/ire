@@ -32,7 +32,7 @@ func (a *ireApp) requireReviewerWrite(w http.ResponseWriter, r *http.Request) (r
 		return reviewer{}, false
 	}
 
-	if !canReview(person.Role) {
+	if !person.Has(permReview) {
 		app.WriteError(w, http.StatusForbidden, "your role can only read reviews")
 		return reviewer{}, false
 	}

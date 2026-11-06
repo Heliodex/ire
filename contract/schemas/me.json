@@ -6,6 +6,12 @@
 			"items": {
 				"type": "object",
 				"properties": {
+					"permissions": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
 					"programId": {
 						"type": "string",
 						"minLength": 1
@@ -24,6 +30,7 @@
 					}
 				},
 				"required": [
+					"permissions",
 					"programId",
 					"programName",
 					"programSlug",

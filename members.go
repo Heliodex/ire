@@ -13,19 +13,9 @@ import (
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
-// requireAdmin loads the signed-in reviewer and refuses anyone who is not an admin of the programme.
+// requireAdmin loads the signed-in reviewer and refuses anyone who cannot manage the roster.
 func (a *ireApp) requireAdmin(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
-	person, ok := a.requireReviewer(w, r)
-	if !ok {
-		return reviewer{}, false
-	}
-
-	if person.Role != roleAdmin {
-		app.WriteError(w, http.StatusForbidden, "only admins can manage members")
-		return reviewer{}, false
-	}
-
-	return person, true
+	return a.requireRosterManager(w, r)
 }
 
 // handleMembers lists the programme roster with roles and last sign-in.
@@ -60,8 +50,8 @@ func (a *ireApp) handleInviteMember(w http.ResponseWriter, r *http.Request) {
 	email := strings.ToLower(strings.TrimSpace(request.Email))
 	role := strings.TrimSpace(request.Role)
 
-	if !validMemberRole(role) {
-		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "role", "choose reviewer, organizer, admin or auditor")
+	if !a.validMemberRole(r.Context(), person.ProgramID, role) {
+		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "role", "unknown role")
 		return
 	}
 
@@ -120,8 +110,8 @@ func (a *ireApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	role := strings.TrimSpace(request.Role)
-	if !validMemberRole(role) {
-		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "role", "choose reviewer, organizer, admin or auditor")
+	if !a.validMemberRole(r.Context(), person.ProgramID, role) {
+		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "role", "unknown role")
 		return
 	}
 
@@ -139,18 +129,34 @@ func (a *ireApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	losingAdmin := current.Role == roleAdmin && current.Active && (role != roleAdmin || !request.Active)
+	losingAdmin := current.Active && (role != current.Role || !request.Active)
 	if losingAdmin {
-		admins, err := a.activeAdminCount(r.Context(), person.ProgramID)
+		currentDef, _, err := a.roleDefinitionByName(r.Context(), person.ProgramID, current.Role)
 		if err != nil {
 			writeStorage(w, err)
 
 			return
 		}
 
-		if admins <= 1 {
-			app.WriteError(w, http.StatusConflict, "a programme needs at least one active admin")
+		nextDef, _, err := a.roleDefinitionByName(r.Context(), person.ProgramID, role)
+		if err != nil {
+			writeStorage(w, err)
+
 			return
+		}
+
+		if currentDef.grantsWildcard() && (!request.Active || !nextDef.grantsWildcard()) {
+			admins, err := a.adminHolderCount(r.Context(), person.ProgramID)
+			if err != nil {
+				writeStorage(w, err)
+
+				return
+			}
+
+			if admins <= 1 {
+				app.WriteError(w, http.StatusConflict, "a programme needs at least one active admin")
+				return
+			}
 		}
 	}
 
@@ -175,19 +181,9 @@ func (a *ireApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 	app.WriteJSON(w, http.StatusOK, updated)
 }
 
-// requireAuditReader allows admins and auditors to read the programme audit log.
+// requireAuditReader allows members who may read the programme audit log.
 func (a *ireApp) requireAuditReader(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
-	person, ok := a.requireReviewer(w, r)
-	if !ok {
-		return reviewer{}, false
-	}
-
-	if person.Role != roleAdmin && person.Role != roleAuditor {
-		app.WriteError(w, http.StatusForbidden, "only admins and auditors can read the audit log")
-		return reviewer{}, false
-	}
-
-	return person, true
+	return a.requirePermission(w, r, permAuditRead, "only admins and auditors can read the audit log")
 }
 
 // handleAudit lists recent audit entries for the programme.
@@ -342,26 +338,6 @@ func (a *ireApp) memberByUserID(ctx context.Context, programID, userID string) (
 	member.LastLoginAt = optionalText(lastLogin)
 
 	return member, true, nil
-}
-
-// activeAdminCount reports how many admins could still manage the programme.
-func (a *ireApp) activeAdminCount(ctx context.Context, programID string) (int, error) {
-	var count int
-
-	err := a.store.QueryRow(ctx, `select count(*) from membership where program_id = ? and role = ? and active = 1`,
-		programID, roleAdmin).Scan(&count)
-
-	return count, err
-}
-
-// validMemberRole reports whether the roster accepts the role.
-func validMemberRole(role string) bool {
-	switch role {
-	case roleReviewer, roleOrganizer, roleAdmin, roleAuditor:
-		return true
-	}
-
-	return false
 }
 
 // writeAudit stores one admin action with its before and after values.
