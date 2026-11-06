@@ -28,6 +28,10 @@ func TestQueueCarriesPreviewFields(t *testing.T) {
 			t.Fatalf("%s requestedTier = %v", item.Title, item.RequestedTier)
 		}
 
+		if item.HoursJournalSeconds <= 0 || item.BomTotalCents <= 0 {
+			t.Fatalf("%s stats = journalled %d, bom %d", item.Title, item.HoursJournalSeconds, item.BomTotalCents)
+		}
+
 		return
 	}
 
