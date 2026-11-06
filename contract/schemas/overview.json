@@ -27,18 +27,23 @@
 			"items": {
 				"type": "object",
 				"properties": {
-					"count": {
-						"type": "integer",
-						"minimum": 0
-					},
 					"date": {
 						"type": "string",
 						"minLength": 1
+					},
+					"decided": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"ingested": {
+						"type": "integer",
+						"minimum": 0
 					}
 				},
 				"required": [
-					"count",
-					"date"
+					"date",
+					"decided",
+					"ingested"
 				],
 				"title": "OverviewDay"
 			}
@@ -73,9 +78,53 @@
 			"type": "integer",
 			"minimum": 0
 		},
+		"outcomes": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"count": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"decision": {
+						"type": "string",
+						"pattern": "^(approved|changes|rejected)$"
+					}
+				},
+				"required": [
+					"count",
+					"decision"
+				],
+				"title": "OverviewOutcome"
+			}
+		},
 		"reviewedToday": {
 			"type": "integer",
 			"minimum": 0
+		},
+		"turnaround": {
+			"type": "object",
+			"properties": {
+				"decisions": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"medianDecisionMs": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"medianFirstMs": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"required": [
+				"decisions",
+				"medianDecisionMs",
+				"medianFirstMs"
+			],
+			"title": "OverviewTurnaround"
 		},
 		"wait": {
 			"type": "object",
@@ -118,7 +167,9 @@
 		"leaderboard",
 		"needsReview",
 		"newToday",
+		"outcomes",
 		"reviewedToday",
+		"turnaround",
 		"wait"
 	],
 	"title": "OverviewResponse",

@@ -344,8 +344,26 @@ export const overviewLeaderSchema = pipe(
 )
 
 export const overviewDaySchema = pipe(
-	object({ count: nonNegative, date: pipe(string(), minLength(1)) }),
+	object({
+		date: pipe(string(), minLength(1)),
+		decided: nonNegative,
+		ingested: nonNegative,
+	}),
 	title("OverviewDay"),
+)
+
+export const overviewOutcomeSchema = pipe(
+	object({ count: nonNegative, decision: decisionValues }),
+	title("OverviewOutcome"),
+)
+
+export const overviewTurnaroundSchema = pipe(
+	object({
+		decisions: nonNegative,
+		medianDecisionMs: nonNegative,
+		medianFirstMs: nonNegative,
+	}),
+	title("OverviewTurnaround"),
 )
 
 export const overviewResponseSchema = pipe(
@@ -355,7 +373,9 @@ export const overviewResponseSchema = pipe(
 		leaderboard: array(overviewLeaderSchema),
 		needsReview: nonNegative,
 		newToday: nonNegative,
+		outcomes: array(overviewOutcomeSchema),
 		reviewedToday: nonNegative,
+		turnaround: overviewTurnaroundSchema,
 		wait: overviewWaitSchema,
 	}),
 	title("OverviewResponse"),
