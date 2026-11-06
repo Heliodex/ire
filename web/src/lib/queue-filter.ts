@@ -21,6 +21,7 @@ export type ChecksFilter =
 
 export interface QueueQuery {
 	age: NumericFilter | null
+	check: { key: string; status: string } | null
 	checks: ChecksFilter | null
 	status: string | null
 	text: string[]
@@ -48,6 +49,8 @@ const statuses = new Set([
 	"stage2_hold",
 	"withdrawn",
 ])
+
+const checkStatuses = new Set(["error", "fail", "pass", "running", "skip", "warn"])
 
 // isCompareOp narrows the operator captured by the filter regexes.
 function isCompareOp(value: string): value is CompareOp {
@@ -148,6 +151,7 @@ function parseChecks(value: string): ChecksFilter | null {
 export function parseQueueQuery(input: string): QueueQuery {
 	const query: QueueQuery = {
 		age: null,
+		check: null,
 		checks: null,
 		status: null,
 		text: [],
@@ -180,6 +184,22 @@ export function parseQueueQuery(input: string): QueueQuery {
 				const time = parseDuration(value, ">=")
 				if (time) query.time = time
 				else query.text.push(token.toLowerCase())
+				break
+			}
+			case "check": {
+				const equals = value.lastIndexOf("=")
+				const checkKey = equals === -1 ? "" : value.slice(0, equals).trim().toLowerCase()
+				const checkStatus =
+					equals === -1
+						? ""
+						: value
+								.slice(equals + 1)
+								.trim()
+								.toLowerCase()
+
+				if (checkKey === "" || !checkStatuses.has(checkStatus)) query.text.push(token.toLowerCase())
+				else query.check = { key: checkKey, status: checkStatus }
+
 				break
 			}
 			case "checks": {
@@ -278,6 +298,7 @@ export function setQueueFilterToken(input: string, key: string, value: string): 
 export function hasStructuredQuery(query: QueueQuery): boolean {
 	return (
 		query.age !== null
+		|| query.check !== null
 		|| query.checks !== null
 		|| query.time !== null
 		|| query.status !== null
@@ -295,6 +316,12 @@ export function matchesQueueQuery(item: QueueItem, query: QueueQuery): boolean {
 	if (query.week !== null && (item.week === undefined || !matchesNumber(item.week, query.week))) return false
 	if (query.type !== null && (item.theme ?? "").trim().toLowerCase() !== query.type) return false
 	if (query.status !== null && normalizeStatus(item.status) !== query.status) return false
+	if (query.check !== null) {
+		const { key, status } = query.check
+
+		if (!item.checks.some(check => check.key.toLowerCase() === key && check.status.toLowerCase() === status))
+			return false
+	}
 	if (query.checks !== null && !matchesChecks(item, query.checks)) return false
 	if (query.text.length === 0) return true
 

@@ -817,6 +817,13 @@ function filterByVersion(item: QueueItem, event: MouseEvent): void {
 	setFilterToken("ver", String(item.version))
 }
 
+// filterByCheck adds check:repo.readme=warn when one check dot is activated.
+function filterByCheck(check: QueueItem["checks"][number], event: MouseEvent): void {
+	event.preventDefault()
+	event.stopPropagation()
+	setFilterToken("check", `${check.key}=${check.status}`)
+}
+
 // compactDuration renders a filter-friendly duration such as 6h24m or 3d1h0m.
 function compactDuration(seconds: number): string {
 	const total = Math.max(0, Math.round(seconds))
@@ -993,6 +1000,10 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 			<div>
 				<dt><code>checks:warn</code></dt>
 				<dd>Any warning. Counts compare with <code>checks:warn&lt;3</code> or <code>checks:&gt;=10</code>.</dd>
+			</div>
+			<div>
+				<dt><code>check:repo.readme=warn</code></dt>
+				<dd>One check with that status. Clicking a check dot adds this.</dd>
 			</div>
 			<div>
 				<dt><code>age:&gt;1d</code></dt>
@@ -1306,13 +1317,15 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 							</a>
 						</span>
 					</div>
-					<a
-						aria-label={`Open ${item.title} on its checks tab`}
-						class="checks"
-						href={`/review/${encodeURIComponent(item.id)}?tab=checks`}
-						onclick={(event: MouseEvent): void => openChecks(item, event)}
-					>
-						<span class="counts">
+					<span class="checks">
+						<a
+							class="checks-open"
+							href={`/review/${encodeURIComponent(item.id)}?tab=checks`}
+							onclick={(event: MouseEvent): void => openChecks(item, event)}
+						>
+							<span class="visually-hidden">Open {item.title} on its checks tab</span>
+						</a>
+						<span aria-hidden="true" class="counts">
 							{#if item.status === "checking"}
 								<span class="pending-text">Checks running…</span>
 							{:else}
@@ -1334,23 +1347,22 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 							{/if}
 						</span>
 						{#if item.checks.length > 0 && item.status !== "checking"}
-							<span
-								aria-label={item.checks.map(check => `${check.label}: ${check.status}`).join(", ")}
-								class="dots"
-								role="img"
-							>
+							<span class="dots">
 								{#each groupChecks(visibleChecks(item.checks, dotMode)) as group (group.group)}
 									<span class="dot-group">
 										{#each group.items as check (check.key)}
-											<span
-												aria-hidden="true"
+											<a
+												aria-label={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
 												class="dot"
 												data-tone={checkTone(check)}
+												href={filterHref("check", `${check.key}=${check.status}`)}
+												onclick={(event: MouseEvent): void => filterByCheck(check, event)}
 												onmouseenter={(event): void => showCheckTip(event, group.group, check)}
 												onmouseleave={hideCheckTip}
+												title={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
 											>
 												<CheckIcon status={check.status} />
-											</span>
+											</a>
 										{/each}
 									</span>
 								{/each}
@@ -1365,7 +1377,7 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 								{/if}
 							</span>
 						{/if}
-					</a>
+					</span>
 				</button>
 			{/each}
 			{#if windowedRows.bottomPad > 0}
@@ -1942,12 +1954,20 @@ a.maker-name:hover {
 }
 
 .checks {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-1);
 	min-width: 0;
+	padding: 0.25rem 0.5rem;
+	margin: -0.25rem -0.5rem;
 	font-size: var(--text-xs);
 	font-weight: 700;
+	border-radius: var(--radius-sm);
+}
+
+.checks:hover {
+	background: color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .counts {
@@ -1982,23 +2002,33 @@ a.maker-name:hover {
 	overflow: hidden;
 }
 
-a.checks,
+.checks-open {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	cursor: pointer;
+	border-radius: var(--radius-sm);
+}
+
+.counts,
+.dots {
+	position: relative;
+	z-index: 1;
+	pointer-events: none;
+}
+
+a.dot,
 a.status {
 	text-decoration: none;
 	cursor: pointer;
 }
 
-a.checks {
-	padding: 0.25rem 0.5rem;
-	margin: -0.25rem -0.5rem;
+a.dot {
+	pointer-events: auto;
 }
 
-a.checks:hover {
-	background: color-mix(in srgb, var(--text) 8%, transparent);
-	border-radius: var(--radius-sm);
-}
-
-a.checks:focus-visible,
+a.checks-open:focus-visible,
+a.dot:focus-visible,
 a.status:focus-visible {
 	outline: 2px solid var(--accent-blue);
 	outline-offset: 2px;

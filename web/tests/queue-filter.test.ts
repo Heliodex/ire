@@ -30,12 +30,17 @@ function itemOf(overrides: Partial<QueueItem> = {}): QueueItem {
 	}
 }
 
+function checkOf(overrides: Partial<QueueItem["checks"][number]> = {}): QueueItem["checks"][number] {
+	return { group: "repo", key: "repo.readme", label: "README", severity: "warn", status: "warn", ...overrides }
+}
+
 afterEach(() => setSystemTime())
 
 describe("parseQueueQuery", () => {
 	test("reads the supported key filters", () => {
 		expect(parseQueueQuery("week:1")).toEqual({
 			age: null,
+			check: null,
 			checks: null,
 			status: null,
 			text: [],
@@ -46,6 +51,7 @@ describe("parseQueueQuery", () => {
 		})
 		expect(parseQueueQuery("type:cad")).toEqual({
 			age: null,
+			check: null,
 			checks: null,
 			status: null,
 			text: [],
@@ -56,6 +62,7 @@ describe("parseQueueQuery", () => {
 		})
 		expect(parseQueueQuery("status:ready")).toEqual({
 			age: null,
+			check: null,
 			checks: null,
 			status: "ready",
 			text: [],
@@ -92,6 +99,8 @@ describe("parseQueueQuery", () => {
 			value: 0,
 		})
 		expect(parseQueueQuery("checks:pass").checks).toEqual({ kind: "overallPass" })
+		expect(parseQueueQuery("check:repo.readme=warn").check).toEqual({ key: "repo.readme", status: "warn" })
+		expect(parseQueueQuery("check:repo.readme=nope").check).toBeNull()
 	})
 
 	test("rejects malformed duration order and repeated units", () => {
@@ -104,6 +113,7 @@ describe("parseQueueQuery", () => {
 	test("combines filters with plain terms and normalises casing", () => {
 		expect(parseQueueQuery("Week:1 Type:PCB status:Needs-Attention timer")).toEqual({
 			age: null,
+			check: null,
 			checks: null,
 			status: "needs_attention",
 			text: ["timer"],
@@ -117,6 +127,7 @@ describe("parseQueueQuery", () => {
 	test("keeps unknown or incomplete prefixes as plain text", () => {
 		expect(parseQueueQuery("week: one checks:maybe status:unknown type: age:1y ver:>")).toEqual({
 			age: null,
+			check: null,
 			checks: null,
 			status: null,
 			text: ["week:", "one", "checks:maybe", "status:unknown", "type:", "age:1y", "ver:>"],
@@ -164,6 +175,12 @@ describe("setQueueFilterToken", () => {
 	test("keeps plain terms after the special filters", () => {
 		expect(setQueueFilterToken("open type:pcb", "ver", "1")).toBe("type:pcb ver:1 open")
 	})
+
+	test("adds a specific check filter", () => {
+		expect(setQueueFilterToken("type:pcb open", "check", "repo.readme=warn")).toBe(
+			"check:repo.readme=warn type:pcb open",
+		)
+	})
 })
 
 describe("sortQueueFilterTokens", () => {
@@ -192,6 +209,7 @@ describe("hasStructuredQuery", () => {
 		expect(hasStructuredQuery(parseQueueQuery("timer"))).toBe(false)
 		expect(hasStructuredQuery(parseQueueQuery("week:1"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("checks:warn"))).toBe(true)
+		expect(hasStructuredQuery(parseQueueQuery("check:repo.readme=warn"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("type:cad"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("status:ready"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("age:>1d"))).toBe(true)
@@ -242,6 +260,13 @@ describe("matchesQueueQuery", () => {
 		expect(matchesQueueQuery(tenChecks, parseQueueQuery("checks:>10"))).toBe(false)
 		expect(matchesQueueQuery(itemOf({ status: "checking" }), parseQueueQuery("checks:running"))).toBe(true)
 		expect(matchesQueueQuery(itemOf(), parseQueueQuery("checks:pass"))).toBe(true)
+	})
+
+	test("filters one check by key and status", () => {
+		const item = itemOf({ checks: [checkOf()] })
+		expect(matchesQueueQuery(item, parseQueueQuery("check:repo.readme=warn"))).toBe(true)
+		expect(matchesQueueQuery(item, parseQueueQuery("check:repo.readme=fail"))).toBe(false)
+		expect(matchesQueueQuery(itemOf({ checks: [] }), parseQueueQuery("check:repo.readme=warn"))).toBe(false)
 	})
 
 	test("requires every plain term and still searches maker and type", () => {
