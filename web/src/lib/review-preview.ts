@@ -1,6 +1,7 @@
 // ReviewPreview is the part of a row the queue or search already knows, so the review page can show it while the
 // full bundle loads. It mirrors the fields the loaded header shows.
 export interface ReviewPreview {
+	checkCount?: number
 	claimedBy?: string
 	id: string
 	makerEmail?: string
@@ -8,6 +9,7 @@ export interface ReviewPreview {
 	makerSlackId?: string
 	requestedTier?: string
 	status: string
+	thumbnailUrl?: string
 	title: string
 	version: number
 	week?: number

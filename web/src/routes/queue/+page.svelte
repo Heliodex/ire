@@ -887,6 +887,7 @@ async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 
 		saveQueueState()
 		rememberReviewPreview({
+			checkCount: item.checks.length,
 			claimedBy: item.claimedBy,
 			id: item.id,
 			makerEmail: item.makerEmail,
@@ -894,6 +895,7 @@ async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 			makerSlackId: item.makerSlackId,
 			requestedTier: item.requestedTier,
 			status: item.status,
+			thumbnailUrl: item.thumbnailUrl,
 			title: item.title,
 			version: item.version,
 			week: item.week,

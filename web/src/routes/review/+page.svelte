@@ -61,6 +61,7 @@ let bundle = $state<Bundle | null>(null)
 let id = $state("")
 let loading = $state(true)
 let preview = $state<ReviewPreview | null>(null)
+let previewCoverFailed = $state(false)
 let error = $state("")
 let tab = $state<Tab>("overview")
 let note = $state("")
@@ -191,6 +192,7 @@ onMount((): (() => void) => {
 	id = idFromURL()
 	tab = tabFromURL()
 	preview = readReviewPreview(id) ?? null
+	previewCoverFailed = false
 
 	if (id === "") {
 		void goto("/queue")
@@ -635,6 +637,33 @@ async function saveDraftNow(): Promise<void> {
 	<title>{submission ? `${submission.title} · Ire` : preview ? `${preview.title} · Ire` : "Ire"}</title>
 </svelte:head>
 
+{#snippet shipTabs(counts: { bom?: number; checks?: number; evidence?: number; history?: number; journal?: number })}
+	<div aria-label="Ship sections" class="ui-tabs ship-tabs" role="tablist">
+		{#each [
+			{ count: undefined, key: "overview", label: "Overview" },
+			{ count: counts.checks, key: "checks", label: "Checks" },
+			{ count: counts.journal, key: "journal", label: "Journal" },
+			{ count: counts.bom, key: "bom", label: "BOM" },
+			{ count: counts.evidence, key: "evidence", label: "Evidence" },
+			{ count: counts.history, key: "history", label: "History" },
+		] as item (item.key)}
+			<button
+				aria-selected={tab === item.key}
+				class="ui-tab"
+				onclick={(): void => selectTab(item.key as Tab)}
+				role="tab"
+				type="button"
+				class:active={tab === item.key}
+			>
+				{item.label}
+				{#if item.count !== undefined}
+					<span class="tab-count">{item.count}</span>
+				{/if}
+			</button>
+		{/each}
+	</div>
+{/snippet}
+
 {#if loading}
 	{#if preview}
 		<header class="ship-head">
@@ -664,10 +693,35 @@ async function saveDraftNow(): Promise<void> {
 				</p>
 			</div>
 		</header>
+
+		{@render shipTabs({ checks: preview.checkCount })}
+
+		{#if tab === "overview"}
+			<article class="ui-card padded overview">
+				{#if preview.thumbnailUrl && !previewCoverFailed}
+					<img
+						alt={`${preview.title} project image`}
+						class="cover"
+						decoding="async"
+						loading="lazy"
+						onerror={(): void => {
+							previewCoverFailed = true
+						}}
+						src={preview.thumbnailUrl}
+					>
+				{/if}
+				<LoadingState message="Loading ship…" />
+			</article>
+		{:else}
+			<div class="ui-card padded">
+				<LoadingState message="Loading ship…" />
+			</div>
+		{/if}
+	{:else}
+		<div class="ui-card padded">
+			<LoadingState message="Loading ship…" />
+		</div>
 	{/if}
-	<div class="ui-card padded">
-		<LoadingState message="Loading ship…" />
-	</div>
 {:else if error || !bundle || !submission}
 	<section class="missing">
 		<h1>Cannot open this ship</h1>
@@ -772,30 +826,13 @@ async function saveDraftNow(): Promise<void> {
 
 	<div class="layout">
 		<section class="content">
-			<div aria-label="Ship sections" class="ui-tabs ship-tabs" role="tablist">
-				{#each [
-					{ count: undefined, key: "overview", label: "Overview" },
-					{ count: bundle.checks.length, key: "checks", label: "Checks" },
-					{ count: bundle.journals.length, key: "journal", label: "Journal" },
-					{ count: bundle.bom.length, key: "bom", label: "BOM" },
-					{ count: bundle.evidence?.files.length, key: "evidence", label: "Evidence" },
-					{ count: bundle.reviews.length, key: "history", label: "History" },
-				] as item (item.key)}
-					<button
-						aria-selected={tab === item.key}
-						class="ui-tab"
-						onclick={(): void => selectTab(item.key as Tab)}
-						role="tab"
-						type="button"
-						class:active={tab === item.key}
-					>
-						{item.label}
-						{#if item.count !== undefined}
-							<span class="tab-count">{item.count}</span>
-						{/if}
-					</button>
-				{/each}
-			</div>
+			{@render shipTabs({
+				bom: bundle.bom.length,
+				checks: bundle.checks.length,
+				evidence: bundle.evidence?.files.length,
+				history: bundle.reviews.length,
+				journal: bundle.journals.length,
+			})}
 
 			{#if tab === "overview"}
 				<article class="ui-card padded overview">

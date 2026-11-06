@@ -263,6 +263,7 @@ function openResult(result: SearchResult): void {
 		makerSlackId: result.makerSlackId,
 		requestedTier: result.requestedTier,
 		status: result.status,
+		thumbnailUrl: result.thumbnailUrl,
 		title: result.title,
 		version: result.version,
 		week: result.week,
