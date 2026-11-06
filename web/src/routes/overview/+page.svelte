@@ -1,16 +1,23 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { goto } from "$app/navigation"
-import { fetchMe, fetchOverview, type Overview } from "../../lib/api"
+import { browser } from "$app/env"
+import { fetchMe, fetchOverview, type Overview, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { decisionLabel, humanStatus, statusTone } from "../../lib/format"
+import { createOverviewCache } from "../../lib/overview-cache"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
 let overview = $state<Overview | null>(null)
 let loading = $state(true)
 let error = $state("")
+
+// overviewCache paints the last view instantly when navigating back, then the
+// page revalidates quietly. It is built lazily so sessionStorage is only
+// touched on the client.
+const overviewCache = browser ? createOverviewCache(program, sessionStorage) : null
 
 // formatWait renders a wait the way the Stasis readout does: hours below a day, days above.
 function formatWait(ms: number): string {
@@ -47,7 +54,9 @@ onMount((): (() => void) => {
 		try {
 			session.me ??= await fetchMe()
 			const next = await fetchOverview()
-			if (!cancelled) overview = next
+			if (cancelled) return
+			overview = next
+			overviewCache?.write(next)
 		} catch (err) {
 			if (cancelled) return
 			if (err instanceof ApiError && err.code === "unauthorized") {
@@ -60,7 +69,12 @@ onMount((): (() => void) => {
 		}
 	}
 
-	void load(false)
+	const cached = overviewCache?.read() ?? null
+	if (cached) {
+		;({ overview } = cached)
+		loading = false
+		void load(true)
+	} else void load(false)
 
 	return (): void => {
 		cancelled = true
