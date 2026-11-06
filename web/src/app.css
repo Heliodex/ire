@@ -123,6 +123,7 @@
 
 html {
 	background: var(--bg);
+	scrollbar-gutter: stable;
 }
 
 body {
