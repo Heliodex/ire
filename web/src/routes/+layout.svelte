@@ -363,7 +363,7 @@ async function signOut(): Promise<void> {
 										aria-keyshortcuts={`Alt+${navItems.indexOf(item) + 1}`}
 										class:active={item.active}
 										href={item.href}
-										>{item.label}</a
+										><span>{item.label}</span></a
 									>
 								{/each}
 							</div>
@@ -540,7 +540,10 @@ header {
 
 .menu-panel a {
 	padding: var(--space-2) var(--space-3);
-	border-bottom: 2px solid transparent;
+}
+
+.menu-panel a span {
+	padding-bottom: 2px;
 }
 
 .menu-panel a:hover {
@@ -549,7 +552,10 @@ header {
 
 .menu-panel a.active {
 	color: var(--text);
-	border-bottom-color: var(--primary);
+}
+
+.menu-panel a.active span {
+	border-bottom: 2px solid var(--primary);
 }
 
 /* The inline copy takes the empty space beside the brand only on very wide screens. */
