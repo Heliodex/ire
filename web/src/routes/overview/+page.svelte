@@ -292,24 +292,27 @@ h1 {
 }
 
 .bars {
-	display: grid;
-	grid-template-rows: 1fr auto;
-	grid-auto-columns: minmax(0, 1fr);
-	grid-auto-flow: column;
+	position: relative;
+	display: flex;
 	gap: var(--space-1);
+	align-items: stretch;
 	min-height: 7rem;
 	padding-top: var(--space-3);
+	padding-bottom: var(--space-5);
 }
 
 .bar-col {
+	position: relative;
+	display: flex;
+	flex: 1;
 	min-width: 0;
 }
 
 .bar-track {
 	display: flex;
+	flex: 1;
 	align-items: flex-end;
 	width: 100%;
-	height: 100%;
 	min-height: 4rem;
 	background: var(--surface-2);
 	border-radius: var(--radius-sm);
@@ -323,15 +326,18 @@ h1 {
 }
 
 .bar-tick {
-	align-self: center;
+	position: absolute;
+	top: calc(100% + var(--space-1));
+	left: 0;
+	width: 100%;
 	font-size: var(--text-xs);
 	font-variant-numeric: tabular-nums;
 	color: var(--text-3);
 	text-align: center;
 }
 
-.bar-tick:nth-of-type(even) {
-	visibility: hidden;
+.bar-col:nth-child(even) .bar-tick {
+	display: none;
 }
 
 .breakdown {
