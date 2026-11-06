@@ -1543,6 +1543,10 @@ h1 {
 	background: var(--primary-soft);
 }
 
+.filter-field input::-webkit-search-cancel-button {
+	cursor: pointer;
+}
+
 .highlight {
 	position: absolute;
 	inset: 0;
