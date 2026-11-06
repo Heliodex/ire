@@ -887,7 +887,8 @@ async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 		saveQueueState()
 		let target = `/review/${encodeURIComponent(item.id)}`
 		if (tab) target += `?tab=${tab}`
-		window.location.assign(target)
+
+		await goto(target)
 	} catch (err) {
 		actionError = claimError(err)
 		await load(filter, stage, true)

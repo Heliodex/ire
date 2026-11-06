@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import { goto } from "$app/navigation"
 import { type SearchResult, searchProjects } from "../api"
 import { formatDuration, humanStatus, statusTone, timeAgo } from "../format"
 import { createSearchCache } from "../search-cache"
@@ -253,7 +254,8 @@ $effect((): void => {
 
 function openResult(result: SearchResult): void {
 	open = false
-	window.location.assign(`/review/${encodeURIComponent(result.id)}`)
+	input?.blur()
+	void goto(`/review/${encodeURIComponent(result.id)}`)
 }
 </script>
 
