@@ -178,6 +178,7 @@ func (a *ireApp) routes() {
 	a.mux.HandleFunc("POST /api/v1/dev/reset", a.handleDevReset)
 
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/queue", a.handleQueue)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/overview", a.handleOverview)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/reviewed", a.handleReviewed)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/search", a.handleSearch)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/submissions/{id}", a.handleBundle)
@@ -219,7 +220,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/":
 		if signedIn {
-			http.Redirect(w, r, "/queue", http.StatusFound)
+			http.Redirect(w, r, "/overview", http.StatusFound)
 			return
 		}
 
@@ -231,7 +232,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if signedIn {
-			target = "/queue"
+			target = "/overview"
 		}
 
 		//nolint:gosec // The target is a fixed local path plus the request query.
@@ -267,7 +268,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 // protectedPage reports the prerendered routes that need a session.
 func protectedPage(path string) bool {
-	for _, prefix := range []string{"/queue", "/reviewed", "/review", "/reviewers", "/makers", "/deliveries", "/admin"} {
+	for _, prefix := range []string{"/overview", "/queue", "/reviewed", "/review", "/reviewers", "/makers", "/deliveries", "/admin"} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}

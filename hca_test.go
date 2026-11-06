@@ -195,7 +195,7 @@ func TestHCAOAuthFlow(t *testing.T) {
 		t.Fatalf("callback = %d: %s", callback.Code, callback.Body.String())
 	}
 
-	if callback.Header().Get("Location") != "/queue" {
+	if callback.Header().Get("Location") != "/overview" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
 
@@ -290,7 +290,7 @@ func completeHCA(t *testing.T, application *ireApp, provider *fakeHCA) *http.Coo
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
 
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
-	if callback.Header().Get("Location") != "/queue" {
+	if callback.Header().Get("Location") != "/overview" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
 
@@ -368,7 +368,7 @@ func TestHCABootstrapsConfiguredEmail(t *testing.T) {
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
 
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
-	if callback.Header().Get("Location") != "/queue" {
+	if callback.Header().Get("Location") != "/overview" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
 
@@ -390,7 +390,7 @@ func TestHCABootstrapsConfiguredEmail(t *testing.T) {
 	stateCookie = findCookie(start.Result().Cookies(), oauthStateCookie)
 
 	callback = do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
-	if callback.Header().Get("Location") != "/queue" {
+	if callback.Header().Get("Location") != "/overview" {
 		t.Fatalf("second callback redirect = %q", callback.Header().Get("Location"))
 	}
 
@@ -484,7 +484,7 @@ func TestHCASessionRotation(t *testing.T) {
 
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, nil,
 		map[string]string{"Cookie": cookieName + "=" + old.Value + "; " + oauthStateCookie + "=" + state})
-	if callback.Header().Get("Location") != "/queue" {
+	if callback.Header().Get("Location") != "/overview" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
 
