@@ -87,7 +87,8 @@ let filter = $state<Filter>(
 	savedQueue && filters.some(option => option.key === savedQueue.filter) ? savedQueue.filter : "all",
 )
 let stage = $state(savedQueue?.stage ?? 1)
-let loading = $state(!savedQueue)
+// Arriving on the page always shows the list loader until the first fetch settles, even when a saved copy is restored.
+let loading = $state(true)
 let opening = $state("")
 let error = $state("")
 let actionError = $state("")
