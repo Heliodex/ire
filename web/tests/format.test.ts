@@ -24,13 +24,18 @@ describe("formatHours", () => {
 
 describe("formatDuration", () => {
 	test("splits seconds into hours, minutes and seconds", () => {
-		expect(formatDuration(0)).toBe("0h 0m 0s")
+		expect(formatDuration(0)).toBe("0h 0m")
 		expect(formatDuration(3661)).toBe("1h 1m 1s")
 		expect(formatDuration(23076)).toBe("6h 24m 36s")
 	})
 
+	test("drops a trailing zero-seconds part", () => {
+		expect(formatDuration(3600)).toBe("1h 0m")
+		expect(formatDuration(90)).toBe("0h 1m 30s")
+	})
+
 	test("clamps negative input", () => {
-		expect(formatDuration(-5)).toBe("0h 0m 0s")
+		expect(formatDuration(-5)).toBe("0h 0m")
 	})
 })
 

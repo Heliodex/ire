@@ -832,7 +832,7 @@ function filterByVersion(item: QueueItem, event: MouseEvent): void {
 	setFilterToken("ver", String(item.version))
 }
 
-// compactDuration renders a filter-friendly duration such as 6h24m0s or 3d1h0m0s.
+// compactDuration renders a filter-friendly duration such as 6h24m or 3d1h0m.
 function compactDuration(seconds: number): string {
 	const total = Math.max(0, Math.round(seconds))
 	const days = Math.floor(total / 86_400)
@@ -844,6 +844,8 @@ function compactDuration(seconds: number): string {
 	if (days > 0) out += `${days}d`
 	if (hours > 0 || days > 0) out += `${hours}h`
 	if (minutes > 0 || hours > 0 || days > 0) out += `${minutes}m`
+
+	if (secs === 0 && out !== "") return out
 
 	return `${out}${secs}s`
 }
