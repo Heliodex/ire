@@ -69,6 +69,7 @@ const navItems = $derived.by((): NavItem[] => {
 
 let overflowCount = $state(0)
 let lastRowWidth = 0
+let fitted = $state(false)
 const visibleItems = $derived(navItems.slice(0, Math.max(navItems.length - overflowCount, 0)))
 const overflowItems = $derived(navItems.slice(Math.max(navItems.length - overflowCount, 0)))
 
@@ -104,6 +105,8 @@ async function fitSections(): Promise<void> {
 			overflowCount += 1
 			await tick()
 		}
+
+		fitted = true
 	} finally {
 		fitting = false
 	}
@@ -317,7 +320,7 @@ async function signOut(): Promise<void> {
 				</div>
 			{/if}
 
-			<nav aria-label="Sections" class="sections-row" bind:this={sectionsRow}>
+			<nav aria-label="Sections" class="sections-row" class:fitted={fitted} bind:this={sectionsRow}>
 				{#each visibleItems as item (item.href)}
 					<a
 						aria-current={item.active ? "page" : undefined}
@@ -503,6 +506,15 @@ header {
 	display: flex;
 	gap: var(--space-4);
 	align-items: center;
+	min-height: 1.75rem;
+}
+
+/* The server renders every tab, so the row stays hidden until the first fit
+swaps the overflowing ones under More. The height is reserved throughout. */
+@media (scripting: enabled) {
+	.sections-row:not(.fitted) {
+		visibility: hidden;
+	}
 }
 
 .sections-more {
@@ -511,8 +523,9 @@ header {
 	margin-left: auto;
 }
 
-.more-button {
+.ui-button.more-button {
 	gap: var(--space-1);
+	height: 1.75rem;
 }
 
 .more-button .chevron {
