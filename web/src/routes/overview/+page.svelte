@@ -89,26 +89,26 @@ onMount((): (() => void) => {
 		<span>Check back after the next ingest.</span>
 	</div>
 {:else if overview}
-	<section class="stats" aria-label="Programme totals">
-		<div class="ui-card stat" data-tone="info">
+	<section aria-label="Programme totals" class="stats">
+		<div class="ui-card padded stat" data-tone="info">
 			<strong>{overview.needsReview}</strong>
 			<span>Needs review</span>
 		</div>
-		<div class="ui-card stat">
+		<div class="ui-card padded stat">
 			<strong>{overview.newToday}</strong>
 			<span>New today</span>
 		</div>
-		<div class="ui-card stat" data-tone="ok">
+		<div class="ui-card padded stat" data-tone="ok">
 			<strong>{overview.reviewedToday}</strong>
 			<span>Reviewed today</span>
 		</div>
-		<div class="ui-card stat">
+		<div class="ui-card padded stat">
 			<strong>{overview.wait.count > 0 ? formatWait(overview.wait.p50Ms) : "–"}</strong>
 			<span>Median wait{overview.wait.count > 0 ? ` across ${overview.wait.count}` : ""}</span>
 		</div>
 	</section>
 
-	<section class="ui-card wait" aria-label="Wait times">
+	<section aria-label="Wait times" class="ui-card padded wait">
 		<div class="wait-head">
 			<h2>Wait time</h2>
 			<span>Oldest-first across the open queue</span>
@@ -129,15 +129,12 @@ onMount((): (() => void) => {
 	</section>
 
 	<div class="panels">
-		<section class="ui-card panel" aria-label="Reviews per day">
+		<section aria-label="Reviews per day" class="ui-card padded panel">
 			<h2>Reviews completed</h2>
 			<p>Last 14 days</p>
 			<div class="bars">
 				{#each overview.daily as day (day.date)}
-					<div
-						class="bar-col"
-						title={`${day.date}: ${day.count} review${day.count === 1 ? "" : "s"}`}
-					>
+					<div class="bar-col" title={`${day.date}: ${day.count} review${day.count === 1 ? "" : "s"}`}>
 						<div class="bar-track">
 							<div class="bar-fill" style:height={`${(day.count / dayMax) * 100}%`}></div>
 						</div>
@@ -147,14 +144,16 @@ onMount((): (() => void) => {
 			</div>
 		</section>
 
-		<section class="ui-card panel" aria-label="Open ships by status">
+		<section aria-label="Open ships by status" class="ui-card padded panel">
 			<h2>Open by status</h2>
 			<p>{openTotal} {openTotal === 1 ? "ship" : "ships"} waiting</p>
 			<ul class="breakdown">
 				{#each overview.byStatus as row (row.status)}
 					<li>
 						<span class="ui-badge" data-tone={statusTone(row.status)}>{humanStatus(row.status)}</span>
-						<span class="meter"><span style:width={`${openTotal > 0 ? (row.count / openTotal) * 100 : 0}%`}></span></span>
+						<span class="meter"
+							><span style:width={`${openTotal > 0 ? (row.count / openTotal) * 100 : 0}%`}></span></span
+						>
 						<span class="amount">{row.count}</span>
 					</li>
 				{/each}
@@ -162,7 +161,7 @@ onMount((): (() => void) => {
 		</section>
 	</div>
 
-	<section class="ui-card panel" aria-label="Reviewer leaderboard">
+	<section aria-label="Reviewer leaderboard" class="ui-card padded panel">
 		<h2>Reviewer leaderboard</h2>
 		<p>Last 30 days</p>
 		{#if overview.leaderboard.length === 0}
@@ -177,7 +176,9 @@ onMount((): (() => void) => {
 						{:else}
 							<span class="name">{row.name || "Unknown"}</span>
 						{/if}
-						<span class="meter board-meter"><span style:width={`${(row.count / boardMax) * 100}%`}></span></span>
+						<span class="meter board-meter"
+							><span style:width={`${(row.count / boardMax) * 100}%`}></span></span
+						>
 						<span class="amount">{row.count}</span>
 					</li>
 				{/each}
@@ -291,27 +292,24 @@ h1 {
 }
 
 .bars {
-	display: flex;
+	display: grid;
+	grid-template-rows: 1fr auto;
+	grid-auto-columns: minmax(0, 1fr);
+	grid-auto-flow: column;
 	gap: var(--space-1);
-	align-items: stretch;
 	min-height: 7rem;
 	padding-top: var(--space-3);
 }
 
 .bar-col {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: var(--space-1);
-	align-items: center;
 	min-width: 0;
 }
 
 .bar-track {
 	display: flex;
-	flex: 1;
 	align-items: flex-end;
 	width: 100%;
+	height: 100%;
 	min-height: 4rem;
 	background: var(--surface-2);
 	border-radius: var(--radius-sm);
@@ -325,26 +323,29 @@ h1 {
 }
 
 .bar-tick {
+	align-self: center;
 	font-size: var(--text-xs);
-	color: var(--text-3);
 	font-variant-numeric: tabular-nums;
+	color: var(--text-3);
+	text-align: center;
 }
 
-.bar-col:nth-child(even) .bar-tick {
-	display: none;
+.bar-tick:nth-of-type(even) {
+	visibility: hidden;
 }
 
 .breakdown {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-2);
-	margin: 0;
 	padding: var(--space-3) 0 0;
+	margin: 0;
 	list-style: none;
 }
 
 .breakdown li {
-	display: flex;
+	display: grid;
+	grid-template-columns: 6.5rem minmax(0, 1fr) auto;
 	gap: var(--space-2);
 	align-items: center;
 }
@@ -374,8 +375,8 @@ h1 {
 .board {
 	display: flex;
 	flex-direction: column;
-	margin: 0;
 	padding: var(--space-2) 0 0;
+	margin: 0;
 	list-style: none;
 }
 
@@ -395,9 +396,9 @@ h1 {
 	flex: none;
 	width: var(--space-5);
 	font-size: var(--text-xs);
+	font-variant-numeric: tabular-nums;
 	color: var(--text-3);
 	text-align: center;
-	font-variant-numeric: tabular-nums;
 }
 
 .board li:first-child .rank {
