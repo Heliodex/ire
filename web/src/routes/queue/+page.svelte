@@ -847,12 +847,12 @@ function timeFilter(item: QueueItem): string {
 	return `>${compactDuration(item.hoursClaimedSeconds)}`
 }
 
-// ageFilter asks for ships older than this one, using its exact age rather than the rounded label.
+// ageFilter asks for ships at least as old as this one, using its exact age rather than the rounded label.
 function ageFilter(item: QueueItem): string {
 	const ingested = Date.parse(item.ingestedAt)
-	if (Number.isNaN(ingested)) return ">0s"
+	if (Number.isNaN(ingested)) return ">=0s"
 
-	return `>${compactDuration((Date.now() - ingested) / 1000)}`
+	return `>=${compactDuration((Date.now() - ingested) / 1000)}`
 }
 
 // filterByTime adds time:>6h when the claimed hours are activated.
@@ -862,7 +862,7 @@ function filterByTime(item: QueueItem, event: MouseEvent): void {
 	setFilterToken("time", timeFilter(item))
 }
 
-// filterByAge adds age:>2h when the age is activated.
+// filterByAge adds age:>=2h when the age is activated.
 function filterByAge(item: QueueItem, event: MouseEvent): void {
 	event.preventDefault()
 	event.stopPropagation()
@@ -1302,11 +1302,11 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 								claimed
 							</a>
 							<a
-								aria-label={`Show ships older than ${timeAgo(item.ingestedAt)}`}
+								aria-label="Show ships at least as old as this one"
 								class="age {ageTone(item.ingestedAt)}"
 								href={filterHref("age", ageFilter(item))}
 								onclick={(event: MouseEvent): void => filterByAge(item, event)}
-								title={`Show ships older than ${timeAgo(item.ingestedAt)}`}
+								title="Show ships at least as old as this one"
 							>
 								{timeAgo(item.ingestedAt)}
 							</a>
