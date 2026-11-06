@@ -48,7 +48,8 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := a.store.Query(r.Context(), `select s.id, s.external_id, s.title, coalesce(s.maker_name, ''),
-			s.status, s.stage, coalesce(s.theme, ''), coalesce(s.thumbnail_url, '')
+			s.status, s.stage, coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''),
+			coalesce(s.week, 0), s.version, s.hours_claimed_seconds, s.ingested_at
 		from submission s
 		where s.program_id = ?
 		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`+stageClause+`
@@ -79,9 +80,11 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 		var (
 			item                    contract.SearchResult
 			theme, thumb, makerName string
+			week                    int
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &makerName,
-			&item.Status, &item.Stage, &theme, &thumb); err != nil {
+			&item.Status, &item.Stage, &theme, &thumb, &week,
+			&item.Version, &item.HoursClaimedSeconds, &item.IngestedAt); err != nil {
 			writeStorage(w, err)
 
 			return
@@ -92,6 +95,10 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		item.MakerName = makerName
+
+		if week > 0 {
+			item.Week = &week
+		}
 
 		if theme != "" {
 			item.Theme = &theme

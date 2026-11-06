@@ -5,11 +5,14 @@ import { createSearchCache } from "../src/lib/search-cache"
 function result(id: string): SearchResult {
 	return {
 		externalId: id,
+		hoursClaimedSeconds: 0,
 		id,
+		ingestedAt: "2026-01-01T00:00:00Z",
 		makerName: "Maker",
 		stage: 1,
 		status: "ready",
 		title: id,
+		version: 1,
 	}
 }
 

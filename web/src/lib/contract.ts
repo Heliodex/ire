@@ -366,13 +366,17 @@ export const overviewResponseSchema = pipe(
 export const searchResultSchema = pipe(
 	object({
 		externalId: pipe(string(), minLength(1)),
+		hoursClaimedSeconds: nonNegative,
 		id: pipe(string(), minLength(1)),
+		ingestedAt: timestamp,
 		makerName: pipe(string(), minLength(1)),
 		stage: nonNegative,
 		status: pipe(string(), minLength(1)),
 		theme: optionalString,
 		thumbnailUrl: optionalString,
 		title: pipe(string(), minLength(1)),
+		version: nonNegative,
+		week: optional(pipe(number(), integer())),
 	}),
 	title("SearchResult"),
 )

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { type SearchResult, searchProjects } from "../api"
-import { humanStatus, statusTone } from "../format"
+import { formatDuration, humanStatus, statusTone, timeAgo } from "../format"
 import { createSearchCache } from "../search-cache"
 
 const debounceMs = 160
@@ -234,6 +234,22 @@ function openResult(result: SearchResult): void {
 							<span class="title">{result.title}</span>
 							<span class="meta">{result.makerName} · {result.externalId}</span>
 						</span>
+						<span class="details">
+							{#if result.stage === 2}
+								<span class="fact pass">Pass 2</span>
+							{/if}
+							{#if result.theme}
+								<span class="fact">{result.theme}</span>
+							{/if}
+							<span class="fact">v{result.version}</span>
+							{#if result.week}
+								<span class="fact">Week {result.week}</span>
+							{/if}
+							{#if result.hoursClaimedSeconds > 0}
+								<span class="fact">{formatDuration(result.hoursClaimedSeconds)} claimed</span>
+							{/if}
+							<span class="fact">{timeAgo(result.ingestedAt)}</span>
+						</span>
 						<span class="ui-badge status" data-tone={statusTone(result.status)}>
 							{humanStatus(result.status)}
 						</span>
@@ -360,6 +376,22 @@ function openResult(result: SearchResult): void {
 	flex: none;
 }
 
+/* The extra facts are only wide enough to fit when the dropdown grows on a large screen. */
+.details {
+	display: none;
+	flex: none;
+	gap: var(--space-3);
+	align-items: center;
+	font-size: var(--text-xs);
+	color: var(--text-3);
+	white-space: nowrap;
+}
+
+.fact.pass {
+	font-weight: 700;
+	color: var(--status-secondpass);
+}
+
 .message {
 	padding: var(--space-4) var(--space-3);
 	font-size: var(--text-sm);
@@ -389,6 +421,18 @@ function openResult(result: SearchResult): void {
 
 	.search :global(input) {
 		padding-right: 0.75rem;
+	}
+}
+
+/* On a wide header the dropdown reaches left of the field and can afford the per-ship facts. */
+@media (min-width: 64rem) {
+	.results {
+		left: auto;
+		width: min(46rem, calc(100vw - 2rem));
+	}
+
+	.details {
+		display: flex;
 	}
 }
 </style>

@@ -10,7 +10,15 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"hoursClaimedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
 					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"ingestedAt": {
 						"type": "string",
 						"minLength": 1
 					},
@@ -35,15 +43,25 @@
 					"title": {
 						"type": "string",
 						"minLength": 1
+					},
+					"version": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"week": {
+						"type": "integer"
 					}
 				},
 				"required": [
 					"externalId",
+					"hoursClaimedSeconds",
 					"id",
+					"ingestedAt",
 					"makerName",
 					"stage",
 					"status",
-					"title"
+					"title",
+					"version"
 				],
 				"title": "SearchResult"
 			}

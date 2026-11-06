@@ -4299,8 +4299,14 @@ type SearchResult struct {
 	// ExternalID corresponds to the JSON schema field "externalId".
 	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
 
+	// HoursClaimedSeconds corresponds to the JSON schema field "hoursClaimedSeconds".
+	HoursClaimedSeconds int `json:"hoursClaimedSeconds" yaml:"hoursClaimedSeconds" mapstructure:"hoursClaimedSeconds"`
+
 	// ID corresponds to the JSON schema field "id".
 	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// IngestedAt corresponds to the JSON schema field "ingestedAt".
+	IngestedAt string `json:"ingestedAt" yaml:"ingestedAt" mapstructure:"ingestedAt"`
 
 	// MakerName corresponds to the JSON schema field "makerName".
 	MakerName string `json:"makerName" yaml:"makerName" mapstructure:"makerName"`
@@ -4319,6 +4325,12 @@ type SearchResult struct {
 
 	// Title corresponds to the JSON schema field "title".
 	Title string `json:"title" yaml:"title" mapstructure:"title"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+
+	// Week corresponds to the JSON schema field "week".
+	Week *int `json:"week,omitempty,omitzero" yaml:"week,omitempty" mapstructure:"week,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -4330,8 +4342,14 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["externalId"]; raw != nil && !ok {
 		return fmt.Errorf("field externalId in SearchResult: required")
 	}
+	if _, ok := raw["hoursClaimedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursClaimedSeconds in SearchResult: required")
+	}
 	if _, ok := raw["id"]; raw != nil && !ok {
 		return fmt.Errorf("field id in SearchResult: required")
+	}
+	if _, ok := raw["ingestedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field ingestedAt in SearchResult: required")
 	}
 	if _, ok := raw["makerName"]; raw != nil && !ok {
 		return fmt.Errorf("field makerName in SearchResult: required")
@@ -4345,6 +4363,9 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["title"]; raw != nil && !ok {
 		return fmt.Errorf("field title in SearchResult: required")
 	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in SearchResult: required")
+	}
 	type Plain SearchResult
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
@@ -4353,8 +4374,14 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
+	if 0 > plain.HoursClaimedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
+	}
 	if utf8.RuneCountInString(string(plain.ID)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if utf8.RuneCountInString(string(plain.IngestedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "ingestedAt", 1)
 	}
 	if utf8.RuneCountInString(string(plain.MakerName)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerName", 1)
@@ -4367,6 +4394,9 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 	}
 	if utf8.RuneCountInString(string(plain.Title)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
 	}
 	*j = SearchResult(plain)
 	return nil

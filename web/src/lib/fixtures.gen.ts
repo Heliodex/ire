@@ -902,13 +902,17 @@ const searchResponseFixture: InferOutput<typeof searchResponseSchema> = {
 	"results": [
 		{
 			"externalId": "externalId",
+			"hoursClaimedSeconds": 0,
 			"id": "id",
+			"ingestedAt": "2026-01-01T00:00:00Z",
 			"makerName": "makerName",
 			"stage": 0,
 			"status": "status",
 			"theme": "theme",
 			"thumbnailUrl": "thumbnailUrl",
-			"title": "title"
+			"title": "title",
+			"version": 0,
+			"week": 0
 		}
 	]
 }
