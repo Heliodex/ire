@@ -1,11 +1,12 @@
 <script lang="ts">
 import { onMount, tick } from "svelte"
-import { SvelteMap } from "svelte/reactivity"
+import { SvelteMap, SvelteSet } from "svelte/reactivity"
 import { browser } from "$app/env"
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
-import { claimShip, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
+import { claimShip, fetchBundle, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
+import { createBundleCache } from "../../lib/bundle-cache"
 import {
 	type CheckDotMode,
 	checkGroupLabel,
@@ -95,6 +96,10 @@ let loading = $state(savedQueue === null)
 let streaming = $state(false)
 let streamController: AbortController | null = null
 let opening = $state("")
+let hoveredId = $state("")
+let prefetchTimer: ReturnType<typeof setTimeout> | null = null
+const prefetched = new SvelteSet<string>()
+const prefetching = new SvelteSet<string>()
 let error = $state("")
 let actionError = $state("")
 let selected = $state(
@@ -624,6 +629,53 @@ async function loadStreaming(): Promise<void> {
 		if (!controller.signal.aborted && current()) loading = false
 	}
 }
+
+// prefetchBundle keeps a ship's full bundle in the tab cache so opening it paints immediately.
+async function prefetchBundle(id: string): Promise<void> {
+	if (prefetched.has(id) || prefetching.has(id) || !session.me) return
+
+	prefetching.add(id)
+
+	try {
+		const bundle = await fetchBundle(id)
+		createBundleCache(program, session.me.user.email, sessionStorage).write(id, bundle)
+		prefetched.add(id)
+	} catch {
+		// Prefetching is best effort; opening the ship still loads it normally.
+	} finally {
+		prefetching.delete(id)
+	}
+}
+
+// schedulePrefetch warms the hovered or selected ship after a short pause, so a quick pass over the list does not
+// fetch every row.
+function schedulePrefetch(item: QueueItem | undefined): void {
+	if (prefetchTimer) {
+		clearTimeout(prefetchTimer)
+		prefetchTimer = null
+	}
+
+	if (!item || !isSelectable(item) || opening !== "") return
+
+	prefetchTimer = setTimeout((): void => {
+		prefetchTimer = null
+		void prefetchBundle(item.id)
+	}, 200)
+}
+
+// prefetchItem is the row the cursor is on: the hovered row wins, otherwise the keyboard selection.
+const prefetchItem = $derived(hoveredId !== "" ? visible.find(item => item.id === hoveredId) : visible[selected])
+
+$effect((): (() => void) => {
+	schedulePrefetch(prefetchItem)
+
+	return (): void => {
+		if (prefetchTimer) {
+			clearTimeout(prefetchTimer)
+			prefetchTimer = null
+		}
+	}
+})
 
 // checkTone maps a check result to a dot tone. A failure with warning severity stays orange, matching the review screen.
 async function load(target = filter, targetStage = stage, keepRows = false): Promise<void> {
@@ -1373,6 +1425,12 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 					class="row"
 					disabled={opening !== "" || !isSelectable(item)}
 					onclick={(): Promise<void> => open(item)}
+					onmouseenter={(): void => {
+						hoveredId = item.id
+					}}
+					onmouseleave={(): void => {
+						if (hoveredId === item.id) hoveredId = ""
+					}}
 					type="button"
 					class:selected={windowedRows.start + index === selected}
 					class:unavailable={!isSelectable(item)}
