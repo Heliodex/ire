@@ -1570,7 +1570,7 @@ h1 {
 }
 
 .filter-colon {
-	color: var(--text-3);
+	color: var(--text);
 }
 
 .filter-value {
