@@ -131,7 +131,7 @@ async function save(keepalive = false): Promise<void> {
 			{/if}
 		</p>
 	</div>
-{:else if entry.approvedSeconds != null}
+{:else if typeof entry.approvedSeconds === "number"}
 	<p class="journal-counted">
 		Counted {formatHours(entry.approvedSeconds)} of {formatHours(entry.seconds)}
 		{#if entry.reviewerNote}
