@@ -30,12 +30,12 @@ export interface QueueQuery {
 	week: NumericFilter | null
 }
 
-const durationUnits: { [_: string]: number } = {
-	d: 24 * 60 * 60 * 1000,
-	h: 60 * 60 * 1000,
-	m: 60 * 1000,
-	s: 1000,
-	w: 7 * 24 * 60 * 60 * 1000,
+const durationUnits: { [_: string]: { milliseconds: number; rank: number } } = {
+	d: { milliseconds: 24 * 60 * 60 * 1000, rank: 4 },
+	h: { milliseconds: 60 * 60 * 1000, rank: 3 },
+	m: { milliseconds: 60 * 1000, rank: 2 },
+	s: { milliseconds: 1000, rank: 1 },
+	w: { milliseconds: 7 * 24 * 60 * 60 * 1000, rank: 5 },
 }
 
 const statuses = new Set([
@@ -99,18 +99,22 @@ function parseComparison(value: string): NumericFilter | null {
 	return { op: parseOp(match[1], "="), value: Number(match[2]) }
 }
 
-// parseDuration reads a comparison and one or more units, such as >1d, >=12h, 30m or 6h24m0s.
+// parseDuration reads a comparison and one or more units, such as >1d, >=12h, 30m or 6h24m.
+// Units must descend in size with no repeats, so 10h30m10s5m is rejected.
 // A bare duration means "at least".
 function parseDuration(value: string, fallback: CompareOp): NumericFilter | null {
 	const match = /^([<>]=?|=|!=)?((?:\d+(?:\.\d+)?[smhdw])+)$/.exec(value.toLowerCase())
 	if (!match) return null
 
 	let total = 0
+	let previousRank = Number.POSITIVE_INFINITY
+
 	for (const part of (match[2] ?? "").matchAll(/(\d+(?:\.\d+)?)([smhdw])/g)) {
 		const unit = durationUnits[part[2]]
-		if (unit === undefined) return null
+		if (unit === undefined || unit.rank >= previousRank) return null
 
-		total += Number(part[1]) * unit
+		previousRank = unit.rank
+		total += Number(part[1]) * unit.milliseconds
 	}
 
 	return { op: parseOp(match[1], fallback), value: total }

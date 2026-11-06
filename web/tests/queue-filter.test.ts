@@ -94,6 +94,13 @@ describe("parseQueueQuery", () => {
 		expect(parseQueueQuery("checks:pass").checks).toEqual({ kind: "overallPass" })
 	})
 
+	test("rejects malformed duration order and repeated units", () => {
+		expect(parseQueueQuery("time:>10h30m10s5m").time).toBeNull()
+		expect(parseQueueQuery("age:>1h1h").age).toBeNull()
+		expect(parseQueueQuery("age:>30m10h").age).toBeNull()
+		expect(parseQueueQuery("time:>1d2h30m10s").time).toEqual({ op: ">", value: 95_410_000 })
+	})
+
 	test("combines filters with plain terms and normalises casing", () => {
 		expect(parseQueueQuery("Week:1 Type:PCB status:Needs-Attention timer")).toEqual({
 			age: null,
