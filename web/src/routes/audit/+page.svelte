@@ -3,16 +3,17 @@ import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { type AuditEntry, fetchAudit, fetchMe, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
-import Avatar from "../../lib/components/Avatar.svelte"
+import AuditRow from "../../lib/components/audit/AuditRow.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
-import { formatDateTime, formatHours, timeAgo } from "../../lib/format"
-import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
 
 const actionOptions = [
 	{ label: "All actions", value: "" },
 	{ label: "Review decisions", value: "review.decision" },
 	{ label: "Sent back", value: "review.send_back" },
+	{ label: "Journal adjusted", value: "journal.adjust" },
+	{ label: "Notes added", value: "note.create" },
+	{ label: "Notes removed", value: "note.delete" },
 	{ label: "Members invited", value: "member.invite" },
 	{ label: "Members updated", value: "member.update" },
 	{ label: "Sessions revoked", value: "user.sessions_revoke" },
@@ -26,13 +27,6 @@ const ageOptions = [
 	{ label: "Last 30 days", value: 30 },
 	{ label: "Last 90 days", value: 90 },
 ]
-
-interface Change {
-	from: string
-	key: string
-	label: string
-	to: string
-}
 
 let entries = $state<AuditEntry[]>([])
 let action = $state("")
@@ -133,144 +127,6 @@ function clearFilters(): void {
 	query = ""
 	reload()
 }
-
-function parseJSON(value: string | undefined): { [_: string]: unknown } {
-	if (!value) return {}
-	try {
-		const parsed = JSON.parse(value) as unknown
-		return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
-			? (parsed as { [_: string]: unknown })
-			: {}
-	} catch {
-		return {}
-	}
-}
-
-const labels: { [_: string]: string } = {
-	active: "Active",
-	decision: "Decision",
-	email: "Email",
-	held: "Held",
-	hours: "Approved hours",
-	invalidated: "Invalidated review",
-	reason: "Reason",
-	role: "Role",
-	stage: "Stage",
-	status: "Status",
-	version: "Version",
-}
-
-function valueLabel(key: string, value: unknown): string {
-	if (key === "hours" && typeof value === "number") return formatHours(value)
-	if (typeof value === "boolean") return value ? "Yes" : "No"
-	if (value === null || value === undefined || value === "") return "–"
-	if (Array.isArray(value)) return value.map(String).join(", ") || "–"
-	if (typeof value === "object") return JSON.stringify(value)
-	return String(value)
-}
-
-function sameValue(left: unknown, right: unknown): boolean {
-	return JSON.stringify(left) === JSON.stringify(right)
-}
-
-function changes(entry: AuditEntry): Change[] {
-	const before = parseJSON(entry.beforeJson)
-	const after = parseJSON(entry.afterJson)
-	const keys = new Set([...Object.keys(before), ...Object.keys(after)])
-	const rows: Change[] = []
-
-	for (const key of keys) {
-		const from = before[key]
-		const to = after[key]
-		if (sameValue(from, to)) continue
-		// A held=false that was absent before is the default, not a change worth a row.
-		if (key === "held" && to !== true && from === undefined) continue
-
-		rows.push({
-			from: valueLabel(key, from),
-			key,
-			label: labels[key] ?? key.replaceAll("_", " "),
-			to: valueLabel(key, to),
-		})
-	}
-
-	return rows
-}
-
-function actionLabel(value: string): string {
-	switch (value) {
-		case "review.decision":
-			return "Review decision"
-		case "review.send_back":
-			return "Sent back"
-		case "member.invite":
-			return "Member invited"
-		case "member.update":
-			return "Member updated"
-		case "user.sessions_revoke":
-			return "Sessions revoked"
-		case "user.bootstrap":
-			return "Bootstrap account"
-		default:
-			return value
-	}
-}
-
-function actionTone(entry: AuditEntry): string {
-	const after = parseJSON(entry.afterJson)
-	switch (entry.action) {
-		case "review.decision":
-			if (after.decision === "approved") return "approved"
-			if (after.decision === "changes") return "changes"
-			if (after.decision === "rejected") return "rejected"
-			return "ready"
-		case "review.send_back":
-			return "secondpass"
-		case "member.invite":
-		case "member.update":
-			return "ready"
-		default:
-			return "ready"
-	}
-}
-
-function summary(entry: AuditEntry): string {
-	const after = parseJSON(entry.afterJson)
-
-	switch (entry.action) {
-		case "review.decision": {
-			const decision =
-				after.decision === "approved"
-					? "Approved"
-					: after.decision === "changes"
-						? "Requested changes"
-						: after.decision === "rejected"
-							? "Rejected"
-							: "Recorded a decision"
-			return after.held === true ? `${decision}, held for a second pass` : decision
-		}
-		case "review.send_back":
-			return "Returned the held ship to stage 1."
-		case "member.invite":
-			return `Invited ${valueLabel("email", after.email)} as ${valueLabel("role", after.role)}.`
-		case "member.update":
-			return `Updated ${entry.targetLabel ?? "a member"}'s role or active state.`
-		case "user.sessions_revoke":
-			return `Revoked every session for ${entry.targetLabel ?? "a member"}.`
-		case "user.bootstrap":
-			return `Created the first ${valueLabel("role", after.role)} membership for ${entry.actorEmail ?? "the bootstrap account"}.`
-		default:
-			return ""
-	}
-}
-
-function actor(entry: AuditEntry): string {
-	return entry.actorName || entry.actorEmail || "System"
-}
-
-function targetLink(entry: AuditEntry): string | null {
-	return entry.targetType === "submission" && entry.targetId ? `/review/${encodeURIComponent(entry.targetId)}` : null
-}
 </script>
 
 <svelte:head>
@@ -343,77 +199,11 @@ function targetLink(entry: AuditEntry): string | null {
 			{/if}
 		</div>
 	{:else}
-		<div class="ui-card audit-list">
+		<ol class="ui-card audit-list">
 			{#each entries as entry (entry.id)}
-				<article class="entry">
-					<div class="entry-head">
-						<span class="ui-badge" data-tone={actionTone(entry)}>{actionLabel(entry.action)}</span>
-						{#if reviewerHref(entry.actorEmail)}
-							<a
-								class="actor"
-								data-sveltekit-reload
-								href={reviewerHref(entry.actorEmail) ?? "#"}
-								title={entry.actorEmail ?? ""}
-							>
-								<Avatar
-									email={entry.actorEmail}
-									name={entry.actorName}
-									size="xs"
-									url={entry.actorAvatarUrl}
-								/>
-								<span>{actor(entry)}</span>
-							</a>
-						{:else}
-							<span class="actor">
-								<Avatar
-									email={entry.actorEmail}
-									name={entry.actorName}
-									size="xs"
-									url={entry.actorAvatarUrl}
-								/>
-								<span>{actor(entry)}</span>
-							</span>
-						{/if}
-						{#if targetLink(entry)}
-							<a class="target" href={targetLink(entry)}>{entry.targetLabel ?? entry.targetId}</a>
-						{:else if entry.targetId
-							&& (entry.action.startsWith("member.") || entry.action.startsWith("user."))}
-							<a class="target" data-sveltekit-reload href={reviewerHref(entry.targetId) ?? "#"}>
-								{entry.targetLabel ?? entry.targetId}
-							</a>
-						{:else if entry.targetLabel || entry.targetId}
-							<span class="target">{entry.targetLabel ?? entry.targetId}</span>
-						{/if}
-						<time class="when" datetime={entry.createdAt} title={formatDateTime(entry.createdAt)}>
-							{timeAgo(entry.createdAt)}
-						</time>
-					</div>
-
-					{#if summary(entry)}
-						<p class="summary">{summary(entry)}</p>
-					{/if}
-
-					{#if entry.reason}
-						<p class="reason"><strong>Reason:</strong> {entry.reason}</p>
-					{/if}
-
-					{#if changes(entry).length > 0}
-						<dl class="changes">
-							{#each changes(entry) as change (change.key)}
-								<div>
-									<dt>{change.label}</dt>
-									<dd>
-										<span class="from">{change.from}</span>
-										<span aria-hidden="true" class="arrow">→</span>
-										<span class="to">{change.to}</span>
-									</dd>
-								</div>
-							{/each}
-						</dl>
-					{/if}
-				</article>
+				<AuditRow {entry} />
 			{/each}
-		</div>
+		</ol>
 
 		{#if hasMore}
 			<div class="more">
@@ -471,113 +261,10 @@ function targetLink(entry: AuditEntry): string | null {
 }
 
 .audit-list {
-	overflow: hidden;
-}
-
-.entry {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-2);
-	padding: var(--space-3) var(--space-4);
-	border-bottom: 1px solid var(--border);
-}
-
-.entry:last-child {
-	border-bottom: 0;
-}
-
-.entry-head {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-	align-items: center;
-	font-size: var(--text-sm);
-}
-
-.actor {
-	display: inline-flex;
-	gap: var(--space-2);
-	align-items: center;
-	font-weight: 600;
-	color: var(--text);
-	text-decoration: none;
-}
-
-a.actor:hover {
-	text-decoration: underline;
-}
-
-.target {
-	color: var(--text-2);
-	text-decoration: none;
-}
-
-a.target:hover {
-	color: var(--text);
-	text-decoration: underline;
-}
-
-.when {
-	margin-left: auto;
-	font-size: var(--text-xs);
-	color: var(--text-3);
-	white-space: nowrap;
-}
-
-.summary {
-	font-size: var(--text-sm);
-	color: var(--text-2);
-}
-
-.reason {
-	font-size: var(--text-sm);
-	color: var(--text-2);
-}
-
-.changes {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-2);
-	padding-top: var(--space-1);
-}
-
-.changes div {
-	display: inline-flex;
-	gap: var(--space-2);
-	align-items: baseline;
-	padding: 0.25rem var(--space-2);
-	font-size: var(--text-xs);
-	background: var(--surface-2);
-	border-radius: var(--radius-sm);
-}
-
-.changes dt {
-	font-size: var(--text-xs);
-	font-weight: 700;
-	color: var(--text-3);
-}
-
-.changes dd {
-	display: inline-flex;
-	gap: 0.25rem;
-	align-items: baseline;
+	padding: 0;
 	margin: 0;
-	font-size: var(--text-xs);
-	font-variant-numeric: tabular-nums;
-	white-space: nowrap;
-}
-
-.changes .from {
-	color: var(--text-3);
-}
-
-.changes .arrow {
-	color: var(--text-3);
-}
-
-.changes .to {
-	font-weight: 700;
-	color: var(--text);
+	overflow: hidden;
+	list-style: none;
 }
 
 .more {
