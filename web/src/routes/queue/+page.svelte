@@ -19,6 +19,7 @@ import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
+import { hasStructuredQuery, matchesQueueQuery, parseQueueQuery } from "../../lib/queue-filter"
 import {
 	createQueueState,
 	type QueueFilter as Filter,
@@ -134,18 +135,8 @@ const role = $derived(session.me?.programs.find(item => item.programSlug === pro
 const canSecondPass = $derived(role === "organizer" || role === "admin")
 const readOnly = $derived(session.me?.readOnly ?? false)
 
-const visible = $derived(
-	queue.items.filter(item => {
-		if (search.trim() === "") return true
-		const needle = search.trim().toLowerCase()
-		return (
-			item.title.toLowerCase().includes(needle)
-			|| item.makerName.toLowerCase().includes(needle)
-			|| humanStatus(item.status).toLowerCase().includes(needle)
-			|| (item.theme ?? "").toLowerCase().includes(needle)
-		)
-	}),
-)
+const queueQuery = $derived(parseQueueQuery(search))
+const visible = $derived(queue.items.filter(item => matchesQueueQuery(item, queueQuery)))
 
 // estimatedHeight averages the measured rows so unmeasured ones start close to reality.
 const estimatedHeight = $derived.by(() => {
@@ -557,6 +548,26 @@ async function loadMore(): Promise<void> {
 	}
 }
 
+// A structured filter with no rows in the loaded pages keeps pulling pages until it finds a match
+// or runs out of queue. The debounce stops half-typed filters from walking the whole queue.
+$effect((): (() => void) | undefined => {
+	if (!hasStructuredQuery(queueQuery)) return
+	if (
+		visible.length > 0
+		|| loading
+		|| loadingMore
+		|| refreshing
+		|| !queue.hasMore
+		|| error !== ""
+		|| actionError !== ""
+	)
+		return
+
+	const timer = setTimeout((): void => void loadMore(), 250)
+
+	return (): void => clearTimeout(timer)
+})
+
 // autoLoad fills the next pages while the sentinel is near the viewport.
 function autoLoad(node: HTMLElement): { destroy(): void } {
 	async function fill(): Promise<void> {
@@ -736,13 +747,25 @@ function searchFromURL(): string {
 	return page.url.searchParams.get("search") ?? ""
 }
 
-// setSearchFilter narrows the text search to one value, such as a status or type; activating the
-// same value again clears it. The filter lives in the URL so it survives reloads and links.
-function setSearchFilter(value: string, event: MouseEvent): void {
-	event.preventDefault()
-	event.stopPropagation()
-	search = search === value ? "" : value
+// filterHref is the shareable URL for one key:value filter.
+function filterHref(key: string, value: string | number): string {
+	const token = `${key}:${value}`
+
+	return `/queue?search=${encodeURIComponent(token)}`
+}
+
+// searchTokens returns the current filter box split into whitespace-separated tokens.
+function searchTokens(): string[] {
+	const query = search.trim()
+	return query === "" ? [] : query.split(/\s+/)
+}
+
+// setSearchValue writes the filter box, resets the cursor and keeps the URL shareable.
+function setSearchValue(value: string): void {
+	search = value.trim()
 	selected = 0
+	error = ""
+	actionError = ""
 
 	const url = new URL(page.url.href)
 	if (search === "") url.searchParams.delete("search")
@@ -750,17 +773,42 @@ function setSearchFilter(value: string, event: MouseEvent): void {
 	history.replaceState(history.state, "", url)
 }
 
-// filterByStatus narrows the queue to one status when its badge is activated.
-function filterByStatus(item: QueueItem, event: MouseEvent): void {
-	setSearchFilter(humanStatus(item.status), event)
+// setFilterToken adds or replaces one key:value filter without dropping the other terms.
+function setFilterToken(key: string, value: string): void {
+	const token = `${key}:${value}`
+	const prefix = `${key.toLowerCase()}:`
+	const tokens = searchTokens()
+	const existing = tokens.filter(item => item.toLowerCase().startsWith(prefix))
+	const next = tokens.filter(item => !item.toLowerCase().startsWith(prefix))
+
+	// Activating the same filter again clears just that filter.
+	if (existing.length !== 1 || existing[0]?.toLowerCase() !== token.toLowerCase()) next.push(token)
+
+	setSearchValue(next.join(" "))
 }
 
-// filterByTheme narrows the queue to one project type when its label is activated.
+// filterByStatus adds status:ready and its sibling filters when a status badge is activated.
+function filterByStatus(item: QueueItem, event: MouseEvent): void {
+	event.preventDefault()
+	event.stopPropagation()
+	setFilterToken("status", item.status)
+}
+
+// filterByTheme adds type:cad and its sibling filters when a type label is activated.
 function filterByTheme(item: QueueItem, event: MouseEvent): void {
 	const theme = item.theme?.trim() ?? ""
 	if (theme === "") return
 
-	setSearchFilter(theme, event)
+	event.preventDefault()
+	event.stopPropagation()
+	setFilterToken("type", theme)
+}
+
+// filterByVersion adds ver:2 when the version label is activated.
+function filterByVersion(item: QueueItem, event: MouseEvent): void {
+	event.preventDefault()
+	event.stopPropagation()
+	setFilterToken("ver", String(item.version))
 }
 </script>
 
@@ -819,9 +867,14 @@ function filterByTheme(item: QueueItem, event: MouseEvent): void {
 	<label class="search">
 		<span class="visually-hidden">Filter open ships</span>
 		<input
-			aria-label="Filter open ships"
+			aria-label="Filter open ships by text or week, checks, type, status, age and version"
 			class="ui-input"
-			placeholder="Filter open ships…"
+			oninput={(): void => {
+				error = ""
+				actionError = ""
+			}}
+			placeholder="Filter ships (type:cad, week:1…)"
+			title="Try week:1, type:cad, status:ready, checks:warn, age:>1d or ver:2"
 			type="search"
 			bind:value={search}
 		>
@@ -868,16 +921,24 @@ function filterByTheme(item: QueueItem, event: MouseEvent): void {
 			<LoadingState message="Loading open ships…" />
 		</div>
 	{:else if visible.length === 0}
-		<div class="ui-card ui-empty">
-			<strong
-				>{search
-					? "No ships match that search."
-					: stage === 2
-						? "No held ships."
-						: "Nothing in this filter."}</strong
-			>
-			<span>{stage === 2 ? "Nothing is waiting for a second pass." : "Check back after the next ingest."}</span>
-		</div>
+		{#if queue.hasMore && hasStructuredQuery(queueQuery)}
+			<div class="ui-card list">
+				<LoadingState message="Searching all ships…" />
+			</div>
+		{:else}
+			<div class="ui-card ui-empty">
+				<strong
+					>{search
+						? "No ships match that search."
+						: stage === 2
+							? "No held ships."
+							: "Nothing in this filter."}</strong
+				>
+				<span
+					>{stage === 2 ? "Nothing is waiting for a second pass." : "Check back after the next ingest."}</span
+				>
+			</div>
+		{/if}
 	{:else}
 		<div class="ui-card list" bind:this={listElement} class:refreshing>
 			<div class="column-head">
@@ -1027,7 +1088,7 @@ function filterByTheme(item: QueueItem, event: MouseEvent): void {
 								<a
 									aria-label={`Show only ${item.theme} ships`}
 									class="inline-theme-link"
-									href={`/queue?search=${encodeURIComponent(item.theme)}`}
+									href={filterHref("type", item.theme)}
 									onclick={(event: MouseEvent): void => filterByTheme(item, event)}
 									title={`Show only ${item.theme} ships`}
 								>
@@ -1041,7 +1102,7 @@ function filterByTheme(item: QueueItem, event: MouseEvent): void {
 							aria-label={`Show only ${humanStatus(item.status)} ships`}
 							class="ui-badge status"
 							data-tone={statusTone(item.status)}
-							href={`/queue?search=${encodeURIComponent(humanStatus(item.status))}`}
+							href={filterHref("status", item.status)}
 							onclick={(event: MouseEvent): void => filterByStatus(item, event)}
 							title={item.claimedBy ? `Claimed by ${item.claimedBy}` : humanStatus(item.status)}
 						>
@@ -1058,7 +1119,7 @@ function filterByTheme(item: QueueItem, event: MouseEvent): void {
 							<a
 								aria-label={`Show only ${item.theme} ships`}
 								class="theme"
-								href={`/queue?search=${encodeURIComponent(item.theme)}`}
+								href={filterHref("type", item.theme)}
 								onclick={(event: MouseEvent): void => filterByTheme(item, event)}
 								title={`Show only ${item.theme} ships`}
 							>
@@ -1078,7 +1139,15 @@ function filterByTheme(item: QueueItem, event: MouseEvent): void {
 								{item.makerName}
 							</a>
 						</span>
-						<span class="version">v{item.version}</span>
+						<a
+							aria-label={`Show only version ${item.version} ships`}
+							class="version"
+							href={filterHref("ver", item.version)}
+							onclick={(event: MouseEvent): void => filterByVersion(item, event)}
+							title={`Show only version ${item.version} ships`}
+						>
+							v{item.version}
+						</a>
 						<span class="timing">
 							<span class="hours">{formatDuration(item.hoursClaimedSeconds)} claimed</span>
 							<span class="age {ageTone(item.ingestedAt)}">{timeAgo(item.ingestedAt)}</span>
@@ -1456,6 +1525,15 @@ a.theme,
 
 a.theme:hover,
 .inline-theme-link:hover {
+	color: var(--text);
+	text-decoration: underline;
+}
+
+a.version {
+	text-decoration: none;
+}
+
+a.version:hover {
 	color: var(--text);
 	text-decoration: underline;
 }
