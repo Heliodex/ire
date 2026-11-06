@@ -2420,6 +2420,235 @@ func (j *OutboxRow) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type OverviewDay struct {
+	// Count corresponds to the JSON schema field "count".
+	Count int `json:"count" yaml:"count" mapstructure:"count"`
+
+	// Date corresponds to the JSON schema field "date".
+	Date string `json:"date" yaml:"date" mapstructure:"date"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OverviewDay) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["count"]; raw != nil && !ok {
+		return fmt.Errorf("field count in OverviewDay: required")
+	}
+	if _, ok := raw["date"]; raw != nil && !ok {
+		return fmt.Errorf("field date in OverviewDay: required")
+	}
+	type Plain OverviewDay
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Count {
+		return fmt.Errorf("field %s: must be >= %v", "count", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Date)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "date", 1)
+	}
+	*j = OverviewDay(plain)
+	return nil
+}
+
+type OverviewLeader struct {
+	// Count corresponds to the JSON schema field "count".
+	Count int `json:"count" yaml:"count" mapstructure:"count"`
+
+	// Email corresponds to the JSON schema field "email".
+	Email *string `json:"email,omitempty,omitzero" yaml:"email,omitempty" mapstructure:"email,omitempty"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name *string `json:"name,omitempty,omitzero" yaml:"name,omitempty" mapstructure:"name,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OverviewLeader) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["count"]; raw != nil && !ok {
+		return fmt.Errorf("field count in OverviewLeader: required")
+	}
+	type Plain OverviewLeader
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Count {
+		return fmt.Errorf("field %s: must be >= %v", "count", 0)
+	}
+	*j = OverviewLeader(plain)
+	return nil
+}
+
+type OverviewResponse struct {
+	// ByStatus corresponds to the JSON schema field "byStatus".
+	ByStatus []OverviewStatus `json:"byStatus" yaml:"byStatus" mapstructure:"byStatus"`
+
+	// Daily corresponds to the JSON schema field "daily".
+	Daily []OverviewDay `json:"daily" yaml:"daily" mapstructure:"daily"`
+
+	// Leaderboard corresponds to the JSON schema field "leaderboard".
+	Leaderboard []OverviewLeader `json:"leaderboard" yaml:"leaderboard" mapstructure:"leaderboard"`
+
+	// NeedsReview corresponds to the JSON schema field "needsReview".
+	NeedsReview int `json:"needsReview" yaml:"needsReview" mapstructure:"needsReview"`
+
+	// NewToday corresponds to the JSON schema field "newToday".
+	NewToday int `json:"newToday" yaml:"newToday" mapstructure:"newToday"`
+
+	// ReviewedToday corresponds to the JSON schema field "reviewedToday".
+	ReviewedToday int `json:"reviewedToday" yaml:"reviewedToday" mapstructure:"reviewedToday"`
+
+	// Wait corresponds to the JSON schema field "wait".
+	Wait OverviewWait `json:"wait" yaml:"wait" mapstructure:"wait"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OverviewResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["byStatus"]; raw != nil && !ok {
+		return fmt.Errorf("field byStatus in OverviewResponse: required")
+	}
+	if _, ok := raw["daily"]; raw != nil && !ok {
+		return fmt.Errorf("field daily in OverviewResponse: required")
+	}
+	if _, ok := raw["leaderboard"]; raw != nil && !ok {
+		return fmt.Errorf("field leaderboard in OverviewResponse: required")
+	}
+	if _, ok := raw["needsReview"]; raw != nil && !ok {
+		return fmt.Errorf("field needsReview in OverviewResponse: required")
+	}
+	if _, ok := raw["newToday"]; raw != nil && !ok {
+		return fmt.Errorf("field newToday in OverviewResponse: required")
+	}
+	if _, ok := raw["reviewedToday"]; raw != nil && !ok {
+		return fmt.Errorf("field reviewedToday in OverviewResponse: required")
+	}
+	if _, ok := raw["wait"]; raw != nil && !ok {
+		return fmt.Errorf("field wait in OverviewResponse: required")
+	}
+	type Plain OverviewResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.NeedsReview {
+		return fmt.Errorf("field %s: must be >= %v", "needsReview", 0)
+	}
+	if 0 > plain.NewToday {
+		return fmt.Errorf("field %s: must be >= %v", "newToday", 0)
+	}
+	if 0 > plain.ReviewedToday {
+		return fmt.Errorf("field %s: must be >= %v", "reviewedToday", 0)
+	}
+	*j = OverviewResponse(plain)
+	return nil
+}
+
+type OverviewStatus struct {
+	// Count corresponds to the JSON schema field "count".
+	Count int `json:"count" yaml:"count" mapstructure:"count"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OverviewStatus) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["count"]; raw != nil && !ok {
+		return fmt.Errorf("field count in OverviewStatus: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in OverviewStatus: required")
+	}
+	type Plain OverviewStatus
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Count {
+		return fmt.Errorf("field %s: must be >= %v", "count", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	*j = OverviewStatus(plain)
+	return nil
+}
+
+type OverviewWait struct {
+	// Count corresponds to the JSON schema field "count".
+	Count int `json:"count" yaml:"count" mapstructure:"count"`
+
+	// MaxMS corresponds to the JSON schema field "maxMs".
+	MaxMS int `json:"maxMs" yaml:"maxMs" mapstructure:"maxMs"`
+
+	// OldestID corresponds to the JSON schema field "oldestId".
+	OldestID *string `json:"oldestId,omitempty,omitzero" yaml:"oldestId,omitempty" mapstructure:"oldestId,omitempty"`
+
+	// OldestTitle corresponds to the JSON schema field "oldestTitle".
+	OldestTitle *string `json:"oldestTitle,omitempty,omitzero" yaml:"oldestTitle,omitempty" mapstructure:"oldestTitle,omitempty"`
+
+	// P50MS corresponds to the JSON schema field "p50Ms".
+	P50MS int `json:"p50Ms" yaml:"p50Ms" mapstructure:"p50Ms"`
+
+	// P95MS corresponds to the JSON schema field "p95Ms".
+	P95MS int `json:"p95Ms" yaml:"p95Ms" mapstructure:"p95Ms"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OverviewWait) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["count"]; raw != nil && !ok {
+		return fmt.Errorf("field count in OverviewWait: required")
+	}
+	if _, ok := raw["maxMs"]; raw != nil && !ok {
+		return fmt.Errorf("field maxMs in OverviewWait: required")
+	}
+	if _, ok := raw["p50Ms"]; raw != nil && !ok {
+		return fmt.Errorf("field p50Ms in OverviewWait: required")
+	}
+	if _, ok := raw["p95Ms"]; raw != nil && !ok {
+		return fmt.Errorf("field p95Ms in OverviewWait: required")
+	}
+	type Plain OverviewWait
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Count {
+		return fmt.Errorf("field %s: must be >= %v", "count", 0)
+	}
+	if 0 > plain.MaxMS {
+		return fmt.Errorf("field %s: must be >= %v", "maxMs", 0)
+	}
+	if 0 > plain.P50MS {
+		return fmt.Errorf("field %s: must be >= %v", "p50Ms", 0)
+	}
+	if 0 > plain.P95MS {
+		return fmt.Errorf("field %s: must be >= %v", "p95Ms", 0)
+	}
+	*j = OverviewWait(plain)
+	return nil
+}
+
 type ParityResponse struct {
 	// GeneratedAt corresponds to the JSON schema field "generatedAt".
 	GeneratedAt string `json:"generatedAt" yaml:"generatedAt" mapstructure:"generatedAt"`

@@ -259,7 +259,7 @@ func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reviewSessions.Set(w, r, token)
-	http.Redirect(w, r, "/queue", http.StatusFound)
+	http.Redirect(w, r, "/overview", http.StatusFound)
 }
 
 // saveLoginFlow stores one attempt and drops expired rows.

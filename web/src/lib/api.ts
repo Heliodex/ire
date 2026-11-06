@@ -15,6 +15,7 @@ import {
 	type memberSchema,
 	type meResponseSchema,
 	type outboxResponseSchema,
+	type overviewResponseSchema,
 	type queueResponseSchema,
 	type reviewBundleSchema,
 	type reviewedResponseSchema,
@@ -64,6 +65,7 @@ export interface SendBackRequest {
 export type SendBackResult = InferOutput<typeof sendBackResultSchema>
 export type SubmissionFile = InferOutput<typeof submissionFileResponseSchema>["file"]
 export type OutboxRow = InferOutput<typeof outboxResponseSchema>["deliveries"][number]
+export type Overview = InferOutput<typeof overviewResponseSchema>
 export type FakeDelivery = InferOutput<typeof fakeDeliveriesResponseSchema>["deliveries"][number]
 export type Member = InferOutput<typeof memberSchema>
 export type AuditEntry = InferOutput<typeof auditResponseSchema>["entries"][number]
@@ -124,6 +126,7 @@ export {
 	fetchMe,
 	fetchMembers,
 	fetchOutbox,
+	fetchOverview,
 	fetchQueue,
 	fetchReceived,
 	fetchReviewed,

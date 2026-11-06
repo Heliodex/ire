@@ -1,0 +1,127 @@
+{
+	"type": "object",
+	"properties": {
+		"byStatus": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"count": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"status": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"count",
+					"status"
+				],
+				"title": "OverviewStatus"
+			}
+		},
+		"daily": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"count": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"date": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"count",
+					"date"
+				],
+				"title": "OverviewDay"
+			}
+		},
+		"leaderboard": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"count": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"email": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"count"
+				],
+				"title": "OverviewLeader"
+			}
+		},
+		"needsReview": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"newToday": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"reviewedToday": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"wait": {
+			"type": "object",
+			"properties": {
+				"count": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"maxMs": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"oldestId": {
+					"type": "string"
+				},
+				"oldestTitle": {
+					"type": "string"
+				},
+				"p50Ms": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"p95Ms": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"required": [
+				"count",
+				"maxMs",
+				"p50Ms",
+				"p95Ms"
+			],
+			"title": "OverviewWait"
+		}
+	},
+	"required": [
+		"byStatus",
+		"daily",
+		"leaderboard",
+		"needsReview",
+		"newToday",
+		"reviewedToday",
+		"wait"
+	],
+	"title": "OverviewResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/overview.json"
+}

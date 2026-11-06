@@ -218,7 +218,7 @@ func TestParseLimitOffsetSince(t *testing.T) {
 
 // TestProtectedPage covers the auth gate list.
 func TestProtectedPage(t *testing.T) {
-	for _, path := range []string{"/queue", "/review/123", "/makers/a%40example.com", "/admin/members"} {
+	for _, path := range []string{"/overview", "/queue", "/review/123", "/makers/a%40example.com", "/admin/members"} {
 		if !protectedPage(path) {
 			t.Errorf("protectedPage(%q) = false, want true", path)
 		}

@@ -41,6 +41,7 @@ function isReviewedRoute(path: string): boolean {
 const navItems = $derived.by((): NavItem[] => {
 	const path = page.url.pathname
 	const sections: NavItem[] = [
+		{ active: path === "/overview", href: "/overview", label: "Overview" },
 		{ active: isQueueRoute(path), href: "/queue", label: "Queue" },
 		{ active: isReviewedRoute(path), href: "/reviewed", label: "Reviewed" },
 		{ active: path.startsWith("/deliveries"), href: "/deliveries", label: "Deliveries" },
@@ -69,7 +70,7 @@ function onKeydown(event: KeyboardEvent): void {
 	if (!session.me) return
 
 	if (event.altKey && !event.ctrlKey && !event.metaKey) {
-		const match = /^(?:Digit|Numpad)([1-6])$/.exec(event.code)
+		const match = /^(?:Digit|Numpad)([1-7])$/.exec(event.code)
 		if (!match) return
 
 		const destination = navItems[Number(match[1]) - 1]?.href
@@ -137,7 +138,7 @@ async function signOut(): Promise<void> {
 <div class="shell">
 	<header>
 		<div class="top">
-			<a class="brand" href={session.me ? "/queue" : "/"}>
+			<a class="brand" href={session.me ? "/overview" : "/"}>
 				<span class="mark">HL</span>
 				<span class="brand-copy">
 					<strong>Ire</strong>

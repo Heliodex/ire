@@ -2,7 +2,7 @@
 // Excluded from lint and format; verified byte-for-byte by wt contract --check.
 import type { InferOutput } from "valibot"
 import { parseJSON, program, requestVoid } from "./api-runtime"
-import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, queueResponseSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, searchResponseSchema, sendBackResultSchema, submissionFileResponseSchema, type decisionRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type sendBackRequestSchema } from "./contract"
+import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, searchResponseSchema, sendBackResultSchema, submissionFileResponseSchema, type decisionRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type sendBackRequestSchema } from "./contract"
 
 // fetchAuthConfig returns which sign-in methods are enabled.
 export async function fetchAuthConfig(): Promise<InferOutput<typeof authConfigSchema>> {
@@ -60,6 +60,13 @@ export async function fetchQueue(
 	if (query.size > 0) url += `?${query}`
 	const response = await fetch(url)
 	const parsed = await parseJSON(response, queueResponseSchema)
+	return parsed
+}
+
+// fetchOverview returns the programme health readout: wait percentiles, today counts, status breakdown, leaderboard and daily activity.
+export async function fetchOverview(): Promise<InferOutput<typeof overviewResponseSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/overview`)
+	const parsed = await parseJSON(response, overviewResponseSchema)
 	return parsed
 }
 
