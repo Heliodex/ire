@@ -167,14 +167,12 @@ func schemaStatements() []storage.Statement {
 			markdown text,
 			media text,
 			timelapses text,
-			sort integer not null default 0
+			sort integer not null default 0,
+			approved_seconds integer,
+			reviewer_note text
 		)`,
 
 		`create index if not exists journal_submission_idx on journal_entry(submission_id, at)`,
-
-		// Journal time is adjudicated per entry while a ship is claimed. The columns are added separately so existing databases keep their rows.
-		`alter table journal_entry add column approved_seconds integer`,
-		`alter table journal_entry add column reviewer_note text`,
 
 		`create table if not exists hackatime_link (
 			submission_id text not null references submission(id) on delete cascade,
