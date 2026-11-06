@@ -318,7 +318,7 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 									<input
 										aria-label={`Active for ${member.email}`}
 										checked={member.active}
-										class="ui-switch"
+										class="ui-toggle"
 										onchange={(event): void => {
 											const input = event.currentTarget as HTMLInputElement
 											void save(member, member.role, input.checked)
@@ -408,7 +408,7 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 										<input
 											aria-label={`${permission.label} for the ${def.name} role`}
 											checked={roleHas(def, permission.value)}
-											class="ui-checkbox"
+											class="ui-toggle"
 											disabled={def.locked || savingRole === def.name}
 											onchange={(event): void => {
 												const input = event.currentTarget as HTMLInputElement
