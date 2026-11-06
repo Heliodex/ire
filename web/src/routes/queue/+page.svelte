@@ -946,7 +946,11 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 					<span class="highlight-text">
 						{#each filterSegments as segment, index (index)}
 							{#if segment.filter}
-								<span class="filter-token">{segment.text}</span>
+								{const colon = segment.text.indexOf(":")}
+								{const key = segment.text.slice(0, colon)}
+								{const value = segment.text.slice(colon + 1)}
+								<span class="filter-key">{key}</span><span class="filter-colon">:</span
+								><span class="filter-value">{value}</span>
 							{:else}
 								{segment.text}
 							{/if}
@@ -1561,9 +1565,16 @@ h1 {
 	white-space: pre;
 }
 
-.filter-token {
-	font-weight: 600;
+.filter-key {
 	color: var(--primary);
+}
+
+.filter-colon {
+	color: var(--text-3);
+}
+
+.filter-value {
+	color: var(--accent-blue);
 }
 
 .filter-help {
