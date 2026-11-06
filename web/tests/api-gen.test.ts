@@ -29,6 +29,26 @@ import {
 	updateMember,
 } from "../src/lib/api"
 import { ApiError } from "../src/lib/api-error"
+import {
+	fakeAuthConfig,
+	fakeCheckHead,
+	fakeClaimResponse,
+	fakeDecisionOutcome,
+	fakeFakeDeliveriesResponse,
+	fakeJournalAdjustment,
+	fakeMakerProfile,
+	fakeMembersResponse,
+	fakeMeResponse,
+	fakeNoteCreated,
+	fakeOutboxResponse,
+	fakeQueueResponse,
+	fakeReviewBundle,
+	fakeReviewedResponse,
+	fakeReviewerProfile,
+	fakeSearchResponse,
+	fakeSendBackResult,
+	fakeSubmissionFileResponse,
+} from "../src/lib/fixtures.gen"
 
 const realFetch = globalThis.fetch
 
@@ -42,86 +62,28 @@ interface SeenRequest {
 	url: string
 }
 
-const submission = {
-	externalId: "fix-clean:design",
-	hoursClaimedSeconds: 3600,
-	hoursHackatimeSeconds: 0,
-	hoursJournalSeconds: 3600,
-	id: "sub_1",
-	ingestedAt: "2026-01-01T00:00:00Z",
-	makerEmail: "maker@example.com",
-	stage: 1,
-	status: "ready",
-	title: "Board",
-	track: "hardware",
-	updatedAt: "2026-01-02T00:00:00Z",
-	version: 1,
-}
-
-const policy = {
-	fraudMinStage: 2,
-	holdMinApprovedSeconds: 0,
-	holdOnWarn: 1,
-	holdTiers: [],
-	noteRequiredForChanges: 1,
-}
-
-const bundle = {
-	acknowledgements: [],
-	bom: [],
-	checks: [],
-	events: [],
-	journals: [],
-	notes: [],
-	policy,
-	priorReviews: [],
-	reviews: [],
-	submission,
-}
-
-// stubFetch answers every endpoint with a valid payload and records requests.
+// stubFetch answers every endpoint from the generated fixtures and records requests.
+// Overrides pin only the fields the assertions read; everything else is the schema default.
 function stubFetch(seen: SeenRequest[]): void {
 	const routes: { [_: string]: unknown } = {
 		"DELETE /api/v1/programs/half-life/notes/n1": null,
-		"GET /api/v1/auth/config": { dev: true, hca: false },
-		"GET /api/v1/dev/outbox/received": { deliveries: [] },
-		"GET /api/v1/me": { programs: [], readOnly: false, user: { email: "a@b.c", id: "u1" } },
-		"GET /api/v1/programs/half-life/makers/maker%40example.com": {
+		"GET /api/v1/auth/config": fakeAuthConfig(),
+		"GET /api/v1/dev/outbox/received": fakeFakeDeliveriesResponse({ deliveries: [] }),
+		"GET /api/v1/me": fakeMeResponse({ user: { email: "a@b.c" } }),
+		"GET /api/v1/programs/half-life/makers/maker%40example.com": fakeMakerProfile({
 			email: "maker@example.com",
-			submissions: [],
-		},
-		"GET /api/v1/programs/half-life/members": { members: [] },
-		"GET /api/v1/programs/half-life/outbox": { deliveries: [] },
-		"GET /api/v1/programs/half-life/queue": {
-			counts: { checking: 0, claimed: 0, fast: 0, mine: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
-			hasMore: false,
-			items: [],
-		},
-		"GET /api/v1/programs/half-life/reviewed": { hasMore: false, items: [] },
-		"GET /api/v1/programs/half-life/reviewers/a%40b.c": {
-			email: "a@b.c",
-			permissions: [],
-			reviews: [],
-			reviewTotal: 0,
-			stats: {
-				approved: 0,
-				changes: 0,
-				firstPass: 0,
-				held: 0,
-				hoursApprovedSeconds: 0,
-				invalidated: 0,
-				rejected: 0,
-				secondPass: 0,
-				total: 0,
-			},
-			tracks: [],
-		},
-		"GET /api/v1/programs/half-life/search": { results: [] },
-		"GET /api/v1/programs/half-life/submissions/sub_1": bundle,
-		"GET /api/v1/programs/half-life/submissions/sub_1/checks/head": { outdated: false },
-		"GET /api/v1/programs/half-life/submissions/sub_1/file": {
-			file: { path: "board.kicad_pcb", sizeBytes: 10, text: "board", truncated: false },
-		},
+		}),
+		"GET /api/v1/programs/half-life/members": fakeMembersResponse({ members: [] }),
+		"GET /api/v1/programs/half-life/outbox": fakeOutboxResponse({ deliveries: [] }),
+		"GET /api/v1/programs/half-life/queue": fakeQueueResponse(),
+		"GET /api/v1/programs/half-life/reviewed": fakeReviewedResponse(),
+		"GET /api/v1/programs/half-life/reviewers/a%40b.c": fakeReviewerProfile({ email: "a@b.c" }),
+		"GET /api/v1/programs/half-life/search": fakeSearchResponse(),
+		"GET /api/v1/programs/half-life/submissions/sub_1": fakeReviewBundle({ submission: { id: "sub_1" } }),
+		"GET /api/v1/programs/half-life/submissions/sub_1/checks/head": fakeCheckHead(),
+		"GET /api/v1/programs/half-life/submissions/sub_1/file": fakeSubmissionFileResponse({
+			file: { path: "board.kicad_pcb" },
+		}),
 		"PATCH /api/v1/programs/half-life/members/u1": {
 			active: true,
 			createdAt: "2026-01-01T00:00:00Z",
@@ -129,18 +91,10 @@ function stubFetch(seen: SeenRequest[]): void {
 			id: "u1",
 			role: "admin",
 		},
-		"PATCH /api/v1/programs/half-life/submissions/sub_1/journal/e1": {
+		"PATCH /api/v1/programs/half-life/submissions/sub_1/journal/e1": fakeJournalAdjustment({
 			hoursApprovedSeconds: 60,
-			journal: {
-				at: "2026-01-01T00:00:00Z",
-				clipCount: 0,
-				coveredSeconds: 0,
-				id: "e1",
-				mediaCount: 0,
-				seconds: 60,
-			},
-		},
-		"POST /api/v1/dev/login": { programs: [], readOnly: false, user: { email: "a@b.c", id: "u1" } },
+		}),
+		"POST /api/v1/dev/login": fakeMeResponse({ user: { email: "a@b.c" } }),
 		"POST /api/v1/programs/half-life/members": {
 			active: true,
 			createdAt: "2026-01-01T00:00:00Z",
@@ -154,14 +108,10 @@ function stubFetch(seen: SeenRequest[]): void {
 			startedAt: "2026-01-01T00:00:00Z",
 			status: "queued",
 		},
-		"POST /api/v1/programs/half-life/submissions/sub_1/claim": {
-			claim: { expiresAt: "2026-01-02T00:00:00Z", isMine: 1, reviewerEmail: "a@b.c" },
-		},
-		"POST /api/v1/programs/half-life/submissions/sub_1/decision": {
-			held: 0,
-			id: "sub_1",
-			status: "decided",
-		},
+		"POST /api/v1/programs/half-life/submissions/sub_1/claim": fakeClaimResponse({
+			claim: { reviewerEmail: "a@b.c" },
+		}),
+		"POST /api/v1/programs/half-life/submissions/sub_1/decision": fakeDecisionOutcome({ id: "sub_1" }),
 		"POST /api/v1/programs/half-life/submissions/sub_1/evidence/refresh": {
 			commits: [],
 			fetchedAt: "2026-01-01T00:00:00Z",
@@ -170,17 +120,8 @@ function stubFetch(seen: SeenRequest[]): void {
 			fullName: "a/b",
 			truncated: false,
 		},
-		"POST /api/v1/programs/half-life/submissions/sub_1/notes": {
-			note: {
-				authorEmail: "a@b.c",
-				body: "x",
-				createdAt: "2026-01-01T00:00:00Z",
-				id: "n1",
-				subjectId: "sub_1",
-				subjectType: "submission",
-			},
-		},
-		"POST /api/v1/programs/half-life/submissions/sub_1/send-back": { id: "sub_1", stage: 1, status: "ready" },
+		"POST /api/v1/programs/half-life/submissions/sub_1/notes": fakeNoteCreated({ note: { id: "n1" } }),
+		"POST /api/v1/programs/half-life/submissions/sub_1/send-back": fakeSendBackResult({ stage: 1 }),
 	}
 	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- The stub implements only the call signature the client uses, not fetch's statics.
 	globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -207,14 +148,14 @@ describe("generated client", () => {
 		const seen: SeenRequest[] = []
 		stubFetch(seen)
 
-		expect(await fetchAuthConfig()).toEqual({ dev: true, hca: false })
+		expect(await fetchAuthConfig()).toEqual(fakeAuthConfig())
 		expect((await fetchMe()).user.email).toBe("a@b.c")
 		expect((await login("a@b.c")).user.email).toBe("a@b.c")
 		await logout()
-		expect((await fetchQueue()).items).toEqual([])
+		expect((await fetchQueue()).items).toHaveLength(1)
 		expect((await fetchQueue("ready", 1, 10, 25, "updated", -1)).hasMore).toBe(false)
-		expect((await fetchReviewed()).items).toEqual([])
-		expect(await searchProjects("star")).toEqual([])
+		expect((await fetchReviewed()).items).toHaveLength(1)
+		expect(await searchProjects("star")).toHaveLength(1)
 		expect((await fetchBundle("sub_1")).submission.id).toBe("sub_1")
 		expect((await refreshRepositoryEvidence("sub_1")).fullName).toBe("a/b")
 		expect((await claimShip("sub_1")).reviewerEmail).toBe("a@b.c")
@@ -235,7 +176,7 @@ describe("generated client", () => {
 		expect((await updateMember("u1", "admin", true)).role).toBe("admin")
 		expect((await fetchReviewerProfile("a@b.c")).email).toBe("a@b.c")
 		expect((await fetchMakerProfile("maker@example.com")).email).toBe("maker@example.com")
-		expect(await fetchCheckHead("sub_1")).toEqual({ outdated: false })
+		expect(await fetchCheckHead("sub_1")).toMatchObject({ outdated: false })
 		expect((await fetchSubmissionFile("sub_1", "board.kicad_pcb")).path).toBe("board.kicad_pcb")
 		expect((await sendShipBack("sub_1", { reason: "x", version: 2 })).stage).toBe(1)
 		expect(await fetchOutbox()).toEqual([])

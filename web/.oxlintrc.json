@@ -14,7 +14,7 @@
 		"builtin": true,
 		"node": true
 	},
-	"ignorePatterns": ["node_modules/**", "static/vendor/**"],
+	"ignorePatterns": ["node_modules/**", "static/vendor/**", "**/*.gen.ts"],
 	"options": {
 		"denyWarnings": true,
 		"reportUnusedDisableDirectives": "warn",
