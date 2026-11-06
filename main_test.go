@@ -1187,7 +1187,7 @@ func TestPageGate(t *testing.T) {
 	}
 
 	review := do(t, application, http.MethodGet, "/review/sub_fixture_1", nil, cookie, nil)
-	if review.Code != http.StatusOK || review.Header().Get(app.StaticPageHeader) != "/spa" {
+	if review.Code != http.StatusOK || review.Header().Get(app.StaticPageHeader) != "/review/loading" {
 		t.Fatalf("signed-in review = %d %q", review.Code, review.Header().Get(app.StaticPageHeader))
 	}
 

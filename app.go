@@ -249,8 +249,8 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 		page := path
 		if strings.HasPrefix(path, "/review/") {
-			// Review ids are dynamic and render through the SPA fallback.
-			page = "/spa"
+			// Every review id shares the prerendered loading shell; the client router hydrates the real id.
+			page = "/review/loading"
 		}
 
 		if strings.HasPrefix(path, "/reviewers/") {
