@@ -350,6 +350,10 @@ h1 {
 	align-items: center;
 }
 
+.breakdown .ui-badge {
+	justify-self: start;
+}
+
 .meter {
 	position: relative;
 	flex: 1;
