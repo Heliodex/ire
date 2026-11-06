@@ -3,9 +3,7 @@ import {
 	checkHeadSchema,
 	checkRunSchema,
 	claimResponseSchema,
-	decisionRequestSchema,
 	decisionResultSchema,
-	errorResponseSchema,
 	evidenceSchema,
 	fakeDeliveriesResponseSchema,
 	journalReviewResponseSchema,
@@ -20,32 +18,31 @@ import {
 	reviewedResponseSchema,
 	reviewerProfileSchema,
 	searchResponseSchema,
-	sendBackRequestSchema,
 	sendBackResultSchema,
 	submissionFileResponseSchema,
-} from "../web/src/lib/contract";
+} from "../web/src/lib/contract"
 
 export interface EndpointParam {
-	default?: string;
-	in: "path" | "query" | "body" | "init";
-	map?: { [_: string]: string };
-	name: string;
-	optional?: boolean;
-	type: string;
-	value?: string;
-	when?: string;
-	wire?: string;
-	wrap?: boolean;
+	default?: string
+	in: "path" | "query" | "body" | "init"
+	map?: { [_: string]: string }
+	name: string
+	optional?: boolean
+	type: string
+	value?: string
+	when?: string
+	wire?: string
+	wrap?: boolean
 }
 
 export interface Endpoint {
-	doc?: string;
-	keepalive?: boolean | string;
-	method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-	name: string;
-	params?: EndpointParam[];
-	path: string;
-	response: "void" | { schema: unknown; select?: string[] };
+	doc?: string
+	keepalive?: boolean | string
+	method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
+	name: string
+	params?: EndpointParam[]
+	path: string
+	response: "void" | { schema: unknown; select?: string[] }
 }
 
 // The endpoint registry is the second half of the contract: schemas describe the shapes, entries describe how to call them. `wt contract` turns each entry into a typed fetch wrapper in web/src/lib/api.gen.ts. Keep the doc lines – they become the code comments.
@@ -377,4 +374,4 @@ export const endpoints: Endpoint[] = Object.freeze([
 		path: "/api/v1/dev/outbox/received",
 		response: { schema: fakeDeliveriesResponseSchema, select: ["deliveries"] },
 	},
-]);
+])
