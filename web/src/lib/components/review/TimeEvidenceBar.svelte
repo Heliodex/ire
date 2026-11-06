@@ -6,26 +6,43 @@ interface Props {
 }
 
 let { segments }: Props = $props()
+
+// The cut (deflated time) subtracts from the evidence, so it overlays the end of the bar instead of extending it.
+const kept = $derived(segments.filter(segment => segment.tone !== "cut"))
+const cut = $derived(segments.filter(segment => segment.tone === "cut"))
+const keptTotal = $derived(kept.reduce((sum, segment) => sum + segment.value, 0))
+const cutTotal = $derived(cut.reduce((sum, segment) => sum + segment.value, 0))
+const cutPercent = $derived(keptTotal > 0 ? Math.min(100, (cutTotal / keptTotal) * 100) : 0)
+const description = $derived(
+	[
+		...kept.map(segment => `${segment.label} ${formatHours(segment.value)}`),
+		...(cutTotal > 0 ? [`Deflated ${formatHours(cutTotal)} removed`] : []),
+	].join(", "),
+)
+
+// legendValue marks the cut as a subtraction in the legend.
+function legendValue(segment: { label: string; tone: string; value: number }): string {
+	return segment.tone === "cut" ? `−${formatHours(segment.value)}` : formatHours(segment.value)
+}
 </script>
 
 {#if segments.length > 0}
 	<div class="time-evidence">
 		<span class="time-title">Time evidence</span>
-		<div
-			aria-label={segments.map(segment => `${segment.label} ${formatHours(segment.value)}`).join(", ")}
-			class="time-bar"
-			role="img"
-		>
-			{#each segments as segment (segment.tone)}
+		<div aria-label={description} class="time-bar" role="img">
+			{#each kept as segment (segment.tone)}
 				<span class="time-segment" data-tone={segment.tone} style:flex-grow={segment.value}></span>
 			{/each}
+			{#if cutTotal > 0 && keptTotal > 0}
+				<span class="time-cut" style:width={`${cutPercent}%`}></span>
+			{/if}
 		</div>
 		<ul class="time-legend">
 			{#each segments as segment (segment.tone)}
 				<li>
 					<span class="time-dot" data-tone={segment.tone}></span>
 					<span>{segment.label}</span>
-					<strong>{formatHours(segment.value)}</strong>
+					<strong>{legendValue(segment)}</strong>
 				</li>
 			{/each}
 		</ul>
@@ -49,6 +66,7 @@ let { segments }: Props = $props()
 }
 
 .time-bar {
+	position: relative;
 	display: flex;
 	gap: 2px;
 	height: 0.75rem;
@@ -60,6 +78,15 @@ let { segments }: Props = $props()
 .time-segment {
 	flex-basis: 0;
 	min-width: 2px;
+}
+
+.time-cut {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	background: repeating-linear-gradient(-45deg, var(--text-3) 0 4px, transparent 4px 8px);
+	border-left: 2px solid var(--text-3);
 }
 
 .time-segment[data-tone="journals"],
@@ -77,7 +104,6 @@ let { segments }: Props = $props()
 	background: var(--accent-blue);
 }
 
-.time-segment[data-tone="cut"],
 .time-dot[data-tone="cut"] {
 	background: var(--text-3);
 }
