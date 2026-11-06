@@ -44,6 +44,7 @@ import {
 	humanStatus,
 	statusTone,
 } from "../../lib/format"
+import { hasPermission, permissionNoteManage, permissionSecondPass, programPermissions } from "../../lib/permissions"
 import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
 import { reviewerHref } from "../../lib/reviewer"
 import { session } from "../../lib/session.svelte.js"
@@ -99,8 +100,8 @@ function bundleCache(): BundleCache {
 const submission = $derived(bundle?.submission ?? null)
 const reviewed = $derived(submission?.status === "decided" || submission?.status === "withdrawn")
 const secondPass = $derived(!reviewed && (submission?.stage === 2 || submission?.status === "stage2_hold"))
-const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
-const canSecondPass = $derived(role === "organizer" || role === "admin")
+const permissions = $derived(programPermissions(session.me, program))
+const canSecondPass = $derived(hasPermission(permissions, permissionSecondPass))
 const checking = $derived(submission?.status === "checking")
 const readOnly = $derived(session.me?.readOnly ?? false)
 const canDecide = $derived(!readOnly && !reviewed && !checking && (!secondPass || canSecondPass))
@@ -630,9 +631,9 @@ async function removeNote(entry: Note): Promise<void> {
 	if (bundle) bundle.notes = bundle.notes.filter(item => item.id !== entry.id)
 }
 
-// canDeleteNote lets the author or an admin remove a note.
+// canDeleteNote lets the author or a member with note management remove a note.
 function canDeleteNote(entry: Note): boolean {
-	return session.me?.user.email === entry.authorEmail || role === "admin"
+	return session.me?.user.email === entry.authorEmail || hasPermission(permissions, permissionNoteManage)
 }
 
 async function saveDraftNow(): Promise<void> {

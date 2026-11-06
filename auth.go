@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 
 	"ire/contract"
@@ -24,13 +25,7 @@ type reviewer struct {
 
 // Has reports whether the membership grants the permission. The wildcard grants everything.
 func (p reviewer) Has(permission string) bool {
-	for _, granted := range p.Permissions {
-		if granted == permWildcard || granted == permission {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(p.Permissions, permWildcard) || slices.Contains(p.Permissions, permission)
 }
 
 // currentReviewer reads the session cookie and resolves it to an active membership. It writes the 401 itself so handlers only branch on the boolean.

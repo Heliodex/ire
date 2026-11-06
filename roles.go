@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 
 	"ire/contract"
@@ -49,24 +50,12 @@ type roleDefinition struct {
 
 // grantsWildcard reports whether the role allows everything.
 func (d roleDefinition) grantsWildcard() bool {
-	for _, permission := range d.Permissions {
-		if permission == permWildcard {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(d.Permissions, permWildcard)
 }
 
 // validPermission reports whether admins may grant the permission to a role.
 func validPermission(permission string) bool {
-	for _, candidate := range permissionCatalog {
-		if candidate == permission {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(permissionCatalog, permission)
 }
 
 // listRoleDefinitions reads the programme roles with locked roles first.

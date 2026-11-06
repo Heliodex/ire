@@ -14,6 +14,7 @@ import {
 } from "../../lib/audit-cache"
 import AuditRow from "../../lib/components/audit/AuditRow.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
+import { hasPermission, permissionAuditRead, programPermissions } from "../../lib/permissions"
 import { session } from "../../lib/session.svelte.js"
 
 const actionOptions = [
@@ -107,8 +108,8 @@ async function boot(): Promise<void> {
 		return
 	}
 
-	const role = session.me?.programs.find(item => item.programSlug === program)?.role ?? ""
-	if (role !== "admin" && role !== "auditor") {
+	const permissions = programPermissions(session.me, program)
+	if (!hasPermission(permissions, permissionAuditRead)) {
 		forbidden = true
 		loading = false
 		return

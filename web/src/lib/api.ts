@@ -20,6 +20,7 @@ import {
 	type reviewBundleSchema,
 	type reviewedResponseSchema,
 	type reviewerProfileSchema,
+	type roleDefinitionSchema,
 	type searchResponseSchema,
 	type sendBackResultSchema,
 	type submissionFileResponseSchema,
@@ -73,6 +74,7 @@ export type Audit = InferOutput<typeof auditResponseSchema>
 export type ReviewerProfile = InferOutput<typeof reviewerProfileSchema>
 export type MakerProfile = InferOutput<typeof makerProfileSchema>
 export type MakerSubmission = MakerProfile["submissions"][number]
+export type RoleDefinition = InferOutput<typeof roleDefinitionSchema>
 
 // saveDraft persists the review form.
 export async function saveDraft(
@@ -117,8 +119,10 @@ export async function fetchAudit(offset = 0, limit = 50, filters: AuditFilters =
 export {
 	claimShip,
 	createNote,
+	createRole,
 	decideShip,
 	deleteNote,
+	deleteRole,
 	fetchAuthConfig,
 	fetchBundle,
 	fetchCheckHead,
@@ -131,6 +135,7 @@ export {
 	fetchReceived,
 	fetchReviewed,
 	fetchReviewerProfile,
+	fetchRoles,
 	fetchSubmissionFile,
 	heartbeat,
 	inviteMember,
@@ -143,6 +148,7 @@ export {
 	searchProjects,
 	sendShipBack,
 	updateMember,
+	updateRole,
 } from "./api.gen"
 
 export { toValidationError }

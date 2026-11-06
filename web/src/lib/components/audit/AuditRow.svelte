@@ -43,7 +43,7 @@ const actorHref = $derived(reviewerHref(entry.actorEmail))
 const detailID = $derived(`audit-${entry.id}-detail`)
 </script>
 
-<!-- biome-ignore lint/a11y/useKeyWithClickEvents: row click is a pointer enhancement; the chevron button stays the keyboard control -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions --><!-- biome-ignore lint/a11y/useKeyWithClickEvents: row click is a pointer enhancement; the chevron button stays the keyboard control -->
 <li class="entry" data-tone={look.tone} onclick={toggleFromRow}>
 	<span aria-hidden="true" class="bubble">
 		<Icon name={look.icon} size={17} />

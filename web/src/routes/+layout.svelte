@@ -6,6 +6,7 @@ import { fetchMe, logout } from "../lib/api"
 import { ApiError } from "../lib/api-error"
 import Avatar from "../lib/components/Avatar.svelte"
 import SearchBar from "../lib/components/SearchBar.svelte"
+import { hasPermission, permissionAuditRead, permissionRoleManage, permissionRosterManage } from "../lib/permissions"
 import { session } from "../lib/session.svelte.js"
 import { theme } from "../lib/theme.svelte.js"
 import type { LayoutProps } from "./$types"
@@ -17,8 +18,16 @@ let ready = $state(false)
 let signingOut = $state(false)
 
 const readOnly = $derived(session.me?.readOnly ?? false)
-const showAdmin = $derived(session.me?.programs.some(item => item.role === "admin") ?? false)
-const showAudit = $derived(session.me?.programs.some(item => item.role === "admin" || item.role === "auditor") ?? false)
+const showAdmin = $derived(
+	session.me?.programs.some(
+		item =>
+			hasPermission(item.permissions, permissionRosterManage)
+			|| hasPermission(item.permissions, permissionRoleManage),
+	) ?? false,
+)
+const showAudit = $derived(
+	session.me?.programs.some(item => hasPermission(item.permissions, permissionAuditRead)) ?? false,
+)
 const accountEmail = $derived(session.me?.user.email ?? "")
 const accountName = $derived(session.me?.user.name ?? accountEmail)
 const accountProfileHref = $derived(session.me ? `/reviewers/${encodeURIComponent(session.me.user.id)}` : "/")

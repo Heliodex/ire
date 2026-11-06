@@ -20,6 +20,7 @@ import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
+import { hasPermission, permissionSecondPass, programPermissions } from "../../lib/permissions"
 import {
 	hasStructuredQuery,
 	matchesQueueQuery,
@@ -151,8 +152,8 @@ if (savedQueue)
 		savedQueue.queue,
 	)
 
-const role = $derived(session.me?.programs.find(item => item.programSlug === program)?.role ?? "")
-const canSecondPass = $derived(role === "organizer" || role === "admin")
+const permissions = $derived(programPermissions(session.me, program))
+const canSecondPass = $derived(hasPermission(permissions, permissionSecondPass))
 const readOnly = $derived(session.me?.readOnly ?? false)
 
 const queueQuery = $derived(parseQueueQuery(search))

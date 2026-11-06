@@ -5,17 +5,11 @@ interface Props {
 	busy: boolean
 	member: Member
 	onSave(role: string, active: boolean): Promise<void>
+	roleLabel(name: string): string
+	roles: string[]
 }
 
-let { busy, member, onSave }: Props = $props()
-
-const roles = ["reviewer", "organizer", "admin", "auditor"] as const
-const roleLabels: { [_: string]: string } = {
-	admin: "Admin",
-	auditor: "Auditor",
-	organizer: "Organiser",
-	reviewer: "Reviewer",
-}
+let { busy, member, onSave, roleLabel, roles }: Props = $props()
 
 let role = $state("")
 
@@ -33,7 +27,7 @@ $effect((): void => {
 		bind:value={role}
 	>
 		{#each roles as option (option)}
-			<option value={option}>{roleLabels[option]}</option>
+			<option value={option}>{roleLabel(option)}</option>
 		{/each}
 	</select>
 </td>

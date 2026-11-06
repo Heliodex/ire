@@ -18,7 +18,10 @@ describe("inviteMemberSchema", () => {
 
 	test("rejects bad emails and roles", () => {
 		expect(safeParse(inviteMemberSchema, { email: "x", role: "reviewer" }).success).toBe(false)
-		expect(safeParse(inviteMemberSchema, { email: "ada@example.com", role: "superuser" }).success).toBe(false)
+		// Role names are validated against the programme role definitions
+		// server-side, so custom roles pass client validation.
+		expect(safeParse(inviteMemberSchema, { email: "ada@example.com", role: "stage2-reviewer" }).success).toBe(true)
+		expect(safeParse(inviteMemberSchema, { email: "ada@example.com", role: "" }).success).toBe(false)
 	})
 })
 
