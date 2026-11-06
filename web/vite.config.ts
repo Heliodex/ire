@@ -8,6 +8,7 @@ export default defineConfig({
 	plugins: [
 		sveltekit({
 			adapter: adapter({
+				fallback: "spa.html",
 				precompress: true,
 			}),
 			compilerOptions: {
