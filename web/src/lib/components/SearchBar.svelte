@@ -15,8 +15,15 @@ let error = $state("")
 let selected = $state(-1)
 let input = $state<HTMLInputElement | null>(null)
 let box = $state<HTMLDivElement | null>(null)
+let listbox = $state<HTMLDivElement | null>(null)
 let timer: ReturnType<typeof setTimeout> | null = null
 let sequence = 0
+// The first page stays small; reaching its last row with the arrow keys asks for the next slice.
+const initialSearchLimit = 8
+const maxSearchResults = 20
+let limit = initialSearchLimit
+let exhausted = false
+let extending = $state(false)
 
 const showResults = $derived(open && query.trim() !== "")
 const message = $derived.by((): string => {
@@ -67,6 +74,9 @@ function onInput(): void {
 	const cached = cache.get(text)
 
 	error = ""
+	limit = initialSearchLimit
+	exhausted = false
+	extending = false
 
 	if (text === "") {
 		results = []
@@ -81,6 +91,7 @@ function onInput(): void {
 		results = cached
 		selected = cached.length > 0 ? 0 : -1
 		loading = false
+		limit = Math.max(limit, cached.length)
 	} else {
 		results = []
 		selected = -1
@@ -89,17 +100,19 @@ function onInput(): void {
 
 	timer = setTimeout((): void => {
 		timer = null
-		void search(text, id, cached !== undefined)
+		void search(text, id, cached !== undefined, limit)
 	}, debounceMs)
 }
 
-async function search(text: string, id: number, revalidating: boolean): Promise<void> {
+async function search(text: string, id: number, revalidating: boolean, requestLimit: number): Promise<void> {
 	try {
-		const found = await searchProjects(text)
+		const found = await searchProjects(text, requestLimit)
 		if (id !== sequence) return
 
 		cache.set(text, found)
 		results = found
+		limit = requestLimit
+		exhausted = found.length < requestLimit
 
 		if (revalidating) selected = found.length > 0 ? Math.min(Math.max(selected, 0), found.length - 1) : -1
 		else selected = found.length > 0 ? 0 : -1
@@ -111,6 +124,35 @@ async function search(text: string, id: number, revalidating: boolean): Promise<
 		error = err instanceof Error ? err.message : "Could not search projects."
 	} finally {
 		if (id === sequence && !revalidating) loading = false
+	}
+}
+
+// extend loads the next slice of matches when the arrow keys reach the last row.
+async function extend(): Promise<void> {
+	if (extending || loading || exhausted) return
+	if (results.length >= maxSearchResults) return
+
+	const text = query.trim()
+	const id = sequence
+	const next = Math.min(maxSearchResults, results.length + initialSearchLimit)
+	const before = results.length
+
+	extending = true
+
+	try {
+		const found = await searchProjects(text, next)
+		if (id !== sequence) return
+
+		cache.set(text, found)
+		results = found
+		limit = next
+		exhausted = found.length < next
+
+		selected = found.length > before ? before : Math.min(selected, found.length - 1)
+	} catch {
+		// Keep the rows already on screen; the next press can try again.
+	} finally {
+		if (id === sequence) extending = false
 	}
 }
 
@@ -126,30 +168,72 @@ function onKeydown(event: KeyboardEvent): void {
 		return
 	}
 
-	if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
-		if (event.key !== "Enter" || loading) return
+	if (event.key === "ArrowDown") {
+		event.preventDefault()
 
-		const result = results[selected]
-		if (result) {
-			event.preventDefault()
-			openResult(result)
+		if (!showResults) {
+			open = query.trim() !== ""
+			return
 		}
 
+		if (results.length === 0) return
+
+		// Stop at the last row and pull in more matches instead of jumping back to the top.
+		if (selected >= results.length - 1) {
+			void extend()
+
+			return
+		}
+
+		selected += 1
+
 		return
 	}
 
-	event.preventDefault()
+	if (event.key === "ArrowUp") {
+		event.preventDefault()
 
-	if (!showResults) {
-		open = query.trim() !== ""
+		if (!showResults) {
+			open = query.trim() !== ""
+			return
+		}
+
+		if (results.length === 0) return
+
+		selected = Math.max(0, selected - 1)
+
 		return
 	}
 
-	if (results.length === 0) return
+	if (event.key !== "Enter" || loading) return
 
-	const step = event.key === "ArrowDown" ? 1 : -1
-	selected = (selected + step + results.length) % results.length
+	const result = results[selected]
+	if (result) {
+		event.preventDefault()
+		openResult(result)
+	}
 }
+
+// revealSelection keeps the arrow-key row visible once the dropdown grows past its height.
+function revealSelection(): void {
+	if (!listbox || selected < 0) return
+
+	const node = listbox.querySelector<HTMLElement>(`#project-search-${selected}`)
+	if (!node) return
+
+	const top = node.offsetTop
+	const bottom = top + node.offsetHeight
+
+	if (top < listbox.scrollTop) listbox.scrollTop = top
+	else if (bottom > listbox.scrollTop + listbox.clientHeight) listbox.scrollTop = bottom - listbox.clientHeight
+}
+
+$effect((): void => {
+	void selected
+	void results
+	void showResults
+	revealSelection()
+})
 
 function openResult(result: SearchResult): void {
 	open = false
@@ -187,7 +271,7 @@ function openResult(result: SearchResult): void {
 	<kbd aria-hidden="true" class="ui-kbd shortcut">/</kbd>
 
 	{#if showResults}
-		<div class="results ui-card" id="project-search-results" role="listbox">
+		<div class="results ui-card" id="project-search-results" role="listbox" bind:this={listbox}>
 			{#if message}
 				<div class="message">{message}</div>
 			{:else}
@@ -263,6 +347,9 @@ function openResult(result: SearchResult): void {
 				to open ·
 				<kbd class="ui-kbd">Esc</kbd>
 				to close
+				{#if extending}
+					· Loading more…
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -307,7 +394,9 @@ function openResult(result: SearchResult): void {
 	right: 0;
 	left: 0;
 	z-index: var(--layer-dialog);
-	overflow: hidden;
+	max-height: min(70vh, 40rem);
+	overflow-x: hidden;
+	overflow-y: auto;
 	box-shadow: var(--shadow);
 }
 
