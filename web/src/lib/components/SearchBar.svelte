@@ -127,7 +127,7 @@ async function search(text: string, id: number, revalidating: boolean, requestLi
 	}
 }
 
-// extend loads the next slice of matches when the arrow keys reach the last row.
+// extend loads the next slice of matches when the cursor reaches the last row or passes the middle.
 async function extend(): Promise<void> {
 	if (extending || loading || exhausted) return
 	if (results.length >= maxSearchResults) return
@@ -148,12 +148,24 @@ async function extend(): Promise<void> {
 		limit = next
 		exhausted = found.length < next
 
-		selected = found.length > before ? before : Math.min(selected, found.length - 1)
+		// At the end, step onto the first new row; in the middle, keep the cursor where it is.
+		if (found.length > before && selected >= before - 1) selected = before
+		else selected = Math.min(selected, Math.max(found.length - 1, 0))
 	} catch {
 		// Keep the rows already on screen; the next press can try again.
 	} finally {
 		if (id === sequence) extending = false
 	}
+}
+
+// maybeExtend pulls the next slice once the cursor passes the middle of the loaded rows, so the
+// rows below are ready before the cursor reaches them.
+function maybeExtend(): void {
+	if (exhausted || extending || loading) return
+	if (results.length >= maxSearchResults) return
+	if (selected < Math.floor(results.length / 2)) return
+
+	void extend()
 }
 
 // onFocus reopens the last results when the reader comes back to the field.
@@ -186,6 +198,7 @@ function onKeydown(event: KeyboardEvent): void {
 		}
 
 		selected += 1
+		maybeExtend()
 
 		return
 	}
@@ -214,18 +227,17 @@ function onKeydown(event: KeyboardEvent): void {
 	}
 }
 
-// revealSelection keeps the arrow-key row visible once the dropdown grows past its height.
+// revealSelection centres the arrow-key row in the dropdown, like the queue does for its cursor.
 function revealSelection(): void {
 	if (!listbox || selected < 0) return
 
 	const node = listbox.querySelector<HTMLElement>(`#project-search-${selected}`)
 	if (!node) return
 
-	const top = node.offsetTop
-	const bottom = top + node.offsetHeight
+	const max = listbox.scrollHeight - listbox.clientHeight
+	const target = node.offsetTop + node.offsetHeight / 2 - listbox.clientHeight / 2
 
-	if (top < listbox.scrollTop) listbox.scrollTop = top
-	else if (bottom > listbox.scrollTop + listbox.clientHeight) listbox.scrollTop = bottom - listbox.clientHeight
+	listbox.scrollTop = Math.max(0, Math.min(target, max))
 }
 
 $effect((): void => {
