@@ -18,6 +18,19 @@ let { entry }: { entry: AuditEntry } = $props()
 
 let expanded = $state(false)
 
+// toggleFromRow lets a click anywhere on the row header expand or collapse the
+// details, so the control is not limited to the small chevron button. Clicks on
+// links, the toggle button itself and the open detail keep their own behaviour.
+function toggleFromRow(event: MouseEvent): void {
+	const { target } = event
+	if (target instanceof Element) {
+		if (target.closest("a, button")) return
+		if (target.closest(".detail")) return
+	}
+	if (window.getSelection()?.toString()) return
+	expanded = !expanded
+}
+
 const look = $derived(auditLook(entry))
 const summary = $derived(auditSummary(entry))
 const changes = $derived(auditChanges(entry))
@@ -30,7 +43,8 @@ const actorHref = $derived(reviewerHref(entry.actorEmail))
 const detailID = $derived(`audit-${entry.id}-detail`)
 </script>
 
-<li class="entry" data-tone={look.tone}>
+<!-- biome-ignore lint/a11y/useKeyWithClickEvents: row click is a pointer enhancement; the chevron button stays the keyboard control -->
+<li class="entry" data-tone={look.tone} onclick={toggleFromRow}>
 	<span aria-hidden="true" class="bubble">
 		<Icon name={look.icon} size={17} />
 	</span>
@@ -129,6 +143,7 @@ const detailID = $derived(`audit-${entry.id}-detail`)
 	gap: var(--space-3);
 	align-items: flex-start;
 	padding: var(--space-3) var(--space-4);
+	cursor: pointer;
 	border-bottom: 1px solid var(--border);
 }
 
@@ -260,6 +275,7 @@ a.target:hover {
 	gap: var(--space-3);
 	padding: var(--space-3);
 	margin-top: var(--space-2);
+	cursor: default;
 	background: var(--surface-2);
 	border: 1px solid var(--border);
 	border-left: 2px solid color-mix(in srgb, var(--tone) 45%, var(--border));
@@ -380,11 +396,12 @@ time {
 }
 
 .toggle :global(svg) {
+	transform: rotate(-90deg);
 	transition: transform 0.15s;
 }
 
 .toggle[aria-expanded="true"] :global(svg) {
-	transform: rotate(180deg);
+	transform: rotate(0deg);
 }
 
 @media (max-width: 40rem) {
