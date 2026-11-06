@@ -314,7 +314,8 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 									{roleLabel}
 									roles={roleNames}
 								/>
-								<td>
+								<td class="active-cell">
+									<span class="cell-label">Active</span>
 									<input
 										aria-label={`Active for ${member.email}`}
 										checked={member.active}
@@ -326,7 +327,8 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 										type="checkbox"
 									>
 								</td>
-								<td class="muted">
+								<td class="muted login-cell">
+									<span class="cell-label">Last sign-in</span>
 									{member.lastLoginAt ? formatDateTime(member.lastLoginAt) : "Never"}
 								</td>
 							</tr>
@@ -368,7 +370,7 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 				</button>
 			</form>
 
-			<div class="ui-table">
+			<div class="ui-table roles-matrix">
 				<table>
 					<thead>
 						<tr>
@@ -423,6 +425,51 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 						{/each}
 					</tbody>
 				</table>
+			</div>
+
+			<div class="roles-cards">
+				{#each roleDefs as def (def.name)}
+					<div class="role-card">
+						<div class="role-card-head">
+							<span class="role-head">
+								<strong>{roleLabel(def.name)}</strong>
+								{#if def.locked}
+									<span class="ui-badge" data-tone="ready">Locked</span>
+								{:else}
+									<button
+										aria-label={`Delete the ${def.name} role`}
+										class="ui-button quiet sm"
+										disabled={savingRole === def.name}
+										onclick={(): void => void removeRole(def)}
+										title={`Delete the ${def.name} role`}
+										type="button"
+									>
+										Delete
+									</button>
+								{/if}
+							</span>
+						</div>
+						{#each permissionCatalog as permission (permission.value)}
+							<label class="perm-row">
+								<input
+									aria-label={`${permission.label} for the ${def.name} role`}
+									checked={roleHas(def, permission.value)}
+									class="ui-toggle"
+									disabled={def.locked || savingRole === def.name}
+									onchange={(event): void => {
+										const input = event.currentTarget as HTMLInputElement
+										void saveRolePermissions(def, permission.value, input.checked)
+									}}
+									type="checkbox"
+								>
+								<span class="perm-row-copy">
+									<strong>{permission.label}</strong>
+									<span class="muted perm-desc">{permission.description}</span>
+								</span>
+							</label>
+						{/each}
+					</div>
+				{/each}
 			</div>
 		</section>
 	{/if}
@@ -628,10 +675,148 @@ code {
 	font-size: var(--text-xs);
 }
 
+.cell-label {
+	display: none;
+}
+
+.roles-cards {
+	display: none;
+}
+
 @media (max-width: 47.5rem) {
-	.roster table,
 	.audit table {
 		min-width: 40rem;
+	}
+
+	/* The roster becomes one card per member instead of a scrolling table. */
+	.roster table {
+		display: block;
+		min-width: 0;
+	}
+
+	.roster thead {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		white-space: nowrap;
+		clip: rect(0 0 0 0);
+	}
+
+	.roster tbody,
+	.roster tr,
+	.roster :global(td) {
+		display: block;
+	}
+
+	.roster tr {
+		padding: var(--space-3);
+		margin-bottom: var(--space-2);
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+	}
+
+	.roster tr:last-child {
+		margin-bottom: 0;
+	}
+
+	.roster td {
+		padding: 0 0 var(--space-2);
+		border-bottom: 0;
+	}
+
+	.roster td:last-child {
+		padding-bottom: 0;
+	}
+
+	.roster .member-link {
+		padding-bottom: var(--space-1);
+	}
+
+	.cell-label {
+		display: block;
+		padding-bottom: var(--space-1);
+		font-size: var(--text-xs);
+		font-weight: 700;
+		color: var(--text-3);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.roster td.active-cell {
+		display: flex;
+		gap: var(--space-2);
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.roster td.active-cell .cell-label {
+		padding-bottom: 0;
+	}
+
+	.login-cell {
+		font-size: var(--text-xs);
+	}
+
+	/* The permission matrix becomes one card per role. */
+	.roles-matrix {
+		display: none;
+	}
+
+	.roles-cards {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.role-card {
+		padding: var(--space-3);
+		background: var(--surface-2);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+	}
+
+	.role-card-head {
+		padding-bottom: var(--space-2);
+	}
+
+	.role-card-head .role-head {
+		display: flex;
+		gap: var(--space-2);
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+	}
+
+	.perm-row {
+		display: flex;
+		gap: var(--space-2);
+		align-items: flex-start;
+		padding: var(--space-2) 0;
+		cursor: pointer;
+		border-top: 1px solid var(--border);
+	}
+
+	.perm-row:has(input:disabled) {
+		cursor: default;
+	}
+
+	.perm-row .ui-toggle {
+		flex: none;
+		margin-top: 2px;
+	}
+
+	.perm-row-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+		font-size: var(--text-sm);
+	}
+
+	.perm-row-copy .perm-desc {
+		font-size: var(--text-xs);
 	}
 }
 </style>

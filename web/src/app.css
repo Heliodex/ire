@@ -122,8 +122,8 @@
 }
 
 html {
-	background: var(--bg);
 	scrollbar-gutter: stable;
+	background: var(--bg);
 }
 
 body {
@@ -669,7 +669,7 @@ textarea.ui-input {
 	opacity: 0.6;
 }
 
-@media (pointer: coarse) {
+@media (pointer: coarse), (max-width: 40rem) {
 	.ui-toggle {
 		position: relative;
 		width: 2.25rem;

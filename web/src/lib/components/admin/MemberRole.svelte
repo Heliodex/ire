@@ -31,3 +31,9 @@ $effect((): void => {
 		{/each}
 	</select>
 </td>
+
+<style>
+select {
+	width: 100%;
+}
+</style>
