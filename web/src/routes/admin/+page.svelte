@@ -345,15 +345,15 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 										checked={member.active}
 										class="ui-toggle"
 										disabled={saving === member.id || isLastAdmin(member)}
-										title={isLastAdmin(member)
-											? "A programme needs at least one active admin"
-											: undefined}
 										onchange={(event): void => {
 											const input = event.currentTarget as HTMLInputElement
 											void save(member, member.role, input.checked).then(saved => {
 												if (!saved) input.checked = member.active
 											})
 										}}
+										title={isLastAdmin(member)
+											? "A programme needs at least one active admin"
+											: undefined}
 										type="checkbox"
 									>
 								</td>

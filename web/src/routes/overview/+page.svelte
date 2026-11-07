@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte"
-import { goto } from "$app/navigation"
 import { browser } from "$app/env"
+import { goto } from "$app/navigation"
 import { fetchMe, fetchOverview, type Overview, program } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import LoadingState from "../../lib/components/LoadingState.svelte"
@@ -148,16 +148,13 @@ onMount((): (() => void) => {
 		<section aria-label="Queue flow per day" class="ui-card padded panel">
 			<h2>Queue flow</h2>
 			<p>Ingested vs decided · last 14 days</p>
-			<div class="legend" aria-hidden="true">
+			<div aria-hidden="true" class="legend">
 				<span class="legend-item"><span class="dot decided"></span>Decided</span>
 				<span class="legend-item"><span class="dot ingested"></span>Ingested</span>
 			</div>
 			<div class="bars">
 				{#each overview.daily as day (day.date)}
-					<div
-						class="bar-col"
-						title={`${day.date}: ${day.ingested} ingested, ${day.decided} decided`}
-					>
+					<div class="bar-col" title={`${day.date}: ${day.ingested} ingested, ${day.decided} decided`}>
 						<div class="bar-track">
 							<div class="bar-fill decided" style:height={`${(day.decided / dayMax) * 100}%`}></div>
 							<div class="bar-fill ingested" style:height={`${(day.ingested / dayMax) * 100}%`}></div>
@@ -190,7 +187,8 @@ onMount((): (() => void) => {
 			<h2>Turnaround</h2>
 			<p>
 				{#if overview.turnaround.decisions > 0}
-					Across {overview.turnaround.decisions} decision{overview.turnaround.decisions === 1 ? "" : "s"} in 30 days
+					Across {overview.turnaround.decisions} decision{overview.turnaround.decisions === 1 ? "" : "s"}
+					in 30 days
 				{:else}
 					No decisions in the last 30 days
 				{/if}
@@ -205,7 +203,9 @@ onMount((): (() => void) => {
 				<div class="wait-row">
 					<span class="wait-label">To decision</span>
 					<span class="wait-value"
-						>{overview.turnaround.decisions > 0 ? formatWait(overview.turnaround.medianDecisionMs) : "–"}</span
+						>{overview.turnaround.decisions > 0
+							? formatWait(overview.turnaround.medianDecisionMs)
+							: "–"}</span
 					>
 				</div>
 			</div>
@@ -220,7 +220,9 @@ onMount((): (() => void) => {
 				<ul class="breakdown">
 					{#each overview.outcomes as row (row.decision)}
 						<li>
-							<span class="ui-badge" data-tone={statusTone(row.decision)}>{decisionLabel(row.decision)}</span>
+							<span class="ui-badge" data-tone={statusTone(row.decision)}
+								>{decisionLabel(row.decision)}</span
+							>
 							<span class="meter"
 								><span
 									style:width={`${outcomeTotal > 0 ? (row.count / outcomeTotal) * 100 : 0}%`}

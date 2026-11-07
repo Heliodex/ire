@@ -24,13 +24,13 @@ $effect((): void => {
 		aria-label={`Role for ${member.email}`}
 		class="ui-input"
 		disabled={busy || locked}
-		title={locked ? "A programme needs at least one active admin" : undefined}
 		onchange={(): void => {
 			const next = role
 			void onSave(next, member.active).then(saved => {
 				if (!saved) role = member.role
 			})
 		}}
+		title={locked ? "A programme needs at least one active admin" : undefined}
 		bind:value={role}
 	>
 		{#each roles as option (option)}

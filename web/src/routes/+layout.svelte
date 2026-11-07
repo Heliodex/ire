@@ -289,11 +289,11 @@ async function signOut(): Promise<void> {
 							<svg
 								aria-hidden="true"
 								class="chevron"
-								class:open={moreOpen}
 								fill="none"
 								height="14"
 								viewBox="0 0 24 24"
 								width="14"
+								class:open={moreOpen}
 							>
 								<path
 									d="m6 9 6 6 6-6"
@@ -310,8 +310,8 @@ async function signOut(): Promise<void> {
 									<a
 										aria-current={item.active ? "page" : undefined}
 										aria-keyshortcuts={`Alt+${visibleTabCount + index + 1}`}
-										class:active={item.active}
 										href={item.href}
+										class:active={item.active}
 										><span>{item.label}</span></a
 									>
 								{/each}
