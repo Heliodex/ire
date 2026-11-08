@@ -47,15 +47,11 @@
 		"eslint/no-template-curly-in-string": "off",
 		"eslint/no-ternary": "off",
 		"eslint/no-underscore-dangle": "off",
-		"eslint/no-useless-concat": "warn",
-		"eslint/no-useless-return": "warn",
 		"eslint/no-var": "error",
-		"eslint/object-shorthand": "warn",
 		"eslint/one-var": ["error", "never"],
 		"eslint/prefer-const": "error",
 		"eslint/prefer-named-capture-group": "off",
 		"eslint/prefer-object-spread": "error",
-		"eslint/prefer-template": "warn",
 		"eslint/require-unicode-regexp": "off",
 		"eslint/sort-imports": "off",
 		"eslint/sort-keys": "off",
@@ -76,7 +72,6 @@
 		"promise/prefer-await-to-callbacks": "error",
 		"typescript/consistent-indexed-object-style": ["error", "index-signature"],
 		"typescript/consistent-return": "off",
-		"typescript/consistent-type-imports": "warn",
 		"typescript/method-signature-style": ["error", "method"],
 		"typescript/no-confusing-void-expression": "off",
 		"typescript/no-explicit-any": "error",
@@ -88,20 +83,27 @@
 				"prefer": "parameter-property"
 			}
 		],
-		"typescript/prefer-includes": "warn",
 		"typescript/prefer-nullish-coalescing": "off",
 		"typescript/prefer-readonly-parameter-types": "off",
-		"typescript/prefer-ts-expect-error": "warn",
 		"typescript/require-await": "error",
-		"typescript/return-await": "warn",
 		"typescript/strict-boolean-expressions": "error",
 		"typescript/strict-void-return": "error",
 		"typescript/unbound-method": "off",
-		"unicorn/catch-error-name": ["error", { "name": "err" }],
+		"unicorn/catch-error-name": [
+			"error",
+			{
+				"name": "err"
+			}
+		],
 		"unicorn/consistent-function-scoping": "error",
 		"unicorn/empty-brace-spaces": "error",
 		"unicorn/filename-case": "off",
-		"unicorn/max-nested-calls": ["error", { "max": 8 }],
+		"unicorn/max-nested-calls": [
+			"error",
+			{
+				"max": 8
+			}
+		],
 		"unicorn/no-array-callback-reference": "off",
 		"unicorn/no-await-expression-member": "error",
 		"unicorn/no-negated-condition": "off",
@@ -110,10 +112,7 @@
 		"unicorn/no-useless-undefined": "off",
 		"unicorn/number-literal-case": "off",
 		"unicorn/numeric-separators-style": "off",
-		"unicorn/prefer-code-point": "warn",
-		"unicorn/prefer-date-now": "warn",
 		"unicorn/prefer-global-this": "off",
-		"unicorn/prefer-includes": "warn",
 		"unicorn/prefer-logical-operator-over-ternary": "off",
 		"unicorn/prefer-spread": "error",
 		"unicorn/prefer-ternary": "error",
