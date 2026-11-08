@@ -202,8 +202,12 @@ const detailID = $derived(`audit-${entry.id}-detail`)
 .headline {
 	display: flex;
 	gap: var(--space-2);
-	align-items: center;
+	align-items: flex-start;
 	min-width: 0;
+}
+
+.headline :global(.avatar) {
+	margin-top: 0.125rem;
 }
 
 .text {
