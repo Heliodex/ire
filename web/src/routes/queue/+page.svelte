@@ -19,6 +19,7 @@ import {
 import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
+import QueueCheckTip from "../../lib/components/queue/QueueCheckTip.svelte"
 import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from "../../lib/format"
 import { hasPermission, permissionSecondPass, programPermissions } from "../../lib/permissions"
 import {
@@ -36,6 +37,7 @@ import {
 	type QueueSortKey as SortKey,
 } from "../../lib/queue-state"
 import { streamQueue } from "../../lib/queue-stream"
+import { ageTone, claimError } from "../../lib/queue-page"
 import { rememberReviewPreview } from "../../lib/review-preview"
 import { makerHref } from "../../lib/reviewer"
 import { dropSignIn, session } from "../../lib/session.svelte.js"
@@ -910,25 +912,9 @@ async function moveSelection(step: number): Promise<void> {
 	revealSelected()
 }
 
-// ageTone marks ships that have waited longer than the queue target.
-function ageTone(ingestedAt: string): string {
-	const days = (Date.now() - Date.parse(ingestedAt)) / 86_400_000
-	if (days >= 7) return "age--late"
-	if (days >= 3) return "age--warn"
-	return ""
-}
 
-// claimError makes a claim conflict readable and formats the expiry from the API.
-function claimError(err: unknown): string {
-	if (!(err instanceof ApiError) || err.code !== "claim_taken")
-		return err instanceof Error ? err.message : "Could not claim this ship."
 
-	const until = /until (\S+)$/.exec(err.message)?.[1]
 
-	return until
-		? `Another reviewer has already claimed this ship until ${formatDateTime(until)}.`
-		: "Another reviewer has already claimed this ship."
-}
 
 async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 	opening = item.id
@@ -1641,19 +1627,7 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 </section>
 
 {#if checkTip}
-	<div
-		class="check-tip"
-		role="tooltip"
-		style={`left:${checkTip.x}px; top:${checkTip.y}px`}
-		class:above={checkTip.above}
-		class:below={!checkTip.above}
-	>
-		<div class="tip-head">
-			<span class="tip-group">{checkTip.group}</span>
-			<span class="ui-badge" data-tone={checkTip.tone}>{checkTip.status}</span>
-		</div>
-		<span class="tip-label">{checkTip.label}</span>
-	</div>
+	<QueueCheckTip {...checkTip} />
 {/if}
 
 {#if previewItem}
