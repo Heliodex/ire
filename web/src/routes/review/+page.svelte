@@ -2,29 +2,12 @@
 import { onMount } from "svelte"
 import { afterNavigate, goto } from "$app/navigation"
 import { page } from "$app/state"
-import {
-	type Bundle,
-	type Check,
-	claimShip,
-	createNote,
-	decideShip,
-	deleteNote,
-	fetchBundle,
-	fetchCheckHead,
-	fetchMe,
-	fetchQueue,
-	heartbeat,
-	type Note,
-	program,
-	refreshRepositoryEvidence,
-	releaseShip,
-	rerunChecks,
-	saveDraft,
-	sendShipBack,
-} from "../../lib/api"
+import { claimShip, createNote, decideShip, deleteNote, fetchBundle, fetchCheckHead, fetchMe, fetchQueue, heartbeat, program, refreshRepositoryEvidence, releaseShip, rerunChecks, saveDraft, sendShipBack } from '../../lib/api';
+import type { Bundle, Check, Note } from '../../lib/api';
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
-import { type BundleCache, createBundleCache, prefetchNextBundle } from "../../lib/bundle-cache"
+import { createBundleCache, prefetchNextBundle } from '../../lib/bundle-cache';
+import type { BundleCache } from '../../lib/bundle-cache';
 import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import BomTab from "../../lib/components/review/BomTab.svelte"
@@ -48,7 +31,8 @@ import {
 	statusTone,
 } from "../../lib/format"
 import { hasPermission, permissionNoteManage, permissionSecondPass, programPermissions } from "../../lib/permissions"
-import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
+import { readReviewPreview } from '../../lib/review-preview';
+import type { ReviewPreview } from '../../lib/review-preview';
 import { reviewerHref } from "../../lib/reviewer"
 import { dropSignIn, session } from "../../lib/session.svelte.js"
 

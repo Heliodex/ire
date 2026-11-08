@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onDestroy } from "svelte"
-import { type Journal, reviewJournal } from "../../api"
+import { reviewJournal } from '../../api';
+import type { Journal } from '../../api';
 import { ApiError } from "../../api-error"
 import { formatHours } from "../../format"
 

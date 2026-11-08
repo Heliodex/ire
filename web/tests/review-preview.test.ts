@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { type ReviewPreview, readReviewPreview, rememberReviewPreview } from "../src/lib/review-preview"
+import { readReviewPreview, rememberReviewPreview } from '../src/lib/review-preview';
+import type { ReviewPreview } from '../src/lib/review-preview';
 
 function preview(id: string, overrides: Partial<ReviewPreview> = {}): ReviewPreview {
 	return {

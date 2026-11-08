@@ -1,5 +1,6 @@
 <script lang="ts">
-import { type Bundle, fetchSubmissionFile } from "../../api"
+import { fetchSubmissionFile } from '../../api';
+import type { Bundle } from '../../api';
 import { formatDateTime } from "../../format"
 import { isPreviewableKicad } from "../../preview"
 import LoadingState from "../LoadingState.svelte"

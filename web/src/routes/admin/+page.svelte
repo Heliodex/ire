@@ -1,21 +1,8 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { goto } from "$app/navigation"
-import {
-	type AuditEntry,
-	createRole,
-	deleteRole,
-	fetchAudit,
-	fetchMe,
-	fetchMembers,
-	fetchRoles,
-	inviteMember,
-	type Member,
-	program,
-	type RoleDefinition,
-	updateMember,
-	updateRole,
-} from "../../lib/api"
+import { createRole, deleteRole, fetchAudit, fetchMe, fetchMembers, fetchRoles, inviteMember, program, updateMember, updateRole } from '../../lib/api';
+import type { AuditEntry, Member, RoleDefinition } from '../../lib/api';
 import { ApiError } from "../../lib/api-error"
 import Avatar from "../../lib/components/Avatar.svelte"
 import MemberRole from "../../lib/components/admin/MemberRole.svelte"

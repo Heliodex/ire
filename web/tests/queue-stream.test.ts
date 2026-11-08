@@ -2,7 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test"
 import type { Queue } from "../src/lib/api"
 import { ApiError } from "../src/lib/api-error"
 import { fakeQueueResponse } from "../src/lib/fixtures.gen"
-import { applyQueueLine, type QueueStreamHandlers, splitQueueLines, streamQueue } from "../src/lib/queue-stream"
+import { applyQueueLine, splitQueueLines, streamQueue } from '../src/lib/queue-stream';
+import type { QueueStreamHandlers } from '../src/lib/queue-stream';
 
 const queue = fakeQueueResponse()
 

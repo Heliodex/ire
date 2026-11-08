@@ -2,7 +2,8 @@
 import { onMount } from "svelte"
 import { browser } from "$app/env"
 import { goto } from "$app/navigation"
-import { fetchMe, fetchOverview, type Overview, program } from "../../lib/api"
+import { fetchMe, fetchOverview, program } from '../../lib/api';
+import type { Overview } from '../../lib/api';
 import { ApiError } from "../../lib/api-error"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { decisionLabel, humanStatus, statusTone } from "../../lib/format"

@@ -1,7 +1,8 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { goto } from "$app/navigation"
-import { type FakeDelivery, fetchMe, fetchOutbox, fetchReceived, type OutboxRow } from "../../lib/api"
+import { fetchMe, fetchOutbox, fetchReceived } from '../../lib/api';
+import type { FakeDelivery, OutboxRow } from '../../lib/api';
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { formatDateTime, statusTone } from "../../lib/format"
 import { session } from "../../lib/session.svelte.js"

@@ -3,15 +3,11 @@ import { onMount } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
 import { browser } from "$app/env"
 import { goto } from "$app/navigation"
-import { type AuditEntry, fetchAudit, fetchMe, program } from "../../lib/api"
+import { fetchAudit, fetchMe, program } from '../../lib/api';
+import type { AuditEntry } from '../../lib/api';
 import { ApiError } from "../../lib/api-error"
-import {
-	type AuditFilters,
-	auditFilterKey,
-	type CachedAuditView,
-	createAuditCache,
-	isFreshAuditView,
-} from "../../lib/audit-cache"
+import { auditFilterKey, createAuditCache, isFreshAuditView } from '../../lib/audit-cache';
+import type { AuditFilters, CachedAuditView } from '../../lib/audit-cache';
 import AuditRow from "../../lib/components/audit/AuditRow.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { hasPermission, permissionAuditRead, programPermissions } from "../../lib/permissions"
