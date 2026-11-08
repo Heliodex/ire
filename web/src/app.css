@@ -504,7 +504,7 @@ textarea.ui-input {
 
 .ui-tab:active {
 	color: var(--text);
-	background: color-mix(in srgb, var(--text) 6%, transparent);
+	background: color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 .ui-tab.active {
@@ -541,7 +541,7 @@ textarea.ui-input {
 
 .ui-seg button:active {
 	color: var(--text);
-	background: color-mix(in srgb, var(--text) 8%, transparent);
+	background: color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 .ui-seg button.active {

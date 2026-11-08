@@ -452,7 +452,7 @@ header {
 .sections-row {
 	position: relative;
 	display: flex;
-	gap: var(--space-4);
+	gap: var(--space-1);
 	align-items: center;
 }
 
@@ -494,7 +494,7 @@ header {
 /* The inline copy takes the empty space beside the brand only on very wide screens. */
 .sections-inline {
 	display: none;
-	gap: var(--space-4);
+	gap: var(--space-1);
 	align-items: center;
 	align-self: flex-end;
 	min-width: 0;
@@ -504,12 +504,13 @@ header {
 }
 
 nav a {
-	padding: 0 0 var(--space-2);
+	padding: var(--space-1) var(--space-2) var(--space-2);
 	font-size: var(--text-sm);
 	font-weight: 600;
 	color: var(--text-2);
 	text-decoration: none;
 	border-bottom: 2px solid transparent;
+	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 nav a:hover {
@@ -518,7 +519,7 @@ nav a:hover {
 
 nav a:active {
 	color: var(--text);
-	background: color-mix(in srgb, var(--text) 6%, transparent);
+	background: color-mix(in srgb, var(--text) 12%, transparent);
 	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
