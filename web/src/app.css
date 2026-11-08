@@ -193,6 +193,10 @@ kbd {
 	border-radius: var(--radius-lg);
 }
 
+.dark .ui-card {
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
 .ui-card.padded {
 	padding: var(--space-4);
 }
