@@ -372,7 +372,9 @@ header {
 	position: sticky;
 	top: 0;
 	z-index: var(--layer-header);
-	background: var(--surface);
+	background: var(--header-bg, var(--surface));
+	border-bottom: 1px solid var(--border);
+	backdrop-filter: blur(12px);
 }
 
 .top,
