@@ -489,26 +489,6 @@ header {
 	box-shadow: var(--shadow-lg);
 }
 
-.menu-panel a {
-	padding: var(--space-2) var(--space-3);
-}
-
-.menu-panel a span {
-	padding-bottom: 2px;
-}
-
-.menu-panel a:hover {
-	background: var(--surface-2);
-}
-
-.menu-panel a.active {
-	color: var(--text);
-}
-
-.menu-panel a.active span {
-	border-bottom: 2px solid var(--primary);
-}
-
 /* The inline copy takes the empty space beside the brand only on very wide screens. */
 .sections-inline {
 	display: none;
@@ -537,6 +517,26 @@ nav a:hover {
 nav a.active {
 	color: var(--text);
 	border-bottom-color: var(--primary);
+}
+
+.menu-panel a {
+	padding: var(--space-2) var(--space-3);
+}
+
+.menu-panel a span {
+	padding-bottom: 2px;
+}
+
+.menu-panel a:hover {
+	background: var(--surface-2);
+}
+
+.menu-panel a.active {
+	color: var(--text);
+}
+
+.menu-panel a.active span {
+	border-bottom: 2px solid var(--primary);
 }
 
 main {

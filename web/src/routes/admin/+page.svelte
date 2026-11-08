@@ -780,17 +780,6 @@ code {
 		letter-spacing: 0.05em;
 	}
 
-	.roster td.active-cell {
-		display: flex;
-		gap: var(--space-2);
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.roster td.active-cell .cell-label {
-		padding-bottom: 0;
-	}
-
 	.login-cell {
 		display: flex;
 		gap: var(--space-2);
@@ -800,6 +789,17 @@ code {
 	}
 
 	.login-cell .cell-label {
+		padding-bottom: 0;
+	}
+
+	.roster td.active-cell {
+		display: flex;
+		gap: var(--space-2);
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.roster td.active-cell .cell-label {
 		padding-bottom: 0;
 	}
 
