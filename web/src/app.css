@@ -85,7 +85,7 @@
 	--text: #f5f5fa;
 	--text-2: #b8b8c8;
 	--text-3: #8e8ea3;
-	--input: #17171f;
+	--input: #08080d;
 	--primary: #ff4a63;
 	--primary-soft: rgba(255, 74, 99, 0.14);
 	--ring: rgba(255, 74, 99, 0.42);
@@ -107,7 +107,7 @@
 	--on-ok: #06231a;
 
 	--warning: var(--status-pending);
-	--code-background: #17171f;
+	--code-background: #08080d;
 	--code-foreground: #ebebf5;
 	--header-bg: color-mix(in srgb, var(--bg) 84%, transparent);
 
