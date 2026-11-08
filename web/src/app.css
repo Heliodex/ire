@@ -255,6 +255,10 @@ kbd {
 	border-color: var(--border-2);
 }
 
+.dark .ui-button.ghost {
+	background: var(--input);
+}
+
 .ui-button.quiet {
 	color: var(--text-2);
 	background: transparent;
