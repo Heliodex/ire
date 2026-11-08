@@ -329,11 +329,14 @@ h1 {
 
 .wait-row {
 	display: flex;
-	gap: var(--space-2);
+	flex-wrap: wrap;
+	gap: var(--space-1) var(--space-2);
 	align-items: baseline;
+	min-width: 0;
 }
 
 .wait-label {
+	min-width: 0;
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--text-3);
@@ -342,9 +345,11 @@ h1 {
 }
 
 .wait-value {
+	min-width: 0;
 	font-size: var(--text-lg);
 	font-weight: 800;
 	font-variant-numeric: tabular-nums;
+	overflow-wrap: anywhere;
 }
 
 .oldest {
@@ -563,6 +568,12 @@ a.name:hover {
 
 @media (max-width: 55rem) {
 	.panels {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (max-width: 30rem) {
+	.wait-rows {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
