@@ -30,6 +30,9 @@ import LoadingState from "../../lib/components/LoadingState.svelte"
 import BomTab from "../../lib/components/review/BomTab.svelte"
 import JournalList from "../../lib/components/review/JournalList.svelte"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
+import PriorReviews from "../../lib/components/review/PriorReviews.svelte"
+import ResubmissionDiff from "../../lib/components/review/ResubmissionDiff.svelte"
+import ReviewTimeline from "../../lib/components/review/ReviewTimeline.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
 
@@ -42,7 +45,6 @@ import {
 	formatHours,
 	formatMoney,
 	formatMoneyAmount,
-	humanEvent,
 	humanStatus,
 	statusTone,
 } from "../../lib/format"
@@ -89,7 +91,6 @@ let rerunning = $state(false)
 let rerunError = $state("")
 let checksOutdated = $state(false)
 let coverFailed = $state(false)
-let showAllEvents = $state(false)
 let wide = $state(false)
 let checksTimer: ReturnType<typeof setTimeout> | null = null
 let prefetchTimer: ReturnType<typeof setTimeout> | null = null
@@ -141,7 +142,6 @@ const timeSegments = $derived.by((): TimeSegment[] => {
 })
 const backPath = $derived(page.url.searchParams.get("from") === "reviewed" ? "/reviewed" : "/queue")
 const backLabel = $derived(backPath === "/reviewed" ? "Reviewed" : "Queue")
-const visibleEvents = $derived(showAllEvents ? (bundle?.events ?? []) : (bundle?.events ?? []).slice(-6))
 
 // idFromURL reads the ship id from /review/{id}, keeping the query form for old links.
 function idFromURL(): string {
@@ -258,7 +258,6 @@ afterNavigate((): void => {
 	}
 	error = ""
 	acknowledgements = []
-	showAllEvents = false
 	idempotencyKey = ""
 
 	if (previous && previous !== next) ignore(releaseShip(previous))
@@ -1051,111 +1050,7 @@ async function saveDraftNow(): Promise<void> {
 							</div>
 						{/if}
 						{#if bundle.resubmission}
-							{const diff = bundle.resubmission}
-							<div class="section resubmission">
-								<h3>Since v{diff.previousVersion}</h3>
-								{#if diff.previousDecision || diff.previousNote}
-									<div class="prior-row">
-										{#if diff.previousDecision}
-											<span
-												class="ui-badge"
-												data-tone={statusTone(
-													diff.previousDecision === "approved" ? "approved" : "changes",
-												)}
-												>{decisionLabel(diff.previousDecision)}</span
-											>
-										{/if}
-										{#if diff.previousNote}
-											<p>{diff.previousNote}</p>
-										{/if}
-										{#if diff.previousReviewer || diff.previousReviewedAt}
-											<small>
-												{diff.previousReviewer ?? "Reviewer"}
-												{#if diff.previousReviewedAt}
-													· {formatDateTime(diff.previousReviewedAt)}
-												{/if}
-											</small>
-										{/if}
-									</div>
-								{/if}
-								<div class="stats">
-									<div><span>Commits</span><strong>{diff.commits.length}</strong></div>
-									<div>
-										<span>Files</span
-										><strong>+{diff.addedFiles.length} / -{diff.removedFiles.length}</strong>
-									</div>
-									<div>
-										<span>New entries</span
-										><strong
-											>{diff.newEntries.length}
-											{diff.changedEntries.length > 0
-												? ` · ${diff.changedEntries.length} edited`
-												: ""}</strong
-										>
-									</div>
-									<div>
-										<span>BOM</span
-										><strong
-											>{diff.bomAdded.length}
-											added
-											{diff.bomPriceChanges.length > 0
-												? ` · ${diff.bomPriceChanges.length} repriced`
-												: ""}</strong
-										>
-									</div>
-								</div>
-								{#if diff.commits.length > 0}
-									<details>
-										<summary>
-											{diff.commits.length}
-											new commit{diff.commits.length === 1 ? "" : "s"}
-										</summary>
-										<ul class="change-list">
-											{#each diff.commits.slice(0, 10) as commit (commit.sha)}
-												<li>
-													<code class="ui-mono">{commit.sha.slice(0, 7)}</code>
-													{commit.message}
-												</li>
-											{/each}
-										</ul>
-									</details>
-								{/if}
-								{#if diff.addedFiles.length + diff.removedFiles.length > 0}
-									<details>
-										<summary>
-											{diff.addedFiles.length}
-											added, {diff.removedFiles.length} removed
-										</summary>
-										<ul class="change-list">
-											{#each diff.addedFiles.slice(0, 20) as file (file)}
-												<li class="added">+ {file}</li>
-											{/each}
-											{#each diff.removedFiles.slice(0, 20) as file (file)}
-												<li class="removed">- {file}</li>
-											{/each}
-										</ul>
-									</details>
-								{/if}
-								{#if diff.bomAdded.length + diff.bomRemoved.length + diff.bomPriceChanges.length > 0}
-									<details>
-										<summary>BOM changes</summary>
-										<ul class="change-list">
-											{#each diff.bomAdded as part (part)}
-												<li class="added">+ {part}</li>
-											{/each}
-											{#each diff.bomRemoved as part (part)}
-												<li class="removed">- {part}</li>
-											{/each}
-											{#each diff.bomPriceChanges as change (change.name)}
-												<li>
-													{change.name}: {formatMoneyAmount(change.beforeCents)} →
-													{formatMoneyAmount(change.afterCents)}
-												</li>
-											{/each}
-										</ul>
-									</details>
-								{/if}
-							</div>
+							<ResubmissionDiff diff={bundle.resubmission} />
 						{/if}
 						<h2>What the maker built</h2>
 						<p class="description">{submission.description || "No description was sent."}</p>
@@ -1173,63 +1068,9 @@ async function saveDraftNow(): Promise<void> {
 							<div><span>BOM</span><strong>{formatMoney(submission.bomTotalCents)}</strong></div>
 						</div>
 
-						{#if bundle.priorReviews.length > 0}
-							<div class="section">
-								<h3>Prior review</h3>
-								{#each bundle.priorReviews as prior (prior.at)}
-									{const priorHref = reviewerHref(
-										prior.reviewer?.includes("@") ? prior.reviewer : null,
-									)}
-									<div class="prior-row">
-										<span
-											class="ui-badge"
-											data-tone={statusTone(
-												prior.result.toLowerCase().includes("approved")
-													? "approved"
-													: "changes",
-											)}
-											>{decisionLabel(prior.result)}</span
-										>
-										<p>{prior.feedback}</p>
-										<small>
-											{#if priorHref}
-												<a data-sveltekit-reload href={priorHref}>{prior.reviewer}</a>
-											{:else}
-												{prior.reviewer ?? "Reviewer"}
-											{/if}
-											· {formatDateTime(prior.at)}
-										</small>
-									</div>
-								{/each}
-							</div>
-						{/if}
+						<PriorReviews reviews={bundle.priorReviews} />
 
-						<div class="section">
-							<h3>Timeline</h3>
-							{#each visibleEvents as event (event.id)}
-								<div class="event">
-									<span class="dot"></span>
-									<div>
-										<strong>{humanEvent(event.kind)}</strong>
-										{#if event.actorEmail}
-											<span> · {event.actorEmail}</span>
-										{/if}
-										<small>{formatDateTime(event.createdAt)}</small>
-									</div>
-								</div>
-							{/each}
-							{#if bundle.events.length > 6}
-								<button
-									class="link more-events"
-									onclick={(): void => {
-										showAllEvents = !showAllEvents
-									}}
-									type="button"
-								>
-									{showAllEvents ? "Show fewer events" : `Show all ${bundle.events.length} events`}
-								</button>
-							{/if}
-						</div>
+						<ReviewTimeline events={bundle.events} />
 
 						<div class="section">
 							<h3>Internal notes</h3>
