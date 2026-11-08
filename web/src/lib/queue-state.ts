@@ -60,7 +60,7 @@ export function createQueueState(programSlug: string, store: BundleCacheStore): 
 		read() {
 			try {
 				const raw = store.getItem(key)
-				if (!raw) return
+				if (typeof raw !== "string" || raw === "") return
 
 				const parsed: unknown = JSON.parse(raw)
 

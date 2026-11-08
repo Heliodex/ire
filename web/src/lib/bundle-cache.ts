@@ -63,7 +63,7 @@ function isCachedBundle(value: unknown, version: number, target: string): value 
 function readIndex(store: BundleCacheStore, indexKey: string): BundleCacheIndexEntry[] {
 	try {
 		const raw = store.getItem(indexKey)
-		if (!raw) return []
+		if (typeof raw !== "string" || raw === "") return []
 
 		const parsed: unknown = JSON.parse(raw)
 		if (!Array.isArray(parsed)) return []
@@ -83,7 +83,7 @@ export function createBundleCache(programSlug: string, owner: string, store: Bun
 		read(target) {
 			try {
 				const raw = store.getItem(keyFor(programSlug, owner, target))
-				if (!raw) return
+				if (typeof raw !== "string" || raw === "") return
 
 				const cached: unknown = JSON.parse(raw)
 				if (!isCachedBundle(cached, cacheVersion, target)) return
@@ -138,9 +138,12 @@ export async function prefetchNextBundle(
 	try {
 		const queue = await fetchQueue("all", stage, 0, 5)
 		const next = queue.items.find(
-			item => item.id !== currentID && (!item.claimedBy || item.claimedBy === owner) && !cache.read(item.id),
+			item =>
+				item.id !== currentID
+				&& (item.claimedBy === undefined || item.claimedBy === "" || item.claimedBy === owner)
+				&& cache.read(item.id) === undefined,
 		)
-		if (!next) return
+		if (next === undefined) return
 
 		cache.write(next.id, await fetchBundle(next.id))
 	} catch {

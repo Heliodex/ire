@@ -49,7 +49,7 @@ function isOverview(value: unknown): value is Overview {
 function readStored(store: OverviewCacheStore, key: string): CachedOverview | undefined {
 	try {
 		const raw = store.getItem(key)
-		if (!raw) return undefined
+		if (typeof raw !== "string" || raw === "") return undefined
 
 		const parsed: unknown = JSON.parse(raw)
 		if (typeof parsed !== "object" || parsed === null) return undefined

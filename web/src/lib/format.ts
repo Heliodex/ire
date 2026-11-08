@@ -18,16 +18,16 @@ export function formatDuration(seconds: number): string {
 }
 
 // formatDate renders an ISO timestamp in the reader's locale.
-export function formatDate(value: string | null | undefined): string {
-	if (!value) return "–"
+export function formatDate(value: string | undefined): string {
+	if (value === undefined || value === "") return "–"
 	const date = new Date(value)
 	if (Number.isNaN(date.getTime())) return value
 	return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date)
 }
 
 // formatDateTime renders an ISO timestamp with time.
-export function formatDateTime(value: string | null | undefined): string {
-	if (!value) return "–"
+export function formatDateTime(value: string | undefined): string {
+	if (value === undefined || value === "") return "–"
 	const date = new Date(value)
 	if (Number.isNaN(date.getTime())) return value
 	return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date)

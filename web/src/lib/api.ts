@@ -105,9 +105,10 @@ export interface AuditFilters {
 // fetchAudit lists audit entries, optionally narrowed by action, age or a search term.
 export async function fetchAudit(offset = 0, limit = 50, filters: AuditFilters = {}): Promise<Audit> {
 	const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
-	if (filters.action) params.set("action", filters.action)
-	if (filters.days) params.set("days", String(filters.days))
-	if (filters.q?.trim()) params.set("q", filters.q.trim())
+	if (filters.action !== undefined && filters.action !== "") params.set("action", filters.action)
+	if (filters.days !== undefined) params.set("days", String(filters.days))
+	const query = filters.q?.trim()
+	if (query !== undefined && query !== "") params.set("q", query)
 
 	const response = await fetch(`/api/v1/programs/${program}/audit?${params}`)
 	return parseJSON(response, auditResponseSchema)

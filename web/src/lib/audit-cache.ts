@@ -88,7 +88,7 @@ function emptyCache(): StoredAuditCache {
 function readCache(store: AuditCacheStore, key: string): StoredAuditCache {
 	try {
 		const raw = store.getItem(key)
-		if (!raw) return emptyCache()
+		if (typeof raw !== "string" || raw === "") return emptyCache()
 
 		const parsed: unknown = JSON.parse(raw)
 		if (!isObject(parsed)) return emptyCache()
@@ -139,14 +139,14 @@ export function createAuditCache(programSlug: string, store: AuditCacheStore): A
 		// readFilters restores the last selection, ignoring stale or malformed copies.
 		readFilters() {
 			const { filters } = readCache(store, key)
-			if (!filters || Date.now() - filters.savedAt > maxFilterAge) return
+			if (filters === undefined || Date.now() - filters.savedAt > maxFilterAge) return
 
 			return { action: filters.action, days: filters.days, query: filters.query }
 		},
 		// readView returns the first page cached for these filters, if it is still fresh.
 		readView(filters) {
 			const view = readCache(store, key).views[auditFilterKey(filters)]
-			if (!view || !isFreshAuditView(view)) return
+			if (view === undefined || !isFreshAuditView(view)) return
 
 			return view
 		},

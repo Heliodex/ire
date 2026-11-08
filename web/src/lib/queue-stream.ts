@@ -78,7 +78,7 @@ export async function streamQueue(
 ): Promise<void> {
 	const params = new URLSearchParams({ filter, limit: String(limit), stage: String(stage), stream: "1" })
 
-	if (sortKey) {
+	if (typeof sortKey === "string" && sortKey !== "") {
 		params.set("dir", sortDir === -1 ? "desc" : "asc")
 		params.set("sort", sortKey)
 	}

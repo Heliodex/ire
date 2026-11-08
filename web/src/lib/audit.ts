@@ -53,7 +53,7 @@ function sameValue(left: unknown, right: unknown): boolean {
 }
 
 function targetTypeLabel(type: string | undefined): string {
-	if (!type) return "Target"
+	if (type === undefined || type === "") return "Target"
 
 	switch (type) {
 		case "submission":
@@ -83,7 +83,7 @@ function auditValue(key: string, value: unknown): string {
 
 // parseAuditJSON reads a recorded before or after snapshot, ignoring anything that is not an object.
 export function parseAuditJSON(value: string | undefined): { [_: string]: unknown } {
-	if (!value) return {}
+	if (value === undefined || value === "") return {}
 	try {
 		const parsed = JSON.parse(value) as unknown
 		return isJSONObject(parsed) ? parsed : {}
@@ -190,7 +190,8 @@ export function auditChanges(entry: AuditEntry): AuditChange[] {
 
 // auditReason reads the event reason from its own column or from either recorded snapshot.
 export function auditReason(entry: AuditEntry): string {
-	if (entry.reason?.trim()) return entry.reason.trim()
+	const reason = entry.reason?.trim()
+	if (reason !== undefined && reason !== "") return reason
 
 	const after = parseAuditJSON(entry.afterJson)
 	const before = parseAuditJSON(entry.beforeJson)
@@ -206,18 +207,21 @@ export function auditDetailRows(entry: AuditEntry): AuditDetail[] {
 	const look = auditLook(entry)
 	const rows: AuditDetail[] = [{ label: "Action", value: `${look.label} (${entry.action})` }]
 
-	if (entry.actorEmail)
+	if (entry.actorEmail !== undefined && entry.actorEmail !== "")
 		rows.push({
 			label: "Actor",
-			value: entry.actorName ? `${entry.actorName} (${entry.actorEmail})` : entry.actorEmail,
+			value:
+				entry.actorName !== undefined && entry.actorName !== ""
+					? `${entry.actorName} (${entry.actorEmail})`
+					: entry.actorEmail,
 		})
 
 	const targetLabel = entry.targetLabel?.trim() ?? ""
 	const targetID = entry.targetId?.trim() ?? ""
-	const targetName = targetLabel || targetID
+	const targetName = targetLabel !== "" ? targetLabel : targetID
 
-	if (targetName) rows.push({ label: "Target", value: `${targetTypeLabel(entry.targetType)} · ${targetName}` })
-	if (targetLabel && targetID) rows.push({ label: "Target ID", mono: true, value: targetID })
+	if (targetName !== "") rows.push({ label: "Target", value: `${targetTypeLabel(entry.targetType)} · ${targetName}` })
+	if (targetLabel !== "" && targetID !== "") rows.push({ label: "Target ID", mono: true, value: targetID })
 
 	const version = after.version ?? before.version
 	if (typeof version === "number") rows.push({ label: "Version", value: `v${version}` })
@@ -240,8 +244,13 @@ export function auditTargetLabel(entry: AuditEntry): string {
 
 // auditTargetHref links a ship or member target to its page.
 export function auditTargetHref(entry: AuditEntry): string | undefined {
-	if (entry.targetType === "submission" && entry.targetId) return `/review/${encodeURIComponent(entry.targetId)}`
-	if ((entry.action.startsWith("member.") || entry.action.startsWith("user.")) && entry.targetId)
+	if (entry.targetType === "submission" && entry.targetId !== undefined && entry.targetId !== "")
+		return `/review/${encodeURIComponent(entry.targetId)}`
+	if (
+		(entry.action.startsWith("member.") || entry.action.startsWith("user."))
+		&& entry.targetId !== undefined
+		&& entry.targetId !== ""
+	)
 		return reviewerHref(entry.targetId)
 
 	return undefined

@@ -8,7 +8,7 @@ export function claimError(err: unknown): string {
 
 	const until = /until (\S+)$/.exec(err.message)?.[1]
 
-	return until
+	return until !== undefined
 		? `Another reviewer has already claimed this ship until ${formatDateTime(until)}.`
 		: "Another reviewer has already claimed this ship."
 }

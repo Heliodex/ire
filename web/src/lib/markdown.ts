@@ -39,9 +39,9 @@ function safeImageURL(value: string): string | undefined {
 function inlineImage(line: string): MarkdownInlineImage | undefined {
 	const match = /^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/.exec(line.trim())
 	if (!match) return undefined
-	const url = safeImageURL(match[2])
-	if (!url) return undefined
-	return { alt: match[1], url }
+	const url = safeImageURL(match[2] ?? "")
+	if (url === undefined) return undefined
+	return { alt: match[1] ?? "", url }
 }
 
 // inline parses safe inline content: image syntax becomes image nodes, links become their text, and HTML/formatting markers are stripped.
@@ -52,18 +52,18 @@ function inline(value: string): MarkdownInline[] {
 	for (const match of value.matchAll(pattern)) {
 		const index = match.index ?? 0
 		const text = cleanText(value.slice(last, index))
-		if (text) nodes.push(text)
+		if (text !== "") nodes.push(text)
 		if (match[0].startsWith("![")) {
-			const url = safeImageURL(match[2])
-			if (url) nodes.push({ alt: match[1], url })
+			const url = safeImageURL(match[2] ?? "")
+			if (url !== undefined) nodes.push({ alt: match[1] ?? "", url })
 		} else if (match[3] !== undefined) {
 			const linkText = cleanText(match[3])
-			if (linkText) nodes.push(linkText)
+			if (linkText !== "") nodes.push(linkText)
 		}
 		last = index + match[0].length
 	}
 	const tail = cleanText(value.slice(last))
-	if (tail) nodes.push(tail)
+	if (tail !== "") nodes.push(tail)
 	if (nodes.length === 0) {
 		const cleaned = cleanText(value)
 		return cleaned ? [cleaned] : []
