@@ -1,5 +1,5 @@
-import type { Queue } from "./api"
-import type { BundleCacheStore } from "./bundle-cache"
+import { type Queue } from "./api"
+import { type BundleCacheStore } from "./bundle-cache"
 
 export type QueueFilter = "all" | "fast" | "attention" | "mine"
 

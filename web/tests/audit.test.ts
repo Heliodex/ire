@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { AuditEntry } from "../src/lib/api"
+import { type AuditEntry } from "../src/lib/api"
 import {
 	auditChanges,
 	auditDetailRows,

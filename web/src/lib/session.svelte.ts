@@ -1,4 +1,4 @@
-import type { Me } from "./api"
+import { type Me } from "./api"
 
 // session is the shared sign-in state the layout and pages read. It starts empty on every load; onMount refreshes it from the API.
 let me = $state<Me | undefined>(undefined)

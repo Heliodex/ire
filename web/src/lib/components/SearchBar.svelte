@@ -1,8 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { goto } from "$app/navigation"
-import { searchProjects } from '../api';
-import type { SearchResult } from '../api';
+import { type SearchResult, searchProjects } from "../api"
 import { formatDuration, humanStatus, statusTone, timeAgo } from "../format"
 import { rememberReviewPreview } from "../review-preview"
 import { createSearchCache } from "../search-cache"

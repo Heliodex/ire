@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test"
-import type { AuditEntry } from "../src/lib/api"
-import { auditFilterKey, createAuditCache, isFreshAuditView } from '../src/lib/audit-cache';
-import type { AuditCacheStore, AuditFilters } from '../src/lib/audit-cache';
+import { type AuditEntry } from "../src/lib/api"
+import {
+	type AuditCacheStore,
+	type AuditFilters,
+	auditFilterKey,
+	createAuditCache,
+	isFreshAuditView,
+} from "../src/lib/audit-cache"
 
 const cacheKey = "review:audit:half-life"
 

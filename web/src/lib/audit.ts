@@ -1,7 +1,6 @@
-import type { AuditEntry } from "./api"
-import type { IconName } from "./components/icon-paths"
-import { decisionLabel, formatDateTime, formatHours, humanEvent, humanStatus } from './format';
-import type { Tone } from './format';
+import { type AuditEntry } from "./api"
+import { type IconName } from "./components/icon-paths"
+import { decisionLabel, formatDateTime, formatHours, humanEvent, humanStatus, type Tone } from "./format"
 import { reviewerHref } from "./reviewer"
 
 export type AuditTone = Tone | "purple"

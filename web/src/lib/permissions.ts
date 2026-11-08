@@ -1,4 +1,4 @@
-import type { Me } from "./api"
+import { type Me } from "./api"
 
 // permissions mirrors the backend catalog in app.go: roles grant these
 // strings, and the locked admin role holds the wildcard for all of them.

@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import type { Queue } from "../src/lib/api"
-import type { BundleCacheStore } from "../src/lib/bundle-cache"
-import { createQueueState, isQueueFilter } from '../src/lib/queue-state';
-import type { SavedQueueState } from '../src/lib/queue-state';
+import { type Queue } from "../src/lib/api"
+import { type BundleCacheStore } from "../src/lib/bundle-cache"
+import { createQueueState, isQueueFilter, type SavedQueueState } from "../src/lib/queue-state"
 
 // memoryStore backs the state without a browser.
 function memoryStore(): BundleCacheStore {

@@ -1,8 +1,7 @@
 <script lang="ts">
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
-import { fetchReviewerProfile } from '../../lib/api';
-import type { ReviewerProfile } from '../../lib/api';
+import { fetchReviewerProfile, type ReviewerProfile } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import Avatar from "../../lib/components/Avatar.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"

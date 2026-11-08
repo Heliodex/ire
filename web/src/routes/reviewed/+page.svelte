@@ -1,8 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte"
 import { goto } from "$app/navigation"
-import { fetchReviewed } from '../../lib/api';
-import type { ReviewedItem } from '../../lib/api';
+import { fetchReviewed, type ReviewedItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import { decisionLabel, formatDate, formatDateTime, formatHours, statusTone } from "../../lib/format"

@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import type { Bundle, QueueItem } from "../src/lib/api"
-import { createBundleCache, prefetchNextBundle } from '../src/lib/bundle-cache';
-import type { BundleCacheStore } from '../src/lib/bundle-cache';
+import { type Bundle, type QueueItem } from "../src/lib/api"
+import { type BundleCacheStore, createBundleCache, prefetchNextBundle } from "../src/lib/bundle-cache"
 
 const realFetch = globalThis.fetch
 

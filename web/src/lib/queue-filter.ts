@@ -1,4 +1,4 @@
-import type { QueueItem } from "./api"
+import { type QueueItem } from "./api"
 import { humanStatus } from "./format"
 
 export type CompareOp = "=" | ">" | ">=" | "<" | "<=" | "!="

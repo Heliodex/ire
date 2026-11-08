@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Bundle } from "../../api"
+import { type Bundle } from "../../api"
 import { formatDateTime, humanEvent } from "../../format"
 
 interface Props {

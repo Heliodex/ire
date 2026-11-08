@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test"
-import type { QueueItem } from "../src/lib/api"
+import { type QueueItem } from "../src/lib/api"
 import {
 	hasStructuredQuery,
 	matchesQueueQuery,

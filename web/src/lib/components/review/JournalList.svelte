@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Journal } from "../../api"
+import { type Journal } from "../../api"
 import { formatDateTime, formatHours } from "../../format"
 import JournalTime from "./JournalTime.svelte"
 import Markdown from "./Markdown.svelte"

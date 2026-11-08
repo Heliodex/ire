@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { Review } from "../../api"
+import { type Review } from "../../api"
 import { formatDateTime, formatHours } from "../../format"
 import { reviewerHref } from "../../reviewer"
 

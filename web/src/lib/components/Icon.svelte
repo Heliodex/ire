@@ -1,6 +1,5 @@
 <script lang="ts">
-import { iconPaths } from './icon-paths';
-import type { IconName } from './icon-paths';
+import { type IconName, iconPaths } from "./icon-paths"
 
 interface Props {
 	class?: string

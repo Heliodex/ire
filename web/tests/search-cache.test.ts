@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { SearchResult } from "../src/lib/api"
+import { type SearchResult } from "../src/lib/api"
 import { createSearchCache } from "../src/lib/search-cache"
 
 function result(id: string, overrides: Partial<SearchResult> = {}): SearchResult {

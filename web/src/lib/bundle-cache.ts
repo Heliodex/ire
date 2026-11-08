@@ -1,5 +1,4 @@
-import { fetchBundle, fetchQueue } from './api';
-import type { Bundle } from './api';
+import { type Bundle, fetchBundle, fetchQueue } from "./api"
 
 export interface CachedBundle {
 	bundle: Bundle

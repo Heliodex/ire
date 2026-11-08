@@ -1,6 +1,6 @@
 <script lang="ts">
 import { SvelteSet } from "svelte/reactivity"
-import type { Check } from "../../api"
+import { type Check } from "../../api"
 import { checkGroupLabel, groupChecks, isBlocking, isWarning } from "../../checks"
 import { statusTone } from "../../format"
 

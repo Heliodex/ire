@@ -1,8 +1,7 @@
 <script lang="ts">
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
-import { fetchMakerProfile } from '../../lib/api';
-import type { MakerProfile, MakerSubmission } from '../../lib/api';
+import { fetchMakerProfile, type MakerProfile, type MakerSubmission } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import Avatar from "../../lib/components/Avatar.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"

@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test"
 import { parse } from "valibot"
-import type { Overview } from "../src/lib/api"
+import { type Overview } from "../src/lib/api"
 import { overviewResponseSchema } from "../src/lib/contract"
-import { createOverviewCache, isFreshOverview } from '../src/lib/overview-cache';
-import type { OverviewCacheStore } from '../src/lib/overview-cache';
+import { createOverviewCache, isFreshOverview, type OverviewCacheStore } from "../src/lib/overview-cache"
 
 const cacheKey = "review:overview:half-life"
 

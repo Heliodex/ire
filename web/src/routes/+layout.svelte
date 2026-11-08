@@ -9,7 +9,7 @@ import SearchBar from "../lib/components/SearchBar.svelte"
 import { hasPermission, permissionAuditRead, permissionRoleManage, permissionRosterManage } from "../lib/permissions"
 import { session } from "../lib/session.svelte.js"
 import { theme } from "../lib/theme.svelte.js"
-import type { LayoutProps } from "./$types"
+import { type LayoutProps } from "./$types"
 import "../app.css"
 
 let { children }: LayoutProps = $props()

@@ -4,12 +4,18 @@ import { SvelteMap, SvelteSet } from "svelte/reactivity"
 import { browser } from "$app/env"
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
-import { claimShip, fetchBundle, fetchMe, fetchQueue, program } from '../../lib/api';
-import type { Queue, QueueItem } from '../../lib/api';
+import { claimShip, fetchBundle, fetchMe, fetchQueue, program, type Queue, type QueueItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
 import { createBundleCache } from "../../lib/bundle-cache"
-import { checkGroupLabel, checkOverflow, checkStatusLabel, checkTone, groupChecks, visibleChecks } from '../../lib/checks';
-import type { CheckDotMode } from '../../lib/checks';
+import {
+	type CheckDotMode,
+	checkGroupLabel,
+	checkOverflow,
+	checkStatusLabel,
+	checkTone,
+	groupChecks,
+	visibleChecks,
+} from "../../lib/checks"
 import Avatar from "../../lib/components/Avatar.svelte"
 import CheckIcon from "../../lib/components/CheckIcon.svelte"
 import LoadingState from "../../lib/components/LoadingState.svelte"
@@ -24,8 +30,13 @@ import {
 	setQueueFilterToken,
 } from "../../lib/queue-filter"
 import { ageTone, claimError } from "../../lib/queue-page"
-import { createQueueState } from '../../lib/queue-state';
-import type { QueueFilter as Filter, QueueState, SavedQueueState, QueueSortKey as SortKey } from '../../lib/queue-state';
+import {
+	createQueueState,
+	type QueueFilter as Filter,
+	type QueueState,
+	type SavedQueueState,
+	type QueueSortKey as SortKey,
+} from "../../lib/queue-state"
 import { streamQueue } from "../../lib/queue-stream"
 import { rememberReviewPreview } from "../../lib/review-preview"
 import { makerHref } from "../../lib/reviewer"

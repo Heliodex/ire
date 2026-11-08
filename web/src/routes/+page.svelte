@@ -2,8 +2,7 @@
 import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
-import { fetchAuthConfig, login } from '../lib/api';
-import type { AuthConfig } from '../lib/api';
+import { type AuthConfig, fetchAuthConfig, login } from "../lib/api"
 import { ApiError } from "../lib/api-error"
 import { session } from "../lib/session.svelte.js"
 

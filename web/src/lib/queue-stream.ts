@@ -1,5 +1,5 @@
 import { array, boolean, literal, number, object, safeParse, string, variant } from "valibot"
-import type { Queue } from "./api"
+import { type Queue } from "./api"
 import { ApiError } from "./api-error"
 import { program } from "./api-runtime"
 import { errorResponseSchema, queueCountsSchema, queueItemSchema } from "./contract"
