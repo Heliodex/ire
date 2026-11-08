@@ -266,12 +266,22 @@ kbd {
 	border-color: color-mix(in srgb, var(--text-3) 55%, var(--border-2));
 }
 
+.ui-button.ghost:active:not(:disabled) {
+	background: var(--surface-3);
+	border-color: var(--border-2);
+}
+
 .dark .ui-button.ghost {
 	background: var(--input);
 }
 
 .dark .ui-button.ghost:hover:not(:disabled) {
 	background: var(--surface-2);
+	border-color: var(--border-2);
+}
+
+.dark .ui-button.ghost:active:not(:disabled) {
+	background: var(--surface-3);
 	border-color: var(--border-2);
 }
 
@@ -286,6 +296,11 @@ kbd {
 	background: var(--surface-2);
 }
 
+.ui-button.quiet:active:not(:disabled) {
+	color: var(--text);
+	background: var(--surface-3);
+}
+
 .ui-button.ok {
 	color: var(--on-ok);
 	background: var(--accent-green);
@@ -297,6 +312,10 @@ kbd {
 	filter: brightness(1.05);
 }
 
+.ui-button.ok:active:not(:disabled) {
+	filter: brightness(0.95);
+}
+
 .ui-button.danger {
 	color: var(--accent-red);
 	background: var(--surface);
@@ -305,6 +324,10 @@ kbd {
 
 .ui-button.danger:hover:not(:disabled) {
 	background: var(--primary-soft);
+}
+
+.ui-button.danger:active:not(:disabled) {
+	background: color-mix(in srgb, var(--accent-red) 18%, var(--surface));
 }
 
 .ui-button.soft {
@@ -319,6 +342,10 @@ kbd {
 	filter: brightness(0.98);
 }
 
+.ui-button.soft:active:not(:disabled) {
+	filter: brightness(0.94);
+}
+
 .ui-button.changes {
 	color: var(--status-changes);
 	background: color-mix(in srgb, var(--status-changes) 12%, var(--surface));
@@ -328,6 +355,10 @@ kbd {
 
 .ui-button.changes:hover:not(:disabled) {
 	background: color-mix(in srgb, var(--status-changes) 18%, var(--surface));
+}
+
+.ui-button.changes:active:not(:disabled) {
+	background: color-mix(in srgb, var(--status-changes) 24%, var(--surface));
 }
 
 .ui-button.sm {
@@ -356,6 +387,11 @@ kbd {
 .ui-icon-button:hover {
 	color: var(--text);
 	background: var(--surface-2);
+}
+
+.ui-icon-button:active {
+	color: var(--text);
+	background: var(--surface-3);
 }
 
 .ui-badge {
@@ -466,6 +502,11 @@ textarea.ui-input {
 	color: var(--text);
 }
 
+.ui-tab:active {
+	color: var(--text);
+	background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
 .ui-tab.active {
 	color: var(--text);
 	border-bottom-color: var(--primary);
@@ -496,6 +537,11 @@ textarea.ui-input {
 
 .ui-seg button:hover {
 	color: var(--text);
+}
+
+.ui-seg button:active {
+	color: var(--text);
+	background: color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .ui-seg button.active {
