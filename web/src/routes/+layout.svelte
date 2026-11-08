@@ -516,6 +516,12 @@ nav a:hover {
 	color: var(--text);
 }
 
+nav a:active {
+	color: var(--text);
+	background: color-mix(in srgb, var(--text) 6%, transparent);
+	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
 nav a.active {
 	color: var(--text);
 	border-bottom-color: var(--primary);
@@ -531,6 +537,10 @@ nav a.active {
 
 .menu-panel a:hover {
 	background: var(--surface-2);
+}
+
+.menu-panel a:active {
+	background: var(--surface-3);
 }
 
 .menu-panel a.active {
