@@ -144,9 +144,8 @@ const decisionRequest = {
 }
 
 describe("generated client", () => {
-	test("every endpoint returns its contract shape", async () => {
-		const seen: SeenRequest[] = []
-		stubFetch(seen)
+	test("auth, queue and review endpoints return their contract shapes", async () => {
+		stubFetch([])
 
 		expect(await fetchAuthConfig()).toEqual(fakeAuthConfig())
 		const me = await fetchMe()
@@ -154,6 +153,7 @@ describe("generated client", () => {
 		const loginResult = await login("a@b.c")
 		expect(loginResult.user.email).toBe("a@b.c")
 		await logout()
+
 		const queue = await fetchQueue()
 		expect(queue.items).toHaveLength(1)
 		const filteredQueue = await fetchQueue("ready", 1, 10, 25, "updated", -1)
@@ -161,6 +161,7 @@ describe("generated client", () => {
 		const reviewed = await fetchReviewed()
 		expect(reviewed.items).toHaveLength(1)
 		expect(await searchProjects("star")).toHaveLength(1)
+
 		const bundle = await fetchBundle("sub_1")
 		expect(bundle.submission.id).toBe("sub_1")
 		const evidence = await refreshRepositoryEvidence("sub_1")
@@ -169,6 +170,11 @@ describe("generated client", () => {
 		expect(claim.reviewerEmail).toBe("a@b.c")
 		await heartbeat("sub_1")
 		await releaseShip("sub_1")
+	})
+
+	test("review action and admin endpoints return their contract shapes", async () => {
+		stubFetch([])
+
 		expect(await reviewJournal("sub_1", "e1", { approvedSeconds: 60, reviewerNote: "", version: 1 })).toMatchObject(
 			{ hoursApprovedSeconds: 60 },
 		)
@@ -181,6 +187,7 @@ describe("generated client", () => {
 		expect(decision.id).toBe("sub_1")
 		const rerun = await rerunChecks("sub_1")
 		expect(rerun.status).toBe("queued")
+
 		expect(await fetchMembers()).toEqual([])
 		const invited = await inviteMember("a@b.c", "reviewer")
 		expect(invited.role).toBe("reviewer")
