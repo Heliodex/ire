@@ -13,7 +13,7 @@ export interface CachedAuditView {
 }
 
 export interface AuditCacheStore {
-	getItem(key: string): string | null
+	getItem(key: string): string | null | undefined
 	removeItem(key: string): void
 	setItem(key: string, value: string): void
 }

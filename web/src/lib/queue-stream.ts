@@ -71,7 +71,7 @@ export async function streamQueue(
 	filter: string,
 	stage: number,
 	limit: number,
-	sortKey: string | null,
+	sortKey: string | null | undefined,
 	sortDir: 1 | -1,
 	handlers: QueueStreamHandlers,
 	signal: AbortSignal,

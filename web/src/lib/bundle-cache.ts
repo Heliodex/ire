@@ -12,7 +12,7 @@ export interface BundleCacheIndexEntry {
 }
 
 export interface BundleCacheStore {
-	getItem(key: string): string | null
+	getItem(key: string): string | null | undefined
 	removeItem(key: string): void
 	setItem(key: string, value: string): void
 }
