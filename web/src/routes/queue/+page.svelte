@@ -2044,6 +2044,10 @@ h1 {
 	background: var(--surface-2);
 }
 
+.row:active:not(:disabled) {
+	background: var(--surface-3);
+}
+
 .row.selected {
 	background: var(--surface-3);
 }
@@ -2105,6 +2109,12 @@ a.theme:hover,
 	text-decoration: underline;
 }
 
+a.theme:active,
+.inline-theme-link:active {
+	color: var(--text);
+	opacity: 0.72;
+}
+
 a.version {
 	text-decoration: none;
 }
@@ -2112,6 +2122,10 @@ a.version {
 a.version:hover {
 	color: var(--text);
 	text-decoration: underline;
+}
+
+a.version:active {
+	opacity: 0.72;
 }
 
 a.hours,
@@ -2123,6 +2137,11 @@ a.hours:hover,
 a.age:hover {
 	color: var(--text);
 	text-decoration: underline;
+}
+
+a.hours:active,
+a.age:active {
+	opacity: 0.72;
 }
 
 .facts {
@@ -2161,6 +2180,10 @@ a.maker-name {
 
 a.maker-name:hover {
 	text-decoration: underline;
+}
+
+a.maker-name:active {
+	opacity: 0.72;
 }
 
 .inline-maker {
@@ -2213,6 +2236,10 @@ a.maker-name:hover {
 
 .checks:hover {
 	background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.checks:has(.checks-open:active) {
+	background: color-mix(in srgb, var(--text) 14%, transparent);
 }
 
 .counts {
@@ -2268,8 +2295,17 @@ a.status {
 	cursor: pointer;
 }
 
+a.status:active {
+	filter: brightness(0.88);
+}
+
 a.dot {
 	pointer-events: auto;
+}
+
+a.dot:active {
+	filter: brightness(0.75);
+	transform: scale(0.9);
 }
 
 a.checks-open:focus-visible,
