@@ -344,16 +344,18 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 										aria-label={`Active for ${member.email}`}
 										checked={member.active}
 										class="ui-toggle"
-										disabled={saving === member.id || isLastAdmin(member)}
+										disabled={saving === member.id || isLastAdmin(member) || member.id === session.me?.id}
 										onchange={(event): void => {
 											const input = event.currentTarget as HTMLInputElement
 											void save(member, member.role, input.checked).then(saved => {
 												if (!saved) input.checked = member.active
 											})
 										}}
-										title={isLastAdmin(member)
-											? "A programme needs at least one active admin"
-											: undefined}
+										title={member.id === session.me?.id
+											? "You cannot deactivate your own account"
+											: isLastAdmin(member)
+												? "A programme needs at least one active admin"
+												: undefined}
 										type="checkbox"
 									>
 								</td>

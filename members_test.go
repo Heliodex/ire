@@ -65,6 +65,13 @@ func TestMemberAdministration(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	selfDeactivate, _ := json.Marshal(contract.UpdateMember{Role: roleAdmin, Active: false})
+	if self := do(t, application, http.MethodPatch, testBase+"/members/"+adminID, selfDeactivate, admin, nil); self.Code != http.StatusConflict {
+		t.Fatalf("self deactivate = %d: %s", self.Code, self.Body.String())
+	} else if !strings.Contains(self.Body.String(), "cannot deactivate your own account") {
+		t.Fatalf("self deactivate body = %s", self.Body.String())
+	}
+
 	if last := do(t, application, http.MethodPatch, testBase+"/members/"+adminID, demote, admin, nil); last.Code != http.StatusConflict {
 		t.Fatalf("last admin = %d: %s", last.Code, last.Body.String())
 	}

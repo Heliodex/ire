@@ -129,6 +129,11 @@ func (a *ireApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if target == person.ID && !request.Active {
+		app.WriteError(w, http.StatusConflict, "you cannot deactivate your own account")
+		return
+	}
+
 	losingAdmin := current.Active && (role != current.Role || !request.Active)
 	if losingAdmin {
 		currentDef, _, err := a.roleDefinitionByName(r.Context(), person.ProgramID, current.Role)
