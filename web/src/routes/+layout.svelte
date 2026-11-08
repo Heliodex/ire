@@ -432,9 +432,15 @@ header {
 	gap: var(--space-2);
 	align-items: center;
 	min-width: 0;
+	padding: var(--space-1) var(--space-2);
 	color: inherit;
 	text-decoration: none;
 	border-radius: var(--radius-sm);
+	transition: background 0.15s;
+}
+
+.account:hover {
+	background: var(--surface-2);
 }
 
 .account-name {
@@ -447,6 +453,10 @@ header {
 
 .account:hover .account-name {
 	color: var(--text);
+}
+
+.account:active {
+	background: var(--surface-3);
 }
 
 .sections-row {
