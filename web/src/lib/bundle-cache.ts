@@ -18,7 +18,7 @@ export interface BundleCacheStore {
 }
 
 export interface BundleCache {
-	read(target: string): Bundle | null
+	read(target: string): Bundle | undefined
 	remove(target: string): void
 	write(target: string, next: Bundle): void
 }
@@ -83,16 +83,14 @@ export function createBundleCache(programSlug: string, owner: string, store: Bun
 		read(target) {
 			try {
 				const raw = store.getItem(keyFor(programSlug, owner, target))
-				if (!raw) return null
+				if (!raw) return
 
 				const cached: unknown = JSON.parse(raw)
-				if (!isCachedBundle(cached, cacheVersion, target)) return null
-				if (Date.now() - cached.savedAt > maxCacheAge) return null
+				if (!isCachedBundle(cached, cacheVersion, target)) return
+				if (Date.now() - cached.savedAt > maxCacheAge) return
 
 				return cached.bundle
-			} catch {
-				return null
-			}
+			} catch {}
 		},
 		// remove drops a copy the reviewer can no longer open.
 		remove(target) {

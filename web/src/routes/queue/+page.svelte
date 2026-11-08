@@ -68,7 +68,7 @@ const emptyQueue: Queue = {
 	hasMore: false,
 	items: [],
 }
-const savedQueue = browser ? queueState().read() : null
+const savedQueue = browser ? queueState().read() : undefined
 
 const filters: { key: Exclude<Filter, "attention">; label: string; short: string }[] = [
 	{ key: "all", label: "All open", short: "All" },
@@ -97,10 +97,10 @@ let stage = $state(savedQueue?.stage ?? 1)
 let loading = $state(savedQueue === null)
 // streaming is true while the first page arrives as NDJSON; load-more waits until the stream has finished.
 let streaming = $state(false)
-let streamController: AbortController | null = null
+let streamController: AbortController | null
 let opening = $state("")
 let hoveredId = $state("")
-let prefetchTimer: ReturnType<typeof setTimeout> | null = null
+let prefetchTimer: ReturnType<typeof setTimeout> | null
 const prefetched = new SvelteSet<string>()
 const prefetching = new SvelteSet<string>()
 let error = $state("")
@@ -116,11 +116,11 @@ let selected = $state(
 const urlSearch = searchFromURL()
 let search = $state(urlSearch !== "" ? urlSearch : (savedQueue?.search ?? ""))
 let sortKey = $state<SortKey | null>(
-	savedQueue && sortKeys.includes(savedQueue.sortKey as SortKey) ? (savedQueue.sortKey as SortKey) : null,
+	savedQueue && sortKeys.includes(savedQueue.sortKey as SortKey) ? (savedQueue.sortKey as SortKey) : undefined,
 )
 let sortDir = $state<1 | -1>(savedQueue?.sortDir === -1 ? -1 : 1)
-let filterTabs = $state<HTMLDivElement | null>(null)
-let listElement = $state<HTMLDivElement | null>(null)
+let filterTabs = $state<HTMLDivElement | null>(undefined)
+let listElement = $state<HTMLDivElement | null>(undefined)
 // measuredHeights remembers one rendered row height per ship, so heights survive filtering.
 let measuredHeights = new SvelteMap<string, number>()
 // listTop tracks the list's viewport offset so the render window follows scrolling.
@@ -128,12 +128,12 @@ let listTop = $state(0)
 let viewportHeight = $state(0)
 let scrollQueued = false
 let loadingMore = $state(false)
-let checkTip = $state<CheckTip | null>(null)
+let checkTip = $state<CheckTip | null>(undefined)
 let spaceHeld = $state(false)
 let restoring = savedQueue !== null
-let filterHelp = $state<HTMLDialogElement | null>(null)
-let filterInput = $state<HTMLInputElement | null>(null)
-let filterHighlight = $state<HTMLSpanElement | null>(null)
+let filterHelp = $state<HTMLDialogElement | null>(undefined)
+let filterInput = $state<HTMLInputElement | null>(undefined)
+let filterHighlight = $state<HTMLSpanElement | null>(undefined)
 
 interface CheckTip {
 	above: boolean
@@ -204,7 +204,7 @@ function toggleSort(key: SortKey): void {
 		sortDir = 1
 	} else if (sortDir === 1) sortDir = -1
 	else {
-		sortKey = null
+		sortKey = undefined
 		sortDir = 1
 	}
 
@@ -220,7 +220,7 @@ function sortLabel(key: SortKey, name: string): string {
 }
 
 // previewItem is the selected ship shown large while the spacebar is held.
-const previewItem = $derived(spaceHeld ? (visible[selected] ?? null) : null)
+const previewItem = $derived(spaceHeld ? (visible[selected] ?? undefined) : undefined)
 
 // isSelectable keeps ships claimed by another reviewer out of the keyboard cursor.
 function isSelectable(item: QueueItem): boolean {
@@ -246,7 +246,7 @@ function showCheckTip(event: MouseEvent, group: string, check: QueueItem["checks
 }
 
 function hideCheckTip(): void {
-	checkTip = null
+	checkTip = undefined
 }
 
 // saveQueueState keeps the loaded rows, filter and scroll position for reloads and returns from a review.
@@ -265,14 +265,14 @@ function saveQueueState(): void {
 	})
 }
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null
+let saveTimer: ReturnType<typeof setTimeout> | null
 
 // scheduleSave batches scroll and data updates into one storage write.
 function scheduleSave(): void {
 	if (restoring || saveTimer) return
 
 	saveTimer = setTimeout((): void => {
-		saveTimer = null
+		saveTimer = undefined
 		saveQueueState()
 	}, 200)
 }
@@ -397,14 +397,14 @@ onMount((): (() => void) => {
 	const timer = setInterval((): void => void load(filter, stage, true), 10000)
 
 	// Storage writes publish a compact event, so the queue refetches immediately instead of waiting for the poll.
-	let pending: ReturnType<typeof setTimeout> | null = null
-	let stream: EventSource | null = null
+	let pending: ReturnType<typeof setTimeout> | null
+	let stream: EventSource | null
 
 	function onStorageEvent(): void {
 		if (pending) return
 
 		pending = setTimeout((): void => {
-			pending = null
+			pending = undefined
 			void load(filter, stage, true)
 		}, 250)
 	}
@@ -474,7 +474,7 @@ onMount((): (() => void) => {
 		if (pending) clearTimeout(pending)
 		if (saveTimer) {
 			clearTimeout(saveTimer)
-			saveTimer = null
+			saveTimer = undefined
 		}
 		window.removeEventListener("keydown", onKeydown)
 		window.removeEventListener("keyup", onKeyup)
@@ -523,7 +523,7 @@ function cacheKey(targetStage: number, targetFilter: Filter): string {
 // cancelStream stops an in-flight first page when the view changes underneath it.
 function cancelStream(): void {
 	streamController?.abort()
-	streamController = null
+	streamController = undefined
 	streaming = false
 }
 
@@ -626,7 +626,7 @@ async function loadStreaming(): Promise<void> {
 		await load(target, targetStage, true)
 	} finally {
 		if (streamController === controller) {
-			streamController = null
+			streamController = undefined
 			streaming = false
 		}
 
@@ -656,13 +656,13 @@ async function prefetchBundle(id: string): Promise<void> {
 function schedulePrefetch(item: QueueItem | undefined): void {
 	if (prefetchTimer) {
 		clearTimeout(prefetchTimer)
-		prefetchTimer = null
+		prefetchTimer = undefined
 	}
 
 	if (!item || !isSelectable(item) || opening !== "") return
 
 	prefetchTimer = setTimeout((): void => {
-		prefetchTimer = null
+		prefetchTimer = undefined
 		void prefetchBundle(item.id)
 	}, 200)
 }
@@ -676,7 +676,7 @@ $effect((): (() => void) => {
 	return (): void => {
 		if (prefetchTimer) {
 			clearTimeout(prefetchTimer)
-			prefetchTimer = null
+			prefetchTimer = undefined
 		}
 	}
 })
@@ -912,7 +912,7 @@ async function moveSelection(step: number): Promise<void> {
 	revealSelected()
 }
 
-async function open(item: QueueItem, tab: string | null = null): Promise<void> {
+async function open(item: QueueItem, tab: string | null): Promise<void> {
 	opening = item.id
 	actionError = ""
 	try {

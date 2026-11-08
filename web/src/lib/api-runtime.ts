@@ -6,7 +6,7 @@ export const program = "half-life"
 
 // parseJSON parses a response through the contract schema, including API errors. Exported for the generated client.
 export async function parseJSON<T>(response: Response, schema: GenericSchema<T>): Promise<T> {
-	const data: unknown = await response.json().catch(() => null)
+	const data: unknown = await response.json().catch(() => undefined)
 
 	if (!response.ok) {
 		const error = safeParse(errorResponseSchema, data)
@@ -25,7 +25,7 @@ export async function requestVoid(path: string, init: RequestInit): Promise<void
 	const response = await fetch(path, init)
 	if (response.ok) return
 
-	const data: unknown = await response.json().catch(() => null)
+	const data: unknown = await response.json().catch(() => undefined)
 	const error = safeParse(errorResponseSchema, data)
 	if (error.success) throw new ApiError(error.output.error, error.output.code, error.output.field ?? "")
 	throw new ApiError(`The review API returned ${response.status}`, "http_error")

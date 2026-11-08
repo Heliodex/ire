@@ -23,7 +23,7 @@ let loading = $state(true)
 let loadingMore = $state(false)
 let hasMore = $state(false)
 let error = $state("")
-let filterTabs = $state<HTMLDivElement | null>(null)
+let filterTabs = $state<HTMLDivElement | null>(undefined)
 
 const visible = $derived(
 	items.filter(item => {

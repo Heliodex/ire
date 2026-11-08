@@ -49,11 +49,11 @@ let hasMore = $state(false)
 let error = $state("")
 let forbidden = $state(false)
 let request = 0
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+let searchTimer: ReturnType<typeof setTimeout> | null
 
 // auditCache persists the first page per filter and the last selection in tab storage. It is
 // built lazily so sessionStorage is only touched on the client.
-const auditCache = browser ? createAuditCache(program, sessionStorage) : null
+const auditCache = browser ? createAuditCache(program, sessionStorage) : undefined
 // views keeps the same first pages in memory, so switching back never waits for storage or the network.
 const views = new SvelteMap<string, CachedAuditView>()
 
@@ -79,7 +79,7 @@ function readCachedView(filters: AuditFilters): CachedAuditView | null {
 	if (stored && isFreshAuditView(stored)) return stored
 	views.delete(key)
 
-	const cached = auditCache?.readView(filters) ?? null
+	const cached = auditCache?.readView(filters) ?? undefined
 	if (cached) views.set(key, cached)
 
 	return cached
@@ -139,7 +139,7 @@ async function load(reset: boolean, background = false): Promise<void> {
 	const current = ++request
 	// Revalidating a cached view fetches at most the same first page, then merges the older
 	// cached rows so a background refresh never shrinks what the reader has already loaded.
-	const shown = background && reset ? entries : null
+	const shown = background && reset ? entries : undefined
 	const limit = shown ? Math.min(Math.max(shown.length, 50), 100) : 50
 
 	if (reset) loadingMore = false
@@ -220,7 +220,7 @@ function reload(): void {
 function onSearch(): void {
 	if (searchTimer) clearTimeout(searchTimer)
 	searchTimer = setTimeout((): void => {
-		searchTimer = null
+		searchTimer = undefined
 		reload()
 	}, 250)
 }

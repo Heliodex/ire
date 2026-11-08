@@ -42,37 +42,37 @@ afterEach(() => setSystemTime())
 describe("parseQueueQuery", () => {
 	test("reads the supported key filters", () => {
 		expect(parseQueueQuery("week:1")).toEqual({
-			age: null,
-			check: null,
-			checks: null,
-			status: null,
+			age: undefined,
+			check: undefined,
+			checks: undefined,
+			status: undefined,
 			text: [],
-			time: null,
-			type: null,
-			version: null,
+			time: undefined,
+			type: undefined,
+			version: undefined,
 			week: { op: "=", value: 1 },
 		})
 		expect(parseQueueQuery("type:cad")).toEqual({
-			age: null,
-			check: null,
-			checks: null,
-			status: null,
+			age: undefined,
+			check: undefined,
+			checks: undefined,
+			status: undefined,
 			text: [],
-			time: null,
+			time: undefined,
 			type: "cad",
-			version: null,
-			week: null,
+			version: undefined,
+			week: undefined,
 		})
 		expect(parseQueueQuery("status:ready")).toEqual({
-			age: null,
-			check: null,
-			checks: null,
+			age: undefined,
+			check: undefined,
+			checks: undefined,
 			status: "ready",
 			text: [],
-			time: null,
-			type: null,
-			version: null,
-			week: null,
+			time: undefined,
+			type: undefined,
+			version: undefined,
+			week: undefined,
 		})
 	})
 
@@ -103,41 +103,41 @@ describe("parseQueueQuery", () => {
 		})
 		expect(parseQueueQuery("checks:pass").checks).toEqual({ kind: "overallPass" })
 		expect(parseQueueQuery("check:repo.readme=warn").check).toEqual({ key: "repo.readme", status: "warn" })
-		expect(parseQueueQuery("check:repo.readme=nope").check).toBeNull()
+		expect(parseQueueQuery("check:repo.readme=nope").check).toBeUndefined()
 	})
 
 	test("rejects malformed duration order and repeated units", () => {
-		expect(parseQueueQuery("time:>10h30m10s5m").time).toBeNull()
-		expect(parseQueueQuery("age:>1h1h").age).toBeNull()
-		expect(parseQueueQuery("age:>30m10h").age).toBeNull()
+		expect(parseQueueQuery("time:>10h30m10s5m").time).toBeUndefined()
+		expect(parseQueueQuery("age:>1h1h").age).toBeUndefined()
+		expect(parseQueueQuery("age:>30m10h").age).toBeUndefined()
 		expect(parseQueueQuery("time:>1d2h30m10s").time).toEqual({ op: ">", value: 95_410_000 })
 	})
 
 	test("combines filters with plain terms and normalises casing", () => {
 		expect(parseQueueQuery("Week:1 Type:PCB status:Needs-Attention timer")).toEqual({
-			age: null,
-			check: null,
-			checks: null,
+			age: undefined,
+			check: undefined,
+			checks: undefined,
 			status: "needs_attention",
 			text: ["timer"],
-			time: null,
+			time: undefined,
 			type: "pcb",
-			version: null,
+			version: undefined,
 			week: { op: "=", value: 1 },
 		})
 	})
 
 	test("keeps unknown or incomplete prefixes as plain text", () => {
 		expect(parseQueueQuery("week: one checks:maybe status:unknown type: age:1y ver:>")).toEqual({
-			age: null,
-			check: null,
-			checks: null,
-			status: null,
+			age: undefined,
+			check: undefined,
+			checks: undefined,
+			status: undefined,
 			text: ["week:", "one", "checks:maybe", "status:unknown", "type:", "age:1y", "ver:>"],
-			time: null,
-			type: null,
-			version: null,
-			week: null,
+			time: undefined,
+			type: undefined,
+			version: undefined,
+			week: undefined,
 		})
 	})
 })

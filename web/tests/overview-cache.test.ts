@@ -10,7 +10,7 @@ function memoryStore(): OverviewCacheStore & { values: Map<string, string> } {
 	const values = new Map<string, string>()
 
 	return {
-		getItem: key => values.get(key) ?? null,
+		getItem: key => values.get(key) ?? undefined,
 		removeItem: key => {
 			values.delete(key)
 		},
@@ -53,7 +53,7 @@ describe("overview cache", () => {
 		const store = memoryStore()
 		const cache = createOverviewCache("half-life", store)
 
-		expect(cache.read()).toBeNull()
+		expect(cache.read()).toBeUndefined()
 
 		cache.write(overviewOf())
 		expect(cache.read()).toEqual({ overview: overviewOf(), savedAt: Date.now() })
@@ -68,12 +68,12 @@ describe("overview cache", () => {
 		cache.write(overviewOf())
 
 		setSystemTime(new Date("2026-02-01T12:02:00Z"))
-		expect(createOverviewCache("half-life", store).read()).toBeNull()
+		expect(createOverviewCache("half-life", store).read()).toBeUndefined()
 
 		store.setItem(cacheKey, "not json")
-		expect(createOverviewCache("half-life", store).read()).toBeNull()
+		expect(createOverviewCache("half-life", store).read()).toBeUndefined()
 
 		store.setItem(cacheKey, JSON.stringify({ overview: { needsReview: "three" }, savedAt: Date.now(), version: 1 }))
-		expect(createOverviewCache("half-life", store).read()).toBeNull()
+		expect(createOverviewCache("half-life", store).read()).toBeUndefined()
 	})
 })

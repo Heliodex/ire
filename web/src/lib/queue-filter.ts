@@ -20,15 +20,15 @@ export type ChecksFilter =
 	  }
 
 export interface QueueQuery {
-	age: NumericFilter | null
-	check: { key: string; status: string } | null
-	checks: ChecksFilter | null
-	status: string | null
+	age: NumericFilter | undefined
+	check: { key: string; status: string } | undefined
+	checks: ChecksFilter | undefined
+	status: string | undefined
 	text: string[]
-	time: NumericFilter | null
-	type: string | null
-	version: NumericFilter | null
-	week: NumericFilter | null
+	time: NumericFilter | undefined
+	type: string | undefined
+	version: NumericFilter | undefined
+	week: NumericFilter | undefined
 }
 
 const durationUnits: { [_: string]: { milliseconds: number; rank: number } } = {
@@ -95,9 +95,9 @@ function normalizeStatus(value: string): string {
 }
 
 // parseComparison reads an optional operator and a whole number, defaulting to equality.
-function parseComparison(value: string): NumericFilter | null {
+function parseComparison(value: string): NumericFilter | undefined {
 	const match = /^([<>]=?|=|!=)?(\d+)$/.exec(value)
-	if (!match) return null
+	if (!match) return undefined
 
 	return { op: parseOp(match[1], "="), value: Number(match[2]) }
 }
@@ -105,16 +105,16 @@ function parseComparison(value: string): NumericFilter | null {
 // parseDuration reads a comparison and one or more units, such as >1d, >=12h, 30m or 6h24m.
 // Units must descend in size with no repeats, so 10h30m10s5m is rejected.
 // A bare duration means "at least".
-function parseDuration(value: string, fallback: CompareOp): NumericFilter | null {
+function parseDuration(value: string, fallback: CompareOp): NumericFilter | undefined {
 	const match = /^([<>]=?|=|!=)?((?:\d+(?:\.\d+)?[smhdw])+)$/.exec(value.toLowerCase())
-	if (!match) return null
+	if (!match) return undefined
 
 	let total = 0
 	let previousRank = Number.POSITIVE_INFINITY
 
 	for (const part of (match[2] ?? "").matchAll(/(\d+(?:\.\d+)?)([smhdw])/g)) {
 		const unit = durationUnits[part[2]]
-		if (unit === undefined || unit.rank >= previousRank) return null
+		if (unit === undefined || unit.rank >= previousRank) return undefined
 
 		previousRank = unit.rank
 		total += Number(part[1]) * unit.milliseconds
@@ -124,7 +124,7 @@ function parseDuration(value: string, fallback: CompareOp): NumericFilter | null
 }
 
 // parseChecks reads presence filters like checks:warn or count comparisons like checks:warn<3 and checks:>=10.
-function parseChecks(value: string): ChecksFilter | null {
+function parseChecks(value: string): ChecksFilter | undefined {
 	const lower = value.toLowerCase()
 
 	if (isCheckCount(lower)) {
@@ -134,10 +134,10 @@ function parseChecks(value: string): ChecksFilter | null {
 	}
 
 	const match = /^(error|fail|pass|running|total|warn)?([<>]=?|=|!=)?(\d+)$/.exec(lower)
-	if (!match) return null
+	if (!match) return undefined
 
 	const [, count, op, digits] = match
-	if (count !== undefined && !isCheckCount(count)) return null
+	if (count !== undefined && !isCheckCount(count)) return undefined
 
 	return {
 		count: count ?? "total",
@@ -150,15 +150,15 @@ function parseChecks(value: string): ChecksFilter | null {
 // parseQueueQuery turns the filter box into structured filters and plain search terms.
 export function parseQueueQuery(input: string): QueueQuery {
 	const query: QueueQuery = {
-		age: null,
-		check: null,
-		checks: null,
-		status: null,
+		age: undefined,
+		check: undefined,
+		checks: undefined,
+		status: undefined,
 		text: [],
-		time: null,
-		type: null,
-		version: null,
-		week: null,
+		time: undefined,
+		type: undefined,
+		version: undefined,
+		week: undefined,
 	}
 
 	for (const token of input.trim().split(/\s+/)) {
@@ -297,32 +297,32 @@ export function setQueueFilterToken(input: string, key: string, value: string): 
 // hasStructuredQuery reports whether the reader used one of the key:value filters.
 export function hasStructuredQuery(query: QueueQuery): boolean {
 	return (
-		query.age !== null
-		|| query.check !== null
-		|| query.checks !== null
-		|| query.time !== null
-		|| query.status !== null
-		|| query.type !== null
-		|| query.version !== null
-		|| query.week !== null
+		query.age !== undefined
+		|| query.check !== undefined
+		|| query.checks !== undefined
+		|| query.time !== undefined
+		|| query.status !== undefined
+		|| query.type !== undefined
+		|| query.version !== undefined
+		|| query.week !== undefined
 	)
 }
 
 // matchesQueueQuery applies every structured filter and plain term to one ship.
 export function matchesQueueQuery(item: QueueItem, query: QueueQuery): boolean {
-	if (query.age !== null && !matchesAge(item, query.age)) return false
-	if (query.time !== null && !matchesNumber(item.hoursClaimedSeconds * 1000, query.time)) return false
-	if (query.version !== null && !matchesNumber(item.version, query.version)) return false
-	if (query.week !== null && (item.week === undefined || !matchesNumber(item.week, query.week))) return false
-	if (query.type !== null && (item.theme ?? "").trim().toLowerCase() !== query.type) return false
-	if (query.status !== null && normalizeStatus(item.status) !== query.status) return false
-	if (query.check !== null) {
+	if (query.age !== undefined && !matchesAge(item, query.age)) return false
+	if (query.time !== undefined && !matchesNumber(item.hoursClaimedSeconds * 1000, query.time)) return false
+	if (query.version !== undefined && !matchesNumber(item.version, query.version)) return false
+	if (query.week !== undefined && (item.week === undefined || !matchesNumber(item.week, query.week))) return false
+	if (query.type !== undefined && (item.theme ?? "").trim().toLowerCase() !== query.type) return false
+	if (query.status !== undefined && normalizeStatus(item.status) !== query.status) return false
+	if (query.check !== undefined) {
 		const { key, status } = query.check
 
 		if (!item.checks.some(check => check.key.toLowerCase() === key && check.status.toLowerCase() === status))
 			return false
 	}
-	if (query.checks !== null && !matchesChecks(item, query.checks)) return false
+	if (query.checks !== undefined && !matchesChecks(item, query.checks)) return false
 	if (query.text.length === 0) return true
 
 	const haystack = [item.title, item.makerName, humanStatus(item.status), item.theme ?? ""].join(" ").toLowerCase()

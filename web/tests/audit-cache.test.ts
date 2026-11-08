@@ -14,7 +14,7 @@ function memoryStore(): AuditCacheStore & { values: Map<string, string> } {
 	const values = new Map<string, string>()
 
 	return {
-		getItem: key => values.get(key) ?? null,
+		getItem: key => values.get(key) ?? undefined,
 		removeItem: key => {
 			values.delete(key)
 		},
@@ -55,7 +55,7 @@ describe("audit filter cache", () => {
 		expect(cache.readFilters()).toEqual(filters)
 
 		setSystemTime(new Date("2026-02-02T13:00:00Z"))
-		expect(cache.readFilters()).toBeNull()
+		expect(cache.readFilters()).toBeUndefined()
 	})
 
 	test("ignores malformed and older-version copies", () => {
@@ -63,10 +63,10 @@ describe("audit filter cache", () => {
 		const cache = createAuditCache("half-life", store)
 
 		store.setItem(cacheKey, "not json")
-		expect(cache.readFilters()).toBeNull()
+		expect(cache.readFilters()).toBeUndefined()
 
-		store.setItem(cacheKey, JSON.stringify({ filters: null, version: 0, views: {} }))
-		expect(cache.readFilters()).toBeNull()
+		store.setItem(cacheKey, JSON.stringify({ filters: undefined, version: 0, views: {} }))
+		expect(cache.readFilters()).toBeUndefined()
 	})
 
 	test("keeps the first page keyed by the normalised filters", () => {
@@ -84,7 +84,7 @@ describe("audit filter cache", () => {
 		})
 
 		setSystemTime(new Date("2026-02-01T12:11:00Z"))
-		expect(cache.readView(filters)).toBeNull()
+		expect(cache.readView(filters)).toBeUndefined()
 	})
 
 	test("keeps the filters when a view is written", () => {
@@ -124,8 +124,8 @@ describe("audit filter cache", () => {
 			})
 		}
 
-		expect(cache.readView(filtersOf({ action: "action.0" }))).toBeNull()
-		expect(cache.readView(filtersOf({ action: "action.1" }))).toBeNull()
+		expect(cache.readView(filtersOf({ action: "action.0" }))).toBeUndefined()
+		expect(cache.readView(filtersOf({ action: "action.1" }))).toBeUndefined()
 		expect(cache.readView(filtersOf({ action: "action.2" }))?.entries[0]?.id).toBe("aud_2")
 		expect(cache.readView(filtersOf({ action: "action.9" }))?.entries[0]?.id).toBe("aud_9")
 	})

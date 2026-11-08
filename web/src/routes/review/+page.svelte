@@ -61,10 +61,10 @@ interface TimeSegment {
 	value: number
 }
 
-let bundle = $state<Bundle | null>(null)
+let bundle = $state<Bundle | null>(undefined)
 let id = $state("")
 let loading = $state(true)
-let preview = $state<ReviewPreview | null>(null)
+let preview = $state<ReviewPreview | null>(undefined)
 let previewCoverFailed = $state(false)
 let error = $state("")
 let tab = $state<Tab>("overview")
@@ -76,13 +76,13 @@ let deciding = $state(false)
 let actionError = $state("")
 let toast = $state("")
 let showShortcuts = $state(false)
-let noteElement = $state<HTMLTextAreaElement | null>(null)
+let noteElement = $state<HTMLTextAreaElement | null>(undefined)
 let claimedId = $state("")
 let idempotencyKey = $state("")
 let refreshingEvidence = $state(false)
 let evidenceError = $state("")
 let overrideReason = $state("")
-let overrideElement = $state<HTMLTextAreaElement | null>(null)
+let overrideElement = $state<HTMLTextAreaElement | null>(undefined)
 let sendBackReason = $state("")
 let sendBackError = $state("")
 let sendingBack = $state(false)
@@ -91,8 +91,8 @@ let rerunError = $state("")
 let checksOutdated = $state(false)
 let coverFailed = $state(false)
 let wide = $state(false)
-let checksTimer: ReturnType<typeof setTimeout> | null = null
-let prefetchTimer: ReturnType<typeof setTimeout> | null = null
+let checksTimer: ReturnType<typeof setTimeout> | null
+let prefetchTimer: ReturnType<typeof setTimeout> | null
 
 // bundleCache scopes cached ships to the signed-in reviewer. It is built per call so a
 // changed session is picked up, and sessionStorage is only touched on the client.
@@ -100,7 +100,7 @@ function bundleCache(): BundleCache {
 	return createBundleCache(program, session.me?.user.email ?? "anonymous", sessionStorage)
 }
 
-const submission = $derived(bundle?.submission ?? null)
+const submission = $derived(bundle?.submission ?? undefined)
 const reviewed = $derived(submission?.status === "decided" || submission?.status === "withdrawn")
 const secondPass = $derived(!reviewed && (submission?.stage === 2 || submission?.status === "stage2_hold"))
 const permissions = $derived(programPermissions(session.me, program))
@@ -109,7 +109,7 @@ const checking = $derived(submission?.status === "checking")
 const readOnly = $derived(session.me?.readOnly ?? false)
 const canDecide = $derived(!readOnly && !reviewed && !checking && (!secondPass || canSecondPass))
 const canAdjustEntries = $derived(canDecide && bundle?.claim?.isMine === 1)
-const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? null)
+const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? undefined)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
 const blocking = $derived(bundle?.checks.filter(isBlocking) ?? [])
 const previewChecks = $derived(preview?.checks ?? [])
@@ -254,7 +254,7 @@ afterNavigate((): void => {
 	stopChecks()
 	if (prefetchTimer) {
 		clearTimeout(prefetchTimer)
-		prefetchTimer = null
+		prefetchTimer = undefined
 	}
 	error = ""
 	acknowledgements = []
@@ -273,7 +273,7 @@ afterNavigate((): void => {
 onMount((): (() => void) => {
 	id = idFromURL()
 	tab = tabFromURL()
-	preview = readReviewPreview(id) ?? null
+	preview = readReviewPreview(id) ?? undefined
 	previewCoverFailed = false
 
 	if (id === "") {
@@ -368,7 +368,7 @@ onMount((): (() => void) => {
 function stopChecks(): void {
 	if (checksTimer) {
 		clearTimeout(checksTimer)
-		checksTimer = null
+		checksTimer = undefined
 	}
 }
 
@@ -377,7 +377,7 @@ function watchChecks(): void {
 	if (bundle?.submission.status !== "checking" || checksTimer) return
 
 	checksTimer = setTimeout((): void => {
-		checksTimer = null
+		checksTimer = undefined
 		void refreshWhileChecking()
 	}, 2000)
 }
@@ -443,7 +443,7 @@ function schedulePrefetch(ship: Bundle["submission"]): void {
 	if (ship.status === "decided" || ship.status === "withdrawn" || ship.status === "checking") return
 
 	prefetchTimer = setTimeout(() => {
-		prefetchTimer = null
+		prefetchTimer = undefined
 		void prefetchNextBundle(ship.id, ship.stage, session.me?.user.email, bundleCache())
 	}, 2500)
 }
@@ -499,7 +499,7 @@ async function load(target = id): Promise<void> {
 		const message = err instanceof Error ? err.message : "Could not open this ship."
 		if (err instanceof ApiError && (err.code === "forbidden" || err.code === "not_found")) {
 			bundleCache().remove(target)
-			bundle = null
+			bundle = undefined
 			error = message
 			return
 		}

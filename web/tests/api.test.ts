@@ -15,7 +15,9 @@ function stubFetch(status: number, body: unknown, seen: { url: string }): void {
 	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- The stub implements only the call signature the client uses, not fetch's statics.
 	globalThis.fetch = ((input: RequestInfo | URL): Promise<Response> => {
 		seen.url = input instanceof Request ? input.url : input.toString()
-		return Promise.resolve(Response.json(body, { status }))
+		// oxlint-disable-next-line unicorn/no-null -- Response.json requires a JSON-serializable body; undefined means no body shape.
+		const jsonBody = body === undefined ? null : body
+		return Promise.resolve(Response.json(jsonBody, { status }))
 	}) as typeof fetch
 }
 
@@ -23,7 +25,7 @@ function stubFetch(status: number, body: unknown, seen: { url: string }): void {
 async function catchError(promise: Promise<unknown>): Promise<unknown> {
 	try {
 		await promise
-		return null
+		return undefined
 	} catch (err: unknown) {
 		return err
 	}
@@ -83,7 +85,7 @@ describe("API errors", () => {
 
 	test("falls back when the error has no shape", async () => {
 		const seen = { url: "" }
-		stubFetch(500, null, seen)
+		stubFetch(500, undefined, seen)
 
 		const failure = await catchError(fetchMe())
 

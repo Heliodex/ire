@@ -13,13 +13,13 @@ export interface SavedQueueState {
 	search: string
 	selectedId: string
 	sortDir: 1 | -1
-	sortKey: QueueSortKey | null
+	sortKey: QueueSortKey | undefined
 	stage: number
 	version: number
 }
 
 export interface QueueState {
-	read(): SavedQueueState | null
+	read(): SavedQueueState | undefined
 	write(state: Omit<SavedQueueState, "savedAt" | "version">): void
 }
 
@@ -60,14 +60,12 @@ export function createQueueState(programSlug: string, store: BundleCacheStore): 
 		read() {
 			try {
 				const raw = store.getItem(key)
-				if (!raw) return null
+				if (!raw) return
 
 				const parsed: unknown = JSON.parse(raw)
 
-				return isSavedQueueState(parsed) ? parsed : null
-			} catch {
-				return null
-			}
+				return isSavedQueueState(parsed) ? parsed : undefined
+			} catch {}
 		},
 		// write replaces the stored visit, stamping the version and time.
 		write(state: Omit<SavedQueueState, "savedAt" | "version">) {

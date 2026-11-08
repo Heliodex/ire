@@ -24,7 +24,7 @@ let savedApproved = $state(entry.approvedSeconds ?? entry.seconds)
 let savedNote = $state(entry.reviewerNote ?? "")
 let status = $state<"idle" | "saving" | "saved" | "error">("idle")
 let error = $state("")
-let timer: ReturnType<typeof setTimeout> | null = null
+let timer: ReturnType<typeof setTimeout> | null
 
 const approvedSeconds = $derived(Math.max(0, Math.round((Number(approved) || 0) * 3600)))
 const changed = $derived(approvedSeconds !== savedApproved || note !== savedNote)
@@ -45,7 +45,7 @@ function schedule(): void {
 	if (timer) clearTimeout(timer)
 	status = "saving"
 	timer = setTimeout(() => {
-		timer = null
+		timer = undefined
 		void save()
 	}, 600)
 }
@@ -55,7 +55,7 @@ function flush(): void {
 	if (!editable) return
 	if (timer) {
 		clearTimeout(timer)
-		timer = null
+		timer = undefined
 	}
 	void save()
 }
@@ -64,7 +64,7 @@ function flush(): void {
 async function save(keepalive = false): Promise<void> {
 	if (timer) {
 		clearTimeout(timer)
-		timer = null
+		timer = undefined
 	}
 	if (!changed) {
 		status = "idle"

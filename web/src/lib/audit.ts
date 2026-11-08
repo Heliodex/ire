@@ -239,10 +239,10 @@ export function auditTargetLabel(entry: AuditEntry): string {
 }
 
 // auditTargetHref links a ship or member target to its page.
-export function auditTargetHref(entry: AuditEntry): string | null {
+export function auditTargetHref(entry: AuditEntry): string | undefined {
 	if (entry.targetType === "submission" && entry.targetId) return `/review/${encodeURIComponent(entry.targetId)}`
 	if ((entry.action.startsWith("member.") || entry.action.startsWith("user.")) && entry.targetId)
 		return reviewerHref(entry.targetId)
 
-	return null
+	return undefined
 }

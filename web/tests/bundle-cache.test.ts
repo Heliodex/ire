@@ -13,7 +13,7 @@ function memoryStore(): BundleCacheStore & { entries(): [string, string][] } {
 	const map = new Map<string, string>()
 	return {
 		entries: () => [...map.entries()],
-		getItem: key => map.get(key) ?? null,
+		getItem: key => map.get(key) ?? undefined,
 		removeItem: key => void map.delete(key),
 		setItem: (key, value) => void map.set(key, value),
 	}
@@ -40,8 +40,8 @@ describe("bundle cache", () => {
 
 		cache.write("sub_1", bundle("sub_1"))
 
-		expect(cache.read("sub_2")).toBeNull()
-		expect(createBundleCache("half-life", "oli@example.com", store).read("sub_1")).toBeNull()
+		expect(cache.read("sub_2")).toBeUndefined()
+		expect(createBundleCache("half-life", "oli@example.com", store).read("sub_1")).toBeUndefined()
 	})
 
 	test("rejects stale, versioned and mismatched copies", () => {
@@ -53,16 +53,16 @@ describe("bundle cache", () => {
 			key,
 			JSON.stringify({ bundle: bundle("sub_1"), savedAt: Date.now() - 25 * 60 * 60 * 1000, version: 1 }),
 		)
-		expect(cache.read("sub_1")).toBeNull()
+		expect(cache.read("sub_1")).toBeUndefined()
 
 		store.setItem(key, JSON.stringify({ bundle: bundle("sub_1"), savedAt: Date.now(), version: 999 }))
-		expect(cache.read("sub_1")).toBeNull()
+		expect(cache.read("sub_1")).toBeUndefined()
 
 		store.setItem(key, JSON.stringify({ bundle: bundle("sub_2"), savedAt: Date.now(), version: 1 }))
-		expect(cache.read("sub_1")).toBeNull()
+		expect(cache.read("sub_1")).toBeUndefined()
 
 		store.setItem(key, "not json")
-		expect(cache.read("sub_1")).toBeNull()
+		expect(cache.read("sub_1")).toBeUndefined()
 	})
 
 	test("keeps only the last few ships", () => {
@@ -71,7 +71,7 @@ describe("bundle cache", () => {
 
 		for (const id of ["sub_1", "sub_2", "sub_3", "sub_4"]) cache.write(id, bundle(id))
 
-		expect(cache.read("sub_1")).toBeNull()
+		expect(cache.read("sub_1")).toBeUndefined()
 		expect(cache.read("sub_4")?.submission.id).toBe("sub_4")
 	})
 
@@ -82,7 +82,7 @@ describe("bundle cache", () => {
 		cache.write("sub_1", bundle("sub_1"))
 		cache.remove("sub_1")
 
-		expect(cache.read("sub_1")).toBeNull()
+		expect(cache.read("sub_1")).toBeUndefined()
 	})
 })
 

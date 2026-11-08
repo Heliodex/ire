@@ -11,9 +11,9 @@ describe("reviewerHref", () => {
 	})
 
 	test("returns null for missing identifiers", () => {
-		expect(reviewerHref(null)).toBeNull()
-		expect(reviewerHref(undefined)).toBeNull()
-		expect(reviewerHref("   ")).toBeNull()
+		expect(reviewerHref(undefined)).toBeUndefined()
+		expect(reviewerHref(undefined)).toBeUndefined()
+		expect(reviewerHref("   ")).toBeUndefined()
 	})
 })
 
@@ -24,9 +24,9 @@ describe("makerHref", () => {
 	})
 
 	test("returns null for missing emails", () => {
-		expect(makerHref(null)).toBeNull()
-		expect(makerHref(undefined)).toBeNull()
-		expect(makerHref("")).toBeNull()
+		expect(makerHref(undefined)).toBeUndefined()
+		expect(makerHref(undefined)).toBeUndefined()
+		expect(makerHref("")).toBeUndefined()
 	})
 })
 

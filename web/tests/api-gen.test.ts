@@ -66,7 +66,7 @@ interface SeenRequest {
 // Overrides pin only the fields the assertions read; everything else is the schema default.
 function stubFetch(seen: SeenRequest[]): void {
 	const routes: { [_: string]: unknown } = {
-		"DELETE /api/v1/programs/half-life/notes/n1": null,
+		"DELETE /api/v1/programs/half-life/notes/n1": undefined,
 		"GET /api/v1/auth/config": fakeAuthConfig(),
 		"GET /api/v1/dev/outbox/received": fakeFakeDeliveriesResponse({ deliveries: [] }),
 		"GET /api/v1/me": fakeMeResponse({ user: { email: "a@b.c" } }),
@@ -128,7 +128,8 @@ function stubFetch(seen: SeenRequest[]): void {
 		const url = input instanceof Request ? input.url : input.toString()
 		const method = init?.method ?? "GET"
 		seen.push({ body: typeof init?.body === "string" ? init.body : "", method, url })
-		const body = routes[`${method} ${new URL(url, "http://localhost").pathname}`] ?? null
+		const body = routes[`${method} ${new URL(url, "http://localhost").pathname}`]
+		if (body === undefined) return Promise.resolve(new Response(undefined, { status: 200 }))
 		return Promise.resolve(Response.json(body, { status: 200 }))
 	}) as unknown as typeof fetch
 }
@@ -247,7 +248,7 @@ describe("generated client", () => {
 			)) as unknown as typeof fetch
 
 		const failure = await fetchBundle("missing").then(
-			() => null,
+			() => undefined,
 			(err: unknown) => err,
 		)
 

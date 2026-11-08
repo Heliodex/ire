@@ -169,7 +169,7 @@ describe("target links", () => {
 		expect(auditTargetHref(entryOf({ action: "member.update", targetId: "usr_1", targetType: "user" }))).toBe(
 			"/reviewers/usr_1",
 		)
-		expect(auditTargetHref(entryOf({ targetId: "note_1", targetType: "note" }))).toBeNull()
+		expect(auditTargetHref(entryOf({ targetId: "note_1", targetType: "note" }))).toBeUndefined()
 		expect(auditTargetLabel(entryOf({ targetId: "note_1", targetType: "note" }))).toBe("")
 	})
 })

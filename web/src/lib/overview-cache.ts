@@ -12,7 +12,7 @@ export interface OverviewCacheStore {
 }
 
 export interface OverviewCache {
-	read(): CachedOverview | null
+	read(): CachedOverview | undefined
 	write(overview: Overview): void
 }
 
@@ -46,20 +46,20 @@ function isOverview(value: unknown): value is Overview {
 	return true
 }
 
-function readStored(store: OverviewCacheStore, key: string): CachedOverview | null {
+function readStored(store: OverviewCacheStore, key: string): CachedOverview | undefined {
 	try {
 		const raw = store.getItem(key)
-		if (!raw) return null
+		if (!raw) return undefined
 
 		const parsed: unknown = JSON.parse(raw)
-		if (typeof parsed !== "object" || parsed === null) return null
-		if (!("version" in parsed) || parsed.version !== cacheVersion) return null
-		if (!("savedAt" in parsed) || typeof parsed.savedAt !== "number") return null
-		if (!("overview" in parsed) || !isOverview(parsed.overview)) return null
+		if (typeof parsed !== "object" || parsed === null) return undefined
+		if (!("version" in parsed) || parsed.version !== cacheVersion) return undefined
+		if (!("savedAt" in parsed) || typeof parsed.savedAt !== "number") return undefined
+		if (!("overview" in parsed) || !isOverview(parsed.overview)) return undefined
 
 		return { overview: parsed.overview, savedAt: parsed.savedAt }
 	} catch {
-		return null
+		return undefined
 	}
 }
 
@@ -76,7 +76,7 @@ export function createOverviewCache(programSlug: string, store: OverviewCacheSto
 			if (memory) memories.delete(key)
 
 			const stored = readStored(store, key)
-			if (!stored || !isFreshOverview(stored)) return null
+			if (!stored || !isFreshOverview(stored)) return
 
 			memories.set(key, stored)
 

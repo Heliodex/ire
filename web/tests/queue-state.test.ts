@@ -7,7 +7,7 @@ import { createQueueState, isQueueFilter, type SavedQueueState } from "../src/li
 function memoryStore(): BundleCacheStore {
 	const map = new Map<string, string>()
 	return {
-		getItem: key => map.get(key) ?? null,
+		getItem: key => map.get(key) ?? undefined,
 		removeItem: key => void map.delete(key),
 		setItem: (key, value) => void map.set(key, value),
 	}
@@ -41,7 +41,7 @@ describe("queue state", () => {
 		const store = memoryStore()
 		const cache = createQueueState("half-life", store)
 
-		expect(cache.read()).toBeNull()
+		expect(cache.read()).toBeUndefined()
 
 		cache.write(state())
 
@@ -57,19 +57,19 @@ describe("queue state", () => {
 			{ ...state(), version: 999 },
 			{ ...state(), filter: "planets" },
 			{ ...state(), stage: 3 },
-			{ ...state(), queue: null },
+			{ ...state(), queue: undefined },
 			{ ...state(), savedAt: Date.now() - 25 * 60 * 60 * 1000 },
 			{ ...state(), search: 42 },
 		]) {
 			store.setItem(key, JSON.stringify(bad))
-			expect(cache.read()).toBeNull()
+			expect(cache.read()).toBeUndefined()
 		}
 
 		store.setItem(key, JSON.stringify({ ...state(), queue: { counts: {}, hasMore: false } }))
-		expect(cache.read()).toBeNull()
+		expect(cache.read()).toBeUndefined()
 
 		store.setItem(key, "not json")
-		expect(cache.read()).toBeNull()
+		expect(cache.read()).toBeUndefined()
 	})
 
 	test("scopes visits to the program", () => {
@@ -77,7 +77,7 @@ describe("queue state", () => {
 
 		createQueueState("half-life", store).write(state())
 
-		expect(createQueueState("other", store).read()).toBeNull()
+		expect(createQueueState("other", store).read()).toBeUndefined()
 	})
 })
 

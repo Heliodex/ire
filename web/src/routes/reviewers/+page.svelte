@@ -28,7 +28,7 @@ const roleInfo: { [_: string]: { detail: string; label: string } } = {
 }
 
 let key = ""
-let profile = $state<ReviewerProfile | null>(null)
+let profile = $state<ReviewerProfile | null>(undefined)
 let loading = $state(true)
 let error = $state("")
 let request = 0
@@ -53,7 +53,7 @@ async function load(target: string): Promise<void> {
 	const current = ++request
 	loading = true
 	error = ""
-	profile = null
+	profile = undefined
 
 	try {
 		profile = await fetchReviewerProfile(target)

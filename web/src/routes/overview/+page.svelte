@@ -10,14 +10,14 @@ import { createOverviewCache } from "../../lib/overview-cache"
 import { reviewerHref } from "../../lib/reviewer"
 import { dropSignIn, session } from "../../lib/session.svelte.js"
 
-let overview = $state<Overview | null>(null)
+let overview = $state<Overview | null>(undefined)
 let loading = $state(true)
 let error = $state("")
 
 // overviewCache paints the last view instantly when navigating back, then the
 // page revalidates quietly. It is built lazily so sessionStorage is only
 // touched on the client.
-const overviewCache = browser ? createOverviewCache(program, sessionStorage) : null
+const overviewCache = browser ? createOverviewCache(program, sessionStorage) : undefined
 
 // formatWait renders a wait the way the Stasis readout does: hours below a day, days above.
 function formatWait(ms: number): string {
@@ -70,7 +70,7 @@ onMount((): (() => void) => {
 		}
 	}
 
-	const cached = overviewCache?.read() ?? null
+	const cached = overviewCache?.read() ?? undefined
 	if (cached) {
 		;({ overview } = cached)
 		loading = false

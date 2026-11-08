@@ -142,7 +142,7 @@ describe("streamQueue", () => {
 		let caught: unknown
 
 		try {
-			await streamQueue("all", 1, 50, null, 1, recorder(), new AbortController().signal)
+			await streamQueue("all", 1, 50, undefined, 1, recorder(), new AbortController().signal)
 		} catch (err) {
 			caught = err
 		}

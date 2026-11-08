@@ -9,7 +9,7 @@ import { decisionLabel, formatDateTime, formatHours, humanStatus, statusTone } f
 import { dropSignIn } from "../../lib/session.svelte.js"
 
 let email = ""
-let profile = $state<MakerProfile | null>(null)
+let profile = $state<MakerProfile | null>(undefined)
 let loading = $state(true)
 let error = $state("")
 let request = 0
@@ -39,7 +39,7 @@ async function load(target: string): Promise<void> {
 	const current = ++request
 	loading = true
 	error = ""
-	profile = null
+	profile = undefined
 
 	try {
 		profile = await fetchMakerProfile(target)

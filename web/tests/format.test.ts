@@ -41,7 +41,7 @@ describe("formatDuration", () => {
 
 describe("formatDate", () => {
 	test("returns a dash for missing values and echoes invalid ones", () => {
-		expect(formatDate(null)).toBe("–")
+		expect(formatDate(undefined)).toBe("–")
 		expect(formatDate(undefined)).toBe("–")
 		expect(formatDate("not-a-date")).toBe("not-a-date")
 	})
@@ -49,7 +49,7 @@ describe("formatDate", () => {
 	test("formats a valid timestamp", () => {
 		expect(formatDate("2026-01-15T12:00:00Z")).toContain("2026")
 		expect(formatDateTime("2026-01-15T12:00:00Z")).toContain("2026")
-		expect(formatDateTime(null)).toBe("–")
+		expect(formatDateTime(undefined)).toBe("–")
 	})
 })
 
@@ -70,11 +70,11 @@ describe("timeAgo", () => {
 
 describe("formatMoney", () => {
 	test("renders cents as dollars and dashes for missing values", () => {
-		expect(formatMoney(null)).toBe("–")
+		expect(formatMoney(undefined)).toBe("–")
 		expect(formatMoney(undefined)).toBe("–")
 		expect(formatMoney(1234)).toContain("12.34")
 		expect(formatMoneyAmount(1234)).toContain("12.34")
-		expect(formatMoneyAmount(null)).toBe("–")
+		expect(formatMoneyAmount(undefined)).toBe("–")
 	})
 })
 

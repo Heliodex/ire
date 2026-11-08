@@ -19,8 +19,8 @@ export interface AuditCacheStore {
 }
 
 export interface AuditCache {
-	readFilters(): AuditFilters | null
-	readView(filters: AuditFilters): CachedAuditView | null
+	readFilters(): AuditFilters | undefined
+	readView(filters: AuditFilters): CachedAuditView | undefined
 	writeFilters(filters: AuditFilters): void
 	writeView(filters: AuditFilters, view: Omit<CachedAuditView, "savedAt">): void
 }
@@ -30,7 +30,7 @@ interface StoredAuditFilters extends AuditFilters {
 }
 
 interface StoredAuditCache {
-	filters: StoredAuditFilters | null
+	filters: StoredAuditFilters | undefined
 	version: number
 	views: { [_: string]: CachedAuditView }
 }
@@ -52,8 +52,12 @@ export function isFreshAuditView(view: CachedAuditView): boolean {
 	return Date.now() - view.savedAt <= maxViewAge
 }
 
+function isObject(value: unknown): value is { [key: string]: unknown } {
+	return typeof value === "object" && Boolean(value)
+}
+
 function isAuditEntry(value: unknown): value is AuditEntry {
-	if (typeof value !== "object" || value === null) return false
+	if (!isObject(value)) return false
 	if (!("id" in value) || typeof value.id !== "string") return false
 	if (!("action" in value) || typeof value.action !== "string") return false
 
@@ -61,7 +65,7 @@ function isAuditEntry(value: unknown): value is AuditEntry {
 }
 
 function isCachedView(value: unknown): value is CachedAuditView {
-	if (typeof value !== "object" || value === null) return false
+	if (!isObject(value)) return false
 	if (!("entries" in value) || !Array.isArray(value.entries) || !value.entries.every(isAuditEntry)) return false
 	if (!("hasMore" in value) || typeof value.hasMore !== "boolean") return false
 
@@ -69,7 +73,7 @@ function isCachedView(value: unknown): value is CachedAuditView {
 }
 
 function isStoredFilters(value: unknown): value is StoredAuditFilters {
-	if (typeof value !== "object" || value === null) return false
+	if (!isObject(value)) return false
 	if (!("action" in value) || typeof value.action !== "string") return false
 	if (!("days" in value) || typeof value.days !== "number" || !Number.isFinite(value.days)) return false
 	if (!("query" in value) || typeof value.query !== "string") return false
@@ -78,7 +82,7 @@ function isStoredFilters(value: unknown): value is StoredAuditFilters {
 }
 
 function emptyCache(): StoredAuditCache {
-	return { filters: null, version: cacheVersion, views: {} }
+	return { filters: undefined, version: cacheVersion, views: {} }
 }
 
 function readCache(store: AuditCacheStore, key: string): StoredAuditCache {
@@ -87,16 +91,16 @@ function readCache(store: AuditCacheStore, key: string): StoredAuditCache {
 		if (!raw) return emptyCache()
 
 		const parsed: unknown = JSON.parse(raw)
-		if (typeof parsed !== "object" || parsed === null) return emptyCache()
+		if (!isObject(parsed)) return emptyCache()
 		if (!("version" in parsed) || parsed.version !== cacheVersion) return emptyCache()
-		if (!("filters" in parsed)) return emptyCache()
-		if (!("views" in parsed) || typeof parsed.views !== "object" || parsed.views === null) return emptyCache()
-		if (Array.isArray(parsed.views)) return emptyCache()
+		const rawViews = "views" in parsed ? parsed.views : undefined
+		if (!isObject(rawViews) || Array.isArray(rawViews)) return emptyCache()
 
-		const filters = parsed.filters === null ? null : isStoredFilters(parsed.filters) ? parsed.filters : null
+		const rawFilters = "filters" in parsed ? parsed.filters : undefined
+		const filters = isStoredFilters(rawFilters) ? rawFilters : undefined
 		const views: { [_: string]: CachedAuditView } = {}
 
-		for (const [viewKey, view] of Object.entries(parsed.views)) if (isCachedView(view)) views[viewKey] = view
+		for (const [viewKey, view] of Object.entries(rawViews)) if (isCachedView(view)) views[viewKey] = view
 
 		return { filters, version: cacheVersion, views }
 	} catch {
@@ -135,14 +139,14 @@ export function createAuditCache(programSlug: string, store: AuditCacheStore): A
 		// readFilters restores the last selection, ignoring stale or malformed copies.
 		readFilters() {
 			const { filters } = readCache(store, key)
-			if (!filters || Date.now() - filters.savedAt > maxFilterAge) return null
+			if (!filters || Date.now() - filters.savedAt > maxFilterAge) return
 
 			return { action: filters.action, days: filters.days, query: filters.query }
 		},
 		// readView returns the first page cached for these filters, if it is still fresh.
 		readView(filters) {
 			const view = readCache(store, key).views[auditFilterKey(filters)]
-			if (!view || !isFreshAuditView(view)) return null
+			if (!view || !isFreshAuditView(view)) return
 
 			return view
 		},

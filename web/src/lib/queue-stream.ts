@@ -89,7 +89,7 @@ export async function streamQueue(
 	})
 
 	if (!response.ok) {
-		const data: unknown = await response.json().catch(() => null)
+		const data: unknown = await response.json().catch(() => undefined)
 		const error = safeParse(errorResponseSchema, data)
 		if (error.success) throw new ApiError(error.output.error, error.output.code, error.output.field ?? "")
 

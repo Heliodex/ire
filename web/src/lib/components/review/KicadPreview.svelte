@@ -3,7 +3,7 @@ import LoadingState from "../LoadingState.svelte"
 
 let { name, text }: { name: string; text: string } = $props()
 
-let host = $state<HTMLDivElement | null>(null)
+let host = $state<HTMLDivElement | null>(undefined)
 let error = $state("")
 let loading = $state(true)
 

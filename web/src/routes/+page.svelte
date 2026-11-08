@@ -10,7 +10,7 @@ let email = $state("")
 let busy = $state(false)
 let error = $state("")
 let authError = $state("")
-let authConfig = $state<AuthConfig | null>(null)
+let authConfig = $state<AuthConfig | null>(undefined)
 
 // Local development shortcuts. They only render when IRE_DEV_AUTH=1 enables the dev endpoint; production serves Hack Club Auth only.
 const accounts = [

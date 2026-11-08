@@ -140,7 +140,7 @@ onMount(async (): Promise<void> => {
 	try {
 		session.me = await fetchMe()
 	} catch (err) {
-		session.me = null
+		session.me = undefined
 		if (!(err instanceof ApiError)) console.error(err)
 	} finally {
 		ready = true
@@ -156,7 +156,7 @@ async function signOut(): Promise<void> {
 	try {
 		await logout()
 	} finally {
-		session.me = null
+		session.me = undefined
 		signingOut = false
 		void goto("/")
 	}

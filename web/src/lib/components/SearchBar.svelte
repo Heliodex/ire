@@ -16,10 +16,10 @@ let open = $state(false)
 let loading = $state(false)
 let error = $state("")
 let selected = $state(-1)
-let input = $state<HTMLInputElement | null>(null)
-let box = $state<HTMLDivElement | null>(null)
-let listbox = $state<HTMLDivElement | null>(null)
-let timer: ReturnType<typeof setTimeout> | null = null
+let input = $state<HTMLInputElement | null>(undefined)
+let box = $state<HTMLDivElement | null>(undefined)
+let listbox = $state<HTMLDivElement | null>(undefined)
+let timer: ReturnType<typeof setTimeout> | null
 let sequence = 0
 // The first page stays small; reaching its last row with the arrow keys asks for the next slice.
 const initialSearchLimit = 8
@@ -138,7 +138,7 @@ function onInput(): void {
 	else selected = -1
 
 	timer = setTimeout((): void => {
-		timer = null
+		timer = undefined
 		void search(text, id, showing, limit)
 	}, debounceMs)
 }

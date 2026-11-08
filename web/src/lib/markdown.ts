@@ -30,17 +30,17 @@ export function parseMarkdown(source: string): MarkdownBlock[] {
 	return parser.blocks
 }
 
-function safeImageURL(value: string): string | null {
+function safeImageURL(value: string): string | undefined {
 	const url = value.trim()
 	if (url.startsWith("https://") || url.startsWith("http://")) return url
-	return null
+	return undefined
 }
 
-function inlineImage(line: string): MarkdownInlineImage | null {
+function inlineImage(line: string): MarkdownInlineImage | undefined {
 	const match = /^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/.exec(line.trim())
-	if (!match) return null
+	if (!match) return undefined
 	const url = safeImageURL(match[2])
-	if (!url) return null
+	if (!url) return undefined
 	return { alt: match[1], url }
 }
 
