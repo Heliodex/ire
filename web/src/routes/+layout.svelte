@@ -84,7 +84,7 @@ function toggleMore(): void {
 // closeMoreOnOutsideClick dismisses the overflow menu on any pointer outside it.
 function closeMoreOnOutsideClick(event: PointerEvent): void {
 	if (!moreOpen) return
-	if (event.target instanceof Element && event.target.closest(".sections-more")) return
+	if (event.target instanceof Element && event.target.closest(".sections-more, .sections-bottom-more")) return
 	moreOpen = false
 }
 
@@ -329,7 +329,7 @@ async function signOut(): Promise<void> {
 
 	{#if session.me}
 		<nav aria-label="Sections" class="sections-bottom">
-			{#each navItems as item, index (item.href)}
+			{#each navItems.slice(0, visibleTabCount) as item, index (item.href)}
 				<a
 					aria-current={item.active ? "page" : undefined}
 					aria-keyshortcuts={`Alt+${index + 1}`}
@@ -339,6 +339,50 @@ async function signOut(): Promise<void> {
 					<span>{item.label}</span>
 				</a>
 			{/each}
+			{#if overflowItems.length > 0}
+				<div class="sections-bottom-more">
+					<button
+						aria-expanded={moreOpen}
+						aria-haspopup="true"
+						class:active={overflowItems.some(item => item.active)}
+						onclick={toggleMore}
+						type="button"
+					>
+						<span>More</span>
+						<svg
+							aria-hidden="true"
+							class="chevron"
+							fill="none"
+							height="14"
+							viewBox="0 0 24 24"
+							width="14"
+							class:open={moreOpen}
+						>
+							<path
+								d="m6 15 6-6 6 6"
+								stroke="currentColor"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+							/>
+						</svg>
+					</button>
+					{#if moreOpen}
+						<div class="menu-panel bottom-menu ui-card">
+							{#each overflowItems as item, index (item.href)}
+								<a
+									aria-current={item.active ? "page" : undefined}
+									aria-keyshortcuts={`Alt+${visibleTabCount + index + 1}`}
+									href={item.href}
+									class:active={item.active}
+								>
+									<span>{item.label}</span>
+								</a>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</nav>
 	{/if}
 </div>
@@ -584,48 +628,81 @@ nav a.active {
 	left: 0;
 	z-index: var(--layer-header);
 	display: none;
-	gap: var(--space-1);
+	gap: 0;
 	align-items: stretch;
-	padding: 0 var(--space-2) env(safe-area-inset-bottom);
-	overflow-x: auto;
+	justify-content: stretch;
+	padding: 0 0 env(safe-area-inset-bottom);
 	background: var(--header-bg, var(--surface));
 	border-top: 1px solid var(--border);
-	-webkit-overflow-scrolling: touch;
 }
 
-.sections-bottom a {
+.sections-bottom a,
+.sections-bottom-more > button {
 	display: inline-flex;
-	flex: 0 0 auto;
+	flex: 1 1 0;
 	align-items: center;
 	justify-content: center;
+	gap: 0.2rem;
+	min-width: 0;
 	min-height: 3.25rem;
-	padding: var(--space-2) var(--space-3);
+	padding: var(--space-2) var(--space-2);
+	font: inherit;
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--text-2);
 	text-decoration: none;
 	white-space: nowrap;
+	background: transparent;
+	border: 0;
 	border-top: 2px solid transparent;
-	border-bottom: 0;
-	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+	border-radius: 0;
 }
 
-.sections-bottom a:hover {
+.sections-bottom a:hover,
+.sections-bottom-more > button:hover {
 	color: var(--text);
 }
 
-.sections-bottom a:active {
+.sections-bottom a:active,
+.sections-bottom-more > button:active {
 	color: var(--text);
 	background: color-mix(in srgb, var(--text) 12%, transparent);
 }
 
-.sections-bottom a.active {
+.sections-bottom a.active,
+.sections-bottom-more > button.active {
 	color: var(--text);
 	border-top-color: var(--primary);
+	border-radius: 0;
 }
 
-.sections-bottom a span {
+.sections-bottom a span,
+.sections-bottom-more > button span {
 	line-height: 1.1;
+}
+
+.sections-bottom-more {
+	position: relative;
+	display: flex;
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.sections-bottom-more .chevron {
+	flex: none;
+	color: var(--text-3);
+	transition: transform 0.15s;
+}
+
+.sections-bottom-more .chevron.open {
+	transform: rotate(180deg);
+}
+
+.bottom-menu {
+	top: auto;
+	right: 0;
+	bottom: calc(100% + var(--space-1));
+	left: auto;
 }
 
 main {
