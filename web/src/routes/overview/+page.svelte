@@ -567,7 +567,8 @@ a.name:hover {
 }
 
 @media (max-width: 55rem) {
-	.panels {
+	.panels,
+	.panels.flip {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
