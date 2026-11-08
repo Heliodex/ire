@@ -703,16 +703,18 @@ nav a.active {
 	right: 0;
 	bottom: calc(100% + var(--space-1));
 	left: auto;
-	min-width: 0;
+	min-width: 7rem;
 	width: max-content;
 }
 
 .bottom-menu a {
+	border-top: 0;
 	border-bottom: 0;
 	border-radius: var(--radius-sm);
 }
 
 .bottom-menu a.active {
+	border-top: 0;
 	border-bottom: 0;
 }
 
