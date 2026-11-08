@@ -248,7 +248,13 @@ kbd {
 
 .ui-button.primary:hover:not(:disabled) {
 	background: var(--primary);
-	filter: brightness(1.05);
+	filter: brightness(1.08);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent), var(--shadow-sm);
+}
+
+.ui-button.primary:active:not(:disabled) {
+	filter: brightness(0.96);
+	transform: translateY(1px);
 }
 
 .ui-button.ghost {

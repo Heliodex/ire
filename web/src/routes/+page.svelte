@@ -270,10 +270,17 @@ form {
 
 .account:hover {
 	background: var(--surface-2);
+	border-color: var(--border-2);
 }
 
 .account:hover::after {
 	color: var(--text);
+}
+
+.account:active:not(:disabled) {
+	background: var(--surface-3);
+	border-color: var(--border-2);
+	transform: translateY(1px);
 }
 
 .account:disabled {
