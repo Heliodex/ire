@@ -519,8 +519,9 @@ function hourInit(): void {
 }
 
 function toggleAck(key: string): void {
-	if (acknowledgements.includes(key)) acknowledgements = acknowledgements.filter(value => value !== key)
-	else acknowledgements = [...acknowledgements, key]
+	acknowledgements = acknowledgements.includes(key)
+		? acknowledgements.filter(value => value !== key)
+		: [...acknowledgements, key]
 }
 
 // ackLabel turns a stored check key into the heading the reviewer saw in Checks.

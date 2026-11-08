@@ -153,8 +153,7 @@ async function search(text: string, id: number, revalidating: boolean, requestLi
 		limit = requestLimit
 		exhausted = found.length < requestLimit
 
-		if (revalidating) selected = snapEnabled(selected)
-		else selected = snapEnabled(0)
+		selected = snapEnabled(revalidating ? selected : 0)
 	} catch (err) {
 		if (id !== sequence) return
 		if (revalidating) return
