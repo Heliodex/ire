@@ -326,6 +326,21 @@ async function signOut(): Promise<void> {
 	<main id="main-content" tabindex="-1">
 		{@render children()}
 	</main>
+
+	{#if session.me}
+		<nav aria-label="Sections" class="sections-bottom">
+			{#each navItems as item, index (item.href)}
+				<a
+					aria-current={item.active ? "page" : undefined}
+					aria-keyshortcuts={`Alt+${index + 1}`}
+					href={item.href}
+					class:active={item.active}
+				>
+					<span>{item.label}</span>
+				</a>
+			{/each}
+		</nav>
+	{/if}
 </div>
 
 <style>
@@ -562,6 +577,57 @@ nav a.active {
 	border-bottom: 2px solid var(--primary);
 }
 
+.sections-bottom {
+	position: fixed;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	z-index: var(--layer-header);
+	display: none;
+	gap: var(--space-1);
+	align-items: stretch;
+	padding: 0 var(--space-2) env(safe-area-inset-bottom);
+	overflow-x: auto;
+	background: var(--header-bg, var(--surface));
+	border-top: 1px solid var(--border);
+	-webkit-overflow-scrolling: touch;
+}
+
+.sections-bottom a {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	min-height: 3.25rem;
+	padding: var(--space-2) var(--space-3);
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-2);
+	text-decoration: none;
+	white-space: nowrap;
+	border-top: 2px solid transparent;
+	border-bottom: 0;
+	border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.sections-bottom a:hover {
+	color: var(--text);
+}
+
+.sections-bottom a:active {
+	color: var(--text);
+	background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.sections-bottom a.active {
+	color: var(--text);
+	border-top-color: var(--primary);
+}
+
+.sections-bottom a span {
+	line-height: 1.1;
+}
+
 main {
 	display: flex;
 	flex: 1;
@@ -571,23 +637,17 @@ main {
 }
 
 @media (max-width: 40rem) {
-	.top,
-	.sections-row {
+	.top {
+		flex-wrap: wrap;
 		padding-inline: var(--space-3);
 	}
 
-	/* Small screens keep the first tabs inline and pool the rest under More. */
-	.sections-row > a:nth-of-type(n + 5) {
+	.sections-row {
 		display: none;
 	}
 
-	.sections-more {
-		display: block;
-		margin-left: auto;
-	}
-
-	.top {
-		flex-wrap: wrap;
+	.sections-bottom {
+		display: flex;
 	}
 
 	.account-name {
@@ -599,7 +659,7 @@ main {
 	}
 
 	main {
-		padding: var(--space-4) var(--space-3) var(--space-6);
+		padding: var(--space-4) var(--space-3) calc(var(--space-6) + 3.5rem + env(safe-area-inset-bottom));
 	}
 }
 
