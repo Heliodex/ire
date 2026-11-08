@@ -785,7 +785,10 @@ function autoLoad(node: HTMLElement): { destroy(): void } {
 			if (node.getBoundingClientRect().top > window.innerHeight + 400) return
 
 			const before = queue.items.length
+			// Sequential: each page must render before checking sentinel position and deciding whether to load more.
+			// oxlint-disable-next-line eslint/no-await-in-loop
 			await loadMore()
+			// oxlint-disable-next-line eslint/no-await-in-loop
 			await tick()
 
 			if (targetFilter !== filter || targetStage !== stage || wantSort !== sortKey || wantDir !== sortDir) return

@@ -98,13 +98,10 @@ export async function streamQueue(
 
 	if (!response.body) throw new Error("The review API did not return a stream.")
 
-	const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+	const stream = response.body.pipeThrough(new TextDecoderStream())
 	let buffer = ""
 
-	for (;;) {
-		const { done, value } = await reader.read()
-		if (done) break
-
+	for await (const value of stream) {
 		const split = splitQueueLines(buffer + value)
 		buffer = split.rest
 

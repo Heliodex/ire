@@ -21,7 +21,7 @@ function cachesProjectCover(url: URL): boolean {
 
 async function trim(cache: Cache): Promise<void> {
 	const keys = await cache.keys()
-	for (const key of keys.slice(0, Math.max(0, keys.length - maxEntries))) await cache.delete(key)
+	await Promise.all(keys.slice(0, Math.max(0, keys.length - maxEntries)).map(key => cache.delete(key)))
 }
 
 async function respondWithCache(request: Request): Promise<Response> {

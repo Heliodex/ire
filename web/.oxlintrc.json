@@ -34,7 +34,7 @@
 		"eslint/max-params": "off",
 		"eslint/max-statements": ["error", 45],
 		"eslint/new-cap": "error",
-		"eslint/no-await-in-loop": "off",
+		"eslint/no-await-in-loop": "error",
 		"eslint/no-continue": "off",
 		"eslint/no-duplicate-imports": "off",
 		"eslint/no-else-return": "error",
