@@ -353,6 +353,59 @@ $effect((): void => {
 	if (next !== selected) selected = next
 })
 
+function onPageHide(): void {
+	saveQueueState()
+}
+
+function onVisibilityChange(): void {
+	if (document.visibilityState === "hidden") saveQueueState()
+}
+
+function onKeydown(event: KeyboardEvent): void {
+	if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
+
+	if (event.key === " ") {
+		// Holding space previews the selected cover image; releasing it dismisses the overlay.
+		event.preventDefault()
+
+		if (visible[selected]) {
+			hideCheckTip()
+			spaceHeld = true
+		}
+
+		return
+	}
+
+	if (event.key === "ArrowDown") {
+		event.preventDefault()
+		void moveSelection(1)
+	} else if (event.key === "ArrowUp") {
+		event.preventDefault()
+		void moveSelection(-1)
+	} else if (event.key === "Enter" && visible[selected] && isSelectable(visible[selected])) {
+		void open(visible[selected])
+		event.preventDefault()
+	} else if (event.key === "ArrowRight") {
+		moveFilter(1)
+		event.preventDefault()
+	} else if (event.key === "ArrowLeft") {
+		moveFilter(-1)
+		event.preventDefault()
+	}
+}
+
+function onKeyup(event: KeyboardEvent): void {
+	if (event.key !== " ") return
+
+	// Releasing space dismisses the preview and swallows the keypress so a focused row does not activate.
+	event.preventDefault()
+	spaceHeld = false
+}
+
+function onBlur(): void {
+	spaceHeld = false
+}
+
 onMount((): (() => void) => {
 	const wideQuery = window.matchMedia("(min-width: 80rem)")
 	wideChecks = wideQuery.matches
@@ -383,14 +436,6 @@ onMount((): (() => void) => {
 	if (savedQueue) void restorePosition(savedQueue.scrollY)
 	void boot()
 
-	function onPageHide(): void {
-		saveQueueState()
-	}
-
-	function onVisibilityChange(): void {
-		if (document.visibilityState === "hidden") saveQueueState()
-	}
-
 	window.addEventListener("pagehide", onPageHide)
 	document.addEventListener("visibilitychange", onVisibilityChange)
 
@@ -416,55 +461,8 @@ onMount((): (() => void) => {
 		// EventSource is optional; the interval remains the fallback.
 	}
 
-	function onKeydown(event: KeyboardEvent): void {
-		if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
-
-		if (event.key === " ") {
-			// Holding space previews the selected cover image; releasing it dismisses the overlay.
-			event.preventDefault()
-
-			if (visible[selected]) {
-				hideCheckTip()
-				spaceHeld = true
-			}
-
-			return
-		}
-
-		if (event.key === "ArrowDown") {
-			event.preventDefault()
-			void moveSelection(1)
-		} else if (event.key === "ArrowUp") {
-			event.preventDefault()
-			void moveSelection(-1)
-		} else if (event.key === "Enter" && visible[selected] && isSelectable(visible[selected])) {
-			void open(visible[selected])
-			event.preventDefault()
-		} else if (event.key === "ArrowRight") {
-			moveFilter(1)
-			event.preventDefault()
-		} else if (event.key === "ArrowLeft") {
-			moveFilter(-1)
-			event.preventDefault()
-		}
-	}
-
 	window.addEventListener("keydown", onKeydown)
-
-	function onKeyup(event: KeyboardEvent): void {
-		if (event.key !== " ") return
-
-		// Releasing space dismisses the preview and swallows the keypress so a focused row does not activate.
-		event.preventDefault()
-		spaceHeld = false
-	}
-
 	window.addEventListener("keyup", onKeyup)
-
-	function onBlur(): void {
-		spaceHeld = false
-	}
-
 	window.addEventListener("blur", onBlur)
 
 	return (): void => {
