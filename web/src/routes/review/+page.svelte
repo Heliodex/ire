@@ -174,6 +174,73 @@ function selectTab(next: Tab): void {
 	history.replaceState(history.state, "", url)
 }
 
+// cycleTab moves to the adjacent tab, matching keyboard navigation.
+function cycleTab(step: number): void {
+	const order: Tab[] = wide ? tabKeys.filter(key => key !== "journal") : [...tabKeys]
+	const current = order.indexOf(tab)
+	if (current === -1) {
+		selectTab("overview")
+		return
+	}
+
+	selectTab(order[(current + step + order.length) % order.length])
+}
+
+// swipeTabs cycles tabs on a horizontal swipe, for touch devices.
+function swipeTabs(node: HTMLElement): { destroy(): void } {
+	let startX = 0
+	let startY = 0
+	let startT = 0
+	let tracking = false
+
+	function onStart(event: TouchEvent): void {
+		if (event.touches.length !== 1) {
+			tracking = false
+			return
+		}
+
+		const touch = event.touches[0]
+		startX = touch.clientX
+		startY = touch.clientY
+		startT = Date.now()
+		tracking = true
+	}
+
+	function onEnd(event: TouchEvent): void {
+		if (!tracking) return
+		tracking = false
+
+		const touch = event.changedTouches[0]
+		if (!touch) return
+
+		const dx = touch.clientX - startX
+		const dy = touch.clientY - startY
+		const absDx = Math.abs(dx)
+		const absDy = Math.abs(dy)
+		const dt = Date.now() - startT
+
+		if (absDx < 56 || absDx < absDy * 1.25 || dt > 700) return
+
+		cycleTab(dx < 0 ? 1 : -1)
+	}
+
+	function onCancel(): void {
+		tracking = false
+	}
+
+	node.addEventListener("touchstart", onStart, { passive: true })
+	node.addEventListener("touchend", onEnd, { passive: true })
+	node.addEventListener("touchcancel", onCancel, { passive: true })
+
+	return {
+		destroy(): void {
+			node.removeEventListener("touchstart", onStart)
+			node.removeEventListener("touchend", onEnd)
+			node.removeEventListener("touchcancel", onCancel)
+		},
+	}
+}
+
 afterNavigate((): void => {
 	const next = idFromURL()
 	if (next === "" || next === id) return
@@ -781,7 +848,7 @@ async function saveDraftNow(): Promise<void> {
 			<section class="content">
 				{@render shipTabs({ checks: preview.checkCount })}
 
-				<div class="tab-content">
+				<div class="tab-content" use:swipeTabs>
 					{#if tab === "overview"}
 						<article class="ui-card padded overview">
 							{#if preview.thumbnailUrl && !previewCoverFailed}
@@ -984,7 +1051,7 @@ async function saveDraftNow(): Promise<void> {
 				journal: bundle.journals.length,
 			})}
 
-			<div class="tab-content">
+			<div class="tab-content" use:swipeTabs>
 				{#if tab === "overview"}
 					<article class="ui-card padded overview">
 						{#if submission.thumbnailUrl && !coverFailed}
