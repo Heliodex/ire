@@ -805,6 +805,14 @@ code {
 		padding-bottom: 0;
 	}
 
+	.roster :global(.role-cell) {
+		margin-inline: calc(-1 * var(--space-3));
+	}
+
+	.roster :global(.role-cell select) {
+		border-radius: 0;
+	}
+
 	/* The permission matrix becomes one card per role. */
 	.roles-matrix {
 		display: none;

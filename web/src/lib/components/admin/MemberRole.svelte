@@ -19,7 +19,7 @@ $effect((): void => {
 })
 </script>
 
-<td>
+<td class="role-cell">
 	<select
 		aria-label={`Role for ${member.email}`}
 		class="ui-input"
