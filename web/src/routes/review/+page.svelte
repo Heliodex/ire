@@ -28,6 +28,7 @@ import { ignore, sleep } from "../../lib/async"
 import { type BundleCache, createBundleCache, prefetchNextBundle } from "../../lib/bundle-cache"
 import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import LoadingState from "../../lib/components/LoadingState.svelte"
+import Markdown from "../../lib/components/review/Markdown.svelte"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
@@ -786,7 +787,11 @@ async function saveDraftNow(): Promise<void> {
 							· {formatHours(entry.coveredSeconds)} covered</span
 						>
 					{/if}
-					<p>{entry.text || "No written entry."}</p>
+					{#if entry.markdown || entry.text}
+						<Markdown text={entry.markdown || entry.text || ""} />
+					{:else}
+						<p>No written entry.</p>
+					{/if}
 					{#if entry.media.length > 0}
 						<div class="media-grid">
 							{#each entry.media as image (image.url)}
