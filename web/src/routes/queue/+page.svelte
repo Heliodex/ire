@@ -29,6 +29,7 @@ import {
 	queueFilterSegments,
 	setQueueFilterToken,
 } from "../../lib/queue-filter"
+import { ageTone, claimError } from "../../lib/queue-page"
 import {
 	createQueueState,
 	type QueueFilter as Filter,
@@ -37,7 +38,6 @@ import {
 	type QueueSortKey as SortKey,
 } from "../../lib/queue-state"
 import { streamQueue } from "../../lib/queue-stream"
-import { ageTone, claimError } from "../../lib/queue-page"
 import { rememberReviewPreview } from "../../lib/review-preview"
 import { makerHref } from "../../lib/reviewer"
 import { dropSignIn, session } from "../../lib/session.svelte.js"
@@ -912,10 +912,6 @@ async function moveSelection(step: number): Promise<void> {
 	revealSelected()
 }
 
-
-
-
-
 async function open(item: QueueItem, tab: string | null = null): Promise<void> {
 	opening = item.id
 	actionError = ""
@@ -1408,69 +1404,69 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 			{#if windowedRows.topPad > 0}
 				<div aria-hidden="true" class="vspacer" style:height={`${windowedRows.topPad}px`}></div>
 			{/if}
-{#snippet checksCell(item: QueueItem)}
-					<span class="checks">
-						<a
-							class="checks-open"
-							href={`/review/${encodeURIComponent(item.id)}?tab=checks`}
-							onclick={(event: MouseEvent): void => openChecks(item, event)}
-						>
-							<span class="visually-hidden">Open {item.title} on its checks tab</span>
-						</a>
-						<span aria-hidden="true" class="counts">
-							{#if item.status === "checking"}
-								<span class="pending-text">Checks running…</span>
-							{:else}
-								{#if item.checkSummary.pass > 0}
-									<span class="pass">{item.checkSummary.pass} pass</span>
-								{/if}
-								{#if item.checkSummary.warn > 0}
-									<span class="warn">{item.checkSummary.warn} warn</span>
-								{/if}
-								{#if item.checkSummary.fail > 0}
-									<span class="fail">{item.checkSummary.fail} fail</span>
-								{/if}
-								{#if item.checkSummary.error > 0}
-									<span class="fail">{item.checkSummary.error} error</span>
-								{/if}
-								{#if item.checkSummary.overall === "pass"}
-									<span class="fast">Fast lane</span>
-								{/if}
+			{#snippet checksCell(item: QueueItem)}
+				<span class="checks">
+					<a
+						class="checks-open"
+						href={`/review/${encodeURIComponent(item.id)}?tab=checks`}
+						onclick={(event: MouseEvent): void => openChecks(item, event)}
+					>
+						<span class="visually-hidden">Open {item.title} on its checks tab</span>
+					</a>
+					<span aria-hidden="true" class="counts">
+						{#if item.status === "checking"}
+							<span class="pending-text">Checks running…</span>
+						{:else}
+							{#if item.checkSummary.pass > 0}
+								<span class="pass">{item.checkSummary.pass} pass</span>
 							{/if}
-						</span>
-						{#if item.checks.length > 0 && item.status !== "checking"}
-							<span class="dots">
-								{#each groupChecks(visibleChecks(item.checks, dotMode)) as group (group.group)}
-									<span class="dot-group">
-										{#each group.items as check (check.key)}
-											<a
-												aria-label={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
-												class="dot"
-												data-tone={checkTone(check)}
-												href={filterHref("check", `${check.key}=${check.status}`)}
-												onclick={(event: MouseEvent): void => filterByCheck(check, event)}
-												onmouseenter={(event): void => showCheckTip(event, group.group, check)}
-												onmouseleave={hideCheckTip}
-												title={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
-											>
-												<CheckIcon status={check.status} />
-											</a>
-										{/each}
-									</span>
-								{/each}
-								{#if checkOverflow(item.checks, dotMode) > 0}
-									<span
-										aria-hidden="true"
-										class="dot-more"
-										title={`${checkOverflow(item.checks, dotMode)} more checks`}
-									>
-										+{checkOverflow(item.checks, dotMode)}
-									</span>
-								{/if}
-							</span>
+							{#if item.checkSummary.warn > 0}
+								<span class="warn">{item.checkSummary.warn} warn</span>
+							{/if}
+							{#if item.checkSummary.fail > 0}
+								<span class="fail">{item.checkSummary.fail} fail</span>
+							{/if}
+							{#if item.checkSummary.error > 0}
+								<span class="fail">{item.checkSummary.error} error</span>
+							{/if}
+							{#if item.checkSummary.overall === "pass"}
+								<span class="fast">Fast lane</span>
+							{/if}
 						{/if}
 					</span>
-{/snippet}
+					{#if item.checks.length > 0 && item.status !== "checking"}
+						<span class="dots">
+							{#each groupChecks(visibleChecks(item.checks, dotMode)) as group (group.group)}
+								<span class="dot-group">
+									{#each group.items as check (check.key)}
+										<a
+											aria-label={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
+											class="dot"
+											data-tone={checkTone(check)}
+											href={filterHref("check", `${check.key}=${check.status}`)}
+											onclick={(event: MouseEvent): void => filterByCheck(check, event)}
+											onmouseenter={(event): void => showCheckTip(event, group.group, check)}
+											onmouseleave={hideCheckTip}
+											title={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
+										>
+											<CheckIcon status={check.status} />
+										</a>
+									{/each}
+								</span>
+							{/each}
+							{#if checkOverflow(item.checks, dotMode) > 0}
+								<span
+									aria-hidden="true"
+									class="dot-more"
+									title={`${checkOverflow(item.checks, dotMode)} more checks`}
+								>
+									+{checkOverflow(item.checks, dotMode)}
+								</span>
+							{/if}
+						</span>
+					{/if}
+				</span>
+			{/snippet}
 
 			{#each windowedRows.rows as item, index (item.id)}
 				<button

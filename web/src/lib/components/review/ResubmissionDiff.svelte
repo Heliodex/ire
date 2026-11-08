@@ -37,13 +37,18 @@ let { diff }: Props = $props()
 		<div><span>Commits</span><strong>{diff.commits.length}</strong></div>
 		<div><span>Files</span><strong>+{diff.addedFiles.length} / -{diff.removedFiles.length}</strong></div>
 		<div>
-			<span>New entries</span><strong
-				>{diff.newEntries.length}{diff.changedEntries.length > 0 ? ` · ${diff.changedEntries.length} edited` : ""}</strong
+			<span>New entries</span
+			><strong
+				>{diff.newEntries.length}{diff.changedEntries.length > 0
+					? ` · ${diff.changedEntries.length} edited`
+					: ""}</strong
 			>
 		</div>
 		<div>
-			<span>BOM</span><strong
-				>{diff.bomAdded.length} added{diff.bomPriceChanges.length > 0 ? ` · ${diff.bomPriceChanges.length} repriced` : ""}</strong
+			<span>BOM</span
+			><strong
+				>{diff.bomAdded.length}
+				added{diff.bomPriceChanges.length > 0 ? ` · ${diff.bomPriceChanges.length} repriced` : ""}</strong
 			>
 		</div>
 	</div>
@@ -81,7 +86,9 @@ let { diff }: Props = $props()
 					<li class="removed">- {part}</li>
 				{/each}
 				{#each diff.bomPriceChanges as change (change.name)}
-					<li>{change.name}: {formatMoneyAmount(change.beforeCents)} → {formatMoneyAmount(change.afterCents)}</li>
+					<li>
+						{change.name}: {formatMoneyAmount(change.beforeCents)} → {formatMoneyAmount(change.afterCents)}
+					</li>
 				{/each}
 			</ul>
 		</details>
@@ -153,9 +160,15 @@ let { diff }: Props = $props()
 	color: var(--text-2);
 	list-style: none;
 }
-.change-list .added { color: var(--accent-green); }
-.change-list .removed { color: var(--accent-red); }
+.change-list .added {
+	color: var(--accent-green);
+}
+.change-list .removed {
+	color: var(--accent-red);
+}
 @media (max-width: 40rem) {
-	.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 </style>

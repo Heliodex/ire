@@ -22,7 +22,12 @@ const blocks = $derived(parseMarkdown(text))
 			<blockquote>{block.text}</blockquote>
 		{:else if block.kind === "image" && block.image}
 			<a class="md-image" href={block.image.url} rel="noreferrer" target="_blank" title="Open full image">
-				<img alt={block.image.alt || "Journal image"} loading="lazy" referrerpolicy="no-referrer" src={block.image.url} />
+				<img
+					alt={block.image.alt || "Journal image"}
+					loading="lazy"
+					referrerpolicy="no-referrer"
+					src={block.image.url}
+				>
 			</a>
 		{:else}
 			<p>
@@ -31,8 +36,19 @@ const blocks = $derived(parseMarkdown(text))
 						{#if typeof node === "string"}
 							{node}
 						{:else}
-							<a class="md-image inline" href={node.url} rel="noreferrer" target="_blank" title="Open full image">
-								<img alt={node.alt || "Journal image"} loading="lazy" referrerpolicy="no-referrer" src={node.url} />
+							<a
+								class="md-image inline"
+								href={node.url}
+								rel="noreferrer"
+								target="_blank"
+								title="Open full image"
+							>
+								<img
+									alt={node.alt || "Journal image"}
+									loading="lazy"
+									referrerpolicy="no-referrer"
+									src={node.url}
+								>
 							</a>
 						{/if}
 					{/each}

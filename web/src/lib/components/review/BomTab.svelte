@@ -61,7 +61,7 @@ let { bom, totalCents }: Props = $props()
 }
 
 .num {
-	text-align: right;
 	font-variant-numeric: tabular-nums;
+	text-align: right;
 }
 </style>

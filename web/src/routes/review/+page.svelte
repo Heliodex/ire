@@ -28,15 +28,14 @@ import { type BundleCache, createBundleCache, prefetchNextBundle } from "../../l
 import { isBlocking, isWarning, overallChecks } from "../../lib/checks"
 import LoadingState from "../../lib/components/LoadingState.svelte"
 import BomTab from "../../lib/components/review/BomTab.svelte"
-import JournalList from "../../lib/components/review/JournalList.svelte"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
+import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
+import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
+import JournalList from "../../lib/components/review/JournalList.svelte"
+import NotesCard from "../../lib/components/review/NotesCard.svelte"
 import PriorReviews from "../../lib/components/review/PriorReviews.svelte"
 import ResubmissionDiff from "../../lib/components/review/ResubmissionDiff.svelte"
 import ReviewTimeline from "../../lib/components/review/ReviewTimeline.svelte"
-import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
-import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
-
-import NotesCard from "../../lib/components/review/NotesCard.svelte"
 import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
 import {
@@ -200,7 +199,8 @@ function swipeTabs(node: HTMLElement): { destroy(): void } {
 			return
 		}
 
-		const touch = event.touches[0]
+		const [touch] = event.touches
+		if (!touch) return
 		startX = touch.clientX
 		startY = touch.clientY
 		startT = Date.now()
@@ -211,7 +211,7 @@ function swipeTabs(node: HTMLElement): { destroy(): void } {
 		if (!tracking) return
 		tracking = false
 
-		const touch = event.changedTouches[0]
+		const [touch] = event.changedTouches
 		if (!touch) return
 
 		const dx = touch.clientX - startX
@@ -1083,7 +1083,13 @@ async function saveDraftNow(): Promise<void> {
 						</div>
 					</article>
 					<div class="split-journals">
-						<JournalList editable={canAdjustEntries} entries={bundle.journals} onEntrySaved={entrySaved} shipId={submission.id} version={submission.version} />
+						<JournalList
+							editable={canAdjustEntries}
+							entries={bundle.journals}
+							onEntrySaved={entrySaved}
+							shipId={submission.id}
+							version={submission.version}
+						/>
 					</div>
 				{:else if tab === "checks"}
 					<ChecksTab
@@ -1093,7 +1099,13 @@ async function saveDraftNow(): Promise<void> {
 						onToggle={toggleAck}
 					/>
 				{:else if tab === "journal"}
-					<JournalList editable={canAdjustEntries} entries={bundle.journals} onEntrySaved={entrySaved} shipId={submission.id} version={submission.version} />
+					<JournalList
+						editable={canAdjustEntries}
+						entries={bundle.journals}
+						onEntrySaved={entrySaved}
+						shipId={submission.id}
+						version={submission.version}
+					/>
 				{:else if tab === "bom"}
 					<BomTab bom={bundle.bom} totalCents={submission.bomTotalCents} />
 				{:else if tab === "evidence"}
@@ -1788,7 +1800,6 @@ h1 {
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }
-
 
 .table-wrap {
 	overflow-x: auto;

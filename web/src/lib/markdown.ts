@@ -56,7 +56,7 @@ function inline(value: string): MarkdownInline[] {
 		if (match[0].startsWith("![")) {
 			const url = safeImageURL(match[2])
 			if (url) nodes.push({ alt: match[1], url })
-		} else if (match[3] != null) {
+		} else if (match[3] !== undefined) {
 			const linkText = cleanText(match[3])
 			if (linkText) nodes.push(linkText)
 		}
@@ -72,15 +72,12 @@ function inline(value: string): MarkdownInline[] {
 }
 
 function cleanText(value: string): string {
-	return value
-		.replaceAll(/[*_`]/g, "")
-		.replaceAll(/\s+/g, " ")
-		.trim()
+	return value.replaceAll(/[*_`]/g, "").replaceAll(/\s+/g, " ").trim()
 }
 
 function inlineText(value: string): string {
 	return inline(value)
-		.map(node => (typeof node === "string" ? node : node.alt))
+		.map((node): string => (typeof node === "string" ? node : node.alt))
 		.join(" ")
 		.replaceAll(/\s+/g, " ")
 		.trim()
@@ -175,9 +172,16 @@ class MarkdownParser {
 		if (this.paragraph.length > 0) {
 			const text = this.paragraph.join(" ")
 			const nodes = inline(text)
-			if (nodes.length === 1 && typeof nodes[0] !== "string") {
-				this.blocks.push({ image: nodes[0], items: [], kind: "image", language: "", level: 0, text: nodes[0].alt })
-			} else {
+			if (nodes.length === 1 && typeof nodes[0] !== "string")
+				this.blocks.push({
+					image: nodes[0],
+					items: [],
+					kind: "image",
+					language: "",
+					level: 0,
+					text: nodes[0].alt,
+				})
+			else
 				this.blocks.push({
 					inline: nodes,
 					items: [],
@@ -186,7 +190,7 @@ class MarkdownParser {
 					level: 0,
 					text: inlineText(text),
 				})
-			}
+
 			this.paragraph = []
 		}
 

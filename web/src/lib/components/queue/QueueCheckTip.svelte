@@ -36,8 +36,12 @@ let { above, group, label, status, tone, x, y }: Props = $props()
 	border-radius: var(--radius-md);
 	box-shadow: var(--shadow);
 }
-.check-tip.above { transform: translate(-50%, calc(-100% - 0.5rem)); }
-.check-tip.below { transform: translate(-50%, 0.5rem); }
+.check-tip.above {
+	transform: translate(-50%, calc(-100% - 0.5rem));
+}
+.check-tip.below {
+	transform: translate(-50%, 0.5rem);
+}
 .tip-head {
 	display: flex;
 	gap: var(--space-3);

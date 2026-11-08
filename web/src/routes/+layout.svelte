@@ -344,9 +344,9 @@ async function signOut(): Promise<void> {
 					<button
 						aria-expanded={moreOpen}
 						aria-haspopup="true"
-						class:active={overflowItems.some(item => item.active)}
 						onclick={toggleMore}
 						type="button"
+						class:active={overflowItems.some(item => item.active)}
 					>
 						<span>More</span>
 						<svg
@@ -601,6 +601,11 @@ nav a.active {
 	padding: var(--space-2) var(--space-3);
 }
 
+.sections-bottom a span,
+.sections-bottom-more > button span {
+	line-height: 1.1;
+}
+
 .menu-panel a span {
 	padding-bottom: 2px;
 }
@@ -640,9 +645,9 @@ nav a.active {
 .sections-bottom-more > button {
 	display: inline-flex;
 	flex: 1 1 0;
+	gap: 0.2rem;
 	align-items: center;
 	justify-content: center;
-	gap: 0.2rem;
 	min-width: 0;
 	min-height: 3.25rem;
 	padding: var(--space-2) var(--space-2);
@@ -650,8 +655,8 @@ nav a.active {
 	font-size: var(--text-xs);
 	font-weight: 700;
 	color: var(--text-2);
-	text-decoration: none;
 	white-space: nowrap;
+	text-decoration: none;
 	background: transparent;
 	border: 0;
 	border-top: 2px solid transparent;
@@ -676,11 +681,6 @@ nav a.active {
 	border-radius: 0;
 }
 
-.sections-bottom a span,
-.sections-bottom-more > button span {
-	line-height: 1.1;
-}
-
 .sections-bottom-more {
 	position: relative;
 	display: flex;
@@ -703,8 +703,8 @@ nav a.active {
 	right: 0;
 	bottom: calc(100% + var(--space-1));
 	left: auto;
-	min-width: 7rem;
 	width: max-content;
+	min-width: 7rem;
 }
 
 .bottom-menu a {

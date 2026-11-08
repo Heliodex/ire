@@ -26,7 +26,13 @@ const visible = $derived(showAll ? events : events.slice(-6))
 		</div>
 	{/each}
 	{#if events.length > 6}
-		<button class="link more-events" onclick={(): void => { showAll = !showAll }} type="button">
+		<button
+			class="link more-events"
+			onclick={(): void => {
+				showAll = !showAll
+			}}
+			type="button"
+		>
 			{showAll ? "Show fewer events" : `Show all ${events.length} events`}
 		</button>
 	{/if}
