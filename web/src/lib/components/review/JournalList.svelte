@@ -1,5 +1,5 @@
 <script lang="ts">
-import { SvelteSet } from "svelte/reactivity"
+import { type SvelteSet } from "svelte/reactivity"
 import { type Journal } from "../../api"
 import { formatDateTime, formatHours } from "../../format"
 import JournalTime from "./JournalTime.svelte"
@@ -28,9 +28,9 @@ function toggleEntry(id: string): void {
 		<span>Half Life sent no written evidence with this ship.</span>
 	</div>
 {:else}
-	<div class="journals">
+	<div class="ui-card journals-card">
 		{#each entries as entry (entry.id)}
-			<article class="ui-card padded journal">
+			<section class="journal-entry">
 				<h3 class="journal-heading">
 					<button
 						aria-expanded={!collapsed.has(entry.id)}
@@ -94,16 +94,18 @@ function toggleEntry(id: string): void {
 					{/if}
 					<JournalTime {editable} {entry} onSaved={onEntrySaved} {shipId} {version} />
 				</div>
-			</article>
+			</section>
 		{/each}
 	</div>
 {/if}
 
 <style>
-.journals {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-3);
+.journals-card {
+	overflow: hidden;
+}
+
+.journal-entry + .journal-entry {
+	border-top: 1px solid var(--border);
 }
 
 .journal-heading {
@@ -117,13 +119,17 @@ function toggleEntry(id: string): void {
 	gap: var(--space-2);
 	align-items: baseline;
 	width: 100%;
-	padding: 0;
+	padding: var(--space-3) var(--space-4);
 	font: inherit;
 	color: inherit;
 	text-align: left;
 	cursor: pointer;
 	background: none;
 	border: 0;
+}
+
+.journal-toggle:hover {
+	background: var(--surface-2);
 }
 
 .journal-title {
@@ -147,7 +153,7 @@ function toggleEntry(id: string): void {
 }
 
 .journal-body {
-	padding-top: var(--space-2);
+	padding: 0 var(--space-4) var(--space-4);
 }
 
 .journal-body.hidden {
@@ -180,7 +186,7 @@ function toggleEntry(id: string): void {
 	background: var(--surface-2);
 }
 
-.journal :global(p) {
+.journal-entry :global(p) {
 	padding-top: var(--space-2);
 	font-size: var(--text-sm);
 	color: var(--text-2);
@@ -188,14 +194,14 @@ function toggleEntry(id: string): void {
 	white-space: pre-wrap;
 }
 
-.journal small {
+.journal-entry small {
 	display: block;
 	padding-top: var(--space-1);
 	font-size: var(--text-xs);
 	color: var(--text-3);
 }
 
-.journal .ui-badge {
-	margin-top: var(--space-2);
+.journal-entry .ui-badge {
+	margin-top: 0;
 }
 </style>
