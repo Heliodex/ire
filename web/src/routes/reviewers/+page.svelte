@@ -428,6 +428,8 @@ h1 {
 	flex-direction: column;
 	gap: var(--space-2);
 	padding-top: var(--space-2);
+	padding-left: 0;
+	margin: 0;
 	list-style: none;
 }
 
