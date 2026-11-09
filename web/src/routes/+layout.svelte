@@ -764,15 +764,19 @@ main {
 		display: none;
 	}
 
+	.shell {
+		height: 100dvh;
+		min-height: 0;
+		overflow: hidden;
+	}
+
 	.bottom-chrome {
-		position: fixed;
-		right: 0;
-		bottom: 0;
-		left: 0;
-		z-index: var(--layer-header);
+		position: static;
+		flex: 0 0 auto;
 		display: flex;
 		flex-direction: column;
 		background: var(--header-bg, var(--surface));
+		border-top: 1px solid var(--border);
 		backdrop-filter: blur(12px);
 	}
 
@@ -784,7 +788,7 @@ main {
 		display: flex;
 		padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
 		background: transparent;
-		border-top: 1px solid var(--border);
+		border-top: 0;
 	}
 
 	.top-actions {
@@ -823,9 +827,13 @@ main {
 	}
 
 	main {
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior-y: contain;
+		-webkit-overflow-scrolling: touch;
 		padding: calc(var(--space-4) + env(safe-area-inset-top))
 			calc(var(--space-3) + env(safe-area-inset-right))
-			calc(var(--space-5) + 7.5rem + env(safe-area-inset-bottom))
+			var(--space-6)
 			calc(var(--space-3) + env(safe-area-inset-left));
 	}
 }
@@ -866,15 +874,19 @@ main {
 			display: none;
 		}
 
+		.shell {
+			height: 100dvh;
+			min-height: 0;
+			overflow: hidden;
+		}
+
 		.bottom-chrome {
-			position: fixed;
-			right: 0;
-			bottom: 0;
-			left: 0;
-			z-index: var(--layer-header);
+			position: static;
+			flex: 0 0 auto;
 			display: flex;
 			flex-direction: column;
 			background: var(--header-bg, var(--surface));
+			border-top: 1px solid var(--border);
 			backdrop-filter: blur(12px);
 		}
 
@@ -884,9 +896,9 @@ main {
 			bottom: auto;
 			left: auto;
 			display: flex;
+			border-top: 0;
 			padding: 0;
 			background: transparent;
-			border-top: 1px solid var(--border);
 		}
 
 		.top-actions {
@@ -904,7 +916,11 @@ main {
 		}
 
 		main {
-			padding: var(--space-4) var(--space-3) calc(var(--space-5) + 7.5rem);
+			min-height: 0;
+			overflow-y: auto;
+			overscroll-behavior-y: contain;
+			-webkit-overflow-scrolling: touch;
+			padding: var(--space-4) var(--space-3) var(--space-6);
 		}
 	}
 }
