@@ -3506,6 +3506,12 @@ type QueueItem struct {
 	// JournalCount corresponds to the JSON schema field "journalCount".
 	JournalCount int `json:"journalCount" yaml:"journalCount" mapstructure:"journalCount"`
 
+	// JournalImageCount corresponds to the JSON schema field "journalImageCount".
+	JournalImageCount int `json:"journalImageCount" yaml:"journalImageCount" mapstructure:"journalImageCount"`
+
+	// JournalTextLength corresponds to the JSON schema field "journalTextLength".
+	JournalTextLength int `json:"journalTextLength" yaml:"journalTextLength" mapstructure:"journalTextLength"`
+
 	// MakerAvatarURL corresponds to the JSON schema field "makerAvatarUrl".
 	MakerAvatarURL *string `json:"makerAvatarUrl,omitempty,omitzero" yaml:"makerAvatarUrl,omitempty" mapstructure:"makerAvatarUrl,omitempty"`
 
@@ -3585,6 +3591,12 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["journalCount"]; raw != nil && !ok {
 		return fmt.Errorf("field journalCount in QueueItem: required")
 	}
+	if _, ok := raw["journalImageCount"]; raw != nil && !ok {
+		return fmt.Errorf("field journalImageCount in QueueItem: required")
+	}
+	if _, ok := raw["journalTextLength"]; raw != nil && !ok {
+		return fmt.Errorf("field journalTextLength in QueueItem: required")
+	}
 	if _, ok := raw["makerEmail"]; raw != nil && !ok {
 		return fmt.Errorf("field makerEmail in QueueItem: required")
 	}
@@ -3634,6 +3646,12 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	}
 	if 0 > plain.JournalCount {
 		return fmt.Errorf("field %s: must be >= %v", "journalCount", 0)
+	}
+	if 0 > plain.JournalImageCount {
+		return fmt.Errorf("field %s: must be >= %v", "journalImageCount", 0)
+	}
+	if 0 > plain.JournalTextLength {
+		return fmt.Errorf("field %s: must be >= %v", "journalTextLength", 0)
 	}
 	if utf8.RuneCountInString(string(plain.MakerEmail)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerEmail", 1)

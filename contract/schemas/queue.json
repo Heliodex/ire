@@ -175,6 +175,14 @@
 						"type": "integer",
 						"minimum": 0
 					},
+					"journalImageCount": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"journalTextLength": {
+						"type": "integer",
+						"minimum": 0
+					},
 					"makerAvatarUrl": {
 						"type": "string"
 					},
@@ -236,6 +244,8 @@
 					"id",
 					"ingestedAt",
 					"journalCount",
+					"journalImageCount",
+					"journalTextLength",
 					"makerEmail",
 					"makerName",
 					"priority",

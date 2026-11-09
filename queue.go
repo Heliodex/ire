@@ -18,11 +18,13 @@ import (
 const makerAvatarBase = "https://cachet.dunkirk.sh/users"
 
 const (
-	queueJournalCountSQL = `(select count(*) from journal_entry je where je.submission_id = s.id)`
-	queueCheckFailsSQL   = `(coalesce(json_extract(s.check_summary, '$.fail'), 0) + coalesce(json_extract(s.check_summary, '$.error'), 0))`
-	queueEasySQL         = `s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass' and coalesce(s.thumbnail_url, '') <> '' and ` + queueJournalCountSQL + ` >= 3 and s.hours_journal_seconds >= 1800`
-	queueHardSQL         = `(s.status = 'needs_attention' or ` + queueJournalCountSQL + ` <= 1 or ` + queueCheckFailsSQL + ` >= 3)`
-	queueMediumSQL       = `not (` + queueHardSQL + `) and not (` + queueEasySQL + `)`
+	queueJournalCountSQL   = `(select count(*) from journal_entry je where je.submission_id = s.id)`
+	queueJournalTextLenSQL = `(select coalesce(sum(length(coalesce(text, '')) + length(coalesce(markdown, ''))), 0) from journal_entry je where je.submission_id = s.id)`
+	queueJournalImageSQL   = `(select coalesce(sum(json_array_length(coalesce(media, '[]'))), 0) from journal_entry je where je.submission_id = s.id)`
+	queueCheckFailsSQL     = `(coalesce(json_extract(s.check_summary, '$.fail'), 0) + coalesce(json_extract(s.check_summary, '$.error'), 0))`
+	queueEasySQL           = `s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass' and coalesce(s.thumbnail_url, '') <> '' and ` + queueJournalCountSQL + ` >= 3 and (s.hours_journal_seconds >= 1800 or ` + queueJournalTextLenSQL + ` >= 1200) and ` + queueJournalImageSQL + ` >= 1`
+	queueHardSQL           = `(s.status = 'needs_attention' or ` + queueJournalCountSQL + ` <= 1 or (` + queueJournalCountSQL + ` > 0 and ` + queueJournalTextLenSQL + ` < 250) or ` + queueCheckFailsSQL + ` >= 3)`
+	queueMediumSQL         = `not (` + queueHardSQL + `) and not (` + queueEasySQL + `)`
 )
 
 // queueSortColumns maps the queue's sortable headers to their ordering, so the sort parameter only selects a key. The checks score mirrors the client's old badness order: blocking results first, then warnings, then clean ships.
@@ -108,7 +110,7 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 	now := a.nowText()
 	query := `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
 			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, ''), s.hours_claimed_seconds,
-			s.hours_journal_seconds, s.hours_hackatime_seconds, (select count(*) from journal_entry je where je.submission_id = s.id) as journal_count, s.bom_total_cents,
+			s.hours_journal_seconds, s.hours_hackatime_seconds, ` + queueJournalCountSQL + `, ` + queueJournalImageSQL + `, ` + queueJournalTextLenSQL + `, s.bom_total_cents,
 			coalesce(s.check_summary, ''), s.ingested_at, coalesce(u.email, ''),
 			coalesce(r.status, ''), coalesce(r.attempts, 0), coalesce(r.started_at, ''), coalesce(r.finished_at, ''),
 			coalesce(r.error, ''), coalesce(r.runner_version, ''), coalesce(prev_review.reviewer_email, '')
@@ -183,7 +185,7 @@ func scanQueueItem(rows *storage.Rows) (contract.QueueItem, error) {
 	)
 	if err := rows.Scan(&item.ID, &item.ExternalID, &item.Version, &item.Status, &item.Stage, &item.Priority,
 		&item.Title, &theme, &thumbnail, &week, &makerName, &item.MakerEmail, &makerSlack, &tier, &item.HoursClaimedSeconds,
-		&item.HoursJournalSeconds, &item.HoursHackatimeSeconds, &item.JournalCount, &item.BomTotalCents,
+		&item.HoursJournalSeconds, &item.HoursHackatimeSeconds, &item.JournalCount, &item.JournalImageCount, &item.JournalTextLength, &item.BomTotalCents,
 		&summaryJSON, &item.IngestedAt, &claimedBy,
 		&runStatus, &runAttempts, &runStarted, &runFinished, &runError, &runVersion, &previousReviewer); err != nil {
 		return contract.QueueItem{}, err

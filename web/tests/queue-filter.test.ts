@@ -23,6 +23,8 @@ function itemOf(overrides: Partial<QueueItem> = {}): QueueItem {
 		id: "sub_1",
 		ingestedAt: "2026-02-01T12:00:00Z",
 		journalCount: 0,
+		journalImageCount: 0,
+		journalTextLength: 0,
 		makerEmail: "ada@example.com",
 		makerName: "Ada",
 		priority: 0,
