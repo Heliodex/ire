@@ -14,6 +14,7 @@ type queueCompare struct {
 type queueSearch struct {
 	raw       string
 	supported bool
+	age       *queueCompare
 	journals  *queueCompare
 	status    string
 	text      []string
@@ -100,7 +101,15 @@ func parseQueueSearch(raw string) queueSearch {
 			} else {
 				query.text = append(query.text, strings.ToLower(token))
 			}
-		case "age", "check", "checks":
+		case "age":
+			if parsed := parseQueueDuration(value, ">="); parsed != nil && queueAgeOp(parsed.op) != "" {
+				query.age = parsed
+			} else if parsed := parseQueueDuration(value, ">="); parsed != nil {
+				query.supported = false
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
+		case "check", "checks":
 			query.supported = false
 		default:
 			query.text = append(query.text, strings.ToLower(token))
@@ -184,9 +193,33 @@ func (q queueSearch) active() bool {
 	return q.raw != "" && q.supported
 }
 
+// queueAgeOp maps an age comparison (age = now - ingested_at) to an ingested_at comparison.
+func queueAgeOp(op string) string {
+	switch op {
+	case ">":
+		return "<"
+	case ">=":
+		return "<="
+	case "<":
+		return ">"
+	case "<=":
+		return ">="
+	default:
+		return ""
+	}
+}
+
 func (q queueSearch) apply(query string, args []any) (string, []any) {
 	if !q.active() {
 		return query, args
+	}
+
+	if q.age != nil {
+		if op := queueAgeOp(q.age.op); op != "" {
+			seconds := q.age.value / 1000
+			query += " and s.ingested_at " + op + " datetime('now', ?)"
+			args = append(args, "-"+strconv.FormatInt(seconds, 10)+" seconds")
+		}
 	}
 
 	if q.journals != nil {
