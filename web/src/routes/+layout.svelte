@@ -768,4 +768,31 @@ main {
 		display: none;
 	}
 }
+
+/* Fullscreen PWA: use the whole display. */
+@media (display-mode: fullscreen) {
+	header {
+		padding-top: 0;
+	}
+
+	.top,
+	.sections-row {
+		padding-inline: var(--space-4);
+	}
+
+	.sections-bottom {
+		padding: 0;
+	}
+
+	main {
+		padding-bottom: var(--space-7);
+		padding-inline: var(--space-4);
+	}
+
+	@media (max-width: 40rem) {
+		main {
+			padding: var(--space-4) var(--space-3) calc(var(--space-6) + 3.5rem);
+		}
+	}
+}
 </style>
