@@ -487,6 +487,7 @@ textarea.ui-input {
 	gap: 2px;
 	padding: 0.25rem;
 	background: var(--surface-3);
+	border: 1px solid light-dark(var(--border-2), transparent);
 	border-radius: var(--radius-full);
 }
 
@@ -501,7 +502,7 @@ textarea.ui-input {
 	color: var(--text-2);
 	white-space: nowrap;
 	background: transparent;
-	border: 0;
+	border: 1px solid transparent;
 	border-radius: var(--radius-full);
 }
 
@@ -516,7 +517,8 @@ textarea.ui-input {
 
 .ui-seg button.active {
 	color: var(--text);
-	background: var(--surface);
+	background: light-dark(var(--input), var(--surface));
+	border-color: light-dark(var(--border-2), transparent);
 	box-shadow: var(--shadow-sm);
 }
 
