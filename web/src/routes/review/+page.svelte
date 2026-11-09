@@ -235,10 +235,10 @@ function swipeTabs(node: HTMLElement): { destroy(): void } {
 					await tick()
 					dragging = true
 					settling = false
-					dragTab = undefined
 					dragX = 0
-					adjacent = undefined
 					await tick()
+					dragTab = undefined
+					adjacent = undefined
 					dragging = false
 					skipAnim = false
 				})()
