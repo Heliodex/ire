@@ -1771,6 +1771,7 @@ h1 {
 
 .tab-content {
 	display: grid;
+	min-height: 55dvh;
 	margin-top: var(--space-3);
 	overflow: hidden;
 	touch-action: pan-y;
