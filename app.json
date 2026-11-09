@@ -1,35 +1,14 @@
 {
 	"build_component": "cd web && bun install && cd .. && go tool componentize-go -d \"$(go list -m -f '{{.Dir}}' github.com/heliodex/better-deploy/wt/packages/v2)/wit\" -w wt:app/app build",
 	"build_static": "cd web && bun install && bun run build && rm -rf ../static && cp -r build ../static",
-	"component_inputs": [
-		"web/bun.lock",
-		"web/package.json",
-		"web/src/lib/contract.ts"
-	],
+	"component_inputs": ["web/bun.lock", "web/package.json", "web/src/lib/contract.ts"],
 	"contract": "valibot",
 	"dev": {
 		"build": "cd web && bun install && cd .. && go tool componentize-go -d \"$(go list -m -f '{{.Dir}}' github.com/heliodex/better-deploy/wt/packages/v2)/wit\" -w wt:app/app build",
 		"command": "bun run dev",
-		"proxy": [
-			"/api",
-			"/auth"
-		],
-		"watch": [
-			"web/src/lib/contract.ts"
-		]
+		"proxy": ["/api", "/auth"],
+		"watch": ["web/src/lib/contract.ts"]
 	},
-	"health": "/healthz",
-	"job_concurrency": 4,
-	"host": "ire.localhost",
-	"memory_mb": 512,
-	"name": "ire",
-	"schedule": [
-		{
-			"method": "POST",
-			"path": "/jobs/tick",
-			"every": "30s"
-		}
-	],
 	"env": {
 		"HC_CLIENT_ID": "secret://HC_CLIENT_ID",
 		"HC_CLIENT_SECRET": "secret://HC_CLIENT_SECRET",
@@ -37,14 +16,24 @@
 		"IRE_BOOTSTRAP_EMAIL": "secret://IRE_BOOTSTRAP_EMAIL",
 		"IRE_BOOTSTRAP_ROLE": "admin",
 		"IRE_DEV_AUTH": "0",
+		"IRE_GITHUB_TOKEN": "secret://IRE_GITHUB_TOKEN",
+		"IRE_INGEST_SECRET": "secret://IRE_INGEST_SECRET",
+		"IRE_OUTBOUND_SECRET": "secret://IRE_OUTBOUND_SECRET",
 		"IRE_SEED_FIXTURES": "0",
-		"IRE_SHADOW": "0",
-		"IRE_GITHUB_TOKEN": "secret://IRE_GITHUB_TOKEN"
+		"IRE_SHADOW": "0"
 	},
-	"server_paths": [
-		"/auth"
+	"health": "/healthz",
+	"host": "ire.localhost",
+	"job_concurrency": 4,
+	"memory_mb": 512,
+	"name": "ire",
+	"schedule": [
+		{
+			"every": "30s",
+			"method": "POST",
+			"path": "/jobs/tick"
+		}
 	],
-	"server_pages": [
-		"/"
-	]
+	"server_pages": ["/"],
+	"server_paths": ["/auth"]
 }
