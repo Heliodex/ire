@@ -92,11 +92,13 @@
 }
 
 html {
+	min-height: 100%;
 	scrollbar-gutter: stable;
 	background: var(--bg);
 }
 
 body {
+	min-height: 100dvh;
 	margin: 0;
 	font-family: var(--font-sans);
 	font-size: var(--text-md);

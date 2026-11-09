@@ -431,6 +431,7 @@ header {
 	position: sticky;
 	top: 0;
 	z-index: var(--layer-header);
+	padding-top: env(safe-area-inset-top);
 	background: var(--header-bg, var(--surface));
 	border-bottom: 1px solid var(--border);
 	backdrop-filter: blur(12px);
@@ -439,7 +440,8 @@ header {
 .top,
 .sections-row {
 	width: 100%;
-	padding-inline: var(--space-4);
+	padding-inline: calc(var(--space-4) + env(safe-area-inset-right));
+	padding-inline-start: calc(var(--space-4) + env(safe-area-inset-left));
 }
 
 .top {
@@ -636,7 +638,7 @@ nav a.active {
 	gap: 0;
 	align-items: stretch;
 	justify-content: stretch;
-	padding: 0 0 env(safe-area-inset-bottom);
+	padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 	background: var(--header-bg, var(--surface));
 	border-top: 1px solid var(--border);
 }
@@ -723,7 +725,9 @@ main {
 	flex: 1;
 	flex-direction: column;
 	width: 100%;
-	padding: var(--space-5) var(--space-4) var(--space-7);
+	min-height: 0;
+	padding: var(--space-5) calc(var(--space-4) + env(safe-area-inset-right)) var(--space-7)
+		calc(var(--space-4) + env(safe-area-inset-left));
 }
 
 @media (max-width: 40rem) {
@@ -749,7 +753,8 @@ main {
 	}
 
 	main {
-		padding: var(--space-4) var(--space-3) calc(var(--space-6) + 3.5rem + env(safe-area-inset-bottom));
+		padding: var(--space-4) calc(var(--space-3) + env(safe-area-inset-right))
+			calc(var(--space-6) + 3.5rem + env(safe-area-inset-bottom)) calc(var(--space-3) + env(safe-area-inset-left));
 	}
 }
 
