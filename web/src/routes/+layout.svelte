@@ -813,7 +813,11 @@ main {
 
 	.top-actions :global(.search .results) {
 		top: auto;
+		right: 0;
 		bottom: calc(100% + var(--space-2));
+		left: 0;
+		width: auto;
+		min-width: 0;
 	}
 
 	.sections-row {

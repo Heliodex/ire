@@ -481,6 +481,7 @@ function openResult(result: SearchResult): void {
 	z-index: var(--layer-dialog);
 	display: flex;
 	flex-direction: column;
+	min-width: 100%;
 	max-height: min(70vh, 40rem);
 	overflow: hidden;
 	box-shadow: var(--shadow);
@@ -626,10 +627,17 @@ function openResult(result: SearchResult): void {
 	}
 }
 
-/* On a wide header the dropdown reaches left of the field and can afford the per-ship facts. */
-@media (min-width: 64rem) {
+/* Let the dropdown grow wider than the field before the large-screen detail layout. */
+@media (min-width: 48rem) {
 	.results {
 		left: auto;
+		width: min(32rem, calc(100vw - 2rem));
+	}
+}
+
+/* On a wide header the dropdown can afford the per-ship facts. */
+@media (min-width: 64rem) {
+	.results {
 		width: min(46rem, calc(100vw - 2rem));
 	}
 
