@@ -427,7 +427,7 @@ onMount((): (() => void) => {
 	void boot()
 
 	// Wide screens show the journals beside the overview, so the journal tab is not a tab there.
-	const media = window.matchMedia("(min-width: 100rem)")
+	const media = window.matchMedia("(min-width: 72rem)")
 	wide = media.matches
 	if (wide && tab === "journal") selectTab("overview")
 	function syncWide(event: MediaQueryListEvent): void {
@@ -2330,7 +2330,7 @@ h1 {
 }
 
 /* Wide screens show the journals beside the overview, so the journal tab hides. */
-@media (min-width: 100rem) {
+@media (min-width: 72rem) {
 	.tab-content:has(> .split-journals) {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
