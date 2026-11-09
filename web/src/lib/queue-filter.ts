@@ -396,3 +396,9 @@ function matchesChecks(item: QueueItem, filter: ChecksFilter): boolean {
 
 	return matchesNumber(count, { op: filter.op, value: filter.value })
 }
+
+// isServerFilteredQuery reports whether the queue query uses only filters the API can apply server-side.
+// Queries with age, a specific check, or check counts still need the client-side scan until the API supports them.
+export function isServerFilteredQuery(query: QueueQuery): boolean {
+	return query.age === undefined && query.check === undefined && query.checks === undefined
+}

@@ -1,4 +1,5 @@
 <script lang="ts">
+// oxlint-disable max-lines
 import { onMount, tick } from "svelte"
 import { cubicOut } from "svelte/easing"
 import { SvelteMap, SvelteSet } from "svelte/reactivity"
@@ -26,6 +27,7 @@ import { formatDateTime, formatDuration, humanStatus, statusTone, timeAgo } from
 import { hasPermission, permissionSecondPass, programPermissions } from "../../lib/permissions"
 import {
 	hasStructuredQuery,
+	isServerFilteredQuery,
 	matchesQueueQuery,
 	parseQueueQuery,
 	queueFilterSegments,
@@ -160,7 +162,7 @@ const cache = new SvelteMap<string, Queue>()
 
 if (savedQueue)
 	cache.set(
-		`${savedQueue.stage}:${savedQueue.filter}:${savedQueue.sortKey ?? ""}:${savedQueue.sortDir ?? 1}`,
+		`${savedQueue.stage}:${savedQueue.filter}:${savedQueue.search.trim()}:${savedQueue.sortKey ?? ""}:${savedQueue.sortDir ?? 1}`,
 		savedQueue.queue,
 	)
 
@@ -168,9 +170,13 @@ const permissions = $derived(programPermissions(session.me, program))
 const canSecondPass = $derived(hasPermission(permissions, permissionSecondPass))
 const readOnly = $derived(session.me?.readOnly ?? false)
 
+const q = $derived(search.trim())
 const queueQuery = $derived(parseQueueQuery(search))
+const serverFiltered = $derived(q === "" || isServerFilteredQuery(queueQuery))
 const filterSegments = $derived(queueFilterSegments(search))
 const visible = $derived(queue.items.filter(item => matchesQueueQuery(item, queueQuery)))
+let loadedQ = $state(q)
+let searchReady = $state(false)
 
 // estimatedHeight averages the measured rows so unmeasured ones start close to reality.
 const estimatedHeight = $derived.by(() => {
@@ -509,6 +515,7 @@ async function boot(): Promise<void> {
 		queue = emptyQueue
 		loading = true
 		await load(filter, stage, false)
+		searchReady = true
 		return
 	}
 
@@ -516,16 +523,17 @@ async function boot(): Promise<void> {
 		// The cached rows are already on screen and positioned, so refresh them in the background.
 		void loadStreaming()
 		await restorePosition(savedQueue.scrollY)
-
+		searchReady = true
 		return
 	}
 
 	await loadStreaming()
+	searchReady = true
 }
 
-// cacheKey scopes cached rows by stage, filter and sort, so a sorted view never shows rows fetched for another order.
-function cacheKey(targetStage: number, targetFilter: Filter): string {
-	return `${targetStage}:${targetFilter}:${sortKey ?? ""}:${sortDir}`
+// cacheKey scopes cached rows by stage, filter, search and sort, so a view never shows rows fetched for another state.
+function cacheKey(targetStage: number, targetFilter: Filter, query = q): string {
+	return `${targetStage}:${targetFilter}:${query}:${sortKey ?? ""}:${sortDir}`
 }
 
 // cancelStream stops an in-flight first page when the view changes underneath it.
@@ -541,7 +549,8 @@ async function loadStreaming(): Promise<void> {
 	const targetStage = stage
 	const wantSort = sortKey
 	const wantDir = sortDir
-	const key = cacheKey(targetStage, target)
+	const wantQ = q
+	const key = cacheKey(targetStage, target, wantQ)
 	const previous = queue.items
 	const cached = previous.length > 0
 	const limit = Math.min(Math.max(previous.length, 50), 100)
@@ -558,7 +567,7 @@ async function loadStreaming(): Promise<void> {
 	streaming = true
 
 	function current(): boolean {
-		return target === filter && targetStage === stage && wantSort === sortKey && wantDir === sortDir
+		return target === filter && targetStage === stage && wantSort === sortKey && wantDir === sortDir && wantQ === q
 	}
 
 	try {
@@ -568,6 +577,7 @@ async function loadStreaming(): Promise<void> {
 			limit,
 			wantSort,
 			wantDir,
+			wantQ,
 			{
 				onCounts: value => {
 					if (!current()) return
@@ -621,6 +631,7 @@ async function loadStreaming(): Promise<void> {
 		queue = { counts, hasMore, items }
 		cache.set(key, queue)
 		selected = Math.min(selected, Math.max(queue.items.length - 1, 0))
+		loadedQ = wantQ
 		error = ""
 	} catch (err) {
 		if (controller.signal.aborted) return
@@ -693,14 +704,16 @@ $effect((): (() => void) => {
 async function load(target = filter, targetStage = stage, keepRows = false): Promise<void> {
 	cancelStream()
 
-	const key = cacheKey(targetStage, target)
+	const wantQ = q
+	const key = cacheKey(targetStage, target, wantQ)
 	const wantSort = sortKey
 	const wantDir = sortDir
 	const limit = keepRows ? Math.min(Math.max(queue.items.length, 50), 100) : 50
 
 	try {
-		const next = await fetchQueue(target, targetStage, 0, limit, wantSort, wantDir)
-		if (target !== filter || targetStage !== stage || wantSort !== sortKey || wantDir !== sortDir) return
+		const next = await fetchQueue(target, targetStage, 0, limit, wantSort, wantDir, wantQ)
+		if (target !== filter || targetStage !== stage || wantSort !== sortKey || wantDir !== sortDir || wantQ !== q)
+			return
 
 		// Keep rows loaded past the refresh limit so polling cannot shrink the list.
 		if (keepRows && queue.items.length > next.items.length) {
@@ -711,6 +724,7 @@ async function load(target = filter, targetStage = stage, keepRows = false): Pro
 		cache.set(key, next)
 		queue = next
 		selected = Math.min(selected, Math.max(queue.items.length - 1, 0))
+		loadedQ = wantQ
 		error = ""
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
@@ -718,10 +732,10 @@ async function load(target = filter, targetStage = stage, keepRows = false): Pro
 			void goto("/")
 			return
 		}
-		if (target === filter && targetStage === stage)
+		if (target === filter && targetStage === stage && wantQ === q)
 			error = err instanceof Error ? err.message : "Could not load the queue."
 	} finally {
-		if (target === filter && targetStage === stage) loading = false
+		if (target === filter && targetStage === stage && wantQ === q) loading = false
 	}
 }
 
@@ -733,6 +747,7 @@ async function loadMore(): Promise<void> {
 	const targetStage = stage
 	const wantSort = sortKey
 	const wantDir = sortDir
+	const wantQ = q
 	const targetQueue = queue
 	const offset = queue.items.length
 
@@ -740,10 +755,17 @@ async function loadMore(): Promise<void> {
 	error = ""
 
 	try {
-		const next = await fetchQueue(targetFilter, targetStage, offset, 50, wantSort, wantDir)
+		const next = await fetchQueue(targetFilter, targetStage, offset, 50, wantSort, wantDir, wantQ)
 
-		// A tab, sort or queue change while this page was in flight makes the result stale.
-		if (targetFilter !== filter || targetStage !== stage || wantSort !== sortKey || wantDir !== sortDir) return
+		// A tab, sort, search or queue change while this page was in flight makes the result stale.
+		if (
+			targetFilter !== filter
+			|| targetStage !== stage
+			|| wantSort !== sortKey
+			|| wantDir !== sortDir
+			|| wantQ !== q
+		)
+			return
 		if (queue !== targetQueue) return
 
 		const seen = new Set(queue.items.map(item => item.id))
@@ -763,7 +785,27 @@ async function loadMore(): Promise<void> {
 // or runs out of queue. The debounce stops half-typed filters from walking the whole queue;
 // once searching is underway, continue quickly so a no-match scan doesn't stall.
 $effect((): (() => void) | undefined => {
-	if (!hasStructuredQuery(queueQuery)) return
+	if (!searchReady || q === loadedQ) return
+	const next = q
+	const timer = setTimeout((): void => {
+		if (!browser) return
+		const url = new URL(window.location.href)
+		if (next === "") url.searchParams.delete("search")
+		else url.searchParams.set("search", next)
+		void goto(`${url.pathname}${url.search}${url.hash}`, { keepfocus: true, noscroll: true, replaceState: true })
+		selected = 0
+		error = ""
+		actionError = ""
+		loadingMore = false
+		queue = { ...queue, hasMore: false, items: [] }
+		loading = true
+		void load(filter, stage)
+	}, 300)
+	return (): void => clearTimeout(timer)
+})
+
+$effect((): (() => void) | undefined => {
+	if (!hasStructuredQuery(queueQuery) || serverFiltered) return
 	if (
 		visible.length > 0
 		|| loading
@@ -774,10 +816,7 @@ $effect((): (() => void) | undefined => {
 		|| actionError !== ""
 	)
 		return
-
-	const delay = queue.items.length > 0 ? 0 : 250
-	const timer = setTimeout((): void => void loadMore(), delay)
-
+	const timer = setTimeout((): void => void loadMore(), queue.items.length > 0 ? 0 : 250)
 	return (): void => clearTimeout(timer)
 })
 
@@ -1321,7 +1360,7 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 					</span>
 				</span>
 				<input
-					aria-label="Filter open ships by text or week, checks, type, status, age, claimed time and version"
+					aria-label="Filter open ships by text or week, checks, type, status, age, claimed time, journals and version"
 					class="ui-input"
 					oninput={(): void => {
 						error = ""
@@ -1329,8 +1368,8 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 						requestAnimationFrame(syncFilterScroll)
 					}}
 					onscroll={syncFilterScroll}
-					placeholder="Filter ships (type:cad, week:1…)"
-					title="Try week:1, type:cad, status:ready, checks:warn, age:>1d, time:>6h or ver:2"
+					placeholder="Filter ships (type:cad, journals:>5…)"
+					title="Try week:1, type:cad, status:ready, journals:>5, checks:warn, age:>1d, time:>6h or ver:2"
 					type="search"
 					bind:this={filterInput}
 					bind:value={search}
@@ -1398,6 +1437,10 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 			<div>
 				<dt><code>time:&gt;6h</code></dt>
 				<dd>More than this much claimed time.</dd>
+			</div>
+			<div>
+				<dt><code>journals:&gt;5</code></dt>
+				<dd>More than this many journal entries. Comparisons like <code>journals:>=2</code> work too.</dd>
 			</div>
 			<div>
 				<dt><code>ver:2</code> / <code>ver:&gt;5</code></dt>
@@ -1473,7 +1516,9 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 								<LoadingState
 									message={streaming
 										? "Loading open ships…"
-										: `Searching all ships… (${queue.items.length} checked)`}
+										: serverFiltered
+											? `Searching… (${queue.items.length} checked)`
+											: `Searching all ships… (${queue.items.length} checked)`}
 								/>
 							</div>
 						{:else}

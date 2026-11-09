@@ -107,6 +107,12 @@ export const endpoints: Endpoint[] = Object.freeze([
 				type: "1 | -1",
 				when: "sort",
 			},
+			{
+				default: '""',
+				in: "query",
+				name: "q",
+				type: "string",
+			},
 		],
 		path: "/api/v1/programs/{program}/queue",
 		response: { schema: queueResponseSchema },

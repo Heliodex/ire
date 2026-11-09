@@ -471,6 +471,7 @@ const queueResponseFixture: InferOutput<typeof queueResponseSchema> = {
 			"hoursJournalSeconds": 0,
 			"id": "id",
 			"ingestedAt": "2026-01-01T00:00:00Z",
+			"journalCount": 0,
 			"makerAvatarUrl": "makerAvatarUrl",
 			"makerEmail": "test@example.com",
 			"makerName": "makerName",

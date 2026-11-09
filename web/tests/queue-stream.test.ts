@@ -124,7 +124,7 @@ describe("streamQueue", () => {
 		globalThis.fetch = streamFetch as typeof fetch
 
 		const handlers = recorder()
-		await streamQueue("all", 1, 50, "ship", -1, handlers, new AbortController().signal)
+		await streamQueue("all", 1, 50, "ship", -1, "", handlers, new AbortController().signal)
 
 		expect(requested).toContain("filter=all")
 		expect(requested).toContain("limit=50")
@@ -142,7 +142,7 @@ describe("streamQueue", () => {
 		let caught: unknown
 
 		try {
-			await streamQueue("all", 1, 50, undefined, 1, recorder(), new AbortController().signal)
+			await streamQueue("all", 1, 50, undefined, 1, "", recorder(), new AbortController().signal)
 		} catch (err) {
 			caught = err
 		}

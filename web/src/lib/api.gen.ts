@@ -46,12 +46,14 @@ export async function fetchQueue(
 	limit = 50,
 	sort: string | null = null,
 	dir: 1 | -1 = 1,
+	q = "",
 ): Promise<InferOutput<typeof queueResponseSchema>> {
 	const query = new URLSearchParams()
 	query.set("filter", filter)
 	query.set("stage", String(stage))
 	query.set("offset", String(offset))
 	query.set("limit", String(limit))
+	query.set("q", q)
 	if (sort) {
 		query.set("sort", sort)
 		query.set("dir", ({ "-1": "desc", "1": "asc" } as Record<string, string>)[String(dir)])

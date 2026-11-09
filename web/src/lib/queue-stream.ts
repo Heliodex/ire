@@ -73,10 +73,13 @@ export async function streamQueue(
 	limit: number,
 	sortKey: string | null | undefined,
 	sortDir: 1 | -1,
+	q: string,
 	handlers: QueueStreamHandlers,
 	signal: AbortSignal,
 ): Promise<void> {
 	const params = new URLSearchParams({ filter, limit: String(limit), stage: String(stage), stream: "1" })
+
+	if (q.trim() !== "") params.set("q", q.trim())
 
 	if (typeof sortKey === "string" && sortKey !== "") {
 		params.set("dir", sortDir === -1 ? "desc" : "asc")

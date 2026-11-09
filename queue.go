@@ -35,6 +35,7 @@ type queueParams struct {
 	filter     string
 	sortColumn string
 	sortDir    string
+	search     queueSearch
 }
 
 // parseQueueParams validates the listing query, writing the error for a bad stage, sort or role.
@@ -89,6 +90,8 @@ func (a *ireApp) parseQueueParams(w http.ResponseWriter, r *http.Request, person
 		params.sortColumn = column
 	}
 
+	params.search = parseQueueSearch(r.URL.Query().Get("q"))
+
 	return params, true
 }
 
@@ -126,6 +129,8 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 		args = append(args, person.ID)
 	case queueFilterAll:
 	}
+
+	query, args = params.search.apply(query, args)
 
 	order := ` order by s.priority desc, s.ingested_at asc, s.id asc`
 	if params.stage == stageOne && params.sortColumn == "" {

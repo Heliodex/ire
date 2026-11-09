@@ -1,0 +1,238 @@
+package main
+
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+type queueCompare struct {
+	op    string
+	value int64
+}
+
+type queueSearch struct {
+	raw       string
+	supported bool
+	journals  *queueCompare
+	status    string
+	text      []string
+	time      *queueCompare
+	kind      string
+	version   *queueCompare
+	week      *queueCompare
+}
+
+var queueDurationPart = regexp.MustCompile(`(\d+(?:\.\d+)?)([smhdw])`)
+
+var queueDurationUnits = map[string]int64{
+	"s": 1000,
+	"m": 60 * 1000,
+	"h": 60 * 60 * 1000,
+	"d": 24 * 60 * 60 * 1000,
+	"w": 7 * 24 * 60 * 60 * 1000,
+}
+
+var queueDurationRank = map[string]int{
+	"s": 1,
+	"m": 2,
+	"h": 3,
+	"d": 4,
+	"w": 5,
+}
+
+var queueKnownStatuses = map[string]bool{
+	"checking": true, "claimed": true, "decided": true, "in_review": true,
+	"needs_attention": true, "ready": true, "stage2_hold": true, "withdrawn": true,
+}
+
+func parseQueueSearch(raw string) queueSearch {
+	query := queueSearch{raw: strings.TrimSpace(raw), supported: true}
+	if query.raw == "" {
+		return query
+	}
+
+	for _, token := range strings.Fields(query.raw) {
+		separator := strings.Index(token, ":")
+		if separator == -1 {
+			query.text = append(query.text, strings.ToLower(token))
+			continue
+		}
+
+		key := strings.ToLower(token[:separator])
+		value := strings.TrimSpace(token[separator+1:])
+
+		switch key {
+		case "journals":
+			if parsed := parseQueueComparison(value); parsed != nil {
+				query.journals = parsed
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
+		case "status":
+			status := normalizeQueueStatus(value)
+			if queueKnownStatuses[status] {
+				query.status = status
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
+		case "time":
+			if parsed := parseQueueDuration(value, ">="); parsed != nil {
+				query.time = parsed
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
+		case "type":
+			if value != "" {
+				query.kind = strings.ToLower(value)
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
+		case "ver":
+			if parsed := parseQueueComparison(value); parsed != nil {
+				query.version = parsed
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
+		case "week":
+			if parsed := parseQueueComparison(value); parsed != nil {
+				query.week = parsed
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
+		case "age", "check", "checks":
+			query.supported = false
+		default:
+			query.text = append(query.text, strings.ToLower(token))
+		}
+	}
+
+	return query
+}
+
+func normalizeQueueStatus(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	value = strings.ReplaceAll(value, " ", "_")
+	value = strings.ReplaceAll(value, "-", "_")
+	return value
+}
+
+func parseQueueComparison(value string) *queueCompare {
+	op := "="
+	body := value
+	for _, prefix := range []string{">=", "<=", "!=", ">", "<", "="} {
+		if strings.HasPrefix(value, prefix) {
+			op = prefix
+			body = value[len(prefix):]
+			break
+		}
+	}
+
+	if body == "" || body != strings.TrimSpace(body) {
+		return nil
+	}
+
+	number, err := strconv.ParseInt(body, 10, 64)
+	if err != nil {
+		return nil
+	}
+
+	return &queueCompare{op: op, value: number}
+}
+
+func parseQueueDuration(value, fallback string) *queueCompare {
+	op := fallback
+	body := strings.ToLower(value)
+	for _, prefix := range []string{">=", "<=", "!=", ">", "<", "="} {
+		if strings.HasPrefix(body, prefix) {
+			op = prefix
+			body = body[len(prefix):]
+			break
+		}
+	}
+
+	matches := queueDurationPart.FindAllStringSubmatchIndex(body, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	joined := ""
+	var total float64
+	previous := 99
+	for _, match := range queueDurationPart.FindAllStringSubmatch(body, -1) {
+		joined += match[0]
+		rank := queueDurationRank[match[2]]
+		if rank == 0 || rank >= previous {
+			return nil
+		}
+		previous = rank
+		amount, err := strconv.ParseFloat(match[1], 64)
+		if err != nil {
+			return nil
+		}
+		total += amount * float64(queueDurationUnits[match[2]])
+	}
+
+	if joined != body {
+		return nil
+	}
+
+	return &queueCompare{op: op, value: int64(total)}
+}
+
+func (q queueSearch) active() bool {
+	return q.raw != "" && q.supported
+}
+
+func (q queueSearch) apply(query string, args []any) (string, []any) {
+	if !q.active() {
+		return query, args
+	}
+
+	if q.journals != nil {
+		query += " and (select count(*) from journal_entry je where je.submission_id = s.id) " + q.journals.op + " ?"
+		args = append(args, q.journals.value)
+	}
+
+	if q.status != "" {
+		query += " and s.status = ?"
+		args = append(args, q.status)
+	}
+
+	if q.time != nil {
+		query += " and (s.hours_claimed_seconds * 1000) " + q.time.op + " ?"
+		args = append(args, q.time.value)
+	}
+
+	if q.kind != "" {
+		query += " and lower(trim(coalesce(s.theme, ''))) = ?"
+		args = append(args, q.kind)
+	}
+
+	if q.version != nil {
+		query += " and s.version " + q.version.op + " ?"
+		args = append(args, q.version.value)
+	}
+
+	if q.week != nil {
+		query += " and s.week is not null and s.week " + q.week.op + " ?"
+		args = append(args, q.week.value)
+	}
+
+	for _, term := range q.text {
+		like := "%" + escapeLike(strings.ToLower(term)) + "%"
+		query += " and (lower(s.title) like ? escape '\\' or lower(coalesce(s.maker_name, '')) like ? escape '\\' or lower(s.status) like ? escape '\\' or lower(coalesce(s.theme, '')) like ? escape '\\')"
+		args = append(args, like, like, like, like)
+	}
+
+	return query, args
+}
+
+func escapeLike(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `%`, `\%`)
+	value = strings.ReplaceAll(value, `_`, `\_`)
+	return value
+}
+
+
