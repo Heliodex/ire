@@ -887,7 +887,11 @@ async function saveDraftNow(): Promise<void> {
 						<div
 							class="tab-slide"
 							style:transform={dragging || settling ? `translateX(${dragX}px)` : undefined}
-							style:transition={dragging ? "none" : undefined}
+							style:transition={dragging || skipAnim
+								? "none"
+								: settling
+									? "transform 180ms cubic-bezier(0.33, 1, 0.68, 1)"
+									: "none"}
 							in:fly={skipAnim || dragging || settling
 								? { duration: 0, x: 0 }
 								: { duration: 180, easing: cubicOut, x: tabDir * 220 }}
@@ -1227,7 +1231,11 @@ async function saveDraftNow(): Promise<void> {
 					<div
 						class="tab-slide"
 						style:transform={dragging || settling ? `translateX(${dragX}px)` : undefined}
-						style:transition={dragging ? "none" : undefined}
+						style:transition={dragging || skipAnim
+							? "none"
+							: settling
+								? "transform 180ms cubic-bezier(0.33, 1, 0.68, 1)"
+								: "none"}
 						in:fly={skipAnim || dragging || settling
 							? { duration: 0, x: 0 }
 							: { duration: 180, easing: cubicOut, x: tabDir * 220 }}
@@ -1244,7 +1252,11 @@ async function saveDraftNow(): Promise<void> {
 						style:transform={dragX < 0
 							? `translateX(calc(100% + ${dragX}px))`
 							: `translateX(calc(-100% + ${dragX}px))`}
-						style:transition={dragging ? "none" : undefined}
+						style:transition={dragging || skipAnim
+							? "none"
+							: settling
+								? "transform 180ms cubic-bezier(0.33, 1, 0.68, 1)"
+								: "none"}
 					>
 						{@render bundlePanel(dragTab)}
 					</div>
