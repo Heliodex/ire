@@ -147,8 +147,16 @@ function toggleEntry(id: string): void {
 	transform: rotate(-90deg);
 }
 
+.journal-body {
+	padding-top: var(--space-2);
+}
+
 .journal-body.hidden {
 	display: none;
+}
+
+.journal-body > :global(.markdown:first-child > .md-image:first-child) {
+	margin-top: var(--space-2);
 }
 
 .media-grid {
