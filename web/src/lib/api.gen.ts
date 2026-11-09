@@ -2,7 +2,7 @@
 // Excluded from lint and format; verified byte-for-byte by wt contract --check.
 import type { InferOutput } from "valibot"
 import { parseJSON, program, requestVoid } from "./api-runtime"
-import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, submissionFileResponseSchema, type createRoleSchema, type decisionRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type sendBackRequestSchema, type updateRoleSchema } from "./contract"
+import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, submissionFileResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type updateRoleSchema } from "./contract"
 
 // fetchAuthConfig returns which sign-in methods are enabled.
 export async function fetchAuthConfig(): Promise<InferOutput<typeof authConfigSchema>> {
@@ -348,6 +348,34 @@ export async function sendShipBack(
 		method: "POST",
 	})
 	const parsed = await parseJSON(response, sendBackResultSchema)
+	return parsed
+}
+
+// revertDecision invalidates the final review and reopens the ship. Allowed for admins or the reviewer who made that decision.
+export async function revertDecision(
+	id: string,
+	request: InferOutput<typeof revertDecisionRequestSchema>,
+): Promise<InferOutput<typeof revertDecisionResultSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/decision/revert`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	const parsed = await parseJSON(response, revertDecisionResultSchema)
+	return parsed
+}
+
+// amendDecision replaces the final review with a corrected decision. Allowed for admins or the reviewer who made that decision.
+export async function amendDecision(
+	id: string,
+	request: InferOutput<typeof amendDecisionRequestSchema>,
+): Promise<InferOutput<typeof decisionResultSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/decision/amend`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "POST",
+	})
+	const parsed = await parseJSON(response, decisionResultSchema)
 	return parsed
 }
 

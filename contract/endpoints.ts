@@ -18,6 +18,7 @@ import {
 	reviewBundleSchema,
 	reviewedResponseSchema,
 	reviewerProfileSchema,
+	revertDecisionResultSchema,
 	roleDefinitionSchema,
 	rolesResponseSchema,
 	searchResponseSchema,
@@ -415,6 +416,38 @@ export const endpoints: Endpoint[] = Object.freeze([
 		],
 		path: "/api/v1/programs/{program}/submissions/{id}/send-back",
 		response: { schema: sendBackResultSchema },
+	},
+	{
+		doc: "revertDecision invalidates the final review and reopens the ship. Allowed for admins or the reviewer who made that decision.",
+		method: "POST",
+		name: "revertDecision",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof revertDecisionRequestSchema>",
+			},
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/decision/revert",
+		response: { schema: revertDecisionResultSchema },
+	},
+	{
+		doc: "amendDecision replaces the final review with a corrected decision. Allowed for admins or the reviewer who made that decision.",
+		method: "POST",
+		name: "amendDecision",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof amendDecisionRequestSchema>",
+			},
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/decision/amend",
+		response: { schema: decisionResultSchema },
 	},
 	{
 		doc: "fetchOutbox returns recent deliveries for the operations page.",

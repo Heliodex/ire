@@ -25,6 +25,7 @@ import {
 	saveDraft,
 	sendShipBack,
 } from "../../lib/api"
+import { amendDecision, revertDecision } from "../../lib/api.gen"
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
 import { type BundleCache, createBundleCache, prefetchNextBundle } from "../../lib/bundle-cache"
@@ -50,7 +51,13 @@ import {
 	humanStatus,
 	statusTone,
 } from "../../lib/format"
-import { hasPermission, permissionNoteManage, permissionSecondPass, programPermissions } from "../../lib/permissions"
+import {
+	hasPermission,
+	permissionNoteManage,
+	permissionSecondPass,
+	permissionWildcard,
+	programPermissions,
+} from "../../lib/permissions"
 import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
 import { reviewerHref } from "../../lib/reviewer"
 import { dropSignIn, session } from "../../lib/session.svelte.js"
@@ -102,12 +109,33 @@ let rerunError = $state("")
 let checksOutdated = $state(false)
 let coverFailed = $state(false)
 let wide = $state(false)
+let amendDecisionValue = $state<"approved" | "changes" | "rejected">("approved")
+let amendHours = $state(0)
+let amendNote = $state("")
+let amendInternalNote = $state("")
+let amendReason = $state("")
+let amendAcknowledgements = $state<string[]>([])
+let amendError = $state("")
+let amending = $state(false)
+let amendOpen = $state(false)
+let amendKey = $state("")
+let revertReason = $state("")
+let revertError = $state("")
+let reverting = $state(false)
+let revertOpen = $state(false)
 const checksCollapsed = new SvelteSet<string>()
 const journalCollapsed = new SvelteSet<string>()
 $effect(() => {
 	void id
 	checksCollapsed.clear()
 	journalCollapsed.clear()
+	amendOpen = false
+	revertOpen = false
+	amendError = ""
+	revertError = ""
+	amendReason = ""
+	revertReason = ""
+	amendKey = ""
 })
 let checksTimer: ReturnType<typeof setTimeout> | null
 let prefetchTimer: ReturnType<typeof setTimeout> | null
@@ -144,6 +172,20 @@ const previewTimeSegments = $derived.by((): TimeSegment[] => {
 })
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const canApprove = $derived(!reviewed && blocking.length === 0 && (secondPass || missingAcks.length === 0))
+const finalDecision = $derived(bundle?.reviews.find(review => review.held === 0 && !review.invalidatedAt) ?? undefined)
+const canEditFinal = $derived(
+	reviewed
+		&& !readOnly
+		&& Boolean(finalDecision)
+		&& submission?.status === "decided"
+		&& (hasPermission(permissions, permissionWildcard)
+			|| (session.me?.user.email ?? "").toLowerCase() === finalDecision.reviewerEmail.toLowerCase()),
+)
+const amendIsSecondPass = $derived((finalDecision?.stage ?? 1) === 2)
+const amendMissingAcks = $derived(
+	amendIsSecondPass ? [] : warnings.filter(check => !amendAcknowledgements.includes(check.key)),
+)
+const amendCanApprove = $derived(blocking.length === 0 && (amendIsSecondPass || amendMissingAcks.length === 0))
 const approvedSeconds = $derived(Math.max(0, Math.round((Number(hours) || 0) * 3600)))
 const timeSegments = $derived.by((): TimeSegment[] => {
 	const claimed = submission?.hoursClaimedSeconds ?? 0
@@ -788,6 +830,107 @@ async function sendBackToStageOne(): Promise<void> {
 		else sendBackError = err instanceof Error ? err.message : "Could not send the ship back."
 	} finally {
 		sendingBack = false
+	}
+}
+
+function toggleAmendAck(key: string): void {
+	amendAcknowledgements = amendAcknowledgements.includes(key)
+		? amendAcknowledgements.filter(item => item !== key)
+		: [...amendAcknowledgements, key]
+}
+
+function openAmendDecision(): void {
+	if (!bundle || !finalDecision) return
+
+	amendOpen = true
+	revertOpen = false
+	amendError = ""
+	amendDecisionValue = (finalDecision.decision as "approved" | "changes" | "rejected") ?? "approved"
+	amendHours =
+		Math.round(((finalDecision.hoursApprovedSeconds ?? bundle.submission.hoursClaimedSeconds) / 3600) * 100) / 100
+	amendNote = finalDecision.noteToMaker ?? ""
+	amendInternalNote = finalDecision.internalNote ?? ""
+	amendReason = ""
+	amendAcknowledgements = [...(finalDecision.acknowledgements ?? [])]
+	amendKey = ""
+}
+
+async function submitAmendDecision(): Promise<void> {
+	if (!bundle || !canEditFinal || amending) return
+
+	amendError = ""
+	if (!amendReason.trim()) {
+		amendError = "Explain why this decision is being changed."
+		return
+	}
+
+	if (amendDecisionValue === "approved" && blocking.length > 0) {
+		amendError = `Approval is blocked: ${blocking[0].summary}. Ask the maker to resubmit or reject with a note.`
+		return
+	}
+
+	if (amendDecisionValue === "approved" && !amendIsSecondPass && amendMissingAcks.length > 0) {
+		amendError = `Acknowledge ${amendMissingAcks.length} warning${amendMissingAcks.length === 1 ? "" : "s"} before approving.`
+		return
+	}
+
+	amending = true
+
+	try {
+		const key = amendKey.startsWith("amend-") ? amendKey : `amend-${crypto.randomUUID()}`
+		amendKey = key
+		const outcome = await amendDecision(bundle.submission.id, {
+			acknowledgements: amendDecisionValue === "approved" ? amendAcknowledgements : [],
+			decision: amendDecisionValue,
+			hoursApprovedSeconds:
+				amendDecisionValue === "approved"
+					? Math.max(0, Math.round((Number(amendHours) || 0) * 3600))
+					: undefined,
+			idempotencyKey: key,
+			internalNote: amendInternalNote,
+			noteToMaker: amendNote,
+			reason: amendReason.trim(),
+			version: bundle.submission.version,
+		})
+		if (outcome.deliveryStatus === "failed") flash("Decision amended, but the delivery to Half Life failed.")
+		else flash("Decision amended.")
+		amendOpen = false
+		amendKey = ""
+		await load(id)
+	} catch (err) {
+		if (err instanceof ApiError && err.code === "stale_version")
+			amendError = "This ship changed since you opened it. Reload before amending."
+		else amendError = err instanceof Error ? err.message : "Could not amend the decision."
+	} finally {
+		amending = false
+	}
+}
+
+async function submitRevertDecision(): Promise<void> {
+	if (!bundle || !canEditFinal || reverting) return
+
+	revertError = ""
+	if (!revertReason.trim()) {
+		revertError = "Explain why this decision is being reverted."
+		return
+	}
+
+	reverting = true
+
+	try {
+		await revertDecision(bundle.submission.id, {
+			reason: revertReason.trim(),
+			version: bundle.submission.version,
+		})
+		flash("Decision reverted.")
+		revertOpen = false
+		await goto(backPath)
+	} catch (err) {
+		if (err instanceof ApiError && err.code === "stale_version")
+			revertError = "This ship changed since you opened it. Reload before reverting."
+		else revertError = err instanceof Error ? err.message : "Could not revert the decision."
+	} finally {
+		reverting = false
 	}
 }
 
@@ -1479,11 +1622,202 @@ async function saveDraftNow(): Promise<void> {
 					<section class="ui-card padded decision">
 						<h2>{submission.status === "withdrawn" ? "Withdrawn" : "Final decision"}</h2>
 						<TimeEvidenceBar segments={timeSegments} />
-						<p class="policy">
-							{submission.status === "withdrawn"
-								? "This ship was withdrawn before a final decision."
-								: "This ship has been reviewed. The History tab has the note, approved hours and acknowledgements."}
-						</p>
+						{#if finalDecision && submission.status === "decided"}
+							<div class="final-summary">
+								<p>
+									<strong>{decisionLabel(finalDecision.decision)}</strong>
+									by {finalDecision.reviewerName ?? finalDecision.reviewerEmail}
+									· {formatDateTime(finalDecision.createdAt)}
+								</p>
+								{#if finalDecision.decision === "approved"
+									&& finalDecision.hoursApprovedSeconds !== undefined}
+									<p>{formatHours(finalDecision.hoursApprovedSeconds)} approved</p>
+								{/if}
+								{#if finalDecision.noteToMaker}
+									<p class="final-note">{finalDecision.noteToMaker}</p>
+								{/if}
+							</div>
+						{:else}
+							<p class="policy">
+								{submission.status === "withdrawn"
+									? "This ship was withdrawn before a final decision."
+									: "This ship has been reviewed. The History tab has the note, approved hours and acknowledgements."}
+							</p>
+						{/if}
+
+						{#if canEditFinal}
+							<div class="decision-edit">
+								<div class="decision-edit-actions">
+									<button
+										class="ui-button"
+										data-variant="outline"
+										onclick={openAmendDecision}
+										type="button"
+									>
+										Change decision
+									</button>
+									<button
+										class="ui-button"
+										data-variant="outline"
+										onclick={(): void => {
+											revertOpen = !revertOpen
+											amendOpen = false
+											revertError = ""
+										}}
+										type="button"
+									>
+										Revert decision
+									</button>
+								</div>
+
+								{#if revertOpen}
+									<div class="edit-panel">
+										<label class="edit-field">
+											<span>Why revert this decision?</span>
+											<textarea
+												class="ui-input"
+												maxlength={maxNote}
+												placeholder="Explain what needs to be reviewed again…"
+												rows="3"
+												bind:value={revertReason}
+											></textarea>
+										</label>
+										{#if revertError}
+											<p class="ui-notice" data-tone="bad" role="alert">{revertError}</p>
+										{/if}
+										<div class="edit-submit">
+											<button
+												class="ui-button"
+												data-variant="ghost"
+												onclick={(): void => (revertOpen = false)}
+												type="button"
+											>
+												Cancel
+											</button>
+											<button
+												class="ui-button danger"
+												disabled={reverting}
+												onclick={submitRevertDecision}
+												type="button"
+											>
+												{reverting ? "Reverting…" : "Revert to queue"}
+											</button>
+										</div>
+									</div>
+								{/if}
+
+								{#if amendOpen}
+									<div class="edit-panel">
+										<div class="field-head">
+											<span class="field-label">New decision</span>
+										</div>
+										<!-- biome-ignore lint/a11y/useSemanticElements: segmented control styled as ui-seg -->
+										<div aria-label="New decision" class="ui-seg amend-seg" role="group">
+											<button
+												onclick={(): void => (amendDecisionValue = "approved")}
+												type="button"
+												class:active={amendDecisionValue === "approved"}
+											>
+												Approve
+											</button>
+											<button
+												onclick={(): void => (amendDecisionValue = "changes")}
+												type="button"
+												class:active={amendDecisionValue === "changes"}
+											>
+												Changes
+											</button>
+											<button
+												onclick={(): void => (amendDecisionValue = "rejected")}
+												type="button"
+												class:active={amendDecisionValue === "rejected"}
+											>
+												Reject
+											</button>
+										</div>
+
+										{#if amendDecisionValue === "approved"}
+											<label class="edit-field">
+												<span>Hours approved</span>
+												<input
+													class="ui-input"
+													min="0"
+													step="0.25"
+													type="number"
+													bind:value={amendHours}
+												>
+											</label>
+											{#if !amendIsSecondPass && warnings.length > 0}
+												<div class="missing">
+													<strong>Acknowledge before approving</strong>
+													{#each warnings as check (check.key)}
+														<label class="ack">
+															<input
+																checked={amendAcknowledgements.includes(check.key)}
+																onchange={(): void => toggleAmendAck(check.key)}
+																type="checkbox"
+															>
+															<span>{check.label}</span>
+														</label>
+													{/each}
+												</div>
+											{/if}
+										{/if}
+
+										<label class="edit-field">
+											<span>Note to maker</span>
+											<textarea
+												class="ui-input"
+												maxlength={maxNote}
+												rows="3"
+												bind:value={amendNote}
+											></textarea>
+										</label>
+										<label class="edit-field">
+											<span>Internal note</span>
+											<textarea
+												class="ui-input"
+												maxlength={maxNote}
+												rows="2"
+												bind:value={amendInternalNote}
+											></textarea>
+										</label>
+										<label class="edit-field">
+											<span>Why change this decision? (required)</span>
+											<textarea
+												class="ui-input"
+												maxlength={maxNote}
+												placeholder="Explain what was corrected…"
+												rows="2"
+												bind:value={amendReason}
+											></textarea>
+										</label>
+
+										{#if amendError}
+											<p class="ui-notice" data-tone="bad" role="alert">{amendError}</p>
+										{/if}
+										<div class="edit-submit">
+											<button
+												class="ui-button"
+												data-variant="ghost"
+												onclick={(): void => (amendOpen = false)}
+												type="button"
+											>
+												Cancel
+											</button>
+											<button
+												class="ui-button primary"
+												disabled={amending}
+												onclick={submitAmendDecision}
+												type="button"
+											>
+												{amending ? "Saving…" : "Save changed decision"}
+											</button>
+										</div>
+									</div>
+								{/if}
+							</div>
+						{/if}
 					</section>
 				{:else if readOnly}
 					<section class="ui-card padded decision">
@@ -1780,6 +2114,66 @@ h1 {
 .send-back p {
 	font-size: var(--text-xs);
 	color: var(--text-3);
+}
+
+.final-summary {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--text-2);
+}
+
+.final-note {
+	color: var(--text-3);
+	white-space: pre-wrap;
+}
+
+.decision-edit {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding-top: var(--space-3);
+	margin-top: var(--space-3);
+	border-top: 1px solid var(--border);
+}
+
+.decision-edit-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+
+.edit-panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding-top: var(--space-2);
+}
+
+.edit-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	font-size: var(--text-sm);
+}
+
+.edit-field > span,
+.field-label {
+	font-size: var(--text-xs);
+	font-weight: 600;
+	color: var(--text-2);
+}
+
+.edit-submit {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	justify-content: flex-end;
+}
+
+.amend-seg {
+	align-self: flex-start;
 }
 
 .shortcuts {

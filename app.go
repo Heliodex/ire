@@ -212,6 +212,8 @@ func (a *ireApp) routes() {
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/notes", a.handleNoteCreate)
 	a.mux.HandleFunc("DELETE /api/v1/programs/{program}/notes/{id}", a.handleNoteDelete)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/decision", a.handleDecision)
+	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/decision/revert", a.handleRevertDecision)
+	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/decision/amend", a.handleAmendDecision)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/send-back", a.handleSendBack)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/evidence/refresh", a.handleEvidenceRefresh)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/submissions/{id}/file", a.handleSubmissionFile)

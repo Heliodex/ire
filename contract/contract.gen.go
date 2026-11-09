@@ -7,6 +7,96 @@ import "fmt"
 import "regexp"
 import "unicode/utf8"
 
+type AmendDecisionRequest struct {
+	// Acknowledgements corresponds to the JSON schema field "acknowledgements".
+	Acknowledgements []string `json:"acknowledgements" yaml:"acknowledgements" mapstructure:"acknowledgements"`
+
+	// Decision corresponds to the JSON schema field "decision".
+	Decision string `json:"decision" yaml:"decision" mapstructure:"decision"`
+
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hoursApprovedSeconds".
+	HoursApprovedSeconds *int `json:"hoursApprovedSeconds,omitempty,omitzero" yaml:"hoursApprovedSeconds,omitempty" mapstructure:"hoursApprovedSeconds,omitempty"`
+
+	// IdempotencyKey corresponds to the JSON schema field "idempotencyKey".
+	IdempotencyKey string `json:"idempotencyKey" yaml:"idempotencyKey" mapstructure:"idempotencyKey"`
+
+	// InternalNote corresponds to the JSON schema field "internalNote".
+	InternalNote string `json:"internalNote" yaml:"internalNote" mapstructure:"internalNote"`
+
+	// NoteToMaker corresponds to the JSON schema field "noteToMaker".
+	NoteToMaker string `json:"noteToMaker" yaml:"noteToMaker" mapstructure:"noteToMaker"`
+
+	// Reason corresponds to the JSON schema field "reason".
+	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *AmendDecisionRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["acknowledgements"]; raw != nil && !ok {
+		return fmt.Errorf("field acknowledgements in AmendDecisionRequest: required")
+	}
+	if _, ok := raw["decision"]; raw != nil && !ok {
+		return fmt.Errorf("field decision in AmendDecisionRequest: required")
+	}
+	if _, ok := raw["idempotencyKey"]; raw != nil && !ok {
+		return fmt.Errorf("field idempotencyKey in AmendDecisionRequest: required")
+	}
+	if _, ok := raw["internalNote"]; raw != nil && !ok {
+		return fmt.Errorf("field internalNote in AmendDecisionRequest: required")
+	}
+	if _, ok := raw["noteToMaker"]; raw != nil && !ok {
+		return fmt.Errorf("field noteToMaker in AmendDecisionRequest: required")
+	}
+	if _, ok := raw["reason"]; raw != nil && !ok {
+		return fmt.Errorf("field reason in AmendDecisionRequest: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in AmendDecisionRequest: required")
+	}
+	type Plain AmendDecisionRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
+	}
+	if utf8.RuneCountInString(string(plain.IdempotencyKey)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "idempotencyKey", 1)
+	}
+	if utf8.RuneCountInString(string(plain.IdempotencyKey)) > 120 {
+		return fmt.Errorf("field %s length: must be <= %d", "idempotencyKey", 120)
+	}
+	if utf8.RuneCountInString(string(plain.InternalNote)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "internalNote", 4000)
+	}
+	if utf8.RuneCountInString(string(plain.NoteToMaker)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "noteToMaker", 4000)
+	}
+	if matched, _ := regexp.MatchString(`\S`, string(plain.Reason)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Reason", `\S`)
+	}
+	if utf8.RuneCountInString(string(plain.Reason)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Reason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "reason", 4000)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = AmendDecisionRequest(plain)
+	return nil
+}
+
 type AuditEntry struct {
 	// Action corresponds to the JSON schema field "action".
 	Action string `json:"action" yaml:"action" mapstructure:"action"`
@@ -3734,6 +3824,91 @@ func (j *Resubmission) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "previousVersion", 0)
 	}
 	*j = Resubmission(plain)
+	return nil
+}
+
+type RevertDecisionRequest struct {
+	// Reason corresponds to the JSON schema field "reason".
+	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *RevertDecisionRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["reason"]; raw != nil && !ok {
+		return fmt.Errorf("field reason in RevertDecisionRequest: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in RevertDecisionRequest: required")
+	}
+	type Plain RevertDecisionRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if matched, _ := regexp.MatchString(`\S`, string(plain.Reason)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Reason", `\S`)
+	}
+	if utf8.RuneCountInString(string(plain.Reason)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Reason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "reason", 4000)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = RevertDecisionRequest(plain)
+	return nil
+}
+
+type RevertDecisionResult struct {
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *RevertDecisionResult) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in RevertDecisionResult: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in RevertDecisionResult: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in RevertDecisionResult: required")
+	}
+	type Plain RevertDecisionResult
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if 0 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	*j = RevertDecisionResult(plain)
 	return nil
 }
 

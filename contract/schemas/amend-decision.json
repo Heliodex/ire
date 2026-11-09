@@ -1,0 +1,53 @@
+{
+	"type": "object",
+	"properties": {
+		"acknowledgements": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"decision": {
+			"type": "string",
+			"pattern": "^(approved|changes|rejected)$"
+		},
+		"hoursApprovedSeconds": {
+			"type": "integer"
+		},
+		"idempotencyKey": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 120
+		},
+		"internalNote": {
+			"type": "string",
+			"maxLength": 4000
+		},
+		"noteToMaker": {
+			"type": "string",
+			"maxLength": 4000
+		},
+		"reason": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 4000,
+			"pattern": "\\S"
+		},
+		"version": {
+			"type": "integer",
+			"minimum": 0
+		}
+	},
+	"required": [
+		"acknowledgements",
+		"decision",
+		"idempotencyKey",
+		"internalNote",
+		"noteToMaker",
+		"reason",
+		"version"
+	],
+	"title": "AmendDecisionRequest",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/amend-decision.json"
+}

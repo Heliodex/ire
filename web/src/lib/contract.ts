@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import {
 	array,
 	boolean,
@@ -812,6 +813,37 @@ export const sendBackResultSchema = pipe(
 	title("SendBackResult"),
 )
 
+export const revertDecisionRequestSchema = pipe(
+	object({
+		reason: pipe(string(), minLength(1), maxLength(maxNote), nonBlank),
+		version: nonNegative,
+	}),
+	title("RevertDecisionRequest"),
+)
+
+export const revertDecisionResultSchema = pipe(
+	object({
+		id: pipe(string(), minLength(1)),
+		stage: nonNegative,
+		status: pipe(string(), minLength(1)),
+	}),
+	title("RevertDecisionResult"),
+)
+
+export const amendDecisionRequestSchema = pipe(
+	object({
+		acknowledgements: array(string()),
+		decision: decisionValues,
+		hoursApprovedSeconds: optional(pipe(number(), integer())),
+		idempotencyKey: pipe(string(), minLength(1), maxLength(120)),
+		internalNote: pipe(string(), maxLength(maxNote)),
+		noteToMaker: pipe(string(), maxLength(maxNote)),
+		reason: pipe(string(), minLength(1), maxLength(maxNote), nonBlank),
+		version: nonNegative,
+	}),
+	title("AmendDecisionRequest"),
+)
+
 export const journalReviewRequestSchema = pipe(
 	object({
 		approvedSeconds: nonNegative,
@@ -1184,6 +1216,8 @@ export const requestSchemas = Object.freeze([
 	draftRequestSchema,
 	decisionRequestSchema,
 	sendBackRequestSchema,
+	revertDecisionRequestSchema,
+	amendDecisionRequestSchema,
 	journalReviewRequestSchema,
 	noteRequestSchema,
 	ingestRequestSchema,
@@ -1226,6 +1260,7 @@ export const responseSchemas = Object.freeze([
 	roleDefinitionSchema,
 	rolesResponseSchema,
 	searchResponseSchema,
+	revertDecisionResultSchema,
 	sendBackResultSchema,
 	submissionFileResponseSchema,
 	statusResponseSchema,
