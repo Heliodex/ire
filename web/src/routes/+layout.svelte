@@ -201,7 +201,6 @@ async function signOut(): Promise<void> {
 			{/if}
 
 			<div class="spacer"></div>
-
 		</div>
 
 		{#if session.me}
@@ -276,116 +275,116 @@ async function signOut(): Promise<void> {
 	{#if session.me}
 		<div class="bottom-chrome">
 			<nav aria-label="Sections" class="sections-bottom">
-			{#each navItems.slice(0, visibleTabCount) as item, index (item.href)}
-				<a
-					aria-current={item.active ? "page" : undefined}
-					aria-keyshortcuts={`Alt+${index + 1}`}
-					href={item.href}
-					class:active={item.active}
-				>
-					<span>{item.label}</span>
-				</a>
-			{/each}
-			{#if overflowItems.length > 0}
-				<div class="sections-bottom-more">
-					<button
-						aria-expanded={moreOpen}
-						aria-haspopup="true"
-						onclick={toggleMore}
-						type="button"
-						class:active={overflowItems.some(item => item.active)}
+				{#each navItems.slice(0, visibleTabCount) as item, index (item.href)}
+					<a
+						aria-current={item.active ? "page" : undefined}
+						aria-keyshortcuts={`Alt+${index + 1}`}
+						href={item.href}
+						class:active={item.active}
 					>
-						<span>More</span>
-						<svg
-							aria-hidden="true"
-							class="chevron"
-							fill="none"
-							height="14"
-							viewBox="0 0 24 24"
-							width="14"
-							class:open={moreOpen}
+						<span>{item.label}</span>
+					</a>
+				{/each}
+				{#if overflowItems.length > 0}
+					<div class="sections-bottom-more">
+						<button
+							aria-expanded={moreOpen}
+							aria-haspopup="true"
+							onclick={toggleMore}
+							type="button"
+							class:active={overflowItems.some(item => item.active)}
 						>
+							<span>More</span>
+							<svg
+								aria-hidden="true"
+								class="chevron"
+								fill="none"
+								height="14"
+								viewBox="0 0 24 24"
+								width="14"
+								class:open={moreOpen}
+							>
+								<path
+									d="m6 15 6-6 6 6"
+									stroke="currentColor"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+								/>
+							</svg>
+						</button>
+						{#if moreOpen}
+							<div class="menu-panel bottom-menu ui-card">
+								{#each overflowItems as item, index (item.href)}
+									<a
+										aria-current={item.active ? "page" : undefined}
+										aria-keyshortcuts={`Alt+${visibleTabCount + index + 1}`}
+										href={item.href}
+										class:active={item.active}
+									>
+										<span>{item.label}</span>
+									</a>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</nav>
+
+			<div class="top-actions">
+				{#if session.me}
+					<SearchBar />
+					<a
+						aria-label={`Your profile, ${accountName}`}
+						class="account"
+						data-sveltekit-reload
+						href={accountProfileHref}
+						title="Your profile"
+					>
+						<Avatar
+							email={accountEmail}
+							name={session.me.user.name}
+							size="sm"
+							url={session.me.user.avatarUrl}
+						/>
+						<span class="account-name">{accountName}</span>
+					</a>
+				{/if}
+
+				<button
+					class="ui-icon-button theme"
+					onclick={(): void => theme.toggle()}
+					title={theme.value === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+					type="button"
+				>
+					<span class="visually-hidden">Toggle theme</span>
+					{#if theme.value === "dark"}
+						<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
+							<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" />
 							<path
-								d="m6 15 6-6 6 6"
+								d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"
 								stroke="currentColor"
 								stroke-linecap="round"
+								stroke-width="2"
+							/>
+						</svg>
+					{:else}
+						<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
+							<path
+								d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"
+								stroke="currentColor"
 								stroke-linejoin="round"
 								stroke-width="2"
 							/>
 						</svg>
-					</button>
-					{#if moreOpen}
-						<div class="menu-panel bottom-menu ui-card">
-							{#each overflowItems as item, index (item.href)}
-								<a
-									aria-current={item.active ? "page" : undefined}
-									aria-keyshortcuts={`Alt+${visibleTabCount + index + 1}`}
-									href={item.href}
-									class:active={item.active}
-								>
-									<span>{item.label}</span>
-								</a>
-							{/each}
-						</div>
 					{/if}
-				</div>
-			{/if}
-			</nav>
+				</button>
 
-			<div class="top-actions">
-			{#if session.me}
-			<SearchBar />
-			<a
-			aria-label={`Your profile, ${accountName}`}
-			class="account"
-			data-sveltekit-reload
-			href={accountProfileHref}
-			title="Your profile"
-			>
-			<Avatar
-			email={accountEmail}
-			name={session.me.user.name}
-			size="sm"
-			url={session.me.user.avatarUrl}
-			/>
-			<span class="account-name">{accountName}</span>
-			</a>
-			{/if}
-
-			<button
-			class="ui-icon-button theme"
-			onclick={(): void => theme.toggle()}
-			title={theme.value === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-			type="button"
-			>
-			<span class="visually-hidden">Toggle theme</span>
-			{#if theme.value === "dark"}
-			<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
-			<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" />
-			<path
-			d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"
-			stroke="currentColor"
-			stroke-linecap="round"
-			stroke-width="2"
-			/>
-			</svg>
-			{:else}
-			<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
-			<path
-			d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"
-			stroke="currentColor"
-			stroke-linejoin="round"
-			stroke-width="2"
-			/>
-			</svg>
-			{/if}
-			</button>
-
-			{#if session.me}
-			<button class="ui-button quiet sm" disabled={signingOut} onclick={signOut} type="button">
-			{signingOut ? "Signing out…" : "Sign out"}
-			</button>
-			{/if}
+				{#if session.me}
+					<button class="ui-button quiet sm" disabled={signingOut} onclick={signOut} type="button">
+						{signingOut ? "Signing out…" : "Sign out"}
+					</button>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -514,8 +513,8 @@ header::before {
 	display: flex;
 	gap: var(--space-3);
 	align-items: center;
-	height: 3rem;
 	min-width: 0;
+	height: 3rem;
 }
 
 .account {
@@ -783,9 +782,9 @@ main {
 		bottom: auto;
 		left: auto;
 		display: flex;
-		border-top: 1px solid var(--border);
 		padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
 		background: transparent;
+		border-top: 1px solid var(--border);
 	}
 
 	.top-actions {
@@ -797,8 +796,8 @@ main {
 		display: flex;
 		gap: var(--space-2);
 		align-items: center;
-		height: auto;
 		min-width: 0;
+		height: auto;
 		padding: var(--space-2) calc(var(--space-3) + env(safe-area-inset-right))
 			calc(var(--space-2) + env(safe-area-inset-bottom)) calc(var(--space-3) + env(safe-area-inset-left));
 		border-top: 1px solid var(--border);
@@ -824,8 +823,7 @@ main {
 	}
 
 	main {
-		padding: calc(var(--space-4) + env(safe-area-inset-top))
-			calc(var(--space-3) + env(safe-area-inset-right))
+		padding: calc(var(--space-4) + env(safe-area-inset-top)) calc(var(--space-3) + env(safe-area-inset-right))
 			calc(var(--space-5) + 6.75rem + env(safe-area-inset-bottom))
 			calc(var(--space-3) + env(safe-area-inset-left));
 	}
@@ -885,9 +883,9 @@ main {
 			bottom: auto;
 			left: auto;
 			display: flex;
-			border-top: 1px solid var(--border);
 			padding: 0;
 			background: transparent;
+			border-top: 1px solid var(--border);
 		}
 
 		.top-actions {
