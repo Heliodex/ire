@@ -233,9 +233,14 @@ function swipeTabs(node: HTMLElement): { destroy(): void } {
 				selectTab(target, step)
 				void (async (): Promise<void> => {
 					await tick()
-					skipAnim = false
+					dragging = true
 					settling = false
-					clearDrag()
+					dragTab = undefined
+					dragX = 0
+					adjacent = undefined
+					await tick()
+					dragging = false
+					skipAnim = false
 				})()
 				return
 			}
