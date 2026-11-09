@@ -327,6 +327,7 @@ export const queueItemSchema = pipe(
 		hoursJournalSeconds: nonNegative,
 		id: pipe(string(), minLength(1)),
 		ingestedAt: timestamp,
+		journalCount: nonNegative,
 		makerAvatarUrl: optionalString,
 		makerEmail: pipe(string(), minLength(1)),
 		makerName: pipe(string(), minLength(1)),

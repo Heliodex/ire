@@ -156,6 +156,10 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"journalCount": {
+						"type": "integer",
+						"minimum": 0
+					},
 					"makerAvatarUrl": {
 						"type": "string"
 					},
@@ -216,6 +220,7 @@
 					"hoursJournalSeconds",
 					"id",
 					"ingestedAt",
+					"journalCount",
 					"makerEmail",
 					"makerName",
 					"priority",

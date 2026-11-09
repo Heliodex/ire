@@ -3476,6 +3476,9 @@ type QueueItem struct {
 	// IngestedAt corresponds to the JSON schema field "ingestedAt".
 	IngestedAt string `json:"ingestedAt" yaml:"ingestedAt" mapstructure:"ingestedAt"`
 
+	// JournalCount corresponds to the JSON schema field "journalCount".
+	JournalCount int `json:"journalCount" yaml:"journalCount" mapstructure:"journalCount"`
+
 	// MakerAvatarURL corresponds to the JSON schema field "makerAvatarUrl".
 	MakerAvatarURL *string `json:"makerAvatarUrl,omitempty,omitzero" yaml:"makerAvatarUrl,omitempty" mapstructure:"makerAvatarUrl,omitempty"`
 
@@ -3552,6 +3555,9 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["ingestedAt"]; raw != nil && !ok {
 		return fmt.Errorf("field ingestedAt in QueueItem: required")
 	}
+	if _, ok := raw["journalCount"]; raw != nil && !ok {
+		return fmt.Errorf("field journalCount in QueueItem: required")
+	}
 	if _, ok := raw["makerEmail"]; raw != nil && !ok {
 		return fmt.Errorf("field makerEmail in QueueItem: required")
 	}
@@ -3598,6 +3604,9 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	}
 	if utf8.RuneCountInString(string(plain.IngestedAt)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "ingestedAt", 1)
+	}
+	if 0 > plain.JournalCount {
+		return fmt.Errorf("field %s: must be >= %v", "journalCount", 0)
 	}
 	if utf8.RuneCountInString(string(plain.MakerEmail)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerEmail", 1)
