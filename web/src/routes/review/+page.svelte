@@ -104,7 +104,7 @@ let coverFailed = $state(false)
 let wide = $state(false)
 const journalCollapsed = new SvelteSet<string>()
 $effect(() => {
-	id
+	void id
 	journalCollapsed.clear()
 })
 let checksTimer: ReturnType<typeof setTimeout> | null
