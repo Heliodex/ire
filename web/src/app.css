@@ -763,3 +763,12 @@ textarea.ui-input {
 	white-space: nowrap;
 	clip: rect(0 0 0 0);
 }
+
+@media (min-width: 25rem) {
+	.page-head > div:first-child:has(> h1) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1) var(--space-3);
+		align-items: baseline;
+	}
+}
