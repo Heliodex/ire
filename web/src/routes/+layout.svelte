@@ -434,8 +434,15 @@ header {
 	top: 0;
 	z-index: var(--layer-header);
 	padding-top: env(safe-area-inset-top);
-	background: var(--header-bg, var(--surface));
 	border-bottom: 1px solid var(--border);
+}
+
+header::before {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	content: "";
+	background: var(--header-bg, var(--surface));
 	backdrop-filter: blur(12px);
 }
 
@@ -747,14 +754,14 @@ main {
 	.top-actions {
 		position: fixed;
 		right: 0;
-		bottom: calc(3.25rem + env(safe-area-inset-bottom));
+		bottom: 0;
 		left: 0;
 		z-index: var(--layer-header);
 		display: flex;
 		gap: var(--space-2);
 		align-items: center;
-		padding: var(--space-2) calc(var(--space-3) + env(safe-area-inset-right)) var(--space-2)
-			calc(var(--space-3) + env(safe-area-inset-left));
+		padding: var(--space-2) calc(var(--space-3) + env(safe-area-inset-right))
+			calc(var(--space-2) + env(safe-area-inset-bottom)) calc(var(--space-3) + env(safe-area-inset-left));
 		background: var(--header-bg, var(--surface));
 		border-top: 1px solid var(--border);
 		backdrop-filter: blur(12px);
@@ -776,7 +783,9 @@ main {
 	}
 
 	.sections-bottom {
+		bottom: calc(3.5rem + env(safe-area-inset-bottom));
 		display: flex;
+		padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
 	}
 
 	.account-name {
@@ -789,7 +798,8 @@ main {
 
 	main {
 		padding: var(--space-4) calc(var(--space-3) + env(safe-area-inset-right))
-			calc(var(--space-6) + 7rem + env(safe-area-inset-bottom)) calc(var(--space-3) + env(safe-area-inset-left));
+			calc(var(--space-6) + 6.75rem + env(safe-area-inset-bottom))
+			calc(var(--space-3) + env(safe-area-inset-left));
 	}
 }
 
@@ -826,12 +836,17 @@ main {
 
 	@media (max-width: 40rem) {
 		.top-actions {
-			bottom: 3.25rem;
-			padding-inline: var(--space-3);
+			bottom: 0;
+			padding: var(--space-2) var(--space-3);
+		}
+
+		.sections-bottom {
+			bottom: 3.5rem;
+			padding: 0;
 		}
 
 		main {
-			padding: var(--space-4) var(--space-3) calc(var(--space-6) + 7rem);
+			padding: var(--space-4) var(--space-3) calc(var(--space-6) + 6.75rem);
 		}
 	}
 }
