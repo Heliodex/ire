@@ -27,7 +27,7 @@ const visible = $derived(showAll ? events : events.slice(-6))
 	{/each}
 	{#if events.length > 6}
 		<button
-			class="link more-events"
+			class="ui-button quiet sm more-events"
 			onclick={(): void => {
 				showAll = !showAll
 			}}
@@ -70,6 +70,7 @@ const visible = $derived(showAll ? events : events.slice(-6))
 	color: var(--text-3);
 }
 .more-events {
-	margin-top: var(--space-1);
+	width: fit-content;
+	margin-top: var(--space-2);
 }
 </style>
