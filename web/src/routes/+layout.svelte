@@ -785,8 +785,8 @@ main {
 	}
 
 	main {
-		padding-bottom: var(--space-7);
 		padding-inline: var(--space-4);
+		padding-bottom: var(--space-7);
 	}
 
 	@media (max-width: 40rem) {
