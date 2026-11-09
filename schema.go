@@ -110,7 +110,6 @@ func schemaStatements() []storage.Statement {
 			hours_hackatime_seconds integer not null default 0,
 			hours_approved_seconds integer,
 			check_summary text,
-			submitted_at text,
 			ingested_at text not null,
 			first_opened_at text,
 			decided_at text,
@@ -484,11 +483,6 @@ var lateColumns = []struct {
 		column: "reviewer_note",
 		sql:    `alter table journal_entry add column reviewer_note text`,
 	},
-	{
-		table:  "submission",
-		column: "submitted_at",
-		sql:    `alter table submission add column submitted_at text`,
-	},
 }
 
 // lateColumnStatements returns the alters the live database still needs. A table that is not there yet is skipped: its create statement already holds every column, and adding them again would fail.
@@ -547,7 +541,31 @@ func (a *ireApp) migrate(ctx context.Context) error {
 		return err
 	}
 
+	if err := a.ensureSubmittedAtColumn(ctx); err != nil {
+		return err
+	}
+
 	return a.seed(ctx)
+}
+
+// ensureSubmittedAtColumn adds the upstream submission timestamp column when it is missing.
+// It runs outside the versioned migration checksum so existing deployments can pick it up safely.
+func (a *ireApp) ensureSubmittedAtColumn(ctx context.Context) error {
+	rows, err := a.store.Query(ctx, `select name from pragma_table_info('submission') where name = 'submitted_at'`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		return rows.Err()
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	_, err = a.store.Exec(ctx, `alter table submission add column submitted_at text`)
+	return err
 }
 
 // seed creates the Half Life programme and, when explicitly enabled, its dev reviewers and fixture ships. Every write is idempotent, so a partial seed is repaired on the next start. When dev accounts or fixtures are disabled, any leftover placeholder rows are removed so a production copy holds only invited reviewers and real Half Life ingests.
