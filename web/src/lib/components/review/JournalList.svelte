@@ -6,6 +6,7 @@ import JournalTime from "./JournalTime.svelte"
 import Markdown from "./Markdown.svelte"
 
 interface Props {
+	collapsed: SvelteSet<string>
 	editable: boolean
 	entries: Journal[]
 	onEntrySaved(seconds: number): void
@@ -13,9 +14,7 @@ interface Props {
 	version: number
 }
 
-let { editable, entries, onEntrySaved, shipId, version }: Props = $props()
-
-const collapsed = new SvelteSet<string>()
+let { collapsed, editable, entries, onEntrySaved, shipId, version }: Props = $props()
 
 function toggleEntry(id: string): void {
 	if (collapsed.has(id)) collapsed.delete(id)

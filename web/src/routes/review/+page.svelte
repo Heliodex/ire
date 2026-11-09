@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount, tick } from "svelte"
 import { cubicOut } from "svelte/easing"
+import { SvelteSet } from "svelte/reactivity"
 import { fly } from "svelte/transition"
 import { afterNavigate, goto } from "$app/navigation"
 import { page } from "$app/state"
@@ -101,6 +102,11 @@ let rerunError = $state("")
 let checksOutdated = $state(false)
 let coverFailed = $state(false)
 let wide = $state(false)
+const journalCollapsed = new SvelteSet<string>()
+$effect(() => {
+	id
+	journalCollapsed.clear()
+})
 let checksTimer: ReturnType<typeof setTimeout> | null
 let prefetchTimer: ReturnType<typeof setTimeout> | null
 
@@ -1386,6 +1392,7 @@ async function saveDraftNow(): Promise<void> {
 					</article>
 					<div class="split-journals">
 						<JournalList
+							collapsed={journalCollapsed}
 							editable={canAdjustEntries}
 							entries={bundle.journals}
 							onEntrySaved={entrySaved}
@@ -1402,6 +1409,7 @@ async function saveDraftNow(): Promise<void> {
 					/>
 				{:else if t === "journal"}
 					<JournalList
+						collapsed={journalCollapsed}
 						editable={canAdjustEntries}
 						entries={bundle.journals}
 						onEntrySaved={entrySaved}
