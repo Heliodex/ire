@@ -824,18 +824,21 @@ async function choose(next: Filter, dir?: number): Promise<void> {
 		return
 	}
 
+	cancelStream()
 	filterDir = dir ?? (filterPos(1, next) >= filterPos(stage, filter) ? 1 : -1)
 	stage = 1
 	filter = next
 	selected = 0
 	error = ""
 	actionError = ""
+	loadingMore = false
 
 	const cached = cache.get(cacheKey(1, next))
 	if (cached) {
 		// Show the last copy immediately and let load() refresh it without shrinking the list.
 		queue = cached
 		loading = false
+		streaming = false
 		void load(next, 1, true)
 		return
 	}
@@ -849,6 +852,7 @@ async function choose(next: Filter, dir?: number): Promise<void> {
 async function chooseSecondPass(dir?: number): Promise<void> {
 	if (!canSecondPass) return
 
+	cancelStream()
 	filterDir = dir ?? 1
 	const keeping = stage === 2 && filter === "all"
 	const cached = cache.get(cacheKey(2, "all"))
@@ -857,10 +861,12 @@ async function chooseSecondPass(dir?: number): Promise<void> {
 	selected = 0
 	error = ""
 	actionError = ""
+	loadingMore = false
 
 	if (cached) {
 		queue = cached
 		loading = false
+		streaming = false
 		void load(filter, stage, true)
 		return
 	}
@@ -1358,11 +1364,7 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 	<div class="filter-swipe" use:swipeFilters>
 		<div class="filter-stack">
 			{#key `${stage}:${filter}`}
-				<div
-					class="filter-slide"
-					in:fly={{ duration: 180, easing: cubicOut, x: filterDir * 180 }}
-					out:fly={{ duration: 180, easing: cubicOut, x: filterDir * -180 }}
-				>
+				<div class="filter-slide" in:fly={{ duration: 180, easing: cubicOut, x: filterDir * 180 }}>
 					{#if loading}
 						<div class="ui-card list">
 							<LoadingState message="Loading open ships…" />
