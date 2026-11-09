@@ -516,6 +516,7 @@ header::before {
 
 .account {
 	display: inline-flex;
+	flex: 0 0 auto;
 	gap: var(--space-2);
 	align-items: center;
 	min-width: 0;
