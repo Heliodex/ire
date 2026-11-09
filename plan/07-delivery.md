@@ -193,7 +193,7 @@ Implemented:
 - the organiser-only second-pass queue, claim, heartbeat and release;
 - confirm, reject, request-changes and send-back, with send-back invalidating the held review and returning the ship to stage 1 `ready`;
 - own-decision prevention, stage 2 stale-version guard and a role guard on every second-pass action;
-- a required override reason when the second pass changes the first-pass hours or decision, stored on the review and in the outbound event;
+- a required override reason when the 2nd pass changes the first-pass hours or decision, stored on the review and in the outbound event;
 - stage 1 acknowledgements, notes, held reasons and invalidations on the review screen, plus a History tab;
 - exactly one final outbound event, with both stages in the stage history.
 

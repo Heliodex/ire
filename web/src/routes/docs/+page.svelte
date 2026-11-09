@@ -40,7 +40,7 @@ const phases = [
 	["review", "ready / claimed", "Waiting for a reviewer, or claimed by one."],
 	["under_review", "in_review", "Open in a reviewer's session."],
 	["needs_attention", "needs_attention", "A blocking check failed."],
-	["second_pass", "stage2_hold", "Held for an organiser's second pass."],
+	["second_pass", "stage2_hold", "Held for an organiser's 2nd pass."],
 	["reviewed", "decided", "A final decision exists."],
 	["withdrawn", "withdrawn", "Closed without a decision."],
 ]

@@ -9,7 +9,7 @@ let { reviews }: { reviews: Review[] } = $props()
 {#if reviews.length === 0}
 	<div class="ui-card ui-empty">
 		<strong>No decisions yet</strong>
-		<span>Stage 1 and the second pass will appear here.</span>
+		<span>Stage 1 and the 2nd pass will appear here.</span>
 	</div>
 {:else}
 	<ol class="history">

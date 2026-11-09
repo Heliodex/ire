@@ -24,7 +24,7 @@ export const permissionCatalog: PermissionInfo[] = [
 	{ description: "Claim, draft and decide ships at stage 1.", label: "Review", value: permissionReview },
 	{
 		description: "Decide held ships, send them back and approve fraud checks.",
-		label: "Second pass",
+		label: "2nd pass",
 		value: permissionSecondPass,
 	},
 	{

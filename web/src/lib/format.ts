@@ -65,7 +65,7 @@ export function formatMoneyAmount(cents: number | null | undefined): string {
 		.trim()
 }
 
-// Tone is the badge palette shared with Ari: green approved, yellow pending, orange changes, red rejected, purple second pass.
+// Tone is the badge palette shared with Ari: green approved, yellow pending, orange changes, red rejected, purple 2nd pass.
 export type Tone = "approved" | "ready" | "pending" | "changes" | "rejected" | "secondpass" | "neutral"
 
 // statusTone maps a check, ship or delivery status to a badge tone.
@@ -112,7 +112,7 @@ export function humanStatus(status: string): string {
 		case "in_review":
 			return "In review"
 		case "stage2_hold":
-			return "Second pass"
+			return "2nd pass"
 		case "decided":
 			return "Decided"
 		case "withdrawn":

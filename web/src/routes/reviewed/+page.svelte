@@ -110,7 +110,7 @@ async function loadMore(): Promise<void> {
 }
 
 function stageLabel(stage: number): string {
-	return stage === 2 ? "Second pass" : "First pass"
+	return stage === 2 ? "2nd pass" : "1st pass"
 }
 
 // isTyping keeps arrows inside a text field instead of switching filters.

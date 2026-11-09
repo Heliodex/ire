@@ -834,7 +834,7 @@ function filterTarget(step: number): { dir: number; name: string; stage: number;
 	if (count < 2) return undefined
 	const current = filterPos(stage, filter)
 	const next = (current + step + count) % count
-	if (next === filters.length) return { dir: step, filter: "all", name: "Second pass", stage: 2 }
+	if (next === filters.length) return { dir: step, filter: "all", name: "2nd pass", stage: 2 }
 	const option = filters[next]
 	return option ? { dir: step, filter: option.key, name: option.label, stage: 1 } : undefined
 }
@@ -897,7 +897,7 @@ async function chooseSecondPass(dir?: number): Promise<void> {
 		return
 	}
 
-	// Drop the previous tab's rows so they never appear under second pass while its first fetch runs.
+	// Drop the previous tab's rows so they never appear under 2nd pass while its first fetch runs.
 	queue = { ...queue, hasMore: false, items: [] }
 	loading = true
 	await load(filter, stage)
@@ -1251,7 +1251,7 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 <section class="page-head">
 	<div>
 		<h1>Queue</h1>
-		<p>Stage 1 · first pass</p>
+		<p>Stage 1 · 1st pass</p>
 	</div>
 
 	<div class="stats ui-card">
@@ -1261,7 +1261,7 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 		<div><strong>{queue.counts.ready}</strong><span>Ready</span></div>
 		<div><strong>{queue.counts.claimed}</strong><span>In review</span></div>
 		<div><strong>{queue.counts.needsAttention}</strong><span>Needs attention</span></div>
-		<div><strong>{queue.counts.stage2Hold}</strong><span>Second pass</span></div>
+		<div><strong>{queue.counts.stage2Hold}</strong><span>2nd pass</span></div>
 	</div>
 </section>
 
@@ -1282,14 +1282,14 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 		{/each}
 		{#if canSecondPass}
 			<button
-				aria-label={`Second pass, ${queue.counts.stage2Hold} ships`}
+				aria-label={`2nd pass, ${queue.counts.stage2Hold} ships`}
 				aria-selected={stage === 2}
 				onclick={chooseSecondPass}
 				role="tab"
 				type="button"
 				class:active={stage === 2}
 			>
-				<span class="label-full">Second pass <span class="tab-count">{queue.counts.stage2Hold}</span></span>
+				<span class="label-full">2nd pass <span class="tab-count">{queue.counts.stage2Hold}</span></span>
 				<span class="label-short">Pass 2 <span class="tab-count">{queue.counts.stage2Hold}</span></span>
 			</button>
 		{/if}
@@ -1430,7 +1430,7 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 
 <section aria-busy={loading} aria-labelledby="list-title">
 	<div class="list-head">
-		<h2 id="list-title">{stage === 2 ? "Second pass" : "Open ships"}</h2>
+		<h2 id="list-title">{stage === 2 ? "2nd pass" : "Open ships"}</h2>
 		<span>
 			{visible.length} {visible.length === 1 ? "ship" : "ships"}
 			<span class="keys">
@@ -1487,7 +1487,7 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 								>
 								<span
 									>{stage === 2
-										? "Nothing is waiting for a second pass."
+										? "Nothing is waiting for a 2nd pass."
 										: "Check back after the next ingest."}</span
 								>
 							</div>

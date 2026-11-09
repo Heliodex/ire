@@ -9,7 +9,7 @@
 
 Build a standalone review service in the `wt` stack: a Go API compiled to a Wasm component, a prerendered SvelteKit frontend, typed Valibot-to-Go contracts, and per-app SQLite. Half Life keeps owning participants, hours, tiers, the ledger and maker notifications. Ire owns the review queue, claims, evidence snapshots, automatic checks, stage transitions, reviewer decisions and the audit trail. It sends final decisions back to Half Life exactly as Ari does today.
 
-The product is deliberately familiar to Ari reviewers: the same queue, claim, evidence tabs, hours rail, decision buttons, keyboard shortcuts and second pass. The differences are where Ari hurts:
+The product is deliberately familiar to Ari reviewers: the same queue, claim, evidence tabs, hours rail, decision buttons, keyboard shortcuts and 2nd pass. The differences are where Ari hurts:
 
 - **Stage 2 is a real, configurable stage.** Fraud review only runs at stage 2. Stage 1 can be final for low-risk work.
 - **Stage 1 is built for speed.** One screen, no wizard, optional notes on approval, auto-claim, prefetch, auto-advance and a fast lane for clean submissions.

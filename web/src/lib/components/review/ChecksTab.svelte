@@ -1,5 +1,5 @@
 <script lang="ts">
-import { SvelteSet } from "svelte/reactivity"
+import { type SvelteSet } from "svelte/reactivity"
 import { type Check } from "../../api"
 import { checkGroupLabel, groupChecks, isBlocking, isWarning } from "../../checks"
 import { statusTone } from "../../format"
@@ -41,7 +41,7 @@ function toggleGroup(group: string): void {
 		<div class="ui-notice warn-box" data-tone="warn">
 			<div>
 				<strong>{warnings.length} warning{warnings.length === 1 ? "" : "s"}</strong>
-				Acknowledge each one before approving. Warnings are held for the second pass.
+				Acknowledge each one before approving. Warnings are held for the 2nd pass.
 			</div>
 			{#if missingAcks.length > 0}
 				<button class="ui-button sm" onclick={onAcknowledgeAll} type="button">Acknowledge all</button>

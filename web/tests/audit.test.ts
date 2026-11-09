@@ -39,7 +39,7 @@ describe("auditLook", () => {
 		})
 		expect(auditLook(entryOf({ afterJson: '{"decision":"approved","held":true}' }))).toEqual({
 			icon: "clock",
-			label: "Held for a second pass",
+			label: "Held for a 2nd pass",
 			tone: "secondpass",
 		})
 		expect(auditLook(entryOf({ afterJson: '{"decision":"changes"}' })).tone).toBe("changes")
@@ -67,7 +67,7 @@ describe("auditSummary", () => {
 	test("describes decisions and member changes", () => {
 		expect(auditSummary(entryOf({ afterJson: '{"decision":"approved"}' }))).toBe("approved the ship")
 		expect(auditSummary(entryOf({ afterJson: '{"decision":"approved","held":true}' }))).toBe(
-			"approved the ship and held it for a second pass",
+			"approved the ship and held it for a 2nd pass",
 		)
 		expect(auditSummary(entryOf({ action: "member.invite", afterJson: '{"role":"reviewer"}' }))).toBe(
 			"invited a member as reviewer",
@@ -104,7 +104,7 @@ describe("auditChanges", () => {
 		)
 
 		expect(changes.map(change => change.key)).toEqual(["status", "stage", "invalidated"])
-		expect(changes[0]).toEqual({ from: "Second pass", key: "status", label: "Status", to: "Ready" })
+		expect(changes[0]).toEqual({ from: "2nd pass", key: "status", label: "Status", to: "Ready" })
 	})
 
 	test("turns booleans and roles into words", () => {

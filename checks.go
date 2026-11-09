@@ -412,7 +412,7 @@ func imageCheck(readme []byte, status int, err error, checkedAt string) contract
 
 	switch {
 	case count >= 2:
-		return check("repo.readme.images", "README images", "repo", statusPass, severityInfo, fmt.Sprintf("%d images", count), "The README has enough images for a first pass.", checkedAt)
+		return check("repo.readme.images", "README images", "repo", statusPass, severityInfo, fmt.Sprintf("%d images", count), "The README has enough images for a 1st pass.", checkedAt)
 	case count == 1:
 		return check("repo.readme.images", "README images", "repo", statusWarn, severityWarn, "1 image (2 recommended)", "Add a schematic, board render or build photo.", checkedAt)
 	default:

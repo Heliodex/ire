@@ -689,7 +689,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 	actionError = ""
 
 	if (!canDecide) {
-		actionError = "Only organisers can decide the second pass."
+		actionError = "Only organisers can decide the 2nd pass."
 		flash(actionError)
 		return
 	}
@@ -718,7 +718,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		&& (decision !== "approved" || Math.round(hours * 3600) !== (heldReview.hoursApprovedSeconds ?? 0))
 		&& overrideReason.trim() === ""
 	) {
-		actionError = "Explain why the second pass changes the first-pass decision or hours."
+		actionError = "Explain why the 2nd pass changes the first-pass decision or hours."
 		flash("Explain the override before deciding.")
 		overrideElement?.focus()
 		return
@@ -743,7 +743,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		})
 		idempotencyKey = ""
 
-		if (result.held === 1) flash(`Held for the second pass: ${result.heldReason ?? "policy"}.`)
+		if (result.held === 1) flash(`Held for the 2nd pass: ${result.heldReason ?? "policy"}.`)
 		else {
 			const verb =
 				decision === "approved" ? "Approved" : decision === "changes" ? "Changes requested" : "Rejected"
@@ -876,7 +876,7 @@ async function saveDraftNow(): Promise<void> {
 			{`${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} left to acknowledge.`}
 		</p>
 	{:else if secondPass && !canSecondPass}
-		<p class="rail-hint">Only organisers can decide the second pass.</p>
+		<p class="rail-hint">Only organisers can decide the 2nd pass.</p>
 	{/if}
 
 	<button
@@ -972,7 +972,7 @@ async function saveDraftNow(): Promise<void> {
 		{#if secondPass}
 			<label class="field">
 				<span class="field-head">
-					<span>Override reason (required if you change the first pass)</span>
+					<span>Override reason (required if you change the 1st pass)</span>
 					<span aria-hidden="true" class="field-count">{overrideReason.length} / {maxNote}</span>
 				</span>
 				<textarea
@@ -1278,14 +1278,14 @@ async function saveDraftNow(): Promise<void> {
 
 	{#if secondPass}
 		<div class="second-pass">
-			<span class="ui-badge" data-tone="secondpass">Second pass</span>
+			<span class="ui-badge" data-tone="secondpass">2nd pass</span>
 			<span>{submission.heldReason ?? "Held for a second review."}</span>
 		</div>
 		{#if heldReview}
 			{const heldHref = reviewerHref(heldReview.reviewerEmail)}
 			<div class="first-pass">
 				<strong>
-					First pass ·
+					1st pass ·
 					{#if heldHref}
 						<a data-sveltekit-reload href={heldHref}>{heldReview.reviewerEmail}</a>
 					{:else}
@@ -1555,7 +1555,7 @@ async function saveDraftNow(): Promise<void> {
 					{/if}
 					<p class="policy">
 						{#if bundle.policy.holdOnWarn === 1}
-							Approvals with warnings are held for the second pass.
+							Approvals with warnings are held for the 2nd pass.
 						{:else}
 							Warnings can be approved with an acknowledgement.
 						{/if}

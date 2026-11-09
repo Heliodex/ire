@@ -109,7 +109,7 @@ func ingestBody(externalID string) []byte {
 	request := contract.IngestRequest{
 		ExternalID:        externalID,
 		Title:             "Line follower",
-		Description:       "A line-following robot with a custom RP2040 board, an array of reflective sensors, a motor driver and a small OLED. The board is routed on two layers, the firmware is a first pass and the BOM prices every part.",
+		Description:       "A line-following robot with a custom RP2040 board, an array of reflective sensors, a motor driver and a small OLED. The board is routed on two layers, the firmware is a 1st pass and the BOM prices every part.",
 		RepoURL:           stringPtr("https://github.com/example/line-follower"),
 		ThumbnailURL:      stringPtr("https://example.com/cover.jpg"),
 		Track:             stringPtr("hardware"),
@@ -922,7 +922,7 @@ func TestStageTwoConfirmsHeldApproval(t *testing.T) {
 	approve, _ := json.Marshal(contract.DecisionRequest{
 		Decision:         decisionApproved,
 		Version:          1,
-		NoteToMaker:      "First pass approves the hours.",
+		NoteToMaker:      "1st pass approves the hours.",
 		Acknowledgements: warnings,
 		IdempotencyKey:   "stage1-hold",
 	})
@@ -959,7 +959,7 @@ func TestStageTwoConfirmsHeldApproval(t *testing.T) {
 	confirm, _ := json.Marshal(contract.DecisionRequest{
 		Decision:       decisionApproved,
 		Version:        1,
-		NoteToMaker:    "Second pass confirms the approval.",
+		NoteToMaker:    "2nd pass confirms the approval.",
 		InternalNote:   "Checked the held warnings.",
 		IdempotencyKey: "stage2-1",
 	})

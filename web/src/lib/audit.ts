@@ -99,7 +99,7 @@ export function auditLook(entry: AuditEntry): AuditLook {
 	switch (entry.action) {
 		case "review.decision":
 			if (after.decision === "approved" && after.held === true)
-				return { icon: "clock", label: "Held for a second pass", tone: "secondpass" }
+				return { icon: "clock", label: "Held for a 2nd pass", tone: "secondpass" }
 			if (after.decision === "approved") return { icon: "check", label: "Approved", tone: "approved" }
 			if (after.decision === "changes") return { icon: "clock", label: "Changes requested", tone: "changes" }
 			if (after.decision === "rejected") return { icon: "x", label: "Rejected", tone: "rejected" }
@@ -134,7 +134,7 @@ export function auditSummary(entry: AuditEntry): string {
 	switch (entry.action) {
 		case "review.decision":
 			if (after.decision === "approved")
-				return after.held === true ? "approved the ship and held it for a second pass" : "approved the ship"
+				return after.held === true ? "approved the ship and held it for a 2nd pass" : "approved the ship"
 			if (after.decision === "changes") return "requested changes"
 			if (after.decision === "rejected") return "rejected the ship"
 

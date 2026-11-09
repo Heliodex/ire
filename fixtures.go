@@ -152,7 +152,7 @@ func demoFixtures(base time.Time) []fixture {
 			priority:     20,
 			journals: []fixtureJournal{
 				{at: base.Add(90 * time.Minute).Format(timestampFormat), hours: 5, title: "Schematic and QSPI flash", text: "Wired the RP2350A, the 16 Mbit flash and the USB-C port. I read the RP2350 datasheet for the QSPI pin mapping and checked the boot pins against the reference design.", clips: 1, coverS: 9000},
-				{at: base.Add(4 * time.Hour).Format(timestampFormat), hours: 5, title: "Routing and firmware", text: "Routed the USB pair, the buffers and the probe inputs. The firmware is a first pass that samples one channel and prints over USB serial. I still need to add the trigger logic.", clips: 0, coverS: 0},
+				{at: base.Add(4 * time.Hour).Format(timestampFormat), hours: 5, title: "Routing and firmware", text: "Routed the USB pair, the buffers and the probe inputs. The firmware is a 1st pass that samples one channel and prints over USB serial. I still need to add the trigger logic.", clips: 0, coverS: 0},
 			},
 			bom: []fixtureBom{
 				{name: "RP2350A", purpose: "Microcontroller", qty: 1, cents: 620, vendor: "LCSC", link: "https://www.lcsc.com/"},

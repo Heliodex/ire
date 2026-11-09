@@ -21,14 +21,14 @@ func holdSecondPass(t *testing.T, application *ireApp, reviewer *http.Cookie, ke
 	approve, _ := json.Marshal(contract.DecisionRequest{
 		Decision:         decisionApproved,
 		Version:          1,
-		NoteToMaker:      "First pass approves the hours.",
+		NoteToMaker:      "1st pass approves the hours.",
 		Acknowledgements: warningKeys(bundle.Checks),
 		IdempotencyKey:   key,
 	})
 
 	held := decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, reviewer, nil))
 	if held.Held != 1 {
-		t.Fatalf("first pass was not held: %+v", held)
+		t.Fatalf("1st pass was not held: %+v", held)
 	}
 
 	bundle = decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, reviewer, nil))
@@ -78,7 +78,7 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 		t.Fatalf("error code = %q", body.Code)
 	}
 
-	reason := "The first pass was too generous on the firmware hours."
+	reason := "The 1st pass was too generous on the firmware hours."
 	confirm, _ := json.Marshal(contract.DecisionRequest{
 		Decision:             decisionApproved,
 		HoursApprovedSeconds: &hours,
@@ -132,7 +132,7 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 	}
 }
 
-// TestStageTwoRejectsStaleVersion covers the version guard on the second pass.
+// TestStageTwoRejectsStaleVersion covers the version guard on the 2nd pass.
 func TestStageTwoRejectsStaleVersion(t *testing.T) {
 	application := newTestApp(t)
 	reviewer := login(t, application, "reviewer@example.com")
@@ -153,7 +153,7 @@ func TestStageTwoRejectsStaleVersion(t *testing.T) {
 
 	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
 	if rejected.Code != http.StatusConflict {
-		t.Fatalf("stale second pass = %d: %s", rejected.Code, rejected.Body.String())
+		t.Fatalf("stale 2nd pass = %d: %s", rejected.Code, rejected.Body.String())
 	}
 
 	var body contract.ErrorResponse

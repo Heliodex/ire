@@ -75,7 +75,7 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 
 	switch {
 	case images >= 2:
-		checks = append(checks, check("repo.readme.images", "README images", "repo", statusPass, severityInfo, strconv.Itoa(images)+" images", "The ship carries enough images for a first pass.", checkedAt))
+		checks = append(checks, check("repo.readme.images", "README images", "repo", statusPass, severityInfo, strconv.Itoa(images)+" images", "The ship carries enough images for a 1st pass.", checkedAt))
 	case images == 1:
 		checks = append(checks, check("repo.readme.images", "README images", "repo", statusWarn, severityWarn, "1 image (2 recommended)", "Add a schematic or board render.", checkedAt))
 	default:
@@ -99,7 +99,7 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 	case shortEntries > 0:
 		checks = append(checks, check("evidence.journals", "Journal evidence", "evidence", statusWarn, severityWarn, pluralCount(shortEntries, "short entry", "short entries"), "Some entries lack enough detail to justify their time.", checkedAt))
 	default:
-		checks = append(checks, check("evidence.journals", "Journal evidence", "evidence", statusPass, severityInfo, strconv.Itoa(len(request.Journals))+" entries", "Every entry has enough detail for a first pass.", checkedAt))
+		checks = append(checks, check("evidence.journals", "Journal evidence", "evidence", statusPass, severityInfo, strconv.Itoa(len(request.Journals))+" entries", "Every entry has enough detail for a 1st pass.", checkedAt))
 	}
 
 	var claimed int

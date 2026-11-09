@@ -382,7 +382,7 @@ Rules:
 ```
 
 ```json
-{ "reason": "Needs a fresh first pass.", "idempotency_key": "s2_…" }
+{ "reason": "Needs a fresh 1st pass.", "idempotency_key": "s2_…" }
 ```
 
 Confirmation cannot be the organiser's own stage 1 decision. Override requires `reason`. Send-back invalidates the held review and returns the ship to stage 1.
@@ -403,7 +403,7 @@ Keep Ari's event names so Half Life's handler works unchanged. Add fields, not n
 | `review.requeued` | An admin requeued a decided ship | `id`, `external_id`, `reason` |
 | `ship.updated` | A reviewer corrected metadata (if enabled) | `id`, `external_id`, `changes` |
 
-A held stage 1 decision does **not** emit a review event. It is not final. The stage 2 decision emits the final event, with `stage: 2` and a `stage_history` array. This is the fix for "the programme sees a decision before the second pass".
+A held stage 1 decision does **not** emit a review event. It is not final. The stage 2 decision emits the final event, with `stage: 2` and a `stage_history` array. This is the fix for "the programme sees a decision before the 2nd pass".
 
 ### Payload
 

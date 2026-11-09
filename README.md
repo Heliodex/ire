@@ -1,6 +1,6 @@
 # Ire
 
-A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working second pass, queued GitHub repository checks and a signed outbox. Reviewer auth uses Hack Club Auth over OpenID Connect when configured, with development accounts as a fallback, and GitHub evidence is cached per ship.
+A review service for Half Life hardware ships. This is the working vertical slice of the plan in [`plan/`](./plan): a real signed ingest, a real SQLite queue, stage 1 review, a working 2nd pass, queued GitHub repository checks and a signed outbox. Reviewer auth uses Hack Club Auth over OpenID Connect when configured, with development accounts as a fallback, and GitHub evidence is cached per ship.
 
 ## What works
 
@@ -10,7 +10,7 @@ A review service for Half Life hardware ships. This is the working vertical slic
 - Per-entry time adjudication: while a ship is claimed, each journal entry can be counted down with a staff-only deflation note. The entry edits save as you type and keep the ship's approved total and the decision rail in step.
 - A resubmission diff on the overview: the previous decision and note, new commits, added and removed files, new or edited journal entries and BOM changes.
 - Internal notes on the ship, its project or its maker. Project and maker notes follow later versions, and the author or an admin can remove one.
-- A stage 2 hold policy for approvals: a warning, a held tier, or hours above the claim waits for the second pass and emits no webhook. Changes and rejections are final and always deliver. The stage 1 endpoints refuse a ship that is already on the second pass.
+- A stage 2 hold policy for approvals: a warning, a held tier, or hours above the claim waits for the 2nd pass and emits no webhook. Changes and rejections are final and always deliver. The stage 1 endpoints refuse a ship that is already on the 2nd pass.
 - A second-pass queue for organisers, with claim, confirm, reject, changes, send-back and override-with-reason actions, stage history and one final outbound event. Reviewers can read a held ship but cannot decide it.
 - Real GitHub checks for new ingests, queued as a durable supervisor job so ingest returns immediately: repository access, README and image count, BOM file or README table, PCB/CAD/firmware/Gerber design file groups, empty placeholder files and commit history. Fixtures keep their prescribed results.
 - Hack Club Auth sign-in for roster members over OpenID Connect discovery, PKCE, nonce and a verified RS256 ID token. Development sign-in remains for local use.
@@ -47,8 +47,8 @@ The first request runs the schema and seeds the three fixtures. `.projects.csv` 
 
 1. **Clean ship** – open `Starbie`, press `A`. The decision is approved, the outbox delivers immediately, and the queue advances.
 2. **Open `Deliveries`** – the outbox row is `delivered`; the receiver shows `verified`, the delivery id, timestamp and the exact body.
-3. **Warned ship** – open `OpenTrace`; approve is locked until each warning is acknowledged. After acknowledgement the approval is held for the second pass and writes no outbox row.
-4. **Second pass** – sign in as `organiser@example.com`, choose `Second pass`, open `OpenTrace` and press `Confirm approval` (or `A`). The final event is delivered exactly once and the ship leaves the queue.
+3. **Warned ship** – open `OpenTrace`; approve is locked until each warning is acknowledged. After acknowledgement the approval is held for the 2nd pass and writes no outbox row.
+4. **2nd pass** – sign in as `organiser@example.com`, choose `2nd pass`, open `OpenTrace` and press `Confirm approval` (or `A`). The final event is delivered exactly once and the ship leaves the queue.
 5. **Blocked ship** – open `Smart Alarm Clock`; approve is disabled by the repository check. Request changes or reject with a note.
 6. **Recovery** – `GET /api/v1/reviews/half-life?since=...` returns the same payload the webhook delivered; `GET /api/ingest/half-life/status?external_id=fix-clean:design` shows `reviewed` with the approved hours.
 

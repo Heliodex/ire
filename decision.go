@@ -317,12 +317,12 @@ func (a *ireApp) decisionGuard(w http.ResponseWriter, r *http.Request, ship subm
 	// A held ship is finished by an organiser at stage 2. A stage 1 ship is decided by a reviewer at stage 1.
 	secondPass := ship.Stage == 2 || ship.Status == statusStage2Hold
 	if secondPass && !person.Has(permSecondPass) {
-		app.WriteError(w, http.StatusForbidden, "only organisers can decide the second pass")
+		app.WriteError(w, http.StatusForbidden, "only organisers can decide the 2nd pass")
 		return false, nil, false
 	}
 
 	if !secondPass && ship.Stage != stageOne {
-		app.WriteError(w, http.StatusConflict, "this ship is not on the first pass")
+		app.WriteError(w, http.StatusConflict, "this ship is not on the 1st pass")
 		return false, nil, false
 	}
 
@@ -351,7 +351,7 @@ func (a *ireApp) decisionGuard(w http.ResponseWriter, r *http.Request, ship subm
 	return secondPass, checks, true
 }
 
-// resolveHours applies the requested hours and requires an override reason when they change the first pass.
+// resolveHours applies the requested hours and requires an override reason when they change the 1st pass.
 func resolveHours(request contract.DecisionRequest, hours int, secondPass bool, heldDecision string, heldHours int) (int, string, *decisionProblem) {
 	if request.HoursApprovedSeconds != nil {
 		hours = *request.HoursApprovedSeconds
@@ -367,19 +367,19 @@ func resolveHours(request contract.DecisionRequest, hours int, secondPass bool, 
 	}
 
 	if secondPass && heldDecision != "" && (hours != heldHours || request.Decision != heldDecision) && overrideReason == "" {
-		return hours, "", &decisionProblem{status: http.StatusUnprocessableEntity, code: "override_reason_required", message: "explain why the second pass changes the first-pass decision"}
+		return hours, "", &decisionProblem{status: http.StatusUnprocessableEntity, code: "override_reason_required", message: "explain why the 2nd pass changes the first-pass decision"}
 	}
 
 	return hours, overrideReason, nil
 }
 
-// secondPassBase is the first-pass decision a second pass starts from.
+// secondPassBase is the first-pass decision a 2nd pass starts from.
 type secondPassBase struct {
 	hours, heldHours               int
 	note, supersedes, heldDecision string
 }
 
-// secondPassBase loads the held review and rejects a decision on the organiser's own first pass.
+// secondPassBase loads the held review and rejects a decision on the organiser's own 1st pass.
 func (a *ireApp) secondPassBase(ctx context.Context, ship submissionRow, person reviewer, request contract.DecisionRequest, note string) (secondPassBase, *decisionProblem) {
 	held, found, err := a.heldReview(ctx, ship.ID)
 	if err != nil {
@@ -436,7 +436,7 @@ type reviewRow struct {
 	NoteToMaker, ReviewerName, CreatedAt string
 }
 
-// heldReview is the stage 1 review waiting for a second pass.
+// heldReview is the stage 1 review waiting for a 2nd pass.
 type heldReview struct {
 	ID, ReviewerID, Decision string
 	Hours                    int
@@ -496,7 +496,7 @@ func (a *ireApp) outboxForReview(ctx context.Context, reviewID string) (string, 
 // holdFor applies the stage 2 hold policy. Fraud is always stage 2, never stage 1.
 func holdFor(ship submissionRow, policy reviewPolicy, checks []contract.CheckResult, hours int) (bool, string) {
 	if policy.HoldOnWarn && slices.ContainsFunc(checks, isWarning) {
-		return true, "Approved with warnings; held for the second pass."
+		return true, "Approved with warnings; held for the 2nd pass."
 	}
 
 	if policy.HoldMinApprovedSeconds > 0 && hours >= policy.HoldMinApprovedSeconds {
@@ -504,11 +504,11 @@ func holdFor(ship submissionRow, policy reviewPolicy, checks []contract.CheckRes
 	}
 
 	if ship.RequestedTier > 0 && slices.Contains(policy.HoldTiers, ship.RequestedTier) {
-		return true, "Tier " + strconv.Itoa(ship.RequestedTier) + " approvals are held for the second pass."
+		return true, "Tier " + strconv.Itoa(ship.RequestedTier) + " approvals are held for the 2nd pass."
 	}
 
 	if ship.HoursClaimed > 0 && hours > ship.HoursClaimed {
-		return true, "The approved hours are above the claim; held for the second pass."
+		return true, "The approved hours are above the claim; held for the 2nd pass."
 	}
 
 	return false, ""

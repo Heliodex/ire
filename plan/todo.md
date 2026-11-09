@@ -113,7 +113,7 @@ wt build --dir .
 - [x] Warning approvals are held when `holdOnWarn` is on.
 - [x] Held tiers and minimum approved hours follow the seeded policy.
 - [x] Changes and rejections are always final and delivered.
-- [x] Stage 1 route refuses a ship already on the second pass.
+- [x] Stage 1 route refuses a ship already on the 2nd pass.
 - [x] Stage 2 hold writes no outbox row.
 - [x] Outbox written in the same transaction as the review.
 - [x] Signed outbound HMAC over `timestamp.delivery_id.body` with `X-Ari-*` headers.
@@ -128,12 +128,12 @@ wt build --dir .
 - [x] Organiser-only second-pass queue with the held count and a `stage=2` filter.
 - [x] Organiser claim, heartbeat and release for a `stage2_hold` ship.
 - [x] Reviewers get `403` on second-pass claim and decision, and the UI keeps it read-only.
-- [x] Second-pass confirm, reject and request-changes actions as a final decision.
+- [x] second-pass confirm, reject and request-changes actions as a final decision.
 - [x] Stage 1 held review kept at stage 1; the final review is stage 2 and supersedes it.
 - [x] Held hours and the stage 1 note are reused when the organiser confirms without changing them.
 - [x] Own-decision prevention: the organiser who held the ship cannot confirm it.
 - [x] Exactly one final outbound event, with stage 1 and stage 2 in the stage history.
-- [x] Second-pass banner, hold reason and first-pass note on the review screen.
+- [x] second-pass banner, hold reason and first-pass note on the review screen.
 - [x] Programme-wide counts stay visible while browsing the second-pass list.
 - [x] Tests for the full hold → confirm loop, role boundaries, idempotent replay and own-decision refusal.
 
@@ -180,17 +180,17 @@ The loop is complete for the seeded policy: a stage 1 hold, an organiser second-
 - [x] Show the stage 1 acknowledgements, note and reviewer on the stage 2 screen.
 - [x] Send-back invalidates the held review, returns the ship to stage 1 `ready`, clears the approved hours and records the reason and event.
 - [x] Send-back is organiser-only, needs a claim and a reason, and writes no outbound event.
-- [x] An override needs a reason when the second pass changes the first-pass hours or decision; the reason is stored and sent to Half Life.
+- [x] An override needs a reason when the 2nd pass changes the first-pass hours or decision; the reason is stored and sent to Half Life.
 - [x] A History tab shows both stages, held state, acknowledgements, overrides and invalidations.
 - [x] The second-pass stale-version guard has a test.
-- [x] The held review keeps its acknowledgements so the second pass can read them.
+- [x] The held review keeps its acknowledgements so the 2nd pass can read them.
 - [x] The review screen handles the second-pass empty and invalidated states.
 - [x] `plan/07-delivery.md` records the implemented loop and its gaps.
 
 ### Remaining
 
 - [ ] Add an explicit fraud stage guard test when the provider exists; there is no fraud path to guard yet.
-- [ ] Extend the browser smoke script with keyboard coverage for the second pass.
+- [ ] Extend the browser smoke script with keyboard coverage for the 2nd pass.
 - [ ] Decide whether send-back should be available to reviewers or remain organiser-only.
 
 **Done when:** a warned ship can be held at stage 1, claimed by an organiser, confirmed, overridden or sent back at stage 2, and Half Life receives exactly one final event per final decision.

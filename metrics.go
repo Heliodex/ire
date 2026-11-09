@@ -79,7 +79,7 @@ func (a *ireApp) metricsText(ctx context.Context, id string) (string, error) {
 		rate = float64(holds) / float64(reviews)
 	}
 
-	fmt.Fprintf(&out, "# HELP review_hold_rate Stage 1 reviews held for the second pass.\n# TYPE review_hold_rate gauge\nreview_hold_rate %.4f\n", rate)
+	fmt.Fprintf(&out, "# HELP review_hold_rate Stage 1 reviews held for the 2nd pass.\n# TYPE review_hold_rate gauge\nreview_hold_rate %.4f\n", rate)
 
 	err = a.store.QueryRow(ctx, `select coalesce(avg((julianday(first.created_at) - julianday(s.ingested_at)) * 86400), 0)
 		from submission s join (select submission_id, min(created_at) as created_at from review where stage = 1 and invalidated_at is null group by submission_id) first

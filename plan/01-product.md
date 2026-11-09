@@ -8,13 +8,13 @@ Half Life uses Ari, a review platform built for Hack Club's Macondo programme. A
 
 - reviewers know it;
 - the automatic checks are thorough;
-- the queue, claims, evidence and second pass already work.
+- the queue, claims, evidence and 2nd pass already work.
 
 It fits Half Life badly in three ways:
 
 1. **Shape.** Macondo is mostly software. Half Life is five hardware design weeks and five build weeks. Some Ari concepts (collaborative ships, software demo requirements, reviewer VMs, NDA evidence) are dead weight. Some Half Life concepts (theme-specific repo requirements, BOM funding, design-then-build ordering) are not native.
 2. **API opacity.** A lot of what Half Life needs is only available through side effects: decisions arrive as webhooks, the status endpoint is a subset, notes and approved hours are missing from some paths, and the workaround is to resend from the admin panel and catch it server-side. That is not a stable integration.
-3. **Configuration.** Ari's workflow is a set of booleans built around its own second pass. Half Life wants a first review that is fast and mostly final, a second stage that only sees what needs a second look, and fraud review only at that second stage. Ari can approximate that; it cannot express it cleanly.
+3. **Configuration.** Ari's workflow is a set of booleans built around its own 2nd pass. Half Life wants a first review that is fast and mostly final, a second stage that only sees what needs a second look, and fraud review only at that second stage. Ari can approximate that; it cannot express it cleanly.
 
 The opportunity is not "Ari but shinier". It is a review surface shaped like Half Life's actual work, with the checks and familiarity that make Ari good, and an API that a backend can trust.
 
@@ -170,7 +170,7 @@ A hold rule is a named condition. The policy engine evaluates them in order and 
 - **Reviewer.** New reviewer, probation period, or a reviewer who has asked for a second look.
 - **Sample.** A deterministic random sample (hash of submission id + salt) so the same ship is not re-rolled on retry.
 - **Fraud.** Fraud is required by policy.
-- **Always.** A programme that wants a second pass on everything.
+- **Always.** A programme that wants a 2nd pass on everything.
 
 ### Stage 2 screen
 
@@ -272,7 +272,7 @@ The goal is not pixel parity. It is **no relearning**. A reviewer should recogni
 | Evidence: commits, devlog, Lapse, README, files, past reviews | Same | One bundle; prefetch; resubmission diff |
 | Hours rail, per-source adjustments, deflation | Same | Seconds model; sends approved seconds to Half Life |
 | Checklist, custom fields, snippets | Same | Stage-scoped; off by default in stage 1 |
-| Second pass | Stage 2 | Configurable holds and fraud |
+| 2nd pass | Stage 2 | Configurable holds and fraud |
 | Fraud review | Stage 2 only | Provider interface |
 | Reviewer VMs | Dropped | Not needed |
 | NDA evidence | Dropped | Not needed |
@@ -294,7 +294,7 @@ Use the words reviewers already know:
 - "Hours" and "coverage".
 - "Approve", "Request changes", "Reject".
 
-Avoid inventing a new taxonomy for the same things. "Stage 2" is the only new word, and the UI can gloss it as "second pass" the first time.
+Avoid inventing a new taxonomy for the same things. "Stage 2" is the only new word, and the UI can gloss it as "2nd pass" the first time.
 
 ## Configuration
 

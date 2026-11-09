@@ -18,7 +18,7 @@ const roleInfo: { [_: string]: { detail: string; label: string } } = {
 		label: "Auditor",
 	},
 	organizer: {
-		detail: "Reviews first pass and confirms, overrides or returns held second-pass ships.",
+		detail: "Reviews 1st pass and confirms, overrides or returns held second-pass ships.",
 		label: "Organiser",
 	},
 	reviewer: {
@@ -190,7 +190,7 @@ function activeTone(active: boolean | undefined): string {
 					<dd>{profile.stats.held}</dd>
 				</div>
 				<div>
-					<dt>Second pass</dt>
+					<dt>2nd pass</dt>
 					<dd>{profile.stats.secondPass}</dd>
 				</div>
 				<div>

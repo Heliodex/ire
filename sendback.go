@@ -33,7 +33,7 @@ func (a *ireApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if ship.Status != statusStage2Hold || ship.Stage != 2 {
-		app.WriteError(w, http.StatusConflict, "only a held second pass can be sent back")
+		app.WriteError(w, http.StatusConflict, "only a held 2nd pass can be sent back")
 		return
 	}
 

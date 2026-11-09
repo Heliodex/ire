@@ -55,7 +55,7 @@ func (a *ireApp) parseQueueParams(w http.ResponseWriter, r *http.Request, person
 	}
 
 	if params.stage == 2 && !person.Has(permSecondPass) {
-		app.WriteError(w, http.StatusForbidden, "only organisers can view the second pass")
+		app.WriteError(w, http.StatusForbidden, "only organisers can view the 2nd pass")
 
 		return queueParams{}, false
 	}
@@ -428,7 +428,7 @@ func (a *ireApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !secondPass && ship.Stage != stageOne {
-		app.WriteError(w, http.StatusConflict, "this ship is not on the first pass")
+		app.WriteError(w, http.StatusConflict, "this ship is not on the 1st pass")
 		return
 	}
 
