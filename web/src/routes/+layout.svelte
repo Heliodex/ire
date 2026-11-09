@@ -772,8 +772,8 @@ main {
 
 	.bottom-chrome {
 		position: static;
-		flex: 0 0 auto;
 		display: flex;
+		flex: 0 0 auto;
 		flex-direction: column;
 		background: var(--header-bg, var(--surface));
 		border-top: 1px solid var(--border);
@@ -831,10 +831,8 @@ main {
 		overflow-y: auto;
 		overscroll-behavior-y: contain;
 		-webkit-overflow-scrolling: touch;
-		padding: calc(var(--space-4) + env(safe-area-inset-top))
-			calc(var(--space-3) + env(safe-area-inset-right))
-			var(--space-6)
-			calc(var(--space-3) + env(safe-area-inset-left));
+		padding: calc(var(--space-4) + env(safe-area-inset-top)) calc(var(--space-3) + env(safe-area-inset-right))
+			var(--space-6) calc(var(--space-3) + env(safe-area-inset-left));
 	}
 }
 
@@ -882,8 +880,8 @@ main {
 
 		.bottom-chrome {
 			position: static;
-			flex: 0 0 auto;
 			display: flex;
+			flex: 0 0 auto;
 			flex-direction: column;
 			background: var(--header-bg, var(--surface));
 			border-top: 1px solid var(--border);
@@ -896,9 +894,9 @@ main {
 			bottom: auto;
 			left: auto;
 			display: flex;
-			border-top: 0;
 			padding: 0;
 			background: transparent;
+			border-top: 0;
 		}
 
 		.top-actions {
