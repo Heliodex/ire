@@ -1291,9 +1291,9 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 			<LoadingState message="Loading open ships…" />
 		</div>
 	{:else if visible.length === 0}
-		{#if queue.hasMore && hasStructuredQuery(queueQuery)}
+		{#if streaming || (queue.hasMore && hasStructuredQuery(queueQuery))}
 			<div class="ui-card list">
-				<LoadingState message="Searching all ships…" />
+				<LoadingState message={streaming ? "Loading open ships…" : "Searching all ships…"} />
 			</div>
 		{:else}
 			<div class="ui-card ui-empty">
