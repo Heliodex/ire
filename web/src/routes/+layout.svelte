@@ -769,8 +769,8 @@ main {
 	}
 }
 
-/* Fullscreen PWA: use the whole display. */
-@media (display-mode: fullscreen) {
+/* Installed PWA: use the whole display. */
+@media (display-mode: fullscreen), (display-mode: standalone) {
 	header {
 		padding-top: 0;
 	}
