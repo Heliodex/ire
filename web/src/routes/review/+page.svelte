@@ -76,6 +76,7 @@ let dragTab = $state<Tab | undefined>(undefined)
 let dragging = $state(false)
 let settling = $state(false)
 let skipAnim = $state(false)
+const swipeGap = 16
 let note = $state("")
 let internalNote = $state("")
 let hours = $state(0)
@@ -225,7 +226,7 @@ function swipeTabs(node: HTMLElement): { destroy(): void } {
 	function settle(commit: boolean, target?: Tab, step = 1): void {
 		dragging = false
 		settling = true
-		dragX = commit ? -step * (node.offsetWidth || 1) : 0
+		dragX = commit ? -step * ((node.offsetWidth || 1) + swipeGap) : 0
 		settleTimer = setTimeout(() => {
 			settleTimer = undefined
 			if (commit && target !== undefined) {
@@ -1250,8 +1251,8 @@ async function saveDraftNow(): Promise<void> {
 					<div
 						class="tab-slide tab-slide--adjacent"
 						style:transform={dragX < 0
-							? `translateX(calc(100% + ${dragX}px))`
-							: `translateX(calc(-100% + ${dragX}px))`}
+							? `translateX(calc(100% + ${swipeGap}px + ${dragX}px))`
+							: `translateX(calc(-100% - ${swipeGap}px + ${dragX}px))`}
 						style:transition={dragging || skipAnim
 							? "none"
 							: settling
