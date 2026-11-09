@@ -119,25 +119,29 @@ function toggleEntry(id: string): void {
 	gap: var(--space-2);
 	align-items: baseline;
 	width: 100%;
-	padding: var(--space-3) var(--space-4);
+	padding: var(--space-2) var(--space-4);
 	font: inherit;
-	color: inherit;
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-2);
 	text-align: left;
 	cursor: pointer;
-	background: none;
+	background: var(--surface-2);
 	border: 0;
 }
 
 .journal-toggle:hover {
-	background: var(--surface-2);
+	color: var(--text);
+	background: var(--surface-3);
 }
 
 .journal-title {
 	font-weight: 700;
+	color: var(--text);
 }
 
 .journal-meta {
-	font-size: var(--text-xs);
+	font-weight: 500;
 	color: var(--text-3);
 }
 
