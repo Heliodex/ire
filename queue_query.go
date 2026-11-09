@@ -18,10 +18,16 @@ type queueChecksFilter struct {
 	value       int64
 }
 
+type queueCheckFilter struct {
+	key    string
+	status string
+}
+
 type queueSearch struct {
 	raw       string
 	supported bool
 	age       *queueCompare
+	check     *queueCheckFilter
 	checks    *queueChecksFilter
 	journals  *queueCompare
 	status    string
@@ -124,7 +130,14 @@ func parseQueueSearch(raw string) queueSearch {
 				query.text = append(query.text, strings.ToLower(token))
 			}
 		case "check":
-			query.supported = false
+			if separator := strings.Index(value, "="); separator != -1 {
+				query.check = &queueCheckFilter{
+					key:    strings.ToLower(value[:separator]),
+					status: strings.ToLower(value[separator+1:]),
+				}
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
 		default:
 			query.text = append(query.text, strings.ToLower(token))
 		}
@@ -296,6 +309,15 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 		}
 	}
 
+	if q.check != nil {
+		query += ` and exists (select 1 from check_result c
+			where c.submission_id = s.id and c.version = s.version
+			  and lower(c.check_key) = ? and lower(c.status) = ?
+			  and c.checked_at = (select max(c2.checked_at) from check_result c2
+				where c2.submission_id = c.submission_id and c2.version = c.version and c2.check_key = c.check_key))`
+		args = append(args, q.check.key, q.check.status)
+	}
+
 	if q.checks != nil {
 		if q.checks.overallPass {
 			query += " and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass'"
@@ -340,8 +362,8 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 
 	for _, term := range q.text {
 		like := "%" + escapeLike(strings.ToLower(term)) + "%"
-		query += " and (lower(s.title) like ? escape '\\' or lower(coalesce(s.maker_name, '')) like ? escape '\\' or lower(s.status) like ? escape '\\' or lower(coalesce(s.theme, '')) like ? escape '\\')"
-		args = append(args, like, like, like, like)
+		query += " and (lower(s.title) like ? escape '\\' or lower(coalesce(s.maker_name, '')) like ? escape '\\' or lower(s.status) like ? escape '\\' or lower(replace(s.status, '_', ' ')) like ? escape '\\' or lower(coalesce(s.theme, '')) like ? escape '\\')"
+		args = append(args, like, like, like, like, like)
 	}
 
 	return query, args
