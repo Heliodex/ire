@@ -93,6 +93,7 @@ let filter = $state<Filter>(
 	savedQueue && filters.some(option => option.key === savedQueue.filter) ? savedQueue.filter : "all",
 )
 let stage = $state(savedQueue?.stage ?? 1)
+let filterDir = $state(1)
 // A restored visit paints its cached rows at once; only a first visit waits on the loader.
 let loading = $state(savedQueue === null)
 // streaming is true while the first page arrives as NDJSON; load-more waits until the stream has finished.
@@ -813,12 +814,17 @@ function refreshCache(): void {
 	cache.set(cacheKey(stage, filter), queue)
 }
 
-async function choose(next: Filter): Promise<void> {
+function filterPos(s: number, f: Filter): number {
+	return s === 2 ? filters.length : filters.findIndex(option => option.key === f)
+}
+
+async function choose(next: Filter, dir?: number): Promise<void> {
 	if (next === filter && stage === 1) {
 		void load(next, 1, true)
 		return
 	}
 
+	filterDir = dir ?? (filterPos(1, next) >= filterPos(stage, filter) ? 1 : -1)
 	stage = 1
 	filter = next
 	selected = 0
@@ -840,9 +846,10 @@ async function choose(next: Filter): Promise<void> {
 	await load(next, 1)
 }
 
-async function chooseSecondPass(): Promise<void> {
+async function chooseSecondPass(dir?: number): Promise<void> {
 	if (!canSecondPass) return
 
+	filterDir = dir ?? 1
 	const keeping = stage === 2 && filter === "all"
 	const cached = cache.get(cacheKey(2, "all"))
 	stage = 2
@@ -878,11 +885,11 @@ function moveFilter(step: number): void {
 	filterTabs?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus()
 
 	if (next === filters.length) {
-		void chooseSecondPass()
+		void chooseSecondPass(step)
 		return
 	}
 
-	void choose(filters[next].key)
+	void choose(filters[next].key, step)
 }
 
 // moveSelection moves the row cursor and scrolls the new row into view when the list is taller than the viewport.
@@ -1079,6 +1086,68 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 	event.preventDefault()
 	event.stopPropagation()
 	setFilterToken("age", ageFilter(item))
+}
+
+// swipeFilters switches filter tabs on a horizontal swipe, leaving vertical scroll alone.
+function swipeFilters(node: HTMLElement): { destroy(): void } {
+	let startX = 0
+	let startY = 0
+	let tracking = false
+	let locked: "h" | "v" | undefined
+
+	function onStart(event: TouchEvent): void {
+		if (event.touches.length !== 1) {
+			tracking = false
+			return
+		}
+		const [touch] = event.touches
+		if (!touch) return
+		startX = touch.clientX
+		startY = touch.clientY
+		tracking = true
+		locked = undefined
+	}
+
+	function onMove(event: TouchEvent): void {
+		if (!tracking) return
+		const [touch] = event.touches
+		if (!touch) return
+		const dx = touch.clientX - startX
+		const dy = touch.clientY - startY
+		if (locked === undefined) {
+			if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+			locked = Math.abs(dx) > Math.abs(dy) * 1.2 ? "h" : "v"
+		}
+		if (locked === "h") event.preventDefault()
+	}
+
+	function onEnd(event: TouchEvent): void {
+		if (!tracking) return
+		tracking = false
+		if (locked !== "h") return
+		const [touch] = event.changedTouches
+		const dx = touch ? touch.clientX - startX : 0
+		if (Math.abs(dx) < 48) return
+		moveFilter(dx < 0 ? 1 : -1)
+	}
+
+	function onCancel(): void {
+		tracking = false
+	}
+
+	node.addEventListener("touchstart", onStart, { passive: true })
+	node.addEventListener("touchmove", onMove, { passive: false })
+	node.addEventListener("touchend", onEnd, { passive: true })
+	node.addEventListener("touchcancel", onCancel, { passive: true })
+
+	return {
+		destroy(): void {
+			node.removeEventListener("touchstart", onStart)
+			node.removeEventListener("touchmove", onMove)
+			node.removeEventListener("touchend", onEnd)
+			node.removeEventListener("touchcancel", onCancel)
+		},
+	}
 }
 </script>
 
@@ -1286,345 +1355,382 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 		</span>
 	</div>
 
-	{#if loading}
-		<div class="ui-card list">
-			<LoadingState message="Loading open ships…" />
-		</div>
-	{:else if visible.length === 0}
-		{#if streaming || (queue.hasMore && hasStructuredQuery(queueQuery))}
-			<div class="ui-card list">
-				<LoadingState message={streaming ? "Loading open ships…" : "Searching all ships…"} />
-			</div>
-		{:else}
-			<div class="ui-card ui-empty">
-				<strong
-					>{search
-						? "No ships match that search."
-						: stage === 2
-							? "No held ships."
-							: "Nothing in this filter."}</strong
+	<div class="filter-swipe" use:swipeFilters>
+		<div class="filter-stack">
+			{#key `${stage}:${filter}`}
+				<div
+					class="filter-slide"
+					in:fly={{ duration: 180, easing: cubicOut, x: filterDir * 180 }}
+					out:fly={{ duration: 180, easing: cubicOut, x: filterDir * -180 }}
 				>
-				<span
-					>{stage === 2 ? "Nothing is waiting for a second pass." : "Check back after the next ingest."}</span
-				>
-			</div>
-		{/if}
-	{:else}
-		<div class="ui-card list" bind:this={listElement}>
-			<div class="column-head">
-				<span></span>
-				<button
-					aria-label={sortLabel("ship", "Ship")}
-					class="sort"
-					onclick={() => toggleSort("ship")}
-					type="button"
-				>
-					Ship
-					{#if sortKey === "ship"}
-						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
-					{/if}
-				</button>
-				<button
-					aria-label={sortLabel("maker", "Maker")}
-					class="sort"
-					onclick={() => toggleSort("maker")}
-					type="button"
-				>
-					Maker
-					{#if sortKey === "maker"}
-						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
-					{/if}
-				</button>
-				<button
-					aria-label={sortLabel("status", "Status")}
-					class="sort"
-					onclick={() => toggleSort("status")}
-					type="button"
-				>
-					Status
-					{#if sortKey === "status"}
-						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
-					{/if}
-				</button>
-				<button
-					aria-label={sortLabel("type", "Type")}
-					class="sort"
-					onclick={() => toggleSort("type")}
-					type="button"
-				>
-					Type
-					{#if sortKey === "type"}
-						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
-					{/if}
-				</button>
-				<button
-					aria-label={sortLabel("version", "Version")}
-					class="sort"
-					onclick={() => toggleSort("version")}
-					type="button"
-				>
-					Ver
-					{#if sortKey === "version"}
-						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
-					{/if}
-				</button>
-				<button
-					aria-label={sortLabel("claimed", "Claimed hours")}
-					class="sort"
-					onclick={() => toggleSort("claimed")}
-					type="button"
-				>
-					Claimed
-					{#if sortKey === "claimed"}
-						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
-					{/if}
-				</button>
-				<button
-					aria-label={sortLabel("age", "Age")}
-					class="sort"
-					onclick={() => toggleSort("age")}
-					type="button"
-				>
-					Age
-					{#if sortKey === "age"}
-						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
-					{/if}
-				</button>
-				<button
-					aria-label={sortLabel("checks", "Checks")}
-					class="sort"
-					onclick={() => toggleSort("checks")}
-					type="button"
-				>
-					Checks
-					{#if sortKey === "checks"}
-						<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
-					{/if}
-				</button>
-			</div>
-			{#if windowedRows.topPad > 0}
-				<div aria-hidden="true" class="vspacer" style:height={`${windowedRows.topPad}px`}></div>
-			{/if}
-			{#snippet checksCell(item: QueueItem)}
-				<span class="checks">
-					<a
-						class="checks-open"
-						href={`/review/${encodeURIComponent(item.id)}?tab=checks`}
-						onclick={(event: MouseEvent): void => openChecks(item, event)}
-					>
-						<span class="visually-hidden">Open {item.title} on its checks tab</span>
-					</a>
-					<span aria-hidden="true" class="counts">
-						{#if item.status === "checking"}
-							<span class="pending-text">Checks running…</span>
+					{#if loading}
+						<div class="ui-card list">
+							<LoadingState message="Loading open ships…" />
+						</div>
+					{:else if visible.length === 0}
+						{#if streaming || (queue.hasMore && hasStructuredQuery(queueQuery))}
+							<div class="ui-card list">
+								<LoadingState message={streaming ? "Loading open ships…" : "Searching all ships…"} />
+							</div>
 						{:else}
-							{#if item.checkSummary.pass > 0}
-								<span class="pass">{item.checkSummary.pass} pass</span>
-							{/if}
-							{#if item.checkSummary.warn > 0}
-								<span class="warn">{item.checkSummary.warn} warn</span>
-							{/if}
-							{#if item.checkSummary.fail > 0}
-								<span class="fail">{item.checkSummary.fail} fail</span>
-							{/if}
-							{#if item.checkSummary.error > 0}
-								<span class="fail">{item.checkSummary.error} error</span>
-							{/if}
-							{#if item.checkSummary.overall === "pass"}
-								<span class="fast">Fast lane</span>
-							{/if}
-						{/if}
-					</span>
-					{#if item.checks.length > 0 && item.status !== "checking"}
-						<span class="dots">
-							{#each groupChecks(visibleChecks(item.checks, dotMode)) as group (group.group)}
-								<span class="dot-group">
-									{#each group.items as check (check.key)}
-										<a
-											aria-label={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
-											class="dot"
-											data-tone={checkTone(check)}
-											href={filterHref("check", `${check.key}=${check.status}`)}
-											onclick={(event: MouseEvent): void => filterByCheck(check, event)}
-											onmouseenter={(event): void => showCheckTip(event, group.group, check)}
-											onmouseleave={hideCheckTip}
-											title={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
-										>
-											<CheckIcon status={check.status} />
-										</a>
-									{/each}
-								</span>
-							{/each}
-							{#if checkOverflow(item.checks, dotMode) > 0}
+							<div class="ui-card ui-empty">
+								<strong
+									>{search
+										? "No ships match that search."
+										: stage === 2
+											? "No held ships."
+											: "Nothing in this filter."}</strong
+								>
 								<span
-									aria-hidden="true"
-									class="dot-more"
-									title={`${checkOverflow(item.checks, dotMode)} more checks`}
+									>{stage === 2
+										? "Nothing is waiting for a second pass."
+										: "Check back after the next ingest."}</span
 								>
-									+{checkOverflow(item.checks, dotMode)}
+							</div>
+						{/if}
+					{:else}
+						<div class="ui-card list" bind:this={listElement}>
+							<div class="column-head">
+								<span></span>
+								<button
+									aria-label={sortLabel("ship", "Ship")}
+									class="sort"
+									onclick={() => toggleSort("ship")}
+									type="button"
+								>
+									Ship
+									{#if sortKey === "ship"}
+										<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+									{/if}
+								</button>
+								<button
+									aria-label={sortLabel("maker", "Maker")}
+									class="sort"
+									onclick={() => toggleSort("maker")}
+									type="button"
+								>
+									Maker
+									{#if sortKey === "maker"}
+										<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+									{/if}
+								</button>
+								<button
+									aria-label={sortLabel("status", "Status")}
+									class="sort"
+									onclick={() => toggleSort("status")}
+									type="button"
+								>
+									Status
+									{#if sortKey === "status"}
+										<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+									{/if}
+								</button>
+								<button
+									aria-label={sortLabel("type", "Type")}
+									class="sort"
+									onclick={() => toggleSort("type")}
+									type="button"
+								>
+									Type
+									{#if sortKey === "type"}
+										<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+									{/if}
+								</button>
+								<button
+									aria-label={sortLabel("version", "Version")}
+									class="sort"
+									onclick={() => toggleSort("version")}
+									type="button"
+								>
+									Ver
+									{#if sortKey === "version"}
+										<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+									{/if}
+								</button>
+								<button
+									aria-label={sortLabel("claimed", "Claimed hours")}
+									class="sort"
+									onclick={() => toggleSort("claimed")}
+									type="button"
+								>
+									Claimed
+									{#if sortKey === "claimed"}
+										<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+									{/if}
+								</button>
+								<button
+									aria-label={sortLabel("age", "Age")}
+									class="sort"
+									onclick={() => toggleSort("age")}
+									type="button"
+								>
+									Age
+									{#if sortKey === "age"}
+										<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+									{/if}
+								</button>
+								<button
+									aria-label={sortLabel("checks", "Checks")}
+									class="sort"
+									onclick={() => toggleSort("checks")}
+									type="button"
+								>
+									Checks
+									{#if sortKey === "checks"}
+										<span aria-hidden="true" class="arrow">{sortDir === 1 ? "▲" : "▼"}</span>
+									{/if}
+								</button>
+							</div>
+							{#if windowedRows.topPad > 0}
+								<div aria-hidden="true" class="vspacer" style:height={`${windowedRows.topPad}px`}></div>
+							{/if}
+							{#snippet checksCell(item: QueueItem)}
+								<span class="checks">
+									<a
+										class="checks-open"
+										href={`/review/${encodeURIComponent(item.id)}?tab=checks`}
+										onclick={(event: MouseEvent): void => openChecks(item, event)}
+									>
+										<span class="visually-hidden">Open {item.title} on its checks tab</span>
+									</a>
+									<span aria-hidden="true" class="counts">
+										{#if item.status === "checking"}
+											<span class="pending-text">Checks running…</span>
+										{:else}
+											{#if item.checkSummary.pass > 0}
+												<span class="pass">{item.checkSummary.pass} pass</span>
+											{/if}
+											{#if item.checkSummary.warn > 0}
+												<span class="warn">{item.checkSummary.warn} warn</span>
+											{/if}
+											{#if item.checkSummary.fail > 0}
+												<span class="fail">{item.checkSummary.fail} fail</span>
+											{/if}
+											{#if item.checkSummary.error > 0}
+												<span class="fail">{item.checkSummary.error} error</span>
+											{/if}
+											{#if item.checkSummary.overall === "pass"}
+												<span class="fast">Fast lane</span>
+											{/if}
+										{/if}
+									</span>
+									{#if item.checks.length > 0 && item.status !== "checking"}
+										<span class="dots">
+											{#each groupChecks(
+												visibleChecks(item.checks, dotMode),
+											) as group (group.group)}
+												<span class="dot-group">
+													{#each group.items as check (check.key)}
+														<a
+															aria-label={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
+															class="dot"
+															data-tone={checkTone(check)}
+															href={filterHref("check", `${check.key}=${check.status}`)}
+															onclick={(event: MouseEvent): void =>
+																filterByCheck(check, event)}
+															onmouseenter={(event): void =>
+																showCheckTip(event, group.group, check)}
+															onmouseleave={hideCheckTip}
+															title={`Filter ${check.label}: ${checkStatusLabel(check.status)}`}
+														>
+															<CheckIcon status={check.status} />
+														</a>
+													{/each}
+												</span>
+											{/each}
+											{#if checkOverflow(item.checks, dotMode) > 0}
+												<span
+													aria-hidden="true"
+													class="dot-more"
+													title={`${checkOverflow(item.checks, dotMode)} more checks`}
+												>
+													+{checkOverflow(item.checks, dotMode)}
+												</span>
+											{/if}
+										</span>
+									{/if}
 								</span>
-							{/if}
-						</span>
-					{/if}
-				</span>
-			{/snippet}
+							{/snippet}
 
-			{#each windowedRows.rows as item, index (item.id)}
-				<button
-					aria-current={windowedRows.start + index === selected}
-					class="row"
-					disabled={opening !== "" || !isSelectable(item)}
-					onclick={(): Promise<void> => open(item)}
-					onmouseenter={(): void => {
-						hoveredId = item.id
-					}}
-					onmouseleave={(): void => {
-						if (hoveredId === item.id) hoveredId = ""
-					}}
-					type="button"
-					class:selected={windowedRows.start + index === selected}
-					class:unavailable={!isSelectable(item)}
-					use:measureRow={item.id}
-				>
-					<span class="thumb">
-						<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
-							<rect height="16" rx="2" stroke="currentColor" stroke-width="1.6" width="18" x="3" y="4" />
-							<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
-							<path
-								d="m4 17 4.5-4.5 3 3L15 12l5 5"
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.6"
-							/>
-						</svg>
-						{#if item.thumbnailUrl}
-							<img
-								alt=""
-								decoding="async"
-								loading="lazy"
-								onerror={(event): void => {
-									;(event.currentTarget as HTMLImageElement).style.display = "none"
-								}}
-								src={item.thumbnailUrl}
-							>
-						{/if}
-					</span>
-					<span class="ship-title" title={item.title}>
-						<span class="ship-name">{item.title}</span>
-						<span class="maker inline-maker">
-							<Avatar name={item.makerName} size="xs" url={item.makerAvatarUrl} />
-							<a
-								class="maker-name"
-								data-sveltekit-reload
-								href={makerHref(item.makerEmail) ?? "#"}
-								onclick={(event: MouseEvent): void => event.stopPropagation()}
-							>
-								{item.makerName}
-							</a>
-						</span>
-						<span class="inline-theme">
-							{#if item.theme}
-								<a
-									aria-label={`Show only ${item.theme} ships`}
-									class="inline-theme-link"
-									href={filterHref("type", item.theme)}
-									onclick={(event: MouseEvent): void => filterByTheme(item, event)}
-									title={`Show only ${item.theme} ships`}
+							{#each windowedRows.rows as item, index (item.id)}
+								<button
+									aria-current={windowedRows.start + index === selected}
+									class="row"
+									disabled={opening !== "" || !isSelectable(item)}
+									onclick={(): Promise<void> => open(item)}
+									onmouseenter={(): void => {
+										hoveredId = item.id
+									}}
+									onmouseleave={(): void => {
+										if (hoveredId === item.id) hoveredId = ""
+									}}
+									type="button"
+									class:selected={windowedRows.start + index === selected}
+									class:unavailable={!isSelectable(item)}
+									use:measureRow={item.id}
 								>
-									{item.theme}
-								</a>
+									<span class="thumb">
+										<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
+											<rect
+												height="16"
+												rx="2"
+												stroke="currentColor"
+												stroke-width="1.6"
+												width="18"
+												x="3"
+												y="4"
+											/>
+											<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
+											<path
+												d="m4 17 4.5-4.5 3 3L15 12l5 5"
+												stroke="currentColor"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="1.6"
+											/>
+										</svg>
+										{#if item.thumbnailUrl}
+											<img
+												alt=""
+												decoding="async"
+												loading="lazy"
+												onerror={(event): void => {
+													;(event.currentTarget as HTMLImageElement).style.display = "none"
+												}}
+												src={item.thumbnailUrl}
+											>
+										{/if}
+									</span>
+									<span class="ship-title" title={item.title}>
+										<span class="ship-name">{item.title}</span>
+										<span class="maker inline-maker">
+											<Avatar name={item.makerName} size="xs" url={item.makerAvatarUrl} />
+											<a
+												class="maker-name"
+												data-sveltekit-reload
+												href={makerHref(item.makerEmail) ?? "#"}
+												onclick={(event: MouseEvent): void => event.stopPropagation()}
+											>
+												{item.makerName}
+											</a>
+										</span>
+										<span class="inline-theme">
+											{#if item.theme}
+												<a
+													aria-label={`Show only ${item.theme} ships`}
+													class="inline-theme-link"
+													href={filterHref("type", item.theme)}
+													onclick={(event: MouseEvent): void => filterByTheme(item, event)}
+													title={`Show only ${item.theme} ships`}
+												>
+													{item.theme}
+												</a>
+											{/if}
+										</span>
+									</span>
+									<span class="badges">
+										<a
+											aria-label={`Show only ${humanStatus(item.status)} ships`}
+											class="ui-badge status"
+											data-tone={statusTone(item.status)}
+											href={filterHref("status", item.status)}
+											onclick={(event: MouseEvent): void => filterByStatus(item, event)}
+											title={item.claimedBy
+												? `Claimed by ${item.claimedBy}`
+												: humanStatus(item.status)}
+										>
+											{item.claimedBy === session.me?.user.email
+												? "Yours"
+												: humanStatus(item.status)}
+										</a>
+										{#if item.previousReviewer}
+											<span
+												class="ui-badge previous"
+												title={`Previously reviewed by ${item.previousReviewer}`}
+											>
+												{item.previousReviewer === session.me?.user.email
+													? "Yours to continue"
+													: "Resubmission"}
+											</span>
+										{/if}
+										{#if item.theme}
+											<a
+												aria-label={`Show only ${item.theme} ships`}
+												class="theme"
+												href={filterHref("type", item.theme)}
+												onclick={(event: MouseEvent): void => filterByTheme(item, event)}
+												title={`Show only ${item.theme} ships`}
+											>
+												{item.theme}
+											</a>
+										{/if}
+									</span>
+									<div class="facts">
+										<span class="maker fact-maker">
+											<Avatar name={item.makerName} size="xs" url={item.makerAvatarUrl} />
+											<a
+												class="maker-name"
+												data-sveltekit-reload
+												href={makerHref(item.makerEmail) ?? "#"}
+												onclick={(event: MouseEvent): void => event.stopPropagation()}
+											>
+												{item.makerName}
+											</a>
+										</span>
+										<a
+											aria-label={`Show only version ${item.version} ships`}
+											class="version"
+											href={filterHref("ver", item.version)}
+											onclick={(event: MouseEvent): void => filterByVersion(item, event)}
+											title={`Show only version ${item.version} ships`}
+										>
+											v{item.version}
+										</a>
+										<span class="timing">
+											<a
+												aria-label={`Show ships with more than ${formatDuration(item.hoursClaimedSeconds)} claimed`}
+												class="hours"
+												href={filterHref("time", timeFilter(item))}
+												onclick={(event: MouseEvent): void => filterByTime(item, event)}
+												title={`Show ships with more than ${formatDuration(item.hoursClaimedSeconds)} claimed`}
+											>
+												{formatDuration(item.hoursClaimedSeconds)}
+												claimed
+											</a>
+											<a
+												aria-label="Show ships at least as old as this one"
+												class="age {ageTone(item.ingestedAt)}"
+												href={filterHref("age", ageFilter(item))}
+												onclick={(event: MouseEvent): void => filterByAge(item, event)}
+												title="Show ships at least as old as this one"
+											>
+												{timeAgo(item.ingestedAt)}
+											</a>
+										</span>
+									</div>
+									{@render checksCell(item)}
+								</button>
+							{/each}
+							{#if windowedRows.bottomPad > 0}
+								<div
+									aria-hidden="true"
+									class="vspacer"
+									style:height={`${windowedRows.bottomPad}px`}
+								></div>
 							{/if}
-						</span>
-					</span>
-					<span class="badges">
-						<a
-							aria-label={`Show only ${humanStatus(item.status)} ships`}
-							class="ui-badge status"
-							data-tone={statusTone(item.status)}
-							href={filterHref("status", item.status)}
-							onclick={(event: MouseEvent): void => filterByStatus(item, event)}
-							title={item.claimedBy ? `Claimed by ${item.claimedBy}` : humanStatus(item.status)}
-						>
-							{item.claimedBy === session.me?.user.email ? "Yours" : humanStatus(item.status)}
-						</a>
-						{#if item.previousReviewer}
-							<span class="ui-badge previous" title={`Previously reviewed by ${item.previousReviewer}`}>
-								{item.previousReviewer === session.me?.user.email
-									? "Yours to continue"
-									: "Resubmission"}
-							</span>
+						</div>
+						{#if queue.hasMore}
+							<div aria-live="polite" class="more" use:autoLoad>
+								{#if loadingMore}
+									<span>Loading more ships…</span>
+								{/if}
+							</div>
 						{/if}
-						{#if item.theme}
-							<a
-								aria-label={`Show only ${item.theme} ships`}
-								class="theme"
-								href={filterHref("type", item.theme)}
-								onclick={(event: MouseEvent): void => filterByTheme(item, event)}
-								title={`Show only ${item.theme} ships`}
-							>
-								{item.theme}
-							</a>
-						{/if}
-					</span>
-					<div class="facts">
-						<span class="maker fact-maker">
-							<Avatar name={item.makerName} size="xs" url={item.makerAvatarUrl} />
-							<a
-								class="maker-name"
-								data-sveltekit-reload
-								href={makerHref(item.makerEmail) ?? "#"}
-								onclick={(event: MouseEvent): void => event.stopPropagation()}
-							>
-								{item.makerName}
-							</a>
-						</span>
-						<a
-							aria-label={`Show only version ${item.version} ships`}
-							class="version"
-							href={filterHref("ver", item.version)}
-							onclick={(event: MouseEvent): void => filterByVersion(item, event)}
-							title={`Show only version ${item.version} ships`}
-						>
-							v{item.version}
-						</a>
-						<span class="timing">
-							<a
-								aria-label={`Show ships with more than ${formatDuration(item.hoursClaimedSeconds)} claimed`}
-								class="hours"
-								href={filterHref("time", timeFilter(item))}
-								onclick={(event: MouseEvent): void => filterByTime(item, event)}
-								title={`Show ships with more than ${formatDuration(item.hoursClaimedSeconds)} claimed`}
-							>
-								{formatDuration(item.hoursClaimedSeconds)}
-								claimed
-							</a>
-							<a
-								aria-label="Show ships at least as old as this one"
-								class="age {ageTone(item.ingestedAt)}"
-								href={filterHref("age", ageFilter(item))}
-								onclick={(event: MouseEvent): void => filterByAge(item, event)}
-								title="Show ships at least as old as this one"
-							>
-								{timeAgo(item.ingestedAt)}
-							</a>
-						</span>
-					</div>
-					{@render checksCell(item)}
-				</button>
-			{/each}
-			{#if windowedRows.bottomPad > 0}
-				<div aria-hidden="true" class="vspacer" style:height={`${windowedRows.bottomPad}px`}></div>
-			{/if}
+					{/if}
+				</div>
+			{/key}
 		</div>
-		{#if queue.hasMore}
-			<div aria-live="polite" class="more" use:autoLoad>
-				{#if loadingMore}
-					<span>Loading more ships…</span>
-				{/if}
-			</div>
-		{/if}
-	{/if}
+	</div>
 </section>
 
 {#if checkTip}
@@ -2760,6 +2866,20 @@ a.status:focus-visible {
 	.checks .fast {
 		display: none;
 	}
+}
+
+.filter-swipe {
+	touch-action: pan-y;
+}
+
+.filter-stack {
+	display: grid;
+	overflow: clip;
+}
+
+.filter-stack > .filter-slide {
+	grid-area: 1 / 1;
+	min-width: 0;
 }
 
 @media (max-width: 32rem) {
