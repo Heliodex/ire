@@ -17,7 +17,6 @@ let { children }: LayoutProps = $props()
 let ready = $state(false)
 let signingOut = $state(false)
 let moreOpen = $state(false)
-
 const readOnly = $derived(session.me?.readOnly ?? false)
 const showAdmin = $derived(
 	session.me?.programs.some(
@@ -203,61 +202,6 @@ async function signOut(): Promise<void> {
 
 			<div class="spacer"></div>
 
-			<div class="top-actions">
-				{#if session.me}
-					<SearchBar />
-					<a
-						aria-label={`Your profile, ${accountName}`}
-						class="account"
-						data-sveltekit-reload
-						href={accountProfileHref}
-						title="Your profile"
-					>
-						<Avatar
-							email={accountEmail}
-							name={session.me.user.name}
-							size="sm"
-							url={session.me.user.avatarUrl}
-						/>
-						<span class="account-name">{accountName}</span>
-					</a>
-				{/if}
-
-				<button
-					class="ui-icon-button theme"
-					onclick={(): void => theme.toggle()}
-					title={theme.value === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-					type="button"
-				>
-					<span class="visually-hidden">Toggle theme</span>
-					{#if theme.value === "dark"}
-						<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
-							<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" />
-							<path
-								d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-width="2"
-							/>
-						</svg>
-					{:else}
-						<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
-							<path
-								d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"
-								stroke="currentColor"
-								stroke-linejoin="round"
-								stroke-width="2"
-							/>
-						</svg>
-					{/if}
-				</button>
-
-				{#if session.me}
-					<button class="ui-button quiet sm" disabled={signingOut} onclick={signOut} type="button">
-						{signingOut ? "Signing out…" : "Sign out"}
-					</button>
-				{/if}
-			</div>
 		</div>
 
 		{#if session.me}
@@ -330,7 +274,8 @@ async function signOut(): Promise<void> {
 	</main>
 
 	{#if session.me}
-		<nav aria-label="Sections" class="sections-bottom">
+		<div class="bottom-chrome">
+			<nav aria-label="Sections" class="sections-bottom">
 			{#each navItems.slice(0, visibleTabCount) as item, index (item.href)}
 				<a
 					aria-current={item.active ? "page" : undefined}
@@ -385,7 +330,64 @@ async function signOut(): Promise<void> {
 					{/if}
 				</div>
 			{/if}
-		</nav>
+			</nav>
+
+			<div class="top-actions">
+			{#if session.me}
+			<SearchBar />
+			<a
+			aria-label={`Your profile, ${accountName}`}
+			class="account"
+			data-sveltekit-reload
+			href={accountProfileHref}
+			title="Your profile"
+			>
+			<Avatar
+			email={accountEmail}
+			name={session.me.user.name}
+			size="sm"
+			url={session.me.user.avatarUrl}
+			/>
+			<span class="account-name">{accountName}</span>
+			</a>
+			{/if}
+
+			<button
+			class="ui-icon-button theme"
+			onclick={(): void => theme.toggle()}
+			title={theme.value === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+			type="button"
+			>
+			<span class="visually-hidden">Toggle theme</span>
+			{#if theme.value === "dark"}
+			<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
+			<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" />
+			<path
+			d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"
+			stroke="currentColor"
+			stroke-linecap="round"
+			stroke-width="2"
+			/>
+			</svg>
+			{:else}
+			<svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
+			<path
+			d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"
+			stroke="currentColor"
+			stroke-linejoin="round"
+			stroke-width="2"
+			/>
+			</svg>
+			{/if}
+			</button>
+
+			{#if session.me}
+			<button class="ui-button quiet sm" disabled={signingOut} onclick={signOut} type="button">
+			{signingOut ? "Signing out…" : "Sign out"}
+			</button>
+			{/if}
+			</div>
+		</div>
 	{/if}
 </div>
 
@@ -497,10 +499,22 @@ header::before {
 	flex: 1;
 }
 
+.bottom-chrome {
+	display: contents;
+}
+
 .top-actions {
+	position: fixed;
+	top: env(safe-area-inset-top);
+	right: max(
+		calc(var(--space-4) + env(safe-area-inset-right)),
+		calc((100vw - 80rem) / 2 + var(--space-4) + env(safe-area-inset-right))
+	);
+	z-index: calc(var(--layer-header) + 1);
 	display: flex;
 	gap: var(--space-3);
 	align-items: center;
+	height: 3rem;
 	min-width: 0;
 }
 
@@ -747,24 +761,47 @@ main {
 }
 
 @media (max-width: 40rem) {
-	.top {
-		padding-inline: var(--space-3);
+	header {
+		display: none;
 	}
 
-	.top-actions {
+	.bottom-chrome {
 		position: fixed;
 		right: 0;
 		bottom: 0;
 		left: 0;
 		z-index: var(--layer-header);
 		display: flex;
+		flex-direction: column;
+		background: var(--header-bg, var(--surface));
+		backdrop-filter: blur(12px);
+	}
+
+	.sections-bottom {
+		position: static;
+		right: auto;
+		bottom: auto;
+		left: auto;
+		display: flex;
+		border-top: 1px solid var(--border);
+		padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+		background: transparent;
+	}
+
+	.top-actions {
+		position: static;
+		top: auto;
+		right: auto;
+		left: auto;
+		z-index: auto;
+		display: flex;
 		gap: var(--space-2);
 		align-items: center;
+		height: auto;
+		min-width: 0;
 		padding: var(--space-2) calc(var(--space-3) + env(safe-area-inset-right))
 			calc(var(--space-2) + env(safe-area-inset-bottom)) calc(var(--space-3) + env(safe-area-inset-left));
-		background: var(--header-bg, var(--surface));
 		border-top: 1px solid var(--border);
-		backdrop-filter: blur(12px);
 	}
 
 	.top-actions :global(.search) {
@@ -782,23 +819,14 @@ main {
 		display: none;
 	}
 
-	.sections-bottom {
-		bottom: calc(3.5rem + env(safe-area-inset-bottom));
-		display: flex;
-		padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
-	}
-
 	.account-name {
 		display: none;
 	}
 
-	.brand-copy small {
-		display: none;
-	}
-
 	main {
-		padding: var(--space-4) calc(var(--space-3) + env(safe-area-inset-right))
-			calc(var(--space-6) + 6.75rem + env(safe-area-inset-bottom))
+		padding: calc(var(--space-4) + env(safe-area-inset-top))
+			calc(var(--space-3) + env(safe-area-inset-right))
+			calc(var(--space-5) + 6.75rem + env(safe-area-inset-bottom))
 			calc(var(--space-3) + env(safe-area-inset-left));
 	}
 }
@@ -835,18 +863,49 @@ main {
 	}
 
 	@media (max-width: 40rem) {
-		.top-actions {
+		header {
+			display: none;
+		}
+
+		.bottom-chrome {
+			position: fixed;
+			right: 0;
 			bottom: 0;
-			padding: var(--space-2) var(--space-3);
+			left: 0;
+			z-index: var(--layer-header);
+			display: flex;
+			flex-direction: column;
+			background: var(--header-bg, var(--surface));
+			backdrop-filter: blur(12px);
 		}
 
 		.sections-bottom {
-			bottom: 3.5rem;
+			position: static;
+			right: auto;
+			bottom: auto;
+			left: auto;
+			display: flex;
+			border-top: 1px solid var(--border);
 			padding: 0;
+			background: transparent;
+		}
+
+		.top-actions {
+			position: static;
+			top: auto;
+			right: auto;
+			left: auto;
+			z-index: auto;
+			display: flex;
+			gap: var(--space-2);
+			align-items: center;
+			height: auto;
+			padding: var(--space-2) var(--space-3);
+			border-top: 1px solid var(--border);
 		}
 
 		main {
-			padding: var(--space-4) var(--space-3) calc(var(--space-6) + 6.75rem);
+			padding: var(--space-4) var(--space-3) calc(var(--space-5) + 7.5rem);
 		}
 	}
 }
