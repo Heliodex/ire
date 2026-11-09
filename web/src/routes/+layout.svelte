@@ -823,8 +823,9 @@ main {
 	}
 
 	main {
-		padding: calc(var(--space-4) + env(safe-area-inset-top)) calc(var(--space-3) + env(safe-area-inset-right))
-			calc(var(--space-5) + 6.75rem + env(safe-area-inset-bottom))
+		padding: calc(var(--space-4) + env(safe-area-inset-top))
+			calc(var(--space-3) + env(safe-area-inset-right))
+			calc(var(--space-5) + 7.5rem + env(safe-area-inset-bottom))
 			calc(var(--space-3) + env(safe-area-inset-left));
 	}
 }
