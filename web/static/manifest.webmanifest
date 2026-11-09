@@ -1,10 +1,12 @@
 {
+	"id": "/",
 	"name": "Ire",
 	"short_name": "Ire",
 	"description": "Ship review for Hack Club",
 	"start_url": "/",
 	"scope": "/",
 	"display": "standalone",
+	"display_override": ["fullscreen", "standalone"],
 	"background_color": "#111827",
 	"theme_color": "#111827",
 	"icons": [
