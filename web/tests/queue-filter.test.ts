@@ -30,6 +30,7 @@ function itemOf(overrides: Partial<QueueItem> = {}): QueueItem {
 		priority: 0,
 		stage: 1,
 		status: "ready",
+		submittedAt: "2026-02-01T12:00:00Z",
 		title: "Tea Timer",
 		version: 1,
 		...overrides,

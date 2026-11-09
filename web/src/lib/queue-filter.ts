@@ -340,10 +340,10 @@ export function matchesQueueQuery(item: QueueItem, query: QueueQuery): boolean {
 }
 
 function matchesAge(item: QueueItem, filter: NumericFilter): boolean {
-	const ingested = Date.parse(item.ingestedAt)
-	if (Number.isNaN(ingested)) return false
+	const submitted = Date.parse(item.submittedAt)
+	if (Number.isNaN(submitted)) return false
 
-	return matchesNumber(Date.now() - ingested, filter)
+	return matchesNumber(Date.now() - submitted, filter)
 }
 
 function matchesNumber(actual: number, filter: NumericFilter): boolean {

@@ -1151,10 +1151,10 @@ function timeFilter(item: QueueItem): string {
 
 // ageFilter asks for ships at least as old as this one, using its exact age rather than the rounded label.
 function ageFilter(item: QueueItem): string {
-	const ingested = Date.parse(item.ingestedAt)
-	if (Number.isNaN(ingested)) return ">=0s"
+	const submitted = Date.parse(item.submittedAt)
+	if (Number.isNaN(submitted)) return ">=0s"
 
-	return `>=${compactDuration((Date.now() - ingested) / 1000)}`
+	return `>=${compactDuration((Date.now() - submitted) / 1000)}`
 }
 
 // filterByTime adds time:>6h when the claimed hours are activated.
@@ -1865,12 +1865,12 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 											</a>
 											<a
 												aria-label="Show ships at least as old as this one"
-												class="age {ageTone(item.ingestedAt)}"
+												class="age {ageTone(item.submittedAt)}"
 												href={filterHref("age", ageFilter(item))}
 												onclick={(event: MouseEvent): void => filterByAge(item, event)}
 												title="Show ships at least as old as this one"
 											>
-												{timeAgo(item.ingestedAt)}
+												{timeAgo(item.submittedAt)}
 											</a>
 										</span>
 									</div>

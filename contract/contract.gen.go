@@ -3539,6 +3539,9 @@ type QueueItem struct {
 	// Status corresponds to the JSON schema field "status".
 	Status string `json:"status" yaml:"status" mapstructure:"status"`
 
+	// SubmittedAt corresponds to the JSON schema field "submittedAt".
+	SubmittedAt string `json:"submittedAt" yaml:"submittedAt" mapstructure:"submittedAt"`
+
 	// Theme corresponds to the JSON schema field "theme".
 	Theme *string `json:"theme,omitempty,omitzero" yaml:"theme,omitempty" mapstructure:"theme,omitempty"`
 
@@ -3612,6 +3615,9 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["status"]; raw != nil && !ok {
 		return fmt.Errorf("field status in QueueItem: required")
 	}
+	if _, ok := raw["submittedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field submittedAt in QueueItem: required")
+	}
 	if _, ok := raw["title"]; raw != nil && !ok {
 		return fmt.Errorf("field title in QueueItem: required")
 	}
@@ -3667,6 +3673,9 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 	}
 	if utf8.RuneCountInString(string(plain.Status)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
+	}
+	if utf8.RuneCountInString(string(plain.SubmittedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "submittedAt", 1)
 	}
 	if utf8.RuneCountInString(string(plain.Title)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)

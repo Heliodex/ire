@@ -342,6 +342,7 @@ export const queueItemSchema = pipe(
 		requestedTier: optionalString,
 		stage: nonNegative,
 		status: pipe(string(), minLength(1)),
+		submittedAt: timestamp,
 		theme: optionalString,
 		thumbnailUrl: optionalString,
 		title: pipe(string(), minLength(1)),
