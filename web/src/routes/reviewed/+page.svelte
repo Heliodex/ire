@@ -1,5 +1,7 @@
 <script lang="ts">
-import { onMount } from "svelte"
+import { onMount, tick } from "svelte"
+import { cubicOut } from "svelte/easing"
+import { fly } from "svelte/transition"
 import { goto } from "$app/navigation"
 import { fetchReviewed, type ReviewedItem } from "../../lib/api"
 import { ApiError } from "../../lib/api-error"
@@ -18,6 +20,14 @@ const filters: { key: DecisionFilter; label: string }[] = [
 
 let items = $state<ReviewedItem[]>([])
 let filter = $state<DecisionFilter>("all")
+let filterDir = $state(1)
+let filterDragX = $state(0)
+let filterDragStep = $state(1)
+let filterDragName = $state("")
+let filterDragging = $state(false)
+let filterSettling = $state(false)
+let filterSkipAnim = $state(false)
+const filterSwipeGap = 16
 let search = $state("")
 let loading = $state(true)
 let loadingMore = $state(false)
@@ -72,12 +82,23 @@ async function load(target = filter, keepRows = false): Promise<void> {
 	}
 }
 
-function choose(next: DecisionFilter): void {
+function filterTarget(step: number): { dir: number; filter: DecisionFilter; name: string } | undefined {
+	const current = filters.findIndex(option => option.key === filter)
+	const next = (current + step + filters.length) % filters.length
+	const option = filters[next]
+	return option ? { dir: step, filter: option.key, name: option.label } : undefined
+}
+
+function choose(next: DecisionFilter, dir?: number): void {
 	if (next === filter) return
 
+	const current = filters.findIndex(option => option.key === filter)
+	const target = filters.findIndex(option => option.key === next)
+	filterDir = dir ?? (target >= current ? 1 : -1)
 	filter = next
 	items = []
 	hasMore = false
+	loadingMore = false
 	void load(next)
 }
 
@@ -104,11 +125,137 @@ function isTyping(target: EventTarget | null): boolean {
 
 // moveFilter selects the next decision filter and keeps focus on its tab.
 function moveFilter(step: number): void {
-	const current = filters.findIndex(option => option.key === filter)
-	const next = (current + step + filters.length) % filters.length
+	const target = filterTarget(step)
+	if (!target) return
 
-	filterTabs?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus()
-	choose(filters[next].key)
+	const idx = filters.findIndex(option => option.key === target.filter)
+	filterTabs?.querySelectorAll<HTMLButtonElement>("button")[idx]?.focus()
+	choose(target.filter, step)
+}
+
+// swipeFilters follows the finger during a horizontal swipe and commits or snaps back on release.
+function swipeFilters(node: HTMLElement): { destroy(): void } {
+	let startX = 0
+	let startY = 0
+	let startT = 0
+	let tracking = false
+	let locked: "h" | "v" | undefined
+	let target: { dir: number; filter: DecisionFilter; name: string } | undefined
+	let settleTimer: ReturnType<typeof setTimeout> | undefined
+
+	function clearDrag(): void {
+		filterDragName = ""
+		filterDragX = 0
+		filterDragging = false
+		filterSettling = false
+		filterDragStep = 1
+		target = undefined
+	}
+
+	function settle(commit: boolean): void {
+		filterDragging = false
+		filterSettling = true
+		filterDragX = commit && target ? -target.dir * ((node.offsetWidth || 1) + filterSwipeGap) : 0
+		settleTimer = setTimeout(() => {
+			settleTimer = undefined
+			if (commit && target) {
+				const next = target
+				filterSkipAnim = true
+				choose(next.filter, next.dir)
+				void (async (): Promise<void> => {
+					await tick()
+					filterDragging = true
+					filterSettling = false
+					filterDragX = 0
+					await tick()
+					clearDrag()
+					filterDragging = false
+					filterSkipAnim = false
+				})()
+				return
+			}
+			clearDrag()
+		}, 190)
+	}
+
+	function onStart(event: TouchEvent): void {
+		if (event.touches.length !== 1) {
+			tracking = false
+			return
+		}
+		if (settleTimer) {
+			clearTimeout(settleTimer)
+			settleTimer = undefined
+			filterSkipAnim = false
+			clearDrag()
+		}
+		const [touch] = event.touches
+		if (!touch) return
+		startX = touch.clientX
+		startY = touch.clientY
+		startT = Date.now()
+		tracking = true
+		locked = undefined
+		target = undefined
+	}
+
+	function onMove(event: TouchEvent): void {
+		if (!tracking) return
+		const [touch] = event.touches
+		if (!touch) return
+		const dx = touch.clientX - startX
+		const dy = touch.clientY - startY
+		if (locked === undefined) {
+			if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+			locked = Math.abs(dx) > Math.abs(dy) * 1.2 ? "h" : "v"
+		}
+		if (locked !== "h") return
+		const dir = dx < 0 ? 1 : -1
+		target = filterTarget(dir)
+		if (!target) return
+		filterDragStep = dir
+		filterDragName = target.name
+		filterDragging = true
+		filterDragX = dx
+	}
+
+	function onEnd(event: TouchEvent): void {
+		if (!tracking) return
+		tracking = false
+		if (locked !== "h" || !filterDragging || !target) {
+			clearDrag()
+			locked = undefined
+			return
+		}
+		const [touch] = event.changedTouches
+		const dx = touch ? touch.clientX - startX : filterDragX
+		const dt = Date.now() - startT
+		const width = node.offsetWidth || 1
+		const commit = Math.abs(dx) > width * 0.22 || (Math.abs(dx) / Math.max(dt, 1) > 0.45 && Math.abs(dx) > 40)
+		settle(commit)
+		locked = undefined
+	}
+
+	function onCancel(): void {
+		tracking = false
+		locked = undefined
+		if (filterDragging || filterDragName) settle(false)
+	}
+
+	node.addEventListener("touchstart", onStart, { passive: true })
+	node.addEventListener("touchmove", onMove, { passive: true })
+	node.addEventListener("touchend", onEnd, { passive: true })
+	node.addEventListener("touchcancel", onCancel, { passive: true })
+
+	return {
+		destroy(): void {
+			if (settleTimer) clearTimeout(settleTimer)
+			node.removeEventListener("touchstart", onStart)
+			node.removeEventListener("touchmove", onMove)
+			node.removeEventListener("touchend", onEnd)
+			node.removeEventListener("touchcancel", onCancel)
+		},
+	}
 }
 
 // onKeydown switches decision filters with the left and right arrows.
@@ -182,97 +329,145 @@ onMount((): (() => void) => {
 		</span>
 	</div>
 
-	{#if loading}
-		<div class="ui-card list">
-			<LoadingState message="Loading reviewed ships…" />
+	<div class="filter-swipe" use:swipeFilters>
+		<div class="filter-stack">
+			{#key filter}
+				<div
+					class="filter-slide"
+					style:transform={filterDragging || filterSettling ? `translateX(${filterDragX}px)` : undefined}
+					style:transition={filterDragging || filterSkipAnim
+						? "none"
+						: filterSettling
+							? "transform 180ms cubic-bezier(0.33, 1, 0.68, 1)"
+							: "none"}
+					in:fly={{
+						duration: filterDragging || filterSettling || filterSkipAnim ? 0 : 180,
+						easing: cubicOut,
+						x: filterDir * 180,
+					}}
+				>
+					{#if loading}
+						<div class="ui-card list">
+							<LoadingState message="Loading reviewed ships…" />
+						</div>
+					{:else}
+						{#if visible.length === 0}
+							<div class="ui-card ui-empty">
+								<strong
+									>{search
+										? "No reviewed projects match that search."
+										: filter === "all"
+											? "No reviewed projects yet."
+											: "No projects with that decision."}</strong
+								>
+								<span
+									>{search
+										? "Try a different title, maker or external id."
+										: filter === "all"
+											? "Finished first and second passes will appear here."
+											: "Choose another decision or wait for more reviews."}</span
+								>
+							</div>
+						{:else}
+							<div class="ui-card list">
+								{#each visible as item (item.id)}
+									<a class="row" href={`/review/${encodeURIComponent(item.id)}?from=reviewed`}>
+										<span class="thumb">
+											{#if item.thumbnailUrl}
+												<img alt="" decoding="async" loading="lazy" src={item.thumbnailUrl}>
+											{:else}
+												<svg
+													aria-hidden="true"
+													fill="none"
+													height="16"
+													viewBox="0 0 24 24"
+													width="16"
+												>
+													<rect
+														height="16"
+														rx="2"
+														stroke="currentColor"
+														stroke-width="1.6"
+														width="18"
+														x="3"
+														y="4"
+													/>
+													<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
+													<path
+														d="m4 17 4.5-4.5 3 3L15 12l5 5"
+														stroke="currentColor"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="1.6"
+													/>
+												</svg>
+											{/if}
+										</span>
+										<span class="copy">
+											<span class="title" title={item.title}>{item.title}</span>
+											<span class="meta"
+												>{item.makerName}
+												· {item.externalId}{item.theme ? ` · ${item.theme}` : ""}</span
+											>
+										</span>
+										<span class="outcome">
+											<span class="ui-badge" data-tone={statusTone(item.decision)}
+												>{decisionLabel(item.decision)}</span
+											>
+											<span class="stage">{stageLabel(item.stage)}</span>
+										</span>
+										<span class="hours">
+											<strong
+												>{formatHours(
+													item.decision === "approved"
+														? item.hoursApprovedSeconds
+														: item.hoursClaimedSeconds,
+												)}</strong
+											>
+											<span>{item.decision === "approved" ? "approved" : "claimed"}</span>
+										</span>
+										<span class="date" title={formatDateTime(item.decidedAt)}
+											>{formatDate(item.decidedAt)}</span
+										>
+									</a>
+								{/each}
+							</div>
+						{/if}
+						{#if hasMore}
+							<div class="more">
+								<button
+									class="ui-button"
+									data-variant="outline"
+									disabled={loadingMore}
+									onclick={loadMore}
+									type="button"
+								>
+									{loadingMore ? "Loading…" : "Load more projects"}
+								</button>
+							</div>
+						{/if}
+					{/if}
+				</div>
+			{/key}
+			{#if (filterDragging || filterSettling) && filterDragName}
+				<div
+					class="filter-slide filter-slide--adjacent"
+					style:transform={filterDragStep > 0
+						? `translateX(calc(100% + ${filterSwipeGap}px + ${filterDragX}px))`
+						: `translateX(calc(-100% - ${filterSwipeGap}px + ${filterDragX}px))`}
+					style:transition={filterDragging || filterSkipAnim
+						? "none"
+						: filterSettling
+							? "transform 180ms cubic-bezier(0.33, 1, 0.68, 1)"
+							: "none"}
+				>
+					<div class="ui-card list filter-adjacent-card">
+						<LoadingState message={`Loading ${filterDragName}…`} />
+					</div>
+				</div>
+			{/if}
 		</div>
-	{:else}
-		{#if visible.length === 0}
-			<div class="ui-card ui-empty">
-				<strong
-					>{search
-						? "No reviewed projects match that search."
-						: filter === "all"
-							? "No reviewed projects yet."
-							: "No projects with that decision."}</strong
-				>
-				<span
-					>{search
-						? "Try a different title, maker or external id."
-						: filter === "all"
-							? "Finished first and second passes will appear here."
-							: "Choose another decision or wait for more reviews."}</span
-				>
-			</div>
-		{:else}
-			<div class="ui-card list">
-				{#each visible as item (item.id)}
-					<a class="row" href={`/review/${encodeURIComponent(item.id)}?from=reviewed`}>
-						<span class="thumb">
-							{#if item.thumbnailUrl}
-								<img alt="" decoding="async" loading="lazy" src={item.thumbnailUrl}>
-							{:else}
-								<svg aria-hidden="true" fill="none" height="16" viewBox="0 0 24 24" width="16">
-									<rect
-										height="16"
-										rx="2"
-										stroke="currentColor"
-										stroke-width="1.6"
-										width="18"
-										x="3"
-										y="4"
-									/>
-									<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
-									<path
-										d="m4 17 4.5-4.5 3 3L15 12l5 5"
-										stroke="currentColor"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="1.6"
-									/>
-								</svg>
-							{/if}
-						</span>
-						<span class="copy">
-							<span class="title" title={item.title}>{item.title}</span>
-							<span class="meta"
-								>{item.makerName}
-								· {item.externalId}{item.theme ? ` · ${item.theme}` : ""}</span
-							>
-						</span>
-						<span class="outcome">
-							<span class="ui-badge" data-tone={statusTone(item.decision)}
-								>{decisionLabel(item.decision)}</span
-							>
-							<span class="stage">{stageLabel(item.stage)}</span>
-						</span>
-						<span class="hours">
-							<strong
-								>{formatHours(
-									item.decision === "approved" ? item.hoursApprovedSeconds : item.hoursClaimedSeconds,
-								)}</strong
-							>
-							<span>{item.decision === "approved" ? "approved" : "claimed"}</span>
-						</span>
-						<span class="date" title={formatDateTime(item.decidedAt)}>{formatDate(item.decidedAt)}</span>
-					</a>
-				{/each}
-			</div>
-		{/if}
-		{#if hasMore}
-			<div class="more">
-				<button
-					class="ui-button"
-					data-variant="outline"
-					disabled={loadingMore}
-					onclick={loadMore}
-					type="button"
-				>
-					{loadingMore ? "Loading…" : "Load more projects"}
-				</button>
-			</div>
-		{/if}
-	{/if}
+	</div>
 </section>
 
 <style>
@@ -459,6 +654,26 @@ h1 {
 		min-width: 0;
 		margin-left: auto;
 	}
+}
+
+.filter-swipe {
+	min-height: 55dvh;
+	touch-action: pan-y;
+}
+
+.filter-stack {
+	display: grid;
+	min-height: inherit;
+	overflow: clip;
+}
+
+.filter-stack > .filter-slide {
+	grid-area: 1 / 1;
+	min-width: 0;
+}
+
+.filter-adjacent-card {
+	pointer-events: none;
 }
 
 @media (max-width: 61.25rem) {
