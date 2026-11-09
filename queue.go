@@ -22,8 +22,8 @@ const (
 	queueJournalTextLenSQL = `(select coalesce(sum(length(coalesce(text, '')) + length(coalesce(markdown, ''))), 0) from journal_entry je where je.submission_id = s.id)`
 	queueJournalImageSQL   = `(select coalesce(sum(json_array_length(coalesce(media, '[]'))), 0) from journal_entry je where je.submission_id = s.id)`
 	queueCheckFailsSQL     = `(coalesce(json_extract(s.check_summary, '$.fail'), 0) + coalesce(json_extract(s.check_summary, '$.error'), 0))`
-	queueEasySQL           = `s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass' and coalesce(s.thumbnail_url, '') <> '' and ` + queueJournalCountSQL + ` >= 3 and (s.hours_journal_seconds >= 1800 or ` + queueJournalTextLenSQL + ` >= 1200) and ` + queueJournalImageSQL + ` >= 1`
-	queueHardSQL           = `(s.status = 'needs_attention' or ` + queueJournalCountSQL + ` <= 1 or (` + queueJournalCountSQL + ` > 0 and ` + queueJournalTextLenSQL + ` < 250) or ` + queueCheckFailsSQL + ` >= 3)`
+	queueEasySQL           = `s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass' and coalesce(s.thumbnail_url, '') <> '' and ` + queueJournalCountSQL + ` >= 2 and (s.hours_journal_seconds >= 900 or ` + queueJournalTextLenSQL + ` >= 400) and (` + queueJournalImageSQL + ` >= 1 or ` + queueJournalCountSQL + ` >= 3 or s.hours_journal_seconds >= 3600 or ` + queueJournalTextLenSQL + ` >= 1500)`
+	queueHardSQL           = `(s.status = 'needs_attention' or ` + queueJournalCountSQL + ` = 0 or (` + queueJournalCountSQL + ` <= 1 and ` + queueJournalTextLenSQL + ` < 120) or ` + queueCheckFailsSQL + ` >= 4)`
 	queueMediumSQL         = `not (` + queueHardSQL + `) and not (` + queueEasySQL + `)`
 )
 
