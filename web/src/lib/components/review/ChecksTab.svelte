@@ -6,11 +6,13 @@ import { statusTone } from "../../format"
 
 let {
 	checks,
+	collapsed,
 	acknowledgements,
 	onToggle,
 	onAcknowledgeAll,
 }: {
 	checks: Check[]
+	collapsed: SvelteSet<string>
 	acknowledgements: string[]
 	onToggle(key: string): void
 	onAcknowledgeAll(): void
@@ -20,7 +22,6 @@ const warnings = $derived(checks.filter(isWarning))
 const blocking = $derived(checks.filter(isBlocking))
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const groups = $derived(groupChecks(checks))
-const collapsed = new SvelteSet<string>()
 
 function toggleGroup(group: string): void {
 	if (collapsed.has(group)) collapsed.delete(group)

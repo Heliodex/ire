@@ -102,9 +102,11 @@ let rerunError = $state("")
 let checksOutdated = $state(false)
 let coverFailed = $state(false)
 let wide = $state(false)
+const checksCollapsed = new SvelteSet<string>()
 const journalCollapsed = new SvelteSet<string>()
 $effect(() => {
 	void id
+	checksCollapsed.clear()
 	journalCollapsed.clear()
 })
 let checksTimer: ReturnType<typeof setTimeout> | null
@@ -1404,6 +1406,7 @@ async function saveDraftNow(): Promise<void> {
 					<ChecksTab
 						{acknowledgements}
 						checks={bundle.checks}
+						collapsed={checksCollapsed}
 						onAcknowledgeAll={acknowledgeAll}
 						onToggle={toggleAck}
 					/>
