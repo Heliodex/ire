@@ -1,5 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte"
+import { cubicOut } from "svelte/easing"
+import { fly } from "svelte/transition"
 import { afterNavigate, goto } from "$app/navigation"
 import { page } from "$app/state"
 import {
@@ -68,6 +70,7 @@ let preview = $state<ReviewPreview | null>(undefined)
 let previewCoverFailed = $state(false)
 let error = $state("")
 let tab = $state<Tab>("overview")
+let tabDir = $state(1)
 let note = $state("")
 let internalNote = $state("")
 let hours = $state(0)
@@ -163,8 +166,14 @@ function tabFromURL(): Tab {
 }
 
 // selectTab keeps the section in the URL for reloads and links; review paths are outside the SvelteKit router.
-function selectTab(next: Tab): void {
+function selectTab(next: Tab, dir?: number): void {
 	if (next === tab) return
+
+	const order: Tab[] = wide ? tabKeys.filter(key => key !== "journal") : [...tabKeys]
+	const from = order.indexOf(tab)
+	const to = order.indexOf(next)
+	if (dir !== undefined) tabDir = dir
+	else if (from !== -1 && to !== -1) tabDir = to >= from ? 1 : -1
 
 	tab = next
 	const url = new URL(page.url.href)
@@ -183,7 +192,7 @@ function cycleTab(step: number): void {
 		return
 	}
 
-	selectTab(order[(current + step + order.length) % order.length])
+	selectTab(order[(current + step + order.length) % order.length], step > 0 ? 1 : -1)
 }
 
 // swipeTabs cycles tabs on a horizontal swipe, for touch devices.
@@ -270,6 +279,53 @@ afterNavigate((): void => {
 	void load(next)
 })
 
+function onKeydown(event: KeyboardEvent): void {
+	if (
+		event.target instanceof HTMLInputElement
+		|| event.target instanceof HTMLTextAreaElement
+		|| event.target instanceof HTMLSelectElement
+	) {
+		if (event.key === "Escape") (event.target as HTMLElement).blur()
+		return
+	}
+
+	if (event.key === "Escape") {
+		event.preventDefault()
+		void goto(backPath)
+		return
+	}
+
+	if (
+		(event.key === "ArrowLeft" || event.key === "ArrowRight")
+		&& !event.shiftKey
+		&& !event.altKey
+		&& !event.ctrlKey
+		&& !event.metaKey
+	) {
+		event.preventDefault()
+		// The journal lives beside the overview on wide screens, so it is not a tab there.
+		const step = event.key === "ArrowRight" ? 1 : -1
+		cycleTab(step)
+		return
+	}
+
+	if (readOnly || reviewed) {
+		if (event.key === "?") showShortcuts = !showShortcuts
+		return
+	}
+
+	if (event.key === "a") {
+		event.preventDefault()
+		void decide("approved")
+	} else if (event.key === "c") {
+		event.preventDefault()
+		noteElement?.focus()
+	} else if (event.key === "r") {
+		event.preventDefault()
+		void decide("rejected")
+	} else if (event.key === "?") showShortcuts = !showShortcuts
+}
+
 onMount((): (() => void) => {
 	id = idFromURL()
 	tab = tabFromURL()
@@ -298,59 +354,6 @@ onMount((): (() => void) => {
 		if (document.visibilityState !== "visible" || claimedId === "") return
 		ignore(heartbeat(claimedId))
 	}, 60000)
-
-	function onKeydown(event: KeyboardEvent): void {
-		if (
-			event.target instanceof HTMLInputElement
-			|| event.target instanceof HTMLTextAreaElement
-			|| event.target instanceof HTMLSelectElement
-		) {
-			if (event.key === "Escape") (event.target as HTMLElement).blur()
-			return
-		}
-
-		if (event.key === "Escape") {
-			event.preventDefault()
-			void goto(backPath)
-			return
-		}
-
-		if (
-			(event.key === "ArrowLeft" || event.key === "ArrowRight")
-			&& !event.shiftKey
-			&& !event.altKey
-			&& !event.ctrlKey
-			&& !event.metaKey
-		) {
-			event.preventDefault()
-			// The journal lives beside the overview on wide screens, so it is not a tab there.
-			const order: Tab[] = wide ? tabKeys.filter(key => key !== "journal") : [...tabKeys]
-			const current = order.indexOf(tab)
-			if (current === -1) {
-				selectTab("overview")
-				return
-			}
-			const step = event.key === "ArrowRight" ? 1 : -1
-			selectTab(order[(current + step + order.length) % order.length])
-			return
-		}
-
-		if (readOnly || reviewed) {
-			if (event.key === "?") showShortcuts = !showShortcuts
-			return
-		}
-
-		if (event.key === "a") {
-			event.preventDefault()
-			void decide("approved")
-		} else if (event.key === "c") {
-			event.preventDefault()
-			noteElement?.focus()
-		} else if (event.key === "r") {
-			event.preventDefault()
-			void decide("rejected")
-		} else if (event.key === "?") showShortcuts = !showShortcuts
-	}
 
 	window.addEventListener("keydown", onKeydown)
 
@@ -801,41 +804,52 @@ async function saveDraftNow(): Promise<void> {
 				{@render shipTabs({ checks: preview.checkCount })}
 
 				<div class="tab-content" use:swipeTabs>
-					{#if tab === "overview"}
-						<article class="ui-card padded overview">
-							{#if preview.thumbnailUrl && !previewCoverFailed}
-								<img
-									alt={`${preview.title} project image`}
-									class="cover"
-									decoding="async"
-									loading="lazy"
-									onerror={(): void => {
-										previewCoverFailed = true
-									}}
-									src={preview.thumbnailUrl}
-								>
+					{#key tab}
+						<div
+							class="tab-slide"
+							in:fly={{ duration: 180, easing: cubicOut, x: tabDir * 220 }}
+							out:fly={{ duration: 180, easing: cubicOut, x: tabDir * -220 }}
+						>
+							{#if tab === "overview"}
+								<article class="ui-card padded overview">
+									{#if preview.thumbnailUrl && !previewCoverFailed}
+										<img
+											alt={`${preview.title} project image`}
+											class="cover"
+											decoding="async"
+											loading="lazy"
+											onerror={(): void => {
+												previewCoverFailed = true
+											}}
+											src={preview.thumbnailUrl}
+										>
+									{/if}
+									<div class="stats">
+										<div>
+											<span>Claimed</span
+											><strong>{formatHours(preview.hoursClaimedSeconds)}</strong>
+										</div>
+										<div>
+											<span>Journals</span
+											><strong>{formatHours(preview.hoursJournalSeconds ?? 0)}</strong>
+										</div>
+										<div>
+											<span>Hackatime</span
+											><strong>{formatHours(preview.hoursHackatimeSeconds ?? 0)}</strong>
+										</div>
+										<div>
+											<span>BOM</span><strong>{formatMoney(preview.bomTotalCents ?? 0)}</strong>
+										</div>
+									</div>
+									<LoadingState message="Loading ship…" />
+								</article>
+							{:else}
+								<div class="ui-card padded">
+									<LoadingState message="Loading ship…" />
+								</div>
 							{/if}
-							<div class="stats">
-								<div>
-									<span>Claimed</span><strong>{formatHours(preview.hoursClaimedSeconds)}</strong>
-								</div>
-								<div>
-									<span>Journals</span
-									><strong>{formatHours(preview.hoursJournalSeconds ?? 0)}</strong>
-								</div>
-								<div>
-									<span>Hackatime</span
-									><strong>{formatHours(preview.hoursHackatimeSeconds ?? 0)}</strong>
-								</div>
-								<div><span>BOM</span><strong>{formatMoney(preview.bomTotalCents ?? 0)}</strong></div>
-							</div>
-							<LoadingState message="Loading ship…" />
-						</article>
-					{:else}
-						<div class="ui-card padded">
-							<LoadingState message="Loading ship…" />
 						</div>
-					{/if}
+					{/key}
 				</div>
 			</section>
 
@@ -1004,123 +1018,134 @@ async function saveDraftNow(): Promise<void> {
 			})}
 
 			<div class="tab-content" use:swipeTabs>
-				{#if tab === "overview"}
-					<article class="ui-card padded overview">
-						{#if submission.thumbnailUrl && !coverFailed}
-							<img
-								alt={`${submission.title} project image`}
-								class="cover"
-								decoding="async"
-								loading="lazy"
-								onerror={(): void => {
-									coverFailed = true
-								}}
-								src={submission.thumbnailUrl}
-							>
-						{:else}
-							<div class="cover-empty">
-								<svg aria-hidden="true" fill="none" height="26" viewBox="0 0 24 24" width="26">
-									<rect
-										height="16"
-										rx="2"
-										stroke="currentColor"
-										stroke-width="1.6"
-										width="18"
-										x="3"
-										y="4"
+				{#key tab}
+					<div
+						class="tab-slide"
+						in:fly={{ duration: 180, easing: cubicOut, x: tabDir * 220 }}
+						out:fly={{ duration: 180, easing: cubicOut, x: tabDir * -220 }}
+					>
+						{#if tab === "overview"}
+							<article class="ui-card padded overview">
+								{#if submission.thumbnailUrl && !coverFailed}
+									<img
+										alt={`${submission.title} project image`}
+										class="cover"
+										decoding="async"
+										loading="lazy"
+										onerror={(): void => {
+											coverFailed = true
+										}}
+										src={submission.thumbnailUrl}
+									>
+								{:else}
+									<div class="cover-empty">
+										<svg aria-hidden="true" fill="none" height="26" viewBox="0 0 24 24" width="26">
+											<rect
+												height="16"
+												rx="2"
+												stroke="currentColor"
+												stroke-width="1.6"
+												width="18"
+												x="3"
+												y="4"
+											/>
+											<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
+											<path
+												d="m4 17 4.5-4.5 3 3L15 12l5 5"
+												stroke="currentColor"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="1.6"
+											/>
+										</svg>
+										<strong
+											>{submission.thumbnailUrl
+												? "Project image unavailable"
+												: "No project image"}</strong
+										>
+										<span>
+											{submission.thumbnailUrl
+												? "The image link could not be loaded."
+												: "This ship does not include a project image."}
+										</span>
+									</div>
+								{/if}
+								{#if bundle.resubmission}
+									<ResubmissionDiff diff={bundle.resubmission} />
+								{/if}
+								<h2>What the maker built</h2>
+								<p class="description">{submission.description || "No description was sent."}</p>
+
+								<div class="stats">
+									<div>
+										<span>Claimed</span
+										><strong>{formatHours(submission.hoursClaimedSeconds)}</strong>
+									</div>
+									<div>
+										<span>Journals</span
+										><strong>{formatHours(submission.hoursJournalSeconds)}</strong>
+									</div>
+									<div>
+										<span>Hackatime</span
+										><strong>{formatHours(submission.hoursHackatimeSeconds)}</strong>
+									</div>
+									<div><span>BOM</span><strong>{formatMoney(submission.bomTotalCents)}</strong></div>
+								</div>
+
+								<PriorReviews reviews={bundle.priorReviews} />
+
+								<ReviewTimeline events={bundle.events} />
+
+								<div class="section">
+									<h3>Internal notes</h3>
+									<NotesCard
+										canDelete={canDeleteNote}
+										notes={bundle.notes}
+										onAdd={addNote}
+										onRemove={removeNote}
 									/>
-									<circle cx="8.5" cy="9.5" fill="currentColor" r="1.5" />
-									<path
-										d="m4 17 4.5-4.5 3 3L15 12l5 5"
-										stroke="currentColor"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="1.6"
-									/>
-								</svg>
-								<strong
-									>{submission.thumbnailUrl
-										? "Project image unavailable"
-										: "No project image"}</strong
-								>
-								<span>
-									{submission.thumbnailUrl
-										? "The image link could not be loaded."
-										: "This ship does not include a project image."}
-								</span>
+								</div>
+							</article>
+							<div class="split-journals">
+								<JournalList
+									editable={canAdjustEntries}
+									entries={bundle.journals}
+									onEntrySaved={entrySaved}
+									shipId={submission.id}
+									version={submission.version}
+								/>
 							</div>
-						{/if}
-						{#if bundle.resubmission}
-							<ResubmissionDiff diff={bundle.resubmission} />
-						{/if}
-						<h2>What the maker built</h2>
-						<p class="description">{submission.description || "No description was sent."}</p>
-
-						<div class="stats">
-							<div>
-								<span>Claimed</span><strong>{formatHours(submission.hoursClaimedSeconds)}</strong>
-							</div>
-							<div>
-								<span>Journals</span><strong>{formatHours(submission.hoursJournalSeconds)}</strong>
-							</div>
-							<div>
-								<span>Hackatime</span><strong>{formatHours(submission.hoursHackatimeSeconds)}</strong>
-							</div>
-							<div><span>BOM</span><strong>{formatMoney(submission.bomTotalCents)}</strong></div>
-						</div>
-
-						<PriorReviews reviews={bundle.priorReviews} />
-
-						<ReviewTimeline events={bundle.events} />
-
-						<div class="section">
-							<h3>Internal notes</h3>
-							<NotesCard
-								canDelete={canDeleteNote}
-								notes={bundle.notes}
-								onAdd={addNote}
-								onRemove={removeNote}
+						{:else if tab === "checks"}
+							<ChecksTab
+								{acknowledgements}
+								checks={bundle.checks}
+								onAcknowledgeAll={acknowledgeAll}
+								onToggle={toggleAck}
 							/>
-						</div>
-					</article>
-					<div class="split-journals">
-						<JournalList
-							editable={canAdjustEntries}
-							entries={bundle.journals}
-							onEntrySaved={entrySaved}
-							shipId={submission.id}
-							version={submission.version}
-						/>
+						{:else if tab === "journal"}
+							<JournalList
+								editable={canAdjustEntries}
+								entries={bundle.journals}
+								onEntrySaved={entrySaved}
+								shipId={submission.id}
+								version={submission.version}
+							/>
+						{:else if tab === "bom"}
+							<BomTab bom={bundle.bom} totalCents={submission.bomTotalCents} />
+						{:else if tab === "evidence"}
+							<EvidenceTab
+								canRefresh={canSecondPass}
+								error={evidenceError}
+								evidence={bundle.evidence}
+								onRefresh={refreshEvidenceNow}
+								refreshing={refreshingEvidence}
+								submissionId={bundle.submission.id}
+							/>
+						{:else if tab === "history"}
+							<HistoryTab reviews={bundle.reviews} />
+						{/if}
 					</div>
-				{:else if tab === "checks"}
-					<ChecksTab
-						{acknowledgements}
-						checks={bundle.checks}
-						onAcknowledgeAll={acknowledgeAll}
-						onToggle={toggleAck}
-					/>
-				{:else if tab === "journal"}
-					<JournalList
-						editable={canAdjustEntries}
-						entries={bundle.journals}
-						onEntrySaved={entrySaved}
-						shipId={submission.id}
-						version={submission.version}
-					/>
-				{:else if tab === "bom"}
-					<BomTab bom={bundle.bom} totalCents={submission.bomTotalCents} />
-				{:else if tab === "evidence"}
-					<EvidenceTab
-						canRefresh={canSecondPass}
-						error={evidenceError}
-						evidence={bundle.evidence}
-						onRefresh={refreshEvidenceNow}
-						refreshing={refreshingEvidence}
-						submissionId={bundle.submission.id}
-					/>
-				{:else if tab === "history"}
-					<HistoryTab reviews={bundle.reviews} />
-				{/if}
+				{/key}
 			</div>
 		</section>
 
@@ -1629,7 +1654,14 @@ h1 {
 }
 
 .tab-content {
+	display: grid;
 	margin-top: var(--space-3);
+	overflow: hidden;
+}
+
+.tab-slide {
+	grid-area: 1 / 1;
+	min-width: 0;
 }
 
 .ui-tabs {
