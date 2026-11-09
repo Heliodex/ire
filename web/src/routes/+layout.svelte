@@ -505,10 +505,7 @@ header::before {
 .top-actions {
 	position: fixed;
 	top: env(safe-area-inset-top);
-	right: max(
-		calc(var(--space-4) + env(safe-area-inset-right)),
-		calc((100vw - 80rem) / 2 + var(--space-4) + env(safe-area-inset-right))
-	);
+	right: calc(var(--space-4) + env(safe-area-inset-right));
 	z-index: calc(var(--layer-header) + 1);
 	display: flex;
 	gap: var(--space-3);
