@@ -93,6 +93,7 @@ func (a *ireApp) handleTick(w http.ResponseWriter, r *http.Request) {
 		  )`, now, staleBefore, staleBefore)
 
 	a.retryErroredChecks(r.Context())
+	a.reconcileCheckStatus(r.Context())
 
 	app.WriteJSON(w, http.StatusOK, map[string]int{"delivered": delivered, "retried": retried, "failed": failed})
 }

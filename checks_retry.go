@@ -45,6 +45,33 @@ func (a *ireApp) retryErroredChecks(ctx context.Context) {
 	}
 }
 
+// reconcileCheckStatus fixes submissions whose stored status disagrees with a completed, non-failing check summary.
+// This catches cases where a passing/warn summary is recorded but the status stayed needs_attention, so the queue
+// reflects reality without a manual rerun. It skips ships with a queued or running check run, so it cannot race a
+// pending job or undo a stale sweep before that job lands.
+func (a *ireApp) reconcileCheckStatus(ctx context.Context) int {
+	result, err := a.store.Exec(ctx, `update submission set status = 'ready', updated_at = ?
+		where status = 'needs_attention'
+		  and coalesce(json_extract(check_summary, '$.overall'), '') in ('pass','warn')
+		  and not exists (
+			select 1 from check_run r
+			where r.submission_id = submission.id and r.version = submission.version
+			  and r.status in ('queued','running')
+		  )`, a.nowText())
+	if err != nil {
+		app.Errorf("reconcile check status: %v", err)
+
+		return 0
+	}
+
+	n := result.RowsAffected
+	if n > 0 {
+		app.Infof("reconciled %d submission(s) from needs_attention to ready (checks pass/warn)", n)
+	}
+
+	return int(n)
+}
+
 // erroredChecks lists open ships with error-status GitHub checks on their current version.
 func (a *ireApp) erroredChecks(ctx context.Context) []erroredCheck {
 	placeholders, args := retryableCheckClause()
