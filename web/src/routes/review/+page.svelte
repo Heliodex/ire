@@ -2331,7 +2331,7 @@ h1 {
 
 /* Wide screens show the journals beside the overview, so the journal tab hides. */
 @media (min-width: 72rem) {
-	.tab-content:has(> .split-journals) {
+	.tab-slide:has(> .split-journals) {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 		gap: var(--space-3);
