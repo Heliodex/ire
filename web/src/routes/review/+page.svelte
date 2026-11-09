@@ -74,6 +74,7 @@ let tabDir = $state(1)
 let dragX = $state(0)
 let dragTab = $state<Tab | undefined>(undefined)
 let dragging = $state(false)
+let settling = $state(false)
 let skipAnim = $state(false)
 let note = $state("")
 let internalNote = $state("")
@@ -217,12 +218,14 @@ function swipeTabs(node: HTMLElement): { destroy(): void } {
 		dragTab = undefined
 		dragX = 0
 		dragging = false
+		settling = false
 		adjacent = undefined
 	}
 
 	function settle(commit: boolean, target?: Tab, step = 1): void {
 		dragging = false
-		dragX = commit ? step * (node.offsetWidth || 1) : 0
+		settling = true
+		dragX = commit ? -step * (node.offsetWidth || 1) : 0
 		settleTimer = setTimeout(() => {
 			settleTimer = undefined
 			if (commit && target !== undefined) {
@@ -231,10 +234,12 @@ function swipeTabs(node: HTMLElement): { destroy(): void } {
 				void (async (): Promise<void> => {
 					await tick()
 					skipAnim = false
+					settling = false
 					clearDrag()
 				})()
 				return
 			}
+			settling = false
 			dragTab = undefined
 			adjacent = undefined
 		}, 190)
@@ -876,12 +881,12 @@ async function saveDraftNow(): Promise<void> {
 					{#key tab}
 						<div
 							class="tab-slide"
-							style:transform={dragging ? `translateX(${dragX}px)` : undefined}
+							style:transform={dragging || settling ? `translateX(${dragX}px)` : undefined}
 							style:transition={dragging ? "none" : undefined}
-							in:fly={skipAnim || dragging
+							in:fly={skipAnim || dragging || settling
 								? { duration: 0, x: 0 }
 								: { duration: 180, easing: cubicOut, x: tabDir * 220 }}
-							out:fly={skipAnim || dragging
+							out:fly={skipAnim || dragging || settling
 								? { duration: 0, x: 0 }
 								: { duration: 180, easing: cubicOut, x: tabDir * -220 }}
 						>
@@ -1216,25 +1221,25 @@ async function saveDraftNow(): Promise<void> {
 				{#key tab}
 					<div
 						class="tab-slide"
-						style:transform={dragging ? `translateX(${dragX}px)` : undefined}
+						style:transform={dragging || settling ? `translateX(${dragX}px)` : undefined}
 						style:transition={dragging ? "none" : undefined}
-						in:fly={skipAnim || dragging
+						in:fly={skipAnim || dragging || settling
 							? { duration: 0, x: 0 }
 							: { duration: 180, easing: cubicOut, x: tabDir * 220 }}
-						out:fly={skipAnim || dragging
+						out:fly={skipAnim || dragging || settling
 							? { duration: 0, x: 0 }
 							: { duration: 180, easing: cubicOut, x: tabDir * -220 }}
 					>
 						{@render bundlePanel(tab)}
 					</div>
 				{/key}
-				{#if dragging && dragTab !== undefined}
+				{#if (dragging || settling) && dragTab !== undefined}
 					<div
 						class="tab-slide tab-slide--adjacent"
 						style:transform={dragX < 0
 							? `translateX(calc(100% + ${dragX}px))`
 							: `translateX(calc(-100% + ${dragX}px))`}
-						style:transition={dragging ? "none" : "transform 180ms cubic-bezier(0.33, 1, 0.68, 1)"}
+						style:transition={dragging ? "none" : undefined}
 					>
 						{@render bundlePanel(dragTab)}
 					</div>
