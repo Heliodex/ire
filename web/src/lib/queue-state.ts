@@ -1,7 +1,7 @@
 import { type Queue } from "./api"
 import { type BundleCacheStore } from "./bundle-cache"
 
-export type QueueFilter = "all" | "fast" | "attention" | "mine"
+export type QueueFilter = "all" | "easy" | "fast" | "hard" | "medium" | "attention" | "mine"
 
 export type QueueSortKey = "ship" | "maker" | "status" | "type" | "version" | "claimed" | "age" | "checks"
 
@@ -23,12 +23,20 @@ export interface QueueState {
 	write(state: Omit<SavedQueueState, "savedAt" | "version">): void
 }
 
-const stateVersion = 2
+const stateVersion = 3
 const maxStateAge = 24 * 60 * 60 * 1000
 
 // isQueueFilter narrows a cached filter value.
 export function isQueueFilter(value: string): value is QueueFilter {
-	return value === "all" || value === "fast" || value === "attention" || value === "mine"
+	return (
+		value === "all"
+		|| value === "easy"
+		|| value === "fast"
+		|| value === "hard"
+		|| value === "medium"
+		|| value === "attention"
+		|| value === "mine"
+	)
 }
 
 // isSavedQueueState reports a fresh, well-shaped copy of the last visit. It checks the

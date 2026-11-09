@@ -429,7 +429,10 @@ const queueResponseFixture: InferOutput<typeof queueResponseSchema> = {
 	"counts": {
 		"checking": 0,
 		"claimed": 0,
+		"easy": 0,
 		"fast": 0,
+		"hard": 0,
+		"medium": 0,
 		"mine": 0,
 		"needsAttention": 0,
 		"ready": 0,

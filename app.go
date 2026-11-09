@@ -83,7 +83,10 @@ const (
 	checkOverallFail = "fail"
 
 	queueFilterAll       = "all"
+	queueFilterEasy      = "easy"
 	queueFilterFast      = "fast"
+	queueFilterHard      = "hard"
+	queueFilterMedium    = "medium"
 	queueFilterAttention = "attention"
 	queueFilterMine      = "mine"
 

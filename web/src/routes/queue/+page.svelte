@@ -68,7 +68,18 @@ function queueState(): QueueState {
 }
 
 const emptyQueue: Queue = {
-	counts: { checking: 0, claimed: 0, fast: 0, mine: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
+	counts: {
+		checking: 0,
+		claimed: 0,
+		easy: 0,
+		fast: 0,
+		hard: 0,
+		medium: 0,
+		mine: 0,
+		needsAttention: 0,
+		ready: 0,
+		stage2Hold: 0,
+	},
 	hasMore: false,
 	items: [],
 }
@@ -77,6 +88,9 @@ const savedQueue = browser ? queueState().read() : undefined
 const filters: { key: Exclude<Filter, "attention">; label: string; short: string }[] = [
 	{ key: "all", label: "All open", short: "All" },
 	{ key: "fast", label: "Fast lane", short: "Fast" },
+	{ key: "easy", label: "Easy", short: "Easy" },
+	{ key: "medium", label: "Medium", short: "Med" },
+	{ key: "hard", label: "Hard", short: "Hard" },
 	{ key: "mine", label: "Mine", short: "Mine" },
 ]
 
@@ -86,7 +100,10 @@ function tabCount(key: Exclude<Filter, "attention">): number {
 
 	return {
 		all: counts.checking + counts.ready + counts.claimed + counts.needsAttention,
+		easy: counts.easy,
 		fast: counts.fast,
+		hard: counts.hard,
+		medium: counts.medium,
 		mine: counts.mine,
 	}[key]
 }

@@ -17,6 +17,14 @@ import (
 
 const makerAvatarBase = "https://cachet.dunkirk.sh/users"
 
+const (
+	queueJournalCountSQL = `(select count(*) from journal_entry je where je.submission_id = s.id)`
+	queueCheckFailsSQL   = `(coalesce(json_extract(s.check_summary, '$.fail'), 0) + coalesce(json_extract(s.check_summary, '$.error'), 0))`
+	queueEasySQL         = `s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass' and coalesce(s.thumbnail_url, '') <> '' and ` + queueJournalCountSQL + ` >= 3 and s.hours_journal_seconds >= 1800`
+	queueHardSQL         = `(s.status = 'needs_attention' or ` + queueJournalCountSQL + ` <= 1 or ` + queueCheckFailsSQL + ` >= 3)`
+	queueMediumSQL       = `not (` + queueHardSQL + `) and not (` + queueEasySQL + `)`
+)
+
 // queueSortColumns maps the queue's sortable headers to their ordering, so the sort parameter only selects a key. The checks score mirrors the client's old badness order: blocking results first, then warnings, then clean ships.
 var queueSortColumns = map[string]string{
 	"ship":    "s.title collate nocase",
@@ -119,8 +127,14 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 	args := []any{now, person.ProgramID, params.stage}
 
 	switch params.filter {
+	case queueFilterEasy:
+		query += ` and ` + queueEasySQL
 	case queueFilterFast:
-		query += ` and s.status = 'ready' and s.check_summary like '%"overall":"pass"%'`
+		query += ` and s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass'`
+	case queueFilterHard:
+		query += ` and ` + queueHardSQL
+	case queueFilterMedium:
+		query += ` and ` + queueMediumSQL
 	case queueFilterAttention:
 		query += ` and s.status = 'needs_attention'`
 	case queueFilterMine:
@@ -375,13 +389,16 @@ func (a *ireApp) queueCounts(ctx context.Context, programID, reviewerID, now str
 			coalesce(sum(case when s.status in ('claimed','in_review') then 1 else 0 end), 0),
 			coalesce(sum(case when s.status = 'needs_attention' then 1 else 0 end), 0),
 			coalesce(sum(case when s.status = 'stage2_hold' then 1 else 0 end), 0),
-			coalesce(sum(case when s.status = 'ready' and s.check_summary like '%"overall":"pass"%' then 1 else 0 end), 0),
+			coalesce(sum(case when `+queueEasySQL+` then 1 else 0 end), 0),
+			coalesce(sum(case when s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass' then 1 else 0 end), 0),
+			coalesce(sum(case when `+queueHardSQL+` then 1 else 0 end), 0),
+			coalesce(sum(case when `+queueMediumSQL+` then 1 else 0 end), 0),
 			coalesce(sum(case when c.reviewer_id = ? then 1 else 0 end), 0)
 		from submission s
 		left join claim c on c.submission_id = s.id and c.expires_at > ?
 		where s.program_id = ?
 		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`, reviewerID, now, programID).
-		Scan(&counts.Checking, &counts.Ready, &counts.Claimed, &counts.NeedsAttention, &counts.Stage2Hold, &counts.Fast, &counts.Mine)
+		Scan(&counts.Checking, &counts.Ready, &counts.Claimed, &counts.NeedsAttention, &counts.Stage2Hold, &counts.Easy, &counts.Fast, &counts.Hard, &counts.Medium, &counts.Mine)
 
 	return counts, err
 }

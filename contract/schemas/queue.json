@@ -12,7 +12,19 @@
 					"type": "integer",
 					"minimum": 0
 				},
+				"easy": {
+					"type": "integer",
+					"minimum": 0
+				},
 				"fast": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"hard": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"medium": {
 					"type": "integer",
 					"minimum": 0
 				},
@@ -36,7 +48,10 @@
 			"required": [
 				"checking",
 				"claimed",
+				"easy",
 				"fast",
+				"hard",
+				"medium",
 				"mine",
 				"needsAttention",
 				"ready",
