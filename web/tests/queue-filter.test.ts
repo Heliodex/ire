@@ -46,7 +46,7 @@ describe("parseQueueQuery", () => {
 			age: undefined,
 			check: undefined,
 			checks: undefined,
-			devlogs: undefined,
+			journals: undefined,
 			status: undefined,
 			text: [],
 			time: undefined,
@@ -58,7 +58,7 @@ describe("parseQueueQuery", () => {
 			age: undefined,
 			check: undefined,
 			checks: undefined,
-			devlogs: undefined,
+			journals: undefined,
 			status: undefined,
 			text: [],
 			time: undefined,
@@ -70,7 +70,7 @@ describe("parseQueueQuery", () => {
 			age: undefined,
 			check: undefined,
 			checks: undefined,
-			devlogs: undefined,
+			journals: undefined,
 			status: "ready",
 			text: [],
 			time: undefined,
@@ -87,9 +87,9 @@ describe("parseQueueQuery", () => {
 		expect(parseQueueQuery("time:>6h24m0s").time).toEqual({ op: ">", value: 23_040_000 })
 		expect(parseQueueQuery("ver:2").version).toEqual({ op: "=", value: 2 })
 		expect(parseQueueQuery("ver:>5").version).toEqual({ op: ">", value: 5 })
-		expect(parseQueueQuery("devlogs:>5").devlogs).toEqual({ op: ">", value: 5 })
-		expect(parseQueueQuery("devlogs:3").devlogs).toEqual({ op: "=", value: 3 })
-		expect(parseQueueQuery("journals:>=2").devlogs).toEqual({ op: ">=", value: 2 })
+		expect(parseQueueQuery("journals:>5").journals).toEqual({ op: ">", value: 5 })
+		expect(parseQueueQuery("journals:3").journals).toEqual({ op: "=", value: 3 })
+		expect(parseQueueQuery("journals:>=2").journals).toEqual({ op: ">=", value: 2 })
 		expect(parseQueueQuery("checks:warn<3").checks).toEqual({
 			count: "warn",
 			kind: "count",
@@ -125,7 +125,7 @@ describe("parseQueueQuery", () => {
 			age: undefined,
 			check: undefined,
 			checks: undefined,
-			devlogs: undefined,
+			journals: undefined,
 			status: "needs_attention",
 			text: ["timer"],
 			time: undefined,
@@ -140,7 +140,7 @@ describe("parseQueueQuery", () => {
 			age: undefined,
 			check: undefined,
 			checks: undefined,
-			devlogs: undefined,
+			journals: undefined,
 			status: undefined,
 			text: ["week:", "one", "checks:maybe", "status:unknown", "type:", "age:1y", "ver:>"],
 			time: undefined,
@@ -227,7 +227,7 @@ describe("hasStructuredQuery", () => {
 		expect(hasStructuredQuery(parseQueueQuery("age:>1d"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("time:>6h"))).toBe(true)
 		expect(hasStructuredQuery(parseQueueQuery("ver:2"))).toBe(true)
-		expect(hasStructuredQuery(parseQueueQuery("devlogs:>5"))).toBe(true)
+		expect(hasStructuredQuery(parseQueueQuery("journals:>5"))).toBe(true)
 	})
 })
 
@@ -248,11 +248,11 @@ describe("matchesQueueQuery", () => {
 		expect(matchesQueueQuery(itemOf({ version: 5 }), parseQueueQuery("ver:>5"))).toBe(false)
 	})
 
-	test("filters devlog counts with comparisons", () => {
-		expect(matchesQueueQuery(itemOf({ journalCount: 6 }), parseQueueQuery("devlogs:>5"))).toBe(true)
-		expect(matchesQueueQuery(itemOf({ journalCount: 5 }), parseQueueQuery("devlogs:>5"))).toBe(false)
-		expect(matchesQueueQuery(itemOf({ journalCount: 3 }), parseQueueQuery("devlogs:3"))).toBe(true)
-		expect(matchesQueueQuery(itemOf({ journalCount: 2 }), parseQueueQuery("devlogs:>=2"))).toBe(true)
+	test("filters journal counts with comparisons", () => {
+		expect(matchesQueueQuery(itemOf({ journalCount: 6 }), parseQueueQuery("journals:>5"))).toBe(true)
+		expect(matchesQueueQuery(itemOf({ journalCount: 5 }), parseQueueQuery("journals:>5"))).toBe(false)
+		expect(matchesQueueQuery(itemOf({ journalCount: 3 }), parseQueueQuery("journals:3"))).toBe(true)
+		expect(matchesQueueQuery(itemOf({ journalCount: 2 }), parseQueueQuery("journals:>=2"))).toBe(true)
 		expect(matchesQueueQuery(itemOf({ journalCount: 1 }), parseQueueQuery("journals:>=2"))).toBe(false)
 	})
 

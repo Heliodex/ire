@@ -23,7 +23,7 @@ export interface QueueQuery {
 	age: NumericFilter | undefined
 	check: { key: string; status: string } | undefined
 	checks: ChecksFilter | undefined
-	devlogs: NumericFilter | undefined
+	journals: NumericFilter | undefined
 	status: string | undefined
 	text: string[]
 	time: NumericFilter | undefined
@@ -154,7 +154,7 @@ export function parseQueueQuery(input: string): QueueQuery {
 		age: undefined,
 		check: undefined,
 		checks: undefined,
-		devlogs: undefined,
+		journals: undefined,
 		status: undefined,
 		text: [],
 		time: undefined,
@@ -210,12 +210,9 @@ export function parseQueueQuery(input: string): QueueQuery {
 				else query.text.push(token.toLowerCase())
 				break
 			}
-			case "devlog":
-			case "devlogs":
-			case "journal":
 			case "journals": {
-				const devlogs = parseComparison(value)
-				if (devlogs) query.devlogs = devlogs
+				const journals = parseComparison(value)
+				if (journals) query.journals = journals
 				else query.text.push(token.toLowerCase())
 				break
 			}
@@ -311,7 +308,7 @@ export function hasStructuredQuery(query: QueueQuery): boolean {
 		query.age !== undefined
 		|| query.check !== undefined
 		|| query.checks !== undefined
-		|| query.devlogs !== undefined
+		|| query.journals !== undefined
 		|| query.time !== undefined
 		|| query.status !== undefined
 		|| query.type !== undefined
@@ -335,7 +332,7 @@ export function matchesQueueQuery(item: QueueItem, query: QueueQuery): boolean {
 			return false
 	}
 	if (query.checks !== undefined && !matchesChecks(item, query.checks)) return false
-	if (query.devlogs !== undefined && !matchesNumber(item.journalCount, query.devlogs)) return false
+	if (query.journals !== undefined && !matchesNumber(item.journalCount, query.journals)) return false
 	if (query.text.length === 0) return true
 
 	const haystack = [item.title, item.makerName, humanStatus(item.status), item.theme ?? ""].join(" ").toLowerCase()
