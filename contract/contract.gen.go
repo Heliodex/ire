@@ -1810,6 +1810,9 @@ type IngestRequest struct {
 	// RepoURL corresponds to the JSON schema field "repo_url".
 	RepoURL *string `json:"repo_url,omitempty,omitzero" yaml:"repo_url,omitempty" mapstructure:"repo_url,omitempty"`
 
+	// SubmittedAt corresponds to the JSON schema field "submitted_at".
+	SubmittedAt *string `json:"submitted_at,omitempty,omitzero" yaml:"submitted_at,omitempty" mapstructure:"submitted_at,omitempty"`
+
 	// ThumbnailURL corresponds to the JSON schema field "thumbnail_url".
 	ThumbnailURL *string `json:"thumbnail_url,omitempty,omitzero" yaml:"thumbnail_url,omitempty" mapstructure:"thumbnail_url,omitempty"`
 
@@ -1903,6 +1906,9 @@ func (j *IngestRequest) UnmarshalJSON(value []byte) error {
 	}
 	if utf8.RuneCountInString(string(plain.ExternalID)) > 200 {
 		return fmt.Errorf("field %s length: must be <= %d", "external_id", 200)
+	}
+	if plain.SubmittedAt != nil && utf8.RuneCountInString(string(*plain.SubmittedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "submitted_at", 1)
 	}
 	if utf8.RuneCountInString(string(plain.Title)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)

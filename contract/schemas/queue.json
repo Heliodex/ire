@@ -183,10 +183,6 @@
 						"type": "integer",
 						"minimum": 0
 					},
-					"submittedAt": {
-						"type": "string",
-						"minLength": 1
-					},
 					"makerAvatarUrl": {
 						"type": "string"
 					},
@@ -216,6 +212,10 @@
 						"minimum": 0
 					},
 					"status": {
+						"type": "string",
+						"minLength": 1
+					},
+					"submittedAt": {
 						"type": "string",
 						"minLength": 1
 					},
@@ -250,12 +250,12 @@
 					"journalCount",
 					"journalImageCount",
 					"journalTextLength",
-					"submittedAt",
 					"makerEmail",
 					"makerName",
 					"priority",
 					"stage",
 					"status",
+					"submittedAt",
 					"title",
 					"version"
 				],

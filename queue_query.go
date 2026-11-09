@@ -280,7 +280,7 @@ func queueChecksExpr(count string) string {
 	}
 }
 
-// queueAgeOp maps an age comparison (age = now - created_at/submitted) to a created_at comparison.
+// queueAgeOp maps an age comparison (age = now - submitted_at/created_at) to a submission-time comparison.
 func queueAgeOp(op string) string {
 	switch op {
 	case ">":
@@ -304,7 +304,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 	if q.age != nil {
 		if op := queueAgeOp(q.age.op); op != "" {
 			seconds := q.age.value / 1000
-			query += " and s.created_at " + op + " datetime('now', ?)"
+			query += " and coalesce(s.submitted_at, s.created_at) " + op + " datetime('now', ?)"
 			args = append(args, "-"+strconv.FormatInt(seconds, 10)+" seconds")
 		}
 	}

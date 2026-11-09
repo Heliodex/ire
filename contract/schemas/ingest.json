@@ -244,6 +244,10 @@
 		"repo_url": {
 			"type": "string"
 		},
+		"submitted_at": {
+			"type": "string",
+			"minLength": 1
+		},
 		"thumbnail_url": {
 			"type": "string"
 		},

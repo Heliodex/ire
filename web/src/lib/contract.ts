@@ -989,6 +989,7 @@ export const ingestRequestSchema = pipe(
 		maker: ingestMakerSchema,
 		meta: optional(ingestMetaSchema),
 		repo_url: optionalString,
+		submitted_at: optional(timestamp),
 		thumbnail_url: optional(string()),
 		title: pipe(string(), minLength(1), maxLength(200)),
 		track: optionalString,

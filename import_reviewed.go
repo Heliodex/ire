@@ -101,10 +101,21 @@ func (a *ireApp) importReviewedShip(ctx context.Context, program programRow, ent
 	switch {
 	case err == nil:
 		if existingStatus == statusDecided {
-			return false, nil
+			submittedAt := strings.TrimSpace(stringValue(entry.Ship.SubmittedAt))
+			if submittedAt == "" {
+				return false, nil
+			}
+
+			result, err := a.store.Exec(ctx, `update submission set submitted_at = coalesce(submitted_at, ?), updated_at = ? where id = ?`,
+				submittedAt, a.nowText(), existingID)
+			if err != nil {
+				return false, err
+			}
+
+			return result.RowsAffected > 0, nil
 		}
 
-		return true, a.decideImportedShip(ctx, program, existingID, existingVersion, reviews, final)
+		return true, a.decideImportedShip(ctx, program, existingID, existingVersion, entry.Ship.SubmittedAt, reviews, final)
 	case !errors.Is(err, storage.ErrNoRows):
 		return false, err
 	}
@@ -166,13 +177,14 @@ func (a *ireApp) decideImportedShip(
 	program programRow,
 	id string,
 	version int,
+	submittedAt *string,
 	reviews []contract.ImportReview,
 	final contract.ImportReview,
 ) error {
 	statements := make([]storage.TransactionStatement, 0, 4+2*len(reviews))
 	statements = append(statements,
-		storage.TransactionStatement{SQL: `update submission set status = ?, hours_approved_seconds = ?, decided_at = ?, updated_at = ? where id = ?`,
-			Args: []any{statusDecided, final.HoursApprovedSeconds, final.DecidedAt, final.DecidedAt, id}},
+		storage.TransactionStatement{SQL: `update submission set status = ?, hours_approved_seconds = ?, decided_at = ?, submitted_at = coalesce(submitted_at, ?), updated_at = ? where id = ?`,
+			Args: []any{statusDecided, final.HoursApprovedSeconds, final.DecidedAt, nullString(stringValue(submittedAt)), final.DecidedAt, id}},
 		storage.TransactionStatement{SQL: `delete from claim where submission_id = ?`, Args: []any{id}},
 		storage.TransactionStatement{SQL: `delete from draft where submission_id = ?`, Args: []any{id}},
 	)

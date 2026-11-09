@@ -351,9 +351,9 @@ func (a *ireApp) insertFixture(ctx context.Context, index int, f fixture, now ti
 	}
 
 	tx := []storage.TransactionStatement{
-		{SQL: `insert into submission (id, program_id, external_id, version, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, maker_slack_id, repo_url, thumbnail_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, ingested_at, created_at, updated_at)
-			values (?, ?, ?, 1, ?, 1, ?, ?, ?, 'hardware', ?, 'design', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
-			Args: []any{id, programID, f.externalID, status, f.priority, f.title, f.description, f.theme, f.makerEmail, f.makerName, f.makerSlack, f.repoURL, f.thumbnailURL, f.tier, 3000, bomTotal, f.hoursClaimed, f.hoursJournal, string(summaryJSON), ingested.Format(timestampFormat), ingested.Format(timestampFormat), ingested.Format(timestampFormat)}},
+		{SQL: `insert into submission (id, program_id, external_id, version, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, maker_slack_id, repo_url, thumbnail_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, submitted_at, ingested_at, created_at, updated_at)
+			values (?, ?, ?, 1, ?, 1, ?, ?, ?, 'hardware', ?, 'design', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+			Args: []any{id, programID, f.externalID, status, f.priority, f.title, f.description, f.theme, f.makerEmail, f.makerName, f.makerSlack, f.repoURL, f.thumbnailURL, f.tier, 3000, bomTotal, f.hoursClaimed, f.hoursJournal, string(summaryJSON), nil, ingested.Format(timestampFormat), ingested.Format(timestampFormat), ingested.Format(timestampFormat)}},
 		{SQL: `insert into submission_version (submission_id, version, payload, payload_sha256, received_at, delivery_id)
 			values (?, 1, ?, ?, ?, ?)`,
 			Args: []any{id, string(payload), sha256Hex(payload), ingested.Format(timestampFormat), "seed:" + id}},

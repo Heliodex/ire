@@ -110,6 +110,7 @@ func schemaStatements() []storage.Statement {
 			hours_hackatime_seconds integer not null default 0,
 			hours_approved_seconds integer,
 			check_summary text,
+			submitted_at text,
 			ingested_at text not null,
 			first_opened_at text,
 			decided_at text,
@@ -482,6 +483,11 @@ var lateColumns = []struct {
 		table:  "journal_entry",
 		column: "reviewer_note",
 		sql:    `alter table journal_entry add column reviewer_note text`,
+	},
+	{
+		table:  "submission",
+		column: "submitted_at",
+		sql:    `alter table submission add column submitted_at text`,
 	},
 }
 
