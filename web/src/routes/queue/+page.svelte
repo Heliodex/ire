@@ -760,7 +760,8 @@ async function loadMore(): Promise<void> {
 }
 
 // A structured filter with no rows in the loaded pages keeps pulling pages until it finds a match
-// or runs out of queue. The debounce stops half-typed filters from walking the whole queue.
+// or runs out of queue. The debounce stops half-typed filters from walking the whole queue;
+// once searching is underway, continue quickly so a no-match scan doesn't stall.
 $effect((): (() => void) | undefined => {
 	if (!hasStructuredQuery(queueQuery)) return
 	if (
@@ -774,7 +775,8 @@ $effect((): (() => void) | undefined => {
 	)
 		return
 
-	const timer = setTimeout((): void => void loadMore(), 250)
+	const delay = queue.items.length > 0 ? 0 : 250
+	const timer = setTimeout((): void => void loadMore(), delay)
 
 	return (): void => clearTimeout(timer)
 })
@@ -1468,7 +1470,11 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 					{:else if visible.length === 0}
 						{#if streaming || (queue.hasMore && hasStructuredQuery(queueQuery))}
 							<div class="ui-card list">
-								<LoadingState message={streaming ? "Loading open ships…" : "Searching all ships…"} />
+								<LoadingState
+									message={streaming
+										? "Loading open ships…"
+										: `Searching all ships… (${queue.items.length} checked)`}
+								/>
 							</div>
 						{:else}
 							<div class="ui-card ui-empty">
