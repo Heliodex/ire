@@ -1,8 +1,8 @@
 <script lang="ts">
 import { onMount, tick } from "svelte"
 import { cubicOut } from "svelte/easing"
-import { fly } from "svelte/transition"
 import { SvelteMap, SvelteSet } from "svelte/reactivity"
+import { fly } from "svelte/transition"
 import { browser } from "$app/env"
 import { goto } from "$app/navigation"
 import { page } from "$app/state"
@@ -96,6 +96,13 @@ let filter = $state<Filter>(
 )
 let stage = $state(savedQueue?.stage ?? 1)
 let filterDir = $state(1)
+let filterDragX = $state(0)
+let filterDragStep = $state(1)
+let filterDragName = $state("")
+let filterDragging = $state(false)
+let filterSettling = $state(false)
+let filterSkipAnim = $state(false)
+const filterSwipeGap = 16
 // A restored visit paints its cached rows at once; only a first visit waits on the loader.
 let loading = $state(savedQueue === null)
 // streaming is true while the first page arrives as NDJSON; load-more waits until the stream has finished.
@@ -820,6 +827,16 @@ function filterPos(s: number, f: Filter): number {
 	return s === 2 ? filters.length : filters.findIndex(option => option.key === f)
 }
 
+function filterTarget(step: number): { dir: number; name: string; stage: number; filter: Filter } | undefined {
+	const count = filters.length + (canSecondPass ? 1 : 0)
+	if (count < 2) return undefined
+	const current = filterPos(stage, filter)
+	const next = (current + step + count) % count
+	if (next === filters.length) return { dir: step, filter: "all", name: "Second pass", stage: 2 }
+	const option = filters[next]
+	return option ? { dir: step, filter: option.key, name: option.label, stage: 1 } : undefined
+}
+
 async function choose(next: Filter, dir?: number): Promise<void> {
 	if (next === filter && stage === 1) {
 		void load(next, 1, true)
@@ -1096,24 +1113,71 @@ function filterByAge(item: QueueItem, event: MouseEvent): void {
 	setFilterToken("age", ageFilter(item))
 }
 
-// swipeFilters switches filter tabs on a horizontal swipe, leaving vertical scroll alone.
+// swipeFilters follows the finger during a horizontal swipe and commits or snaps back on release.
 function swipeFilters(node: HTMLElement): { destroy(): void } {
 	let startX = 0
 	let startY = 0
+	let startT = 0
 	let tracking = false
 	let locked: "h" | "v" | undefined
+	let target: { dir: number; name: string; stage: number; filter: Filter } | undefined
+	let settleTimer: ReturnType<typeof setTimeout> | undefined
+
+	function clearDrag(): void {
+		filterDragName = ""
+		filterDragX = 0
+		filterDragging = false
+		filterSettling = false
+		filterDragStep = 1
+		target = undefined
+	}
+
+	function settle(commit: boolean): void {
+		filterDragging = false
+		filterSettling = true
+		filterDragX = commit && target ? -target.dir * ((node.offsetWidth || 1) + filterSwipeGap) : 0
+		settleTimer = setTimeout(() => {
+			settleTimer = undefined
+			if (commit && target) {
+				const next = target
+				filterSkipAnim = true
+				if (next.stage === 2) void chooseSecondPass(next.dir)
+				else void choose(next.filter, next.dir)
+				void (async (): Promise<void> => {
+					await tick()
+					filterDragging = true
+					filterSettling = false
+					filterDragX = 0
+					await tick()
+					clearDrag()
+					filterDragging = false
+					filterSkipAnim = false
+				})()
+				return
+			}
+			clearDrag()
+		}, 190)
+	}
 
 	function onStart(event: TouchEvent): void {
 		if (event.touches.length !== 1) {
 			tracking = false
 			return
 		}
+		if (settleTimer) {
+			clearTimeout(settleTimer)
+			settleTimer = undefined
+			filterSkipAnim = false
+			clearDrag()
+		}
 		const [touch] = event.touches
 		if (!touch) return
 		startX = touch.clientX
 		startY = touch.clientY
+		startT = Date.now()
 		tracking = true
 		locked = undefined
+		target = undefined
 	}
 
 	function onMove(event: TouchEvent): void {
@@ -1126,30 +1190,47 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 			if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
 			locked = Math.abs(dx) > Math.abs(dy) * 1.2 ? "h" : "v"
 		}
-		if (locked === "h") event.preventDefault()
+		if (locked !== "h") return
+		const dir = dx < 0 ? 1 : -1
+		target = filterTarget(dir)
+		if (!target) return
+		filterDragStep = dir
+		filterDragName = target.name
+		filterDragging = true
+		filterDragX = dx
 	}
 
 	function onEnd(event: TouchEvent): void {
 		if (!tracking) return
 		tracking = false
-		if (locked !== "h") return
+		if (locked !== "h" || !filterDragging || !target) {
+			clearDrag()
+			locked = undefined
+			return
+		}
 		const [touch] = event.changedTouches
-		const dx = touch ? touch.clientX - startX : 0
-		if (Math.abs(dx) < 48) return
-		moveFilter(dx < 0 ? 1 : -1)
+		const dx = touch ? touch.clientX - startX : filterDragX
+		const dt = Date.now() - startT
+		const width = node.offsetWidth || 1
+		const commit = Math.abs(dx) > width * 0.22 || (Math.abs(dx) / Math.max(dt, 1) > 0.45 && Math.abs(dx) > 40)
+		settle(commit)
+		locked = undefined
 	}
 
 	function onCancel(): void {
 		tracking = false
+		locked = undefined
+		if (filterDragging || filterDragName) settle(false)
 	}
 
 	node.addEventListener("touchstart", onStart, { passive: true })
-	node.addEventListener("touchmove", onMove, { passive: false })
+	node.addEventListener("touchmove", onMove, { passive: true })
 	node.addEventListener("touchend", onEnd, { passive: true })
 	node.addEventListener("touchcancel", onCancel, { passive: true })
 
 	return {
 		destroy(): void {
+			if (settleTimer) clearTimeout(settleTimer)
 			node.removeEventListener("touchstart", onStart)
 			node.removeEventListener("touchmove", onMove)
 			node.removeEventListener("touchend", onEnd)
@@ -1366,7 +1447,20 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 	<div class="filter-swipe" use:swipeFilters>
 		<div class="filter-stack">
 			{#key `${stage}:${filter}`}
-				<div class="filter-slide" in:fly={{ duration: 180, easing: cubicOut, x: filterDir * 180 }}>
+				<div
+					class="filter-slide"
+					style:transform={filterDragging || filterSettling ? `translateX(${filterDragX}px)` : undefined}
+					style:transition={filterDragging || filterSkipAnim
+						? "none"
+						: filterSettling
+							? "transform 180ms cubic-bezier(0.33, 1, 0.68, 1)"
+							: "none"}
+					in:fly={{
+						duration: filterDragging || filterSettling || filterSkipAnim ? 0 : 180,
+						easing: cubicOut,
+						x: filterDir * 180,
+					}}
+				>
 					{#if loading}
 						<div class="ui-card list">
 							<LoadingState message="Loading open ships…" />
@@ -1733,6 +1827,23 @@ function swipeFilters(node: HTMLElement): { destroy(): void } {
 					{/if}
 				</div>
 			{/key}
+			{#if (filterDragging || filterSettling) && filterDragName}
+				<div
+					class="filter-slide filter-slide--adjacent"
+					style:transform={filterDragStep > 0
+						? `translateX(calc(100% + ${filterSwipeGap}px + ${filterDragX}px))`
+						: `translateX(calc(-100% - ${filterSwipeGap}px + ${filterDragX}px))`}
+					style:transition={filterDragging || filterSkipAnim
+						? "none"
+						: filterSettling
+							? "transform 180ms cubic-bezier(0.33, 1, 0.68, 1)"
+							: "none"}
+				>
+					<div class="ui-card list filter-adjacent-card">
+						<LoadingState message={`Loading ${filterDragName}…`} />
+					</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 </section>
@@ -2873,17 +2984,23 @@ a.status:focus-visible {
 }
 
 .filter-swipe {
+	min-height: 55dvh;
 	touch-action: pan-y;
 }
 
 .filter-stack {
 	display: grid;
+	min-height: inherit;
 	overflow: clip;
 }
 
 .filter-stack > .filter-slide {
 	grid-area: 1 / 1;
 	min-width: 0;
+}
+
+.filter-adjacent-card {
+	pointer-events: none;
 }
 
 @media (max-width: 32rem) {
