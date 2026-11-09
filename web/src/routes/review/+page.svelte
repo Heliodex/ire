@@ -85,6 +85,7 @@ let deciding = $state(false)
 let actionError = $state("")
 let toast = $state("")
 let showShortcuts = $state(false)
+let decisionOpen = $state(false)
 let noteElement = $state<HTMLTextAreaElement | null>(undefined)
 let claimedId = $state("")
 let idempotencyKey = $state("")
@@ -360,6 +361,12 @@ afterNavigate((): void => {
 })
 
 function onKeydown(event: KeyboardEvent): void {
+	if (event.key === "Escape" && decisionOpen) {
+		event.preventDefault()
+		decisionOpen = false
+		return
+	}
+
 	if (
 		event.target instanceof HTMLInputElement
 		|| event.target instanceof HTMLTextAreaElement
@@ -943,6 +950,200 @@ async function saveDraftNow(): Promise<void> {
 				</div>
 			</section>
 
+			{#snippet decisionActions()}
+				{#if actionError}
+					<p class="ui-notice" data-tone="bad" role="alert">{actionError}</p>
+				{:else if checking}
+					<p class="rail-hint">Waiting for the repository checks to finish.</p>
+				{:else if blocking.length > 0}
+					<p class="rail-hint">Approval is blocked by a failing check.</p>
+				{:else if !secondPass && missingAcks.length > 0}
+					<p class="rail-hint">
+						{`${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} left to acknowledge.`}
+					</p>
+				{:else if secondPass && !canSecondPass}
+					<p class="rail-hint">Only organisers can decide the second pass.</p>
+				{/if}
+
+				<button
+					class="ui-button ok block"
+					disabled={deciding || !canApprove || !canDecide}
+					onclick={(): Promise<void> => decide("approved")}
+					type="button"
+				>
+					{deciding ? "Saving…" : secondPass ? "Confirm approval" : "Approve"}
+					<kbd class="ui-kbd">A</kbd>
+				</button>
+				<div class="secondary">
+					<button
+						class="ui-button changes"
+						disabled={deciding || !canDecide}
+						onclick={(): Promise<void> => decide("changes")}
+						type="button"
+					>
+						Request changes
+					</button>
+					<button
+						class="ui-button danger"
+						disabled={deciding || !canDecide}
+						onclick={(): Promise<void> => decide("rejected")}
+						type="button"
+					>
+						Reject
+						<kbd class="ui-kbd">R</kbd>
+					</button>
+				</div>
+			{/snippet}
+
+			{#snippet decisionForm(inSheet = false)}
+				<section class={inSheet ? "decision decision-in-sheet" : "ui-card padded decision"}>
+					{#if !inSheet}
+						<h2>Decision</h2>
+					{/if}
+
+					<TimeEvidenceBar segments={timeSegments} />
+
+					<label class="field">
+						<span>Approved hours</span>
+						<span class="hours-row">
+							<input
+								aria-label="Approved hours"
+								class="ui-input"
+								max="720"
+								min="0"
+								step="0.25"
+								type="number"
+								bind:value={hours}
+							>
+							<span class="hours-hint">/ {formatHours(submission.hoursClaimedSeconds)} claimed</span>
+						</span>
+					</label>
+
+					<label class="field">
+						<span class="field-head">
+							<span
+								>Note to maker
+								{!secondPass && (missingAcks.length > 0 || blocking.length > 0)
+									? ""
+									: "(optional)"}</span
+							>
+							<span aria-hidden="true" class="field-count">{note.length} / {maxNote}</span>
+						</span>
+						<textarea
+							aria-label="Note to maker"
+							class="ui-input"
+							maxlength={maxNote}
+							onblur={(): void => void saveDraftNow()}
+							placeholder="What should they change, or why is this good?"
+							rows="5"
+							bind:this={noteElement}
+							bind:value={note}
+						></textarea>
+					</label>
+
+					<label class="field">
+						<span class="field-head">
+							<span>Internal note</span>
+							<span aria-hidden="true" class="field-count">{internalNote.length} / {maxNote}</span>
+						</span>
+						<textarea
+							aria-label="Internal note"
+							class="ui-input"
+							maxlength={maxNote}
+							onblur={(): void => void saveDraftNow()}
+							placeholder="Only the team sees this."
+							rows="2"
+							bind:value={internalNote}
+						></textarea>
+					</label>
+
+					{#if secondPass}
+						<label class="field">
+							<span class="field-head">
+								<span>Override reason (required if you change the first pass)</span>
+								<span aria-hidden="true" class="field-count">{overrideReason.length} / {maxNote}</span>
+							</span>
+							<textarea
+								aria-label="Override reason"
+								class="ui-input"
+								maxlength={maxNote}
+								placeholder="Why the first-pass hours or decision should change."
+								rows="2"
+								bind:this={overrideElement}
+								bind:value={overrideReason}
+							></textarea>
+						</label>
+					{/if}
+
+					{#if !secondPass && missingAcks.length > 0}
+						<div class="ui-notice" data-tone="warn">
+							<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
+							Acknowledge them in Checks to unlock approve.
+							<button
+								class="link"
+								onclick={(): void => {
+									selectTab("checks")
+									decisionOpen = false
+								}}
+								type="button"
+							>
+								Open checks
+							</button>
+						</div>
+					{/if}
+
+					{#if blocking.length > 0}
+						<div class="ui-notice" data-tone="bad">
+							<strong>Approval disabled</strong>
+							{blocking[0].summary}.
+							<button class="link" onclick={(): void => selectTab("checks")} type="button">
+								Read the blocking check
+							</button>
+						</div>
+					{/if}
+
+					{#if secondPass && canSecondPass}
+						<div class="send-back">
+							<h3>Send back to stage 1</h3>
+							<p>
+								Invalidate the held review and let a reviewer look again. No event is sent to the maker.
+							</p>
+							<textarea
+								aria-label="Reason to send back"
+								class="ui-input"
+								placeholder="What should stage 1 look at again?"
+								rows="2"
+								bind:value={sendBackReason}
+							></textarea>
+							{#if sendBackError}
+								<p class="ui-notice" data-tone="bad" role="alert">{sendBackError}</p>
+							{/if}
+							<button
+								class="ui-button secondary block"
+								disabled={sendingBack}
+								onclick={sendBackToStageOne}
+								type="button"
+							>
+								{sendingBack ? "Sending back…" : "Send back"}
+							</button>
+						</div>
+					{/if}
+
+					{#if bundle.claim}
+						{const claimHref = reviewerHref(bundle.claim.reviewerEmail)}
+						<p class="claim">
+							Claimed by
+							{#if claimHref}
+								<a data-sveltekit-reload href={claimHref}>{bundle.claim.reviewerEmail}</a>
+							{:else}
+								{bundle.claim.reviewerEmail}
+							{/if}
+							until {formatDateTime(bundle.claim.expiresAt)}
+						</p>
+					{/if}
+				</section>
+			{/snippet}
+
 			<aside class="rail">
 				<div class="rail-scroll">
 					{#if readOnly}
@@ -1287,147 +1488,7 @@ async function saveDraftNow(): Promise<void> {
 						</p>
 					</section>
 				{:else}
-					<section class="ui-card padded decision">
-						<h2>Decision</h2>
-
-						<TimeEvidenceBar segments={timeSegments} />
-
-						<label class="field">
-							<span>Approved hours</span>
-							<span class="hours-row">
-								<input
-									aria-label="Approved hours"
-									class="ui-input"
-									max="720"
-									min="0"
-									step="0.25"
-									type="number"
-									bind:value={hours}
-								>
-								<span class="hours-hint">/ {formatHours(submission.hoursClaimedSeconds)} claimed</span>
-							</span>
-						</label>
-
-						<label class="field">
-							<span class="field-head">
-								<span
-									>Note to maker
-									{!secondPass && (missingAcks.length > 0 || blocking.length > 0)
-										? ""
-										: "(optional)"}</span
-								>
-								<span aria-hidden="true" class="field-count">{note.length} / {maxNote}</span>
-							</span>
-							<textarea
-								aria-label="Note to maker"
-								class="ui-input"
-								maxlength={maxNote}
-								onblur={(): void => void saveDraftNow()}
-								placeholder="What should they change, or why is this good?"
-								rows="5"
-								bind:this={noteElement}
-								bind:value={note}
-							></textarea>
-						</label>
-
-						<label class="field">
-							<span class="field-head">
-								<span>Internal note</span>
-								<span aria-hidden="true" class="field-count">{internalNote.length} / {maxNote}</span>
-							</span>
-							<textarea
-								aria-label="Internal note"
-								class="ui-input"
-								maxlength={maxNote}
-								onblur={(): void => void saveDraftNow()}
-								placeholder="Only the team sees this."
-								rows="2"
-								bind:value={internalNote}
-							></textarea>
-						</label>
-
-						{#if secondPass}
-							<label class="field">
-								<span class="field-head">
-									<span>Override reason (required if you change the first pass)</span>
-									<span aria-hidden="true" class="field-count"
-										>{overrideReason.length}
-										/ {maxNote}</span
-									>
-								</span>
-								<textarea
-									aria-label="Override reason"
-									class="ui-input"
-									maxlength={maxNote}
-									placeholder="Why the first-pass hours or decision should change."
-									rows="2"
-									bind:this={overrideElement}
-									bind:value={overrideReason}
-								></textarea>
-							</label>
-						{/if}
-
-						{#if !secondPass && missingAcks.length > 0}
-							<div class="ui-notice" data-tone="warn">
-								<strong>{missingAcks.length} warning{missingAcks.length === 1 ? "" : "s"} left</strong>
-								Acknowledge them in Checks to unlock approve.
-								<button class="link" onclick={(): void => selectTab("checks")} type="button">
-									Open checks
-								</button>
-							</div>
-						{/if}
-
-						{#if blocking.length > 0}
-							<div class="ui-notice" data-tone="bad">
-								<strong>Approval disabled</strong>
-								{blocking[0].summary}.
-								<button class="link" onclick={(): void => selectTab("checks")} type="button">
-									Read the blocking check
-								</button>
-							</div>
-						{/if}
-
-						{#if secondPass && canSecondPass}
-							<div class="send-back">
-								<h3>Send back to stage 1</h3>
-								<p>
-									Invalidate the held review and let a reviewer look again. No event is sent to the
-									maker.
-								</p>
-								<textarea
-									aria-label="Reason to send back"
-									class="ui-input"
-									placeholder="What should stage 1 look at again?"
-									rows="2"
-									bind:value={sendBackReason}
-								></textarea>
-								{#if sendBackError}
-									<p class="ui-notice" data-tone="bad" role="alert">{sendBackError}</p>
-								{/if}
-								<button
-									class="ui-button secondary block"
-									disabled={sendingBack}
-									onclick={sendBackToStageOne}
-									type="button"
-								>
-									{sendingBack ? "Sending back…" : "Send back"}
-								</button>
-							</div>
-						{/if}
-
-						{#if bundle.claim}
-							{const claimHref = reviewerHref(bundle.claim.reviewerEmail)}
-							<p class="claim">
-								Claimed by
-								{#if claimHref}
-									<a data-sveltekit-reload href={claimHref}>{bundle.claim.reviewerEmail}</a>
-								{:else}
-									{bundle.claim.reviewerEmail}
-								{/if}
-								until {formatDateTime(bundle.claim.expiresAt)}
-							</p>
-						{/if}
-					</section>
+					<div class="decision-rail-only">{@render decisionForm()}</div>
 				{/if}
 
 				<section class="ui-card padded summary">
@@ -1498,80 +1559,61 @@ async function saveDraftNow(): Promise<void> {
 
 			{#if !readOnly && !reviewed}
 				<div class="rail-actions">
-					{#if actionError}
-						<p class="ui-notice" data-tone="bad" role="alert">{actionError}</p>
-					{:else if checking}
-						<p class="rail-hint">Waiting for the repository checks to finish.</p>
-					{:else if blocking.length > 0}
-						<p class="rail-hint">Approval is blocked by a failing check.</p>
-					{:else if !secondPass && missingAcks.length > 0}
-						<p class="rail-hint">
-							{`${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} left to acknowledge.`}
-						</p>
-					{:else if secondPass && !canSecondPass}
-						<p class="rail-hint">Only organisers can decide the second pass.</p>
-					{/if}
-
-					<button
-						class="ui-button ok block"
-						disabled={deciding || !canApprove || !canDecide}
-						onclick={(): Promise<void> => decide("approved")}
-						type="button"
-					>
-						{deciding ? "Saving…" : secondPass ? "Confirm approval" : "Approve"}
-						<kbd class="ui-kbd">A</kbd>
-					</button>
-					<div class="secondary">
-						<button
-							class="ui-button changes"
-							disabled={deciding || !canDecide}
-							onclick={(): Promise<void> => decide("changes")}
-							type="button"
-						>
-							Request changes
-						</button>
-						<button
-							class="ui-button danger"
-							disabled={deciding || !canDecide}
-							onclick={(): Promise<void> => decide("rejected")}
-							type="button"
-						>
-							Reject
-							<kbd class="ui-kbd">R</kbd>
-						</button>
-					</div>
+					{@render decisionActions()}
 				</div>
 			{/if}
 		</aside>
 	</div>
 
 	{#if !readOnly && !reviewed}
-		<div class="mobile-actions">
-			<button
-				class="ui-button ok"
-				disabled={deciding || !canApprove || !canDecide}
-				onclick={(): Promise<void> => decide("approved")}
-				type="button"
+		<button
+			aria-expanded={decisionOpen}
+			aria-haspopup="dialog"
+			class="decision-fab ui-button primary"
+			onclick={(): void => {
+				decisionOpen = true
+			}}
+			type="button"
+		>
+			Decision
+		</button>
+
+		{#if decisionOpen}
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- biome-ignore lint/a11y/noStaticElementInteractions: backdrop closes panel, keyboard uses Escape -->
+			<div
+				class="decision-sheet-backdrop"
+				onclick={(event): void => {
+					if (event.target === event.currentTarget) decisionOpen = false
+				}}
+				onkeydown={(event): void => {
+					if (event.key === "Escape") decisionOpen = false
+				}}
 			>
-				{deciding ? "Saving…" : secondPass ? "Confirm" : "Approve"}
-			</button>
-			<button
-				class="ui-button changes"
-				disabled={deciding || !canDecide}
-				onclick={(): Promise<void> => decide("changes")}
-				type="button"
-			>
-				Request changes
-			</button>
-			<button
-				class="ui-button danger"
-				disabled={deciding || !canDecide}
-				onclick={(): Promise<void> => decide("rejected")}
-				type="button"
-			>
-				Reject
-			</button>
-		</div>
+				<div aria-label="Decision" aria-modal="true" class="decision-sheet" role="dialog" tabindex="-1">
+					<div class="decision-sheet-head">
+						<h2>Decision</h2>
+						<button
+							aria-label="Close"
+							class="ui-icon-button"
+							onclick={(): void => {
+								decisionOpen = false
+							}}
+							type="button"
+						>
+							×
+						</button>
+					</div>
+					<div class="decision-sheet-body">
+						{@render decisionForm(true)}
+						<div class="decision-sheet-actions">
+							{@render decisionActions()}
+						</div>
+					</div>
+				</div>
+			</div>
+		{/if}
 	{/if}
 
 	{#if toast}
@@ -2146,14 +2188,71 @@ h1 {
 	text-decoration: underline;
 }
 
-.mobile-actions {
+.decision-fab {
 	display: none;
+}
+
+.decision-sheet-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: var(--layer-dialog);
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	padding: 0;
+	background: color-mix(in srgb, var(--bg) 40%, transparent);
+}
+
+.decision-sheet {
+	display: flex;
+	flex-direction: column;
+	width: min(100%, 40rem);
+	max-height: min(85dvh, 100%);
+	overflow: hidden;
+	background: var(--bg);
+	border: 1px solid var(--border);
+	border-bottom: 0;
+	border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+	box-shadow: var(--shadow-lg);
+}
+
+.decision-sheet-head {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--space-3) var(--space-4);
+	border-bottom: 1px solid var(--border);
+}
+
+.decision-sheet-head h2 {
+	margin: 0;
+	font-size: var(--text-md);
+	font-weight: 700;
+}
+
+.decision-sheet-body {
+	padding: var(--space-3) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+	overflow-y: auto;
+	overscroll-behavior-y: contain;
+}
+
+.decision-sheet-actions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin-top: var(--space-4);
+}
+
+.decision-in-sheet {
+	padding: 0;
 }
 
 .toast {
 	position: fixed;
 	bottom: var(--space-5);
 	left: 50%;
+	z-index: var(--layer-toast);
 	padding: var(--space-2) var(--space-4);
 	font-size: var(--text-sm);
 	font-weight: 700;
@@ -2167,35 +2266,24 @@ h1 {
 @media (max-width: 61.25rem) {
 	.layout {
 		grid-template-columns: 1fr;
-		padding-bottom: 4.75rem;
 	}
 
 	.rail {
 		padding-top: 0;
 	}
 
+	.decision-rail-only,
 	.rail-actions {
 		display: none;
 	}
 
-	.mobile-actions {
+	.decision-fab {
 		position: fixed;
-		right: 0;
-		bottom: 0;
-		left: 0;
-		z-index: var(--layer-dialog);
-		display: grid;
-		grid-template-columns: 1.1fr 1.3fr 0.8fr;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3) max(var(--space-2), env(safe-area-inset-bottom));
-		background: var(--surface);
-		border-top: 1px solid var(--border);
-		box-shadow: var(--shadow);
-	}
-
-	.mobile-actions .ui-button {
-		min-width: 0;
-		height: 2.75rem;
+		right: var(--space-4);
+		bottom: var(--space-4);
+		z-index: var(--layer-header);
+		display: inline-flex;
+		box-shadow: var(--shadow-lg);
 	}
 
 	.shortcuts-button {
@@ -2203,11 +2291,23 @@ h1 {
 	}
 
 	.toast {
-		bottom: calc(4.75rem + var(--space-3));
+		bottom: var(--space-4);
 	}
 }
 
 @media (max-width: 40rem) {
+	.decision-fab {
+		bottom: calc(7.5rem + env(safe-area-inset-bottom));
+	}
+
+	.toast {
+		bottom: calc(8rem + env(safe-area-inset-bottom));
+	}
+
+	.decision-sheet {
+		max-height: calc(100dvh - 8rem - env(safe-area-inset-bottom));
+	}
+
 	.stats {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
