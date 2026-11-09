@@ -11,10 +11,18 @@ type queueCompare struct {
 	value int64
 }
 
+type queueChecksFilter struct {
+	overallPass bool
+	count       string
+	op          string
+	value       int64
+}
+
 type queueSearch struct {
 	raw       string
 	supported bool
 	age       *queueCompare
+	checks    *queueChecksFilter
 	journals  *queueCompare
 	status    string
 	text      []string
@@ -109,7 +117,13 @@ func parseQueueSearch(raw string) queueSearch {
 			} else {
 				query.text = append(query.text, strings.ToLower(token))
 			}
-		case "check", "checks":
+		case "checks":
+			if parsed := parseQueueChecks(value); parsed != nil {
+				query.checks = parsed
+			} else {
+				query.text = append(query.text, strings.ToLower(token))
+			}
+		case "check":
 			query.supported = false
 		default:
 			query.text = append(query.text, strings.ToLower(token))
@@ -147,6 +161,50 @@ func parseQueueComparison(value string) *queueCompare {
 	}
 
 	return &queueCompare{op: op, value: number}
+}
+
+var queueCheckCounts = map[string]bool{
+	"error": true, "fail": true, "pass": true, "running": true, "total": true, "warn": true,
+}
+
+var queueChecksRE = regexp.MustCompile(`^(error|fail|pass|running|total|warn)?(>=|<=|!=|>|<|=)?(\d+)$`)
+
+func parseQueueChecks(value string) *queueChecksFilter {
+	lower := strings.ToLower(value)
+	if lower == "pass" {
+		return &queueChecksFilter{overallPass: true}
+	}
+
+	if queueCheckCounts[lower] {
+		return &queueChecksFilter{count: lower, op: ">", value: 0}
+	}
+
+	match := queueChecksRE.FindStringSubmatch(lower)
+	if match == nil {
+		return nil
+	}
+
+	count := match[1]
+	if count == "" {
+		count = "total"
+	}
+	if !queueCheckCounts[count] {
+		return nil
+	}
+	if count == "pass" && match[2] == "" && match[3] == "" {
+		return &queueChecksFilter{overallPass: true}
+	}
+
+	op := match[2]
+	if op == "" {
+		op = "="
+	}
+	number, err := strconv.ParseInt(match[3], 10, 64)
+	if err != nil {
+		return nil
+	}
+
+	return &queueChecksFilter{count: count, op: op, value: number}
 }
 
 func parseQueueDuration(value, fallback string) *queueCompare {
@@ -193,6 +251,22 @@ func (q queueSearch) active() bool {
 	return q.raw != "" && q.supported
 }
 
+func queueChecksExpr(count string) string {
+	field := func(name string) string {
+		return "coalesce(json_extract(s.check_summary, '$." + name + "'), 0)"
+	}
+	switch count {
+	case "error", "fail", "pass", "warn":
+		return field(count)
+	case "running":
+		return "(" + field("running") + " + case when s.status = 'checking' and " + field("running") + " = 0 then 1 else 0 end)"
+	case "total":
+		return "(" + field("pass") + " + " + field("warn") + " + " + field("fail") + " + " + field("error") + " + " + field("running") + ")"
+	default:
+		return ""
+	}
+}
+
 // queueAgeOp maps an age comparison (age = now - ingested_at) to an ingested_at comparison.
 func queueAgeOp(op string) string {
 	switch op {
@@ -219,6 +293,18 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 			seconds := q.age.value / 1000
 			query += " and s.ingested_at " + op + " datetime('now', ?)"
 			args = append(args, "-"+strconv.FormatInt(seconds, 10)+" seconds")
+		}
+	}
+
+	if q.checks != nil {
+		if q.checks.overallPass {
+			query += " and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass'"
+		} else {
+			expr := queueChecksExpr(q.checks.count)
+			if expr != "" {
+				query += " and " + expr + " " + q.checks.op + " ?"
+				args = append(args, q.checks.value)
+			}
 		}
 	}
 
