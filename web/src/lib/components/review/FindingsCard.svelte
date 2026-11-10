@@ -296,7 +296,10 @@ async function resolve(finding: Finding, status: Finding["status"]): Promise<voi
 				<span class="field-head">
 					<span
 						>Maker action
-						{severity === "block" || severity === "fixable" ? "(required)" : "(optional)"}</span
+						{#if severity === "block" || severity === "fixable"}
+							<span aria-hidden="true" class="required" title="Required">*</span>
+							<span class="visually-hidden">Required</span>
+						{/if}</span
 					>
 					<span aria-hidden="true" class="field-count">{makerAction.length} / {maxNote}</span>
 				</span>
@@ -329,7 +332,7 @@ async function resolve(finding: Finding, status: Finding["status"]): Promise<voi
 
 			<label class="field">
 				<span class="field-head">
-					<span>Evidence (optional)</span>
+					<span>Evidence</span>
 					<span aria-hidden="true" class="field-count">{evidence.length} / {maxNote}</span>
 				</span>
 				<input
