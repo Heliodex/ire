@@ -1,5 +1,8 @@
 import { type Bundle } from "./api"
+import { reasonLabels } from "./deflation"
 import { formatHours } from "./format"
+
+const reasonNames: { [_: string]: string } = reasonLabels
 
 export type MainField = "technicalFeatures" | "deflationReason" | "note" | "internalNote"
 
@@ -140,28 +143,30 @@ export function suggestTechnicalFeatures(bundle: Bundle): string {
 	return parts.join("\n")
 }
 
-// suggestDeflationReason builds the cut summary from the journal entries that were reduced.
+// suggestDeflationReason builds the cut summary from the journal entries that were
+// reduced and the ledger cuts behind them, so Hackatime and timelapse cuts read the same way.
 export function suggestDeflationReason(bundle: Bundle, capturedSeconds: number): string {
-	const labels: { [_: string]: string } = {
-		duplicate: "duplicate with Hackatime",
-		idle: "idle gap",
-		long: "unreasonably long",
-		nonproject: "not project work",
-		other: "other",
-		starter: "starter build",
-		tutorial: "tutorial consumption",
-		unverifiable: "unverifiable",
-	}
-	const groups = new Map<string, { seconds: number; entries: number }>()
+	const groups = new Map<string, { seconds: number; count: number; scope: string }>()
 	let total = 0
 
 	for (const entry of bundle.journals) {
 		if (entry.approvedSeconds === undefined || entry.approvedSeconds >= entry.seconds) continue
-		const key = entry.deflationReason ?? "other"
-		const group = groups.get(key) ?? { entries: 0, seconds: 0 }
+		const key = `entry:${entry.deflationReason ?? "other"}`
+		const group = groups.get(key) ?? { count: 0, scope: "entries", seconds: 0 }
 		group.seconds += entry.seconds - entry.approvedSeconds
-		group.entries += 1
+		group.count += 1
 		total += entry.seconds - entry.approvedSeconds
+		groups.set(key, group)
+	}
+
+	for (const adjustment of bundle.adjustments ?? []) {
+		if (adjustment.kind !== "cut" || adjustment.seconds <= 0) continue
+		const scope = adjustment.source === "hackatime" ? "Hackatime" : "clips"
+		const key = `${scope}:${adjustment.reason}`
+		const group = groups.get(key) ?? { count: 0, scope, seconds: 0 }
+		group.seconds += adjustment.seconds
+		group.count += 1
+		total += adjustment.seconds
 		groups.set(key, group)
 	}
 
@@ -169,8 +174,17 @@ export function suggestDeflationReason(bundle: Bundle, capturedSeconds: number):
 
 	const cuts = [...groups.entries()]
 		.map(([key, group]) => {
-			const suffix = group.entries > 1 ? ` (${group.entries} entries)` : ""
-			return `${formatHours(group.seconds)} ${labels[key] ?? key}${suffix}`
+			const reason = key.slice(key.indexOf(":") + 1)
+			const label = reasonNames[reason] ?? reason
+			const text = label.charAt(0).toLowerCase() + label.slice(1)
+			const suffix = group.scope === "Hackatime"
+				? " (Hackatime)"
+				: group.scope === "clips"
+					? group.count > 1 ? ` (${group.count} clips)` : " (clip)"
+					: group.count > 1
+						? ` (${group.count} entries)`
+						: ""
+			return `${formatHours(group.seconds)} ${text}${suffix}`
 		})
 		.join(", ")
 

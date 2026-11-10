@@ -2,6 +2,7 @@
 import { onDestroy } from "svelte"
 import { type Journal, reviewJournal } from "../../api"
 import { ApiError } from "../../api-error"
+import { reasonLabel, reasonLabels } from "../../deflation"
 import { formatHours } from "../../format"
 
 interface Props {
@@ -62,24 +63,6 @@ function flush(): void {
 		timer = undefined
 	}
 	void save()
-}
-
-const reasonLabels = {
-	duplicate: "Duplicate with Hackatime",
-	idle: "Idle gap",
-	long: "Unreasonably long",
-	nonproject: "Not project work",
-	other: "Other",
-	starter: "Starter build, no original work",
-	tutorial: "Tutorial consumption without application",
-	unverifiable: "Unverifiable",
-} as const
-
-type Reason = keyof typeof reasonLabels
-
-// reasonLabel returns the human label for a stored reason code.
-function reasonLabel(value: string): string {
-	return reasonLabels[value as Reason] ?? value
 }
 
 // save writes the entry's approved time, reason and note, keeping the rail total in step.

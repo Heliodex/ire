@@ -10,6 +10,7 @@ import {
 	draftResponseSchema,
 	type evidenceSchema,
 	type fakeDeliveriesResponseSchema,
+	type hackatimeReviewResponseSchema,
 	type journalReviewResponseSchema,
 	type makerProfileSchema,
 	type memberSchema,
@@ -24,6 +25,7 @@ import {
 	type searchResponseSchema,
 	type sendBackResultSchema,
 	type submissionFileResponseSchema,
+	type timelapseReviewResponseSchema,
 } from "./contract"
 import { ValidationError } from "./validation-error"
 
@@ -51,6 +53,10 @@ export type Bundle = InferOutput<typeof reviewBundleSchema>
 export type Check = Bundle["checks"][number]
 export type Journal = Bundle["journals"][number]
 export type JournalAdjustment = InferOutput<typeof journalReviewResponseSchema>
+export type JournalTimelapse = NonNullable<Journal["timelapses"]>[number]
+export type TimeAdjustment = NonNullable<Bundle["adjustments"]>[number]
+export type HackatimeAdjustment = InferOutput<typeof hackatimeReviewResponseSchema>
+export type TimelapseAdjustment = InferOutput<typeof timelapseReviewResponseSchema>
 export type Note = Bundle["notes"][number]
 export type BomLine = Bundle["bom"][number]
 export type Review = Bundle["reviews"][number]
@@ -145,7 +151,9 @@ export {
 	refreshRepositoryEvidence,
 	releaseShip,
 	rerunChecks,
+	reviewHackatime,
 	reviewJournal,
+	reviewTimelapse,
 	searchProjects,
 	sendShipBack,
 	updateMember,

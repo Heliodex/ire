@@ -95,6 +95,50 @@ describe("feature and time suggestions", () => {
 		expect(text).toContain("tutorial consumption")
 		expect(text).toContain("idle gap")
 	})
+
+	test("adds Hackatime and timelapse cuts to the deflation reason", () => {
+		const bundle = fakeReviewBundle({
+			adjustments: [
+				{
+					createdAt: "2026-01-01T00:00:00Z",
+					id: "t1",
+					kind: "cut",
+					note: "",
+					reason: "idle",
+					reviewerId: "r1",
+					seconds: 3600,
+					source: "hackatime",
+				},
+				{
+					createdAt: "2026-01-01T00:00:00Z",
+					id: "t2",
+					kind: "cut",
+					note: "",
+					reason: "unverifiable",
+					reviewerId: "r1",
+					seconds: 900,
+					source: "clip:e1:clip_a",
+				},
+				{
+					createdAt: "2026-01-01T00:00:00Z",
+					id: "t3",
+					kind: "bonus",
+					note: "",
+					reason: "other",
+					reviewerId: "r1",
+					seconds: 900,
+					source: "hackatime",
+				},
+			],
+			journals: [],
+		})
+
+		const text = suggestDeflationReason(bundle, 7200)
+		expect(text).toContain("Cut 1.25h")
+		expect(text).toContain("idle gap (Hackatime)")
+		expect(text).toContain("unverifiable (clip)")
+		expect(text).not.toContain("bonus")
+	})
 })
 
 describe("internal note suggestions", () => {

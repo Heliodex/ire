@@ -4,6 +4,7 @@ import { type Journal } from "../../api"
 import { formatDateTime, formatHours } from "../../format"
 import JournalTime from "./JournalTime.svelte"
 import Markdown from "./Markdown.svelte"
+import TimelapseClip from "./TimelapseClip.svelte"
 
 interface Props {
 	collapsed: SvelteSet<string>
@@ -98,6 +99,21 @@ function toggleEntry(id: string): void {
 							attached</small
 						>
 					{/if}
+					{#if (entry.timelapses ?? []).length > 0}
+						<div class="clip-grid">
+							{#each entry.timelapses ?? [] as clip, index (clip.externalId ?? index)}
+								<TimelapseClip
+									{clip}
+									clipIndex={index}
+									{editable}
+									{entry}
+									{shipId}
+									{version}
+									onSaved={onEntrySaved}
+								/>
+							{/each}
+						</div>
+					{/if}
 					<JournalTime {editable} {entry} onSaved={onEntrySaved} {shipId} {version} />
 				</div>
 			</section>
@@ -183,6 +199,13 @@ function toggleEntry(id: string): void {
 .media-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+	gap: var(--space-2);
+	padding-top: var(--space-2);
+}
+
+.clip-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
 	gap: var(--space-2);
 	padding-top: var(--space-2);
 }

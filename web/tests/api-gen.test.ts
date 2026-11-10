@@ -23,7 +23,9 @@ import {
 	refreshRepositoryEvidence,
 	releaseShip,
 	rerunChecks,
+	reviewHackatime,
 	reviewJournal,
+	reviewTimelapse,
 	searchProjects,
 	sendShipBack,
 	updateMember,
@@ -92,6 +94,10 @@ function stubFetch(seen: SeenRequest[]): void {
 			role: "admin",
 		},
 		"PATCH /api/v1/programs/half-life/submissions/sub_1/journal/e1": fakeJournalAdjustment({
+			hoursApprovedSeconds: 60,
+		}),
+		"PATCH /api/v1/programs/half-life/submissions/sub_1/hackatime": { hoursApprovedSeconds: 60 },
+		"PATCH /api/v1/programs/half-life/submissions/sub_1/journal/e1/timelapse/0": fakeJournalAdjustment({
 			hoursApprovedSeconds: 60,
 		}),
 		"POST /api/v1/dev/login": fakeMeResponse({ user: { email: "a@b.c" } }),
@@ -181,6 +187,12 @@ describe("generated client", () => {
 		)
 		expect(
 			await reviewJournal("sub_1", "e1", { approvedSeconds: 60, reviewerNote: "", version: 1 }, true),
+		).toMatchObject({ hoursApprovedSeconds: 60 })
+		expect(
+			await reviewHackatime("sub_1", { approvedSeconds: 60, reviewerNote: "", version: 1 }),
+		).toMatchObject({ hoursApprovedSeconds: 60 })
+		expect(
+			await reviewTimelapse("sub_1", "e1", "0", { approvedSeconds: 60, reviewerNote: "", version: 1 }),
 		).toMatchObject({ hoursApprovedSeconds: 60 })
 		expect(await createNote("sub_1", { body: "x", subjectType: "submission" })).toMatchObject({ id: "n1" })
 		await deleteNote("n1")

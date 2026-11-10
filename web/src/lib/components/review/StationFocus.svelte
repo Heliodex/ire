@@ -12,6 +12,7 @@ import {
 	fetchMe,
 	heartbeat,
 	type Note,
+	type TimeAdjustment,
 	program,
 	releaseShip,
 	rerunChecks,
@@ -53,6 +54,7 @@ import BomTab from "./BomTab.svelte"
 import ChecksTab from "./ChecksTab.svelte"
 import EvidenceTab from "./EvidenceTab.svelte"
 import FindingsCard from "./FindingsCard.svelte"
+import HackatimeAdjustment from "./HackatimeAdjustment.svelte"
 import HistoryTab from "./HistoryTab.svelte"
 import JournalList from "./JournalList.svelte"
 import Markdown from "./Markdown.svelte"
@@ -289,6 +291,10 @@ const timeSegments = $derived.by((): { label: string; tone: string; value: numbe
 	].filter(segment => segment.value > 0)
 })
 const commits = $derived((evidence?.commits ?? []).slice(0, 10))
+// hackatimeAdjustment is the ledger cut behind the approved Hackatime time, if any.
+const hackatimeAdjustment = $derived(
+	(bundle?.adjustments ?? []).find(item => item.source === "hackatime"),
+)
 const findings = $derived((bundle?.findings ?? []).filter(finding => isActive(finding)))
 const hardwareFiles = $derived(
 	fileGroups
@@ -801,6 +807,14 @@ function entrySaved(seconds: number): void {
 	if (bundle !== undefined) bundle.submission.hoursApprovedSeconds = seconds
 }
 
+// hackatimeSaved keeps the ledger and the approved total in step after a Hackatime cut.
+function hackatimeSaved(seconds: number, adjustment: TimeAdjustment | undefined): void {
+	if (bundle === undefined) return
+	bundle.submission.hoursApprovedSeconds = seconds
+	bundle.adjustments = (bundle.adjustments ?? []).filter(item => item.source !== "hackatime")
+	if (adjustment !== undefined) bundle.adjustments.push(adjustment)
+}
+
 // onKeydown lets Enter move to the next station once this one is complete.
 function onKeydown(event: KeyboardEvent): void {
 	if (event.key !== "Enter" || !stationComplete || event.metaKey || event.ctrlKey || event.altKey) return
@@ -1036,6 +1050,16 @@ async function persistDraft(): Promise<void> {
 					</div>
 					<p class="muted">Timelapse covers {coverage}% of the claimed hours.</p>
 					<TimeEvidenceBar segments={timeSegments} />
+					{#if (submission?.hoursHackatimeSeconds ?? 0) > 0}
+						<HackatimeAdjustment
+							adjustment={hackatimeAdjustment}
+							claimedSeconds={submission?.hoursHackatimeSeconds ?? 0}
+							{editable}
+							shipId={bundle.submission.id}
+							version={bundle.submission.version}
+							onSaved={hackatimeSaved}
+						/>
+					{/if}
 				</section>
 			{:else if stationKey === "narrative"}
 				{#if readme !== ""}
