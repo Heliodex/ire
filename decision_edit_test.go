@@ -56,6 +56,7 @@ func TestAdminCanRevertDecision(t *testing.T) {
 	decideFixture1(t, application, reviewer, "revert-admin-decide")
 
 	body, _ := json.Marshal(contract.RevertDecisionRequest{Reason: "Recorded by mistake.", Version: 1})
+
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision/revert", body, admin, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("revert = %d: %s", recorder.Code, recorder.Body.String())
@@ -72,6 +73,7 @@ func TestAdminCanRevertDecision(t *testing.T) {
 	}
 
 	var invalidated bool
+
 	for _, review := range bundle.Reviews {
 		if review.InvalidatedAt != nil {
 			invalidated = true
@@ -91,6 +93,7 @@ func TestOriginalReviewerCanRevertOwnDecision(t *testing.T) {
 	decideFixture1(t, application, reviewer, "revert-own-decide")
 
 	body, _ := json.Marshal(contract.RevertDecisionRequest{Reason: "Wrong call.", Version: 1})
+
 	denied := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision/revert", body, other, nil)
 	if denied.Code != http.StatusForbidden {
 		t.Fatalf("other revert = %d: %s", denied.Code, denied.Body.String())
@@ -137,6 +140,7 @@ func TestAmendDecision(t *testing.T) {
 	}
 
 	var finals, invalidated int
+
 	for _, review := range updated.Reviews {
 		if review.InvalidatedAt != nil {
 			invalidated++
@@ -144,6 +148,7 @@ func TestAmendDecision(t *testing.T) {
 		}
 
 		finals++
+
 		if review.Decision != decisionChanges {
 			t.Errorf("final decision = %q", review.Decision)
 		}
@@ -192,6 +197,7 @@ func TestRevertRejectedStaleVersion(t *testing.T) {
 	decideFixture1(t, application, reviewer, "revert-stale-decide")
 
 	body, _ := json.Marshal(contract.RevertDecisionRequest{Reason: "Nope.", Version: 99})
+
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision/revert", body, admin, nil)
 	if recorder.Code != http.StatusConflict {
 		t.Fatalf("stale revert = %d: %s", recorder.Code, recorder.Body.String())

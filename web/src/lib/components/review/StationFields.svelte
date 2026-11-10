@@ -111,10 +111,10 @@ function stationLabel(key: string, fallback: string): string {
 		</div>
 		<p class="hint">
 			{#if cuts > 0}
-				Built from {cuts} journal cut{cuts === 1 ? "" : "s"} on the time station; edit the cuts there.
+				Built from {cuts} journal cut{cuts === 1 ? "" : "s"}
+				on the time station; edit the cuts there.
 			{:else}
-				Only needed when the approved time is below the captured time; cut journal entries on the time
-				station.
+				Only needed when the approved time is below the captured time; cut journal entries on the time station.
 			{/if}
 		</p>
 		{#if deflationReason !== ""}
@@ -125,7 +125,8 @@ function stationLabel(key: string, fallback: string): string {
 		<div class="field-actions">
 			<a class="ui-button ghost sm" href={focusHref("time")}>{stationLabel("time", "Journals and time")} ↗</a>
 			<a class="ui-button ghost sm" href={focusHref("narrative")}>
-				{stationLabel("narrative", "README and claims")} ↗
+				{stationLabel("narrative", "README and claims")}
+				↗
 			</a>
 			<span class="muted"
 				>{formatHours(capturedSeconds)}
@@ -137,8 +138,8 @@ function stationLabel(key: string, fallback: string): string {
 			<h2>Notes</h2>
 		</div>
 		<p class="hint">
-			The maker note is public and built from the findings chosen for return. The internal note is for the
-			team and the audit record.
+			The maker note is public and built from the findings chosen for return. The internal note is for the team
+			and the audit record.
 		</p>
 		<span class="field-head"><span>Note to maker</span></span>
 		{#if note !== ""}

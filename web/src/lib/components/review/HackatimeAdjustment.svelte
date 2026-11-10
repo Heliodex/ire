@@ -1,5 +1,5 @@
 <script lang="ts">
-import { type TimeAdjustment, reviewHackatime } from "../../api"
+import { reviewHackatime, type TimeAdjustment } from "../../api"
 import { ApiError } from "../../api-error"
 import { reasonLabel, reasonLabels } from "../../deflation"
 import { formatHours } from "../../format"
@@ -8,9 +8,9 @@ interface Props {
 	adjustment: TimeAdjustment | undefined
 	claimedSeconds: number
 	editable: boolean
+	onSaved(totalSeconds: number, adjustment: TimeAdjustment | undefined): void
 	shipId: string
 	version: number
-	onSaved(totalSeconds: number, adjustment: TimeAdjustment | undefined): void
 }
 
 let { adjustment, claimedSeconds, editable, shipId, version, onSaved }: Props = $props()

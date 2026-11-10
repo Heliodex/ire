@@ -735,11 +735,13 @@ func (a *ireApp) ensureSubmittedAtColumn(ctx context.Context) error {
 	if rows.Next() {
 		return rows.Err()
 	}
+
 	if err := rows.Err(); err != nil {
 		return err
 	}
 
 	_, err = a.store.Exec(ctx, `alter table submission add column submitted_at text`)
+
 	return err
 }
 

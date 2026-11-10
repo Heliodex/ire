@@ -159,6 +159,7 @@ func TestStationAnswerClear(t *testing.T) {
 	}
 
 	other := login(t, application, "organiser@example.com")
+
 	unclaimed := do(t, application, http.MethodDelete, path+"?version=1", nil, other, nil)
 	if unclaimed.Code != http.StatusConflict {
 		t.Fatalf("unclaimed clear = %d, want 409", unclaimed.Code)

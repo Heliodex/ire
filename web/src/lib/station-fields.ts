@@ -181,13 +181,16 @@ export function suggestDeflationReason(bundle: Bundle, capturedSeconds: number):
 			const reason = key.slice(key.indexOf(":") + 1)
 			const label = reasonNames[reason] ?? reason
 			const text = label.charAt(0).toLowerCase() + label.slice(1)
-			const suffix = group.scope === "Hackatime"
-				? " (Hackatime)"
-				: group.scope === "clips"
-					? group.count > 1 ? ` (${group.count} clips)` : " (clip)"
-					: group.count > 1
-						? ` (${group.count} entries)`
-						: ""
+			const suffix =
+				group.scope === "Hackatime"
+					? " (Hackatime)"
+					: group.scope === "clips"
+						? group.count > 1
+							? ` (${group.count} clips)`
+							: " (clip)"
+						: group.count > 1
+							? ` (${group.count} entries)`
+							: ""
 			return `${formatHours(group.seconds)} ${text}${suffix}`
 		})
 		.join(", ")

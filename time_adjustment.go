@@ -118,6 +118,7 @@ func (a *ireApp) handleTimelapseReview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clip := entry.Timelapses[index]
+
 	externalID := ""
 	if clip.ExternalID != nil {
 		externalID = *clip.ExternalID

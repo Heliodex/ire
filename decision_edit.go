@@ -169,6 +169,7 @@ func (a *ireApp) revertStageTwoState(ctx context.Context, final finalReviewRow) 
 	}
 
 	var heldHours int
+
 	err = a.store.QueryRow(ctx, `select coalesce(hours_approved_seconds, 0), coalesce(held_reason, '')
 		from review where id = ?`, final.SupersedesID).Scan(&heldHours, &heldReason)
 	if err != nil {
@@ -303,6 +304,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 
 	now := a.nowText()
 	reviewID := newID("rev")
+
 	stage := final.Stage
 	if stage < stageOne {
 		stage = ship.Stage
@@ -350,6 +352,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		}
 
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -466,6 +469,7 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 		}
 
 		outboxID = message.ID
+
 		statements = append(statements, statement)
 	}
 

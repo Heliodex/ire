@@ -67,15 +67,15 @@ func parseQueueSearch(raw string) queueSearch {
 		return query
 	}
 
-	for _, token := range strings.Fields(query.raw) {
-		separator := strings.Index(token, ":")
-		if separator == -1 {
+	for token := range strings.FieldsSeq(query.raw) {
+		key, value, ok := strings.Cut(token, ":")
+		if !ok {
 			query.text = append(query.text, strings.ToLower(token))
 			continue
 		}
 
-		key := strings.ToLower(token[:separator])
-		value := strings.TrimSpace(token[separator+1:])
+		key = strings.ToLower(key)
+		value = strings.TrimSpace(value)
 
 		switch key {
 		case "journals":
@@ -130,10 +130,10 @@ func parseQueueSearch(raw string) queueSearch {
 				query.text = append(query.text, strings.ToLower(token))
 			}
 		case "check":
-			if separator := strings.Index(value, "="); separator != -1 {
+			if key, status, ok := strings.Cut(value, "="); ok {
 				query.check = &queueCheckFilter{
-					key:    strings.ToLower(value[:separator]),
-					status: strings.ToLower(value[separator+1:]),
+					key:    strings.ToLower(key),
+					status: strings.ToLower(status),
 				}
 			} else {
 				query.text = append(query.text, strings.ToLower(token))
@@ -150,16 +150,19 @@ func normalizeQueueStatus(value string) string {
 	value = strings.ToLower(strings.TrimSpace(value))
 	value = strings.ReplaceAll(value, " ", "_")
 	value = strings.ReplaceAll(value, "-", "_")
+
 	return value
 }
 
 func parseQueueComparison(value string) *queueCompare {
 	op := "="
+
 	body := value
 	for _, prefix := range []string{">=", "<=", "!=", ">", "<", "="} {
 		if strings.HasPrefix(value, prefix) {
 			op = prefix
 			body = value[len(prefix):]
+
 			break
 		}
 	}
@@ -201,9 +204,11 @@ func parseQueueChecks(value string) *queueChecksFilter {
 	if count == "" {
 		count = "total"
 	}
+
 	if !queueCheckCounts[count] {
 		return nil
 	}
+
 	if count == "pass" && match[2] == "" && match[3] == "" {
 		return &queueChecksFilter{overallPass: true}
 	}
@@ -212,6 +217,7 @@ func parseQueueChecks(value string) *queueChecksFilter {
 	if op == "" {
 		op = "="
 	}
+
 	number, err := strconv.ParseInt(match[3], 10, 64)
 	if err != nil {
 		return nil
@@ -222,11 +228,13 @@ func parseQueueChecks(value string) *queueChecksFilter {
 
 func parseQueueDuration(value, fallback string) *queueCompare {
 	op := fallback
+
 	body := strings.ToLower(value)
 	for _, prefix := range []string{">=", "<=", "!=", ">", "<", "="} {
 		if strings.HasPrefix(body, prefix) {
 			op = prefix
 			body = body[len(prefix):]
+
 			break
 		}
 	}
@@ -237,21 +245,31 @@ func parseQueueDuration(value, fallback string) *queueCompare {
 	}
 
 	joined := ""
+
 	var total float64
+
 	previous := 99
+
+	var joinedSb242 strings.Builder
 	for _, match := range queueDurationPart.FindAllStringSubmatch(body, -1) {
-		joined += match[0]
+		joinedSb242.WriteString(match[0])
+
 		rank := queueDurationRank[match[2]]
 		if rank == 0 || rank >= previous {
 			return nil
 		}
+
 		previous = rank
+
 		amount, err := strconv.ParseFloat(match[1], 64)
 		if err != nil {
 			return nil
 		}
+
 		total += amount * float64(queueDurationUnits[match[2]])
 	}
+
+	joined += joinedSb242.String()
 
 	if joined != body {
 		return nil
@@ -268,6 +286,7 @@ func queueChecksExpr(count string) string {
 	field := func(name string) string {
 		return "coalesce(json_extract(s.check_summary, '$." + name + "'), 0)"
 	}
+
 	switch count {
 	case "error", "fail", "pass", "warn":
 		return field(count)
@@ -305,6 +324,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 		if op := queueAgeOp(q.age.op); op != "" {
 			seconds := q.age.value / 1000
 			query += " and coalesce(s.submitted_at, s.created_at) " + op + " datetime('now', ?)"
+
 			args = append(args, "-"+strconv.FormatInt(seconds, 10)+" seconds")
 		}
 	}
@@ -315,6 +335,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 			  and lower(c.check_key) = ? and lower(c.status) = ?
 			  and c.checked_at = (select max(c2.checked_at) from check_result c2
 				where c2.submission_id = c.submission_id and c2.version = c.version and c2.check_key = c.check_key))`
+
 		args = append(args, q.check.key, q.check.status)
 	}
 
@@ -337,6 +358,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 
 	if q.status != "" {
 		query += " and s.status = ?"
+
 		args = append(args, q.status)
 	}
 
@@ -347,6 +369,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 
 	if q.kind != "" {
 		query += " and lower(trim(coalesce(s.theme, ''))) = ?"
+
 		args = append(args, q.kind)
 	}
 
@@ -360,11 +383,17 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 		args = append(args, q.week.value)
 	}
 
+	var querySb363 strings.Builder
+
 	for _, term := range q.text {
 		like := "%" + escapeLike(strings.ToLower(term)) + "%"
-		query += " and (lower(s.title) like ? escape '\\' or lower(coalesce(s.maker_name, '')) like ? escape '\\' or lower(s.status) like ? escape '\\' or lower(replace(s.status, '_', ' ')) like ? escape '\\' or lower(coalesce(s.theme, '')) like ? escape '\\')"
+
+		querySb363.WriteString(" and (lower(s.title) like ? escape '\\' or lower(coalesce(s.maker_name, '')) like ? escape '\\' or lower(s.status) like ? escape '\\' or lower(replace(s.status, '_', ' ')) like ? escape '\\' or lower(coalesce(s.theme, '')) like ? escape '\\')")
+
 		args = append(args, like, like, like, like, like)
 	}
+
+	query += querySb363.String()
 
 	return query, args
 }
@@ -373,7 +402,6 @@ func escapeLike(value string) string {
 	value = strings.ReplaceAll(value, `\`, `\\`)
 	value = strings.ReplaceAll(value, `%`, `\%`)
 	value = strings.ReplaceAll(value, `_`, `\_`)
+
 	return value
 }
-
-

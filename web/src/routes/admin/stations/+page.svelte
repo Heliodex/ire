@@ -28,6 +28,7 @@ let draft = $state<Draft | undefined>(undefined)
 let originalKey = $state("")
 let loading = $state(true)
 let saving = $state(false)
+let confirmingDelete = $state(false)
 let error = $state("")
 let notice = $state("")
 
@@ -75,6 +76,7 @@ async function refresh(): Promise<void> {
 async function edit(key: string): Promise<void> {
 	error = ""
 	notice = ""
+	confirmingDelete = false
 
 	try {
 		const station = await fetchStation(key)
@@ -96,6 +98,7 @@ async function edit(key: string): Promise<void> {
 
 function create(): void {
 	originalKey = ""
+	confirmingDelete = false
 	draft = {
 		active: 1,
 		description: "",
@@ -163,8 +166,12 @@ async function save(): Promise<void> {
 }
 
 async function remove(key: string): Promise<void> {
-	if (!window.confirm(`Delete ${key} and its answers?`)) return
+	if (!confirmingDelete) {
+		confirmingDelete = true
+		return
+	}
 
+	confirmingDelete = false
 	saving = true
 	error = ""
 	notice = ""
@@ -328,9 +335,10 @@ async function remove(key: string): Promise<void> {
 							class="ui-button danger"
 							disabled={saving}
 							onclick={(): Promise<void> => remove(originalKey)}
+							title={confirmingDelete ? `Deletes ${originalKey} and its answers` : undefined}
 							type="button"
 						>
-							Delete station
+							{confirmingDelete ? "Confirm delete" : "Delete station"}
 						</button>
 					{/if}
 				</div>

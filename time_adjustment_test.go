@@ -86,6 +86,7 @@ func TestHackatimeCutSavesLedger(t *testing.T) {
 	}
 
 	restoredBody, _ := json.Marshal(contract.HackatimeReviewRequest{ApprovedSeconds: 3600, Version: 1})
+
 	restored := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/hackatime", restoredBody, reviewer, nil)
 	if restored.Code != http.StatusOK {
 		t.Fatalf("restore = %d: %s", restored.Code, restored.Body.String())
@@ -211,6 +212,7 @@ func TestTimelapseCutSavesLedger(t *testing.T) {
 	}
 
 	restoreBody, _ := json.Marshal(contract.TimelapseReviewRequest{ApprovedSeconds: covered, Version: 1})
+
 	restored := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/journal/"+entry.ID+"/timelapse/0", restoreBody, reviewer, nil)
 	if restored.Code != http.StatusOK {
 		t.Fatalf("restore = %d: %s", restored.Code, restored.Body.String())

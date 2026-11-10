@@ -107,9 +107,9 @@ function toggleEntry(id: string): void {
 									clipIndex={index}
 									{editable}
 									{entry}
+									onSaved={onEntrySaved}
 									{shipId}
 									{version}
-									onSaved={onEntrySaved}
 								/>
 							{/each}
 						</div>

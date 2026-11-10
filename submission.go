@@ -212,6 +212,7 @@ func journalTimelapses(entryID, raw string, adjustments []contract.TimeAdjustmen
 		}
 
 		source := clipSource(entryID, index, externalID)
+
 		approved := covered
 		if cut, ok := cuts[source]; ok {
 			approved = max(0, covered-cut)

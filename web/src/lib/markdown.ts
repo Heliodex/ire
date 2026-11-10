@@ -180,7 +180,13 @@ class MarkdownParser {
 		const quote = /^\s*>\s?(.*)$/.exec(raw)
 		if (quote) {
 			this.flush()
-			this.blocks.push({ items: [], kind: "quote", language: "", level: 0, text: inlineText(quote[1], this.imageBase) })
+			this.blocks.push({
+				items: [],
+				kind: "quote",
+				language: "",
+				level: 0,
+				text: inlineText(quote[1], this.imageBase),
+			})
 			return
 		}
 

@@ -9,9 +9,9 @@ interface Props {
 	clipIndex: number
 	editable: boolean
 	entry: Journal
+	onSaved(totalSeconds: number): void
 	shipId: string
 	version: number
-	onSaved(totalSeconds: number): void
 }
 
 let { clip, clipIndex, editable, entry, shipId, version, onSaved }: Props = $props()

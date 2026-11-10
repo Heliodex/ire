@@ -161,12 +161,7 @@ async function load(target: string): Promise<void> {
 			type="search"
 			value={query}
 		>
-		<select
-			aria-label="Sort this station queue"
-			class="ui-input"
-			onchange={refresh}
-			bind:value={sort}
-		>
+		<select aria-label="Sort this station queue" class="ui-input" onchange={refresh} bind:value={sort}>
 			{#each sortOptions as option (option.value)}
 				<option value={option.value}>{option.label}</option>
 			{/each}

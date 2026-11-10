@@ -13,12 +13,12 @@ import {
 	fetchMe,
 	heartbeat,
 	type Note,
-	type TimeAdjustment,
 	program,
 	releaseShip,
 	rerunChecks,
 	saveDraft,
 	sendShipBack,
+	type TimeAdjustment,
 } from "../../api"
 import {
 	amendDecision,
@@ -33,6 +33,7 @@ import { ignore } from "../../async"
 import { isBlocking, isWarning } from "../../checks"
 import { isActive, isReturnable, returnNote, selectedFindingIds, severityTone, statusLabel } from "../../findings"
 import { decisionLabel, formatHours, humanStatus, statusTone } from "../../format"
+import { githubRawBase } from "../../markdown"
 import {
 	hasPermission,
 	permissionNoteManage,
@@ -41,7 +42,6 @@ import {
 	programPermissions,
 } from "../../permissions"
 import { dropSignIn, session } from "../../session.svelte.js"
-import { githubRawBase } from "../../markdown"
 import {
 	draftValues,
 	type MainField,
@@ -51,13 +51,13 @@ import {
 	suggestTechnicalFeatures,
 } from "../../station-fields"
 import { type StationVerdict, upsertStationAnswer } from "../../stations"
+import Icon from "../Icon.svelte"
 import LoadingState from "../LoadingState.svelte"
 import BomTab from "./BomTab.svelte"
 import ChecksTab from "./ChecksTab.svelte"
 import EvidenceTab from "./EvidenceTab.svelte"
 import FindingsCard from "./FindingsCard.svelte"
 import HackatimeAdjustment from "./HackatimeAdjustment.svelte"
-import Icon from "../Icon.svelte"
 import HistoryTab from "./HistoryTab.svelte"
 import JournalList from "./JournalList.svelte"
 import Markdown from "./Markdown.svelte"
@@ -301,9 +301,7 @@ const timeSegments = $derived.by((): { label: string; tone: string; value: numbe
 })
 const commits = $derived((evidence?.commits ?? []).slice(0, 10))
 // hackatimeAdjustment is the ledger cut behind the approved Hackatime time, if any.
-const hackatimeAdjustment = $derived(
-	(bundle?.adjustments ?? []).find(item => item.source === "hackatime"),
-)
+const hackatimeAdjustment = $derived((bundle?.adjustments ?? []).find(item => item.source === "hackatime"))
 const findings = $derived((bundle?.findings ?? []).filter(finding => isActive(finding)))
 const hardwareFiles = $derived(
 	fileGroups
@@ -1013,7 +1011,9 @@ async function persistDraft(): Promise<void> {
 						{:else}
 							<div class="cover-empty">
 								<strong
-									>{submission?.thumbnailUrl ? "Project image unavailable" : "No project image"}</strong
+									>{submission?.thumbnailUrl
+										? "Project image unavailable"
+										: "No project image"}</strong
 								>
 								<span>
 									{submission?.thumbnailUrl
@@ -1108,9 +1108,9 @@ async function persistDraft(): Promise<void> {
 							adjustment={hackatimeAdjustment}
 							claimedSeconds={submission?.hoursHackatimeSeconds ?? 0}
 							{editable}
+							onSaved={hackatimeSaved}
 							shipId={bundle.submission.id}
 							version={bundle.submission.version}
-							onSaved={hackatimeSaved}
 						/>
 					{/if}
 				</section>
@@ -1140,7 +1140,9 @@ async function persistDraft(): Promise<void> {
 						<span class="card-title">Commits</span>
 						<span class="summary-side">
 							{#if submission?.repoUrl}
-								<a class="card-link" href={submission.repoUrl} rel="noreferrer" target="_blank">Repo ↗</a>
+								<a class="card-link" href={submission.repoUrl} rel="noreferrer" target="_blank"
+									>Repo ↗</a
+								>
 							{/if}
 							<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 						</span>
@@ -1365,8 +1367,8 @@ async function persistDraft(): Promise<void> {
 		<aside
 			aria-label={`${stationLabel} review panel`}
 			class="focus-rail"
-			class:sheet-open={railOpen}
 			role={railOpen ? "dialog" : undefined}
+			class:sheet-open={railOpen}
 		>
 			<div class="sheet-head">
 				<h2>{stationLabel}</h2>
@@ -1512,16 +1514,16 @@ async function persistDraft(): Promise<void> {
 											bind:value={amendHours}
 										>
 									</label>
-								{#if showTechnicalFeatures}
-									<label class="field">
-										<span class="field-head">Specific technical features</span>
-										<textarea
-											class="ui-input"
-											rows="3"
-											bind:value={amendTechnicalFeatures}
-										></textarea>
-									</label>
-								{/if}
+									{#if showTechnicalFeatures}
+										<label class="field">
+											<span class="field-head">Specific technical features</span>
+											<textarea
+												class="ui-input"
+												rows="3"
+												bind:value={amendTechnicalFeatures}
+											></textarea>
+										</label>
+									{/if}
 									<label class="field">
 										<span class="field-head">Deflation reason</span>
 										<textarea
@@ -1541,7 +1543,8 @@ async function persistDraft(): Promise<void> {
 								</label>
 								<label class="field">
 									<span class="field-head"
-										><span>Why change this decision
+										><span
+											>Why change this decision
 											<span aria-hidden="true" class="required" title="Required">*</span></span
 										><span class="muted">Required</span></span
 									>
@@ -1565,7 +1568,8 @@ async function persistDraft(): Promise<void> {
 							<div class="amend-form">
 								<label class="field">
 									<span class="field-head"
-										><span>Why revert this decision
+										><span
+											>Why revert this decision
 											<span aria-hidden="true" class="required" title="Required">*</span></span
 										><span class="muted">Required</span></span
 									>
@@ -2239,8 +2243,8 @@ async function persistDraft(): Promise<void> {
 		display: flex;
 		width: min(100%, 40rem);
 		max-height: 85dvh;
-		margin-inline: auto;
 		padding: var(--space-4) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+		margin-inline: auto;
 		overflow-y: auto;
 		overscroll-behavior-y: contain;
 		background: var(--bg);
