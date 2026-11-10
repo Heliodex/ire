@@ -5957,6 +5957,9 @@ type StationQueueResponse struct {
 
 	// Station corresponds to the JSON schema field "station".
 	Station StationDefinition `json:"station" yaml:"station" mapstructure:"station"`
+
+	// Total corresponds to the JSON schema field "total".
+	Total int `json:"total" yaml:"total" mapstructure:"total"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -5974,10 +5977,16 @@ func (j *StationQueueResponse) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["station"]; raw != nil && !ok {
 		return fmt.Errorf("field station in StationQueueResponse: required")
 	}
+	if _, ok := raw["total"]; raw != nil && !ok {
+		return fmt.Errorf("field total in StationQueueResponse: required")
+	}
 	type Plain StationQueueResponse
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
+	}
+	if 0 > plain.Total {
+		return fmt.Errorf("field %s: must be >= %v", "total", 0)
 	}
 	*j = StationQueueResponse(plain)
 	return nil

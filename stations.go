@@ -352,7 +352,14 @@ func (a *ireApp) handleStationQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.WriteJSON(w, http.StatusOK, contract.StationQueueResponse{Station: station, Items: items, HasMore: hasMore})
+	counts, err := a.stationCounts(r.Context(), person.ProgramID, stageOne)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	app.WriteJSON(w, http.StatusOK, contract.StationQueueResponse{Station: station, Items: items, HasMore: hasMore, Total: counts[station.Key]})
 }
 
 // stationQueueItems returns one page of ships whose current station is the requested one.

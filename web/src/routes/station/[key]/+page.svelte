@@ -73,7 +73,7 @@ async function load(target: string): Promise<void> {
 
 	{#if data}
 		<div class="stats ui-card">
-			<div><strong>{data.items.length}</strong><span>waiting</span></div>
+			<div><strong>{data.total}</strong><span>waiting</span></div>
 		</div>
 	{/if}
 </section>
@@ -114,7 +114,7 @@ async function load(target: string): Promise<void> {
 		{/each}
 	</div>
 	{#if data.hasMore}
-		<p class="capped">The list is capped; open the queue to see the rest.</p>
+		<p class="capped">Showing the first {data.items.length} of {data.total}; open the queue to see the rest.</p>
 	{/if}
 {/if}
 

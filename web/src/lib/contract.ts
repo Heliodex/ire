@@ -866,6 +866,7 @@ export const stationQueueResponseSchema = pipe(
 		hasMore: boolean(),
 		items: array(queueItemSchema),
 		station: stationDefinitionSchema,
+		total: nonNegative,
 	}),
 	title("StationQueueResponse"),
 )
