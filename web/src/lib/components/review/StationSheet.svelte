@@ -386,8 +386,12 @@ function onKeydown(event: KeyboardEvent): void {
 			</p>
 		{/if}
 
-		{#if selectedStation}
-			<div class="station-body">
+	{/if}
+</section>
+
+{#if selectedStation}
+	<section aria-label={`${selectedStation.label} questions`} class="ui-card padded station-sheet">
+		<div class="station-body">
 				<div class="station-head">
 					<h3>{selectedStation.label}</h3>
 					{#if selectedState}
@@ -656,9 +660,8 @@ function onKeydown(event: KeyboardEvent): void {
 					</ol>
 				{/if}
 			</div>
-		{/if}
-	{/if}
-</section>
+	</section>
+{/if}
 
 <style>
 .station-sheet {
@@ -778,8 +781,6 @@ function onKeydown(event: KeyboardEvent): void {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-2);
-	padding-top: var(--space-2);
-	border-top: 1px solid var(--border);
 }
 
 .station-head {
