@@ -1301,12 +1301,15 @@ async function persistDraft(): Promise<void> {
 				</details>
 
 				{#if bundle.priorReviews.length > 0 || bundle.reviews.length > 0 || bundle.events.length > 0}
-					<details class="ui-card padded history-card">
+					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">History</span>
-							<span class="muted">Prior reviews, decisions and events</span>
+							<span class="summary-side">
+								<span class="muted">Prior reviews, decisions and events</span>
+								<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
+							</span>
 						</summary>
-						<div class="history-body">
+						<div class="collapse-body">
 							<PriorReviews reviews={bundle.priorReviews} />
 							<HistoryTab reviews={bundle.reviews} />
 							<ReviewTimeline events={bundle.events} />
@@ -1314,12 +1317,15 @@ async function persistDraft(): Promise<void> {
 					</details>
 				{/if}
 
-				<details class="ui-card padded history-card">
+				<details class="ui-card padded collapse-card">
 					<summary>
 						<span class="card-title">Internal notes</span>
-						<span class="muted">{bundle.notes.length}</span>
+						<span class="summary-side">
+							<span class="muted">{bundle.notes.length}</span>
+							<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
+						</span>
 					</summary>
-					<div class="history-body">
+					<div class="collapse-body">
 						<NotesCard
 							canDelete={canDeleteNote}
 							notes={bundle.notes}
