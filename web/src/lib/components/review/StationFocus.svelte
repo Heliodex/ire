@@ -944,7 +944,7 @@ async function persistDraft(): Promise<void> {
 				<details class="ui-card padded collapse-card" open>
 					<summary>
 						<span class="card-title">Project image</span>
-						<Icon class="collapse-chevron" name="chevD" size={16} />
+						<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 					</summary>
 					<div class="collapse-body">
 						{#if submission?.thumbnailUrl && !coverFailed}
@@ -976,7 +976,7 @@ async function persistDraft(): Promise<void> {
 				<details class="ui-card padded collapse-card">
 					<summary>
 						<span class="card-title">What they built</span>
-						<Icon class="collapse-chevron" name="chevD" size={16} />
+						<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 					</summary>
 					<div class="collapse-body">
 						<p class="description">{submission?.description || "No description was sent."}</p>
@@ -1005,7 +1005,7 @@ async function persistDraft(): Promise<void> {
 					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">README</span>
-							<Icon class="collapse-chevron" name="chevD" size={16} />
+							<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 						</summary>
 						<div class="readme-body"><Markdown imageBase={readmeImageBase} text={readme} /></div>
 					</details>
@@ -1019,7 +1019,7 @@ async function persistDraft(): Promise<void> {
 				<details class="ui-card padded collapse-card">
 					<summary>
 						<span class="card-title">Repo checks</span>
-						<Icon class="collapse-chevron" name="chevD" size={16} />
+						<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 					</summary>
 					<div class="collapse-body">{@render checkRows(triageChecks)}</div>
 				</details>
@@ -1071,7 +1071,7 @@ async function persistDraft(): Promise<void> {
 								{#if readmeUrl}
 									<a class="card-link" href={readmeUrl} rel="noreferrer" target="_blank">README ↗</a>
 								{/if}
-								<Icon class="collapse-chevron" name="chevD" size={16} />
+								<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 							</span>
 						</summary>
 						<div class="readme-body scroll"><Markdown imageBase={readmeImageBase} text={readme} /></div>
@@ -1090,7 +1090,7 @@ async function persistDraft(): Promise<void> {
 							{#if submission?.repoUrl}
 								<a class="card-link" href={submission.repoUrl} rel="noreferrer" target="_blank">Repo ↗</a>
 							{/if}
-							<Icon class="collapse-chevron" name="chevD" size={16} />
+							<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 						</span>
 					</summary>
 					<div class="collapse-body">
@@ -1117,7 +1117,7 @@ async function persistDraft(): Promise<void> {
 						<span class="card-title">BOM lines</span>
 						<span class="summary-side">
 							<span class="muted">{bundle.bom.length}</span>
-							<Icon class="collapse-chevron" name="chevD" size={16} />
+							<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 						</span>
 					</summary>
 					<div class="collapse-body">
@@ -1210,7 +1210,7 @@ async function persistDraft(): Promise<void> {
 					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">README</span>
-							<Icon class="collapse-chevron" name="chevD" size={16} />
+							<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
 						</summary>
 						<div class="readme-body"><Markdown imageBase={readmeImageBase} text={readme} /></div>
 					</details>
@@ -1826,6 +1826,7 @@ async function persistDraft(): Promise<void> {
 }
 
 .collapse-card summary .collapse-chevron {
+	display: inline-flex;
 	flex: none;
 	color: var(--text-3);
 	transition: transform 0.15s;
