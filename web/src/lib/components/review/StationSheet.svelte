@@ -407,7 +407,8 @@ function onKeydown(event: KeyboardEvent): void {
 										<p class="prompt">
 											{question.prompt}
 											{#if question.required === 1}
-												<span class="required">Required</span>
+												<span aria-hidden="true" class="required" title="Required">*</span>
+												<span class="visually-hidden">Required</span>
 											{/if}
 										</p>
 										<span class="question-meta">
@@ -842,16 +843,10 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 .required {
-	padding: 0 5px;
-	margin-left: var(--space-1);
-	font-size: 0.6rem;
+	margin-left: 2px;
+	font-size: var(--text-sm);
 	font-weight: 700;
-	vertical-align: 1px;
-	color: var(--text-3);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	background: var(--surface-3);
-	border-radius: 99px;
+	color: var(--accent-red);
 }
 
 .evidence-field .ui-input {
