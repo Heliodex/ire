@@ -512,68 +512,75 @@ function onKeydown(event: KeyboardEvent): void {
 								{/if}
 
 								{#if answer?.answer === "fail"}
-									<div class="fail-row">
-										<p class="fail-hint">A failed answer needs a finding.</p>
-										{#if onCreateFinding !== undefined && editable}
-											<button
-												class="ui-button sm changes"
-												onclick={(): void => openFinding(selectedStation.key, question)}
-												type="button"
-											>
-												Record finding
-											</button>
-										{/if}
-									</div>
-									{#if findingKey === key}
-										<div class="finding-form">
-											<label class="finding-field">
-												<span>Summary</span>
-												<input
-													autocomplete="off"
-													class="ui-input"
-													maxlength="500"
-													bind:value={findingSummary}
-												>
-											</label>
-											<label class="finding-field">
-												<span>Maker action</span>
-												<input
-													class="ui-input"
-													maxlength="4000"
-													placeholder="What should the maker change?"
-													bind:value={findingAction}
-												>
-											</label>
-											<label class="finding-field">
-												<span>Severity</span>
-												<select class="ui-input" bind:value={findingSeverity}>
-													<option value="fixable">Fixable</option>
-													<option value="block">Block</option>
-												</select>
-											</label>
-											{#if findingError}
-												<p class="fail-hint">{findingError}</p>
-											{/if}
-											<div class="finding-actions">
-												<button
-													class="ui-button sm ok"
-													disabled={findingSaving || findingSummary.trim() === ""}
-													onclick={(): Promise<void> =>
-														saveFinding(selectedStation.key, question)}
-													type="button"
-												>
-													{findingSaving ? "Saving…" : "Add finding"}
-												</button>
-												<button
-													class="ui-button sm ghost"
-													onclick={(): void => {
-														findingKey = ""
-													}}
-													type="button"
-												>
-													Cancel
-												</button>
+									{#if onCreateFinding !== undefined && editable}
+										<details
+											class="finding-details"
+											ontoggle={(event): void => {
+												if ((event.currentTarget as HTMLDetailsElement).open)
+													openFinding(selectedStation.key, question)
+												else if (findingKey === key) findingKey = ""
+											}}
+											open={findingKey === key}
+										>
+											<summary class="fail-row">
+												<span class="fail-hint">A failed answer needs a finding.</span>
+												<span class="ui-button sm changes">Record finding</span>
+											</summary>
+											<div class="finding-form">
+												<label class="finding-field">
+													<span>Summary</span>
+													<input
+														autocomplete="off"
+														class="ui-input"
+														maxlength="500"
+														bind:value={findingSummary}
+													>
+												</label>
+												<label class="finding-field">
+													<span>Maker action</span>
+													<input
+														autocomplete="off"
+														class="ui-input"
+														maxlength="4000"
+														placeholder="What should the maker change?"
+														bind:value={findingAction}
+													>
+												</label>
+												<label class="finding-field">
+													<span>Severity</span>
+													<select class="ui-input" bind:value={findingSeverity}>
+														<option value="fixable">Fixable</option>
+														<option value="block">Block</option>
+													</select>
+												</label>
+												{#if findingError}
+													<p class="fail-hint">{findingError}</p>
+												{/if}
+												<div class="finding-actions">
+													<button
+														class="ui-button sm ok"
+														disabled={findingSaving || findingSummary.trim() === ""}
+														onclick={(): Promise<void> =>
+															saveFinding(selectedStation.key, question)}
+														type="button"
+													>
+														{findingSaving ? "Saving…" : "Add finding"}
+													</button>
+													<button
+														class="ui-button sm ghost"
+														onclick={(): void => {
+															findingKey = ""
+														}}
+														type="button"
+													>
+														Cancel
+													</button>
+												</div>
 											</div>
+										</details>
+									{:else}
+										<div class="fail-row">
+											<p class="fail-hint">A failed answer needs a finding.</p>
 										</div>
 									{/if}
 								{/if}
@@ -857,6 +864,21 @@ function onKeydown(event: KeyboardEvent): void {
 	gap: var(--space-2);
 	align-items: center;
 	justify-content: space-between;
+}
+
+.finding-details {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+}
+
+.finding-details > summary {
+	cursor: pointer;
+	list-style: none;
+}
+
+.finding-details > summary::-webkit-details-marker {
+	display: none;
 }
 
 .finding-form {
