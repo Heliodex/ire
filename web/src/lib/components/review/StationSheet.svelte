@@ -425,10 +425,10 @@ function onKeydown(event: KeyboardEvent): void {
 							>
 								<details
 									class="question-details"
-									open={answer === undefined
-										|| conflict
-										|| (answer.answer === "fail"
-											&& !questionHasFinding(selectedStation.key, question.prompt))}
+									open={conflict
+										|| (answer?.answer === "fail"
+											&& !questionHasFinding(selectedStation.key, question.prompt))
+										|| question.key === nextKey}
 								>
 									<summary class="question-head">
 										<p class="prompt">
