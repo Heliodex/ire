@@ -188,7 +188,7 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 			continue
 		}
 
-		var required, answered int
+		var required, answered, resolved int
 
 		failed := false
 
@@ -200,15 +200,19 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 			required++
 
 			value, ok := answerAt[station.Key+"\x00"+question.Key]
+			if ok {
+				answered++
+			}
+
 			switch {
 			case ok && (value == "pass" || value == "na"):
-				answered++
+				resolved++
 			case ok && value == "fail":
 				failed = true
 			}
 		}
 
-		done := required == answered && openAt[station.Key] == 0
+		done := required == resolved && openAt[station.Key] == 0
 		status := "todo"
 
 		switch {

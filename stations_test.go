@@ -185,6 +185,10 @@ func TestStationStatusReflectsEachSection(t *testing.T) {
 		if state.Key == "synthesis" && state.Status == "blocked" {
 			synthesisBlocked = true
 		}
+
+		if state.Key == "synthesis" && state.Answered != 3 {
+			t.Fatalf("synthesis answered = %d, want 3 including the fail", state.Answered)
+		}
 	}
 
 	if !synthesisBlocked {
