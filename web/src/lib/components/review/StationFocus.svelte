@@ -1253,42 +1253,52 @@ async function persistDraft(): Promise<void> {
 					</details>
 				{/if}
 
-				<section class="ui-card padded stack">
-					<div class="card-head">
-						<h2 class="card-title">Findings</h2>
-						<span class="muted">{returnable.length} open to resolve or return</span>
+				<details class="ui-card padded collapse-card" open>
+					<summary>
+						<span class="card-title">Findings</span>
+						<span class="summary-side">
+							<span class="muted">{returnable.length} open</span>
+							<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
+						</span>
+					</summary>
+					<div class="collapse-body">
+						<FindingsCard
+							editable={canEditFindings}
+							findings={bundle.findings}
+							onCreate={addFinding}
+							onUpdate={saveFinding}
+							version={bundle.submission.version}
+						/>
 					</div>
-					<FindingsCard
-						editable={canEditFindings}
-						findings={bundle.findings}
-						onCreate={addFinding}
-						onUpdate={saveFinding}
-						version={bundle.submission.version}
-					/>
-				</section>
+				</details>
 
-				<section class="ui-card padded stack">
-					<div class="card-head">
-						<h2 class="card-title">Checks</h2>
+				<details class="ui-card padded collapse-card">
+					<summary>
+						<span class="card-title">Checks</span>
+						<span class="collapse-chevron"><Icon name="chevD" size={16} /></span>
+					</summary>
+					<div class="collapse-body">
 						{#if canSecondPass}
-							<button
-								class="ui-button ghost sm"
-								disabled={rerunning}
-								onclick={(): Promise<void> => rerunRepositoryChecks()}
-								type="button"
-							>
-								{rerunning ? "Queueing…" : "Rerun checks"}
-							</button>
+							<div class="field-actions">
+								<button
+									class="ui-button ghost sm"
+									disabled={rerunning}
+									onclick={(): Promise<void> => rerunRepositoryChecks()}
+									type="button"
+								>
+									{rerunning ? "Queueing…" : "Rerun checks"}
+								</button>
+							</div>
 						{/if}
+						<ChecksTab
+							{acknowledgements}
+							checks={bundle.checks}
+							collapsed={checksCollapsed}
+							onAcknowledgeAll={acknowledgeAll}
+							onToggle={toggleAck}
+						/>
 					</div>
-					<ChecksTab
-						{acknowledgements}
-						checks={bundle.checks}
-						collapsed={checksCollapsed}
-						onAcknowledgeAll={acknowledgeAll}
-						onToggle={toggleAck}
-					/>
-				</section>
+				</details>
 
 				{#if bundle.priorReviews.length > 0 || bundle.reviews.length > 0 || bundle.events.length > 0}
 					<details class="ui-card padded history-card">
