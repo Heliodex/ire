@@ -5,6 +5,10 @@
 			"type": "integer",
 			"minimum": 0
 		},
+		"deflationReason": {
+			"type": "string",
+			"maxLength": 4000
+		},
 		"reviewerNote": {
 			"type": "string",
 			"maxLength": 4000

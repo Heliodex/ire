@@ -48,7 +48,42 @@ func newTestApp(t *testing.T) *ireApp {
 		t.Fatal(err)
 	}
 
+	relaxReviewJustification(t, application)
+
 	return application
+}
+
+// relaxReviewJustification keeps the older decision tests focused on their own policy. The review screen and the dedicated justification tests exercise the production defaults.
+func relaxReviewJustification(t *testing.T, application *ireApp) {
+	t.Helper()
+	setJustificationPolicy(t, application, false, false)
+}
+
+// setJustificationPolicy toggles the two approval requirements for a test.
+func setJustificationPolicy(t *testing.T, application *ireApp, technical, deflation bool) {
+	t.Helper()
+
+	var value string
+	if err := application.store.QueryRow(context.Background(), `select value from program_setting where program_id = ? and key = 'review_policy'`, programID).Scan(&value); err != nil {
+		t.Fatal(err)
+	}
+
+	var policy reviewPolicy
+	if err := json.Unmarshal([]byte(value), &policy); err != nil {
+		t.Fatal(err)
+	}
+
+	policy.RequireTechnicalFeatures = technical
+	policy.RequireDeflationReason = deflation
+
+	encoded, err := json.Marshal(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := application.store.Exec(context.Background(), `update program_setting set value = ? where program_id = ? and key = 'review_policy'`, string(encoded), programID); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // do sends one request to the app and returns the recorder.

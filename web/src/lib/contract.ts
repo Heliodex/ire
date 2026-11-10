@@ -550,6 +550,7 @@ export const journalSchema = pipe(
 		at: timestamp,
 		clipCount: nonNegative,
 		coveredSeconds: nonNegative,
+		deflationReason: optionalString,
 		id: pipe(string(), minLength(1)),
 		markdown: optionalString,
 		media: array(journalMediaSchema),
@@ -579,6 +580,7 @@ export const reviewSchema = pipe(
 		acknowledgements: array(string()),
 		createdAt: timestamp,
 		decision: pipe(string(), minLength(1)),
+		deflationReason: optionalString,
 		held: nonNegative,
 		heldReason: optionalString,
 		hoursApprovedSeconds: optional(pipe(number(), integer())),
@@ -590,6 +592,7 @@ export const reviewSchema = pipe(
 		reviewerEmail: pipe(string(), minLength(1)),
 		reviewerName: optionalString,
 		stage: nonNegative,
+		technicalFeatures: optionalString,
 	}),
 	title("Review"),
 )
@@ -623,6 +626,8 @@ export const reviewPolicySchema = pipe(
 		holdOnWarn: pipe(number(), integer(), minValue(0), maxValue(1)),
 		holdTiers: array(pipe(number(), integer())),
 		noteRequiredForChanges: pipe(number(), integer(), minValue(0), maxValue(1)),
+		requireDeflationReason: pipe(number(), integer(), minValue(0), maxValue(1)),
+		requireTechnicalFeatures: pipe(number(), integer(), minValue(0), maxValue(1)),
 	}),
 	title("ReviewPolicy"),
 )
@@ -793,11 +798,13 @@ export const decisionRequestSchema = pipe(
 	object({
 		acknowledgements: array(string()),
 		decision: decisionValues,
+		deflationReason: optional(pipe(string(), maxLength(maxNote))),
 		hoursApprovedSeconds: optional(pipe(number(), integer())),
 		idempotencyKey: pipe(string(), minLength(1), maxLength(120)),
 		internalNote: pipe(string(), maxLength(maxNote)),
 		noteToMaker: pipe(string(), maxLength(maxNote)),
 		overrideReason: optional(pipe(string(), maxLength(maxNote))),
+		technicalFeatures: optional(pipe(string(), maxLength(maxNote))),
 		version: nonNegative,
 	}),
 	title("DecisionRequest"),
@@ -841,11 +848,13 @@ export const amendDecisionRequestSchema = pipe(
 	object({
 		acknowledgements: array(string()),
 		decision: decisionValues,
+		deflationReason: optional(pipe(string(), maxLength(maxNote))),
 		hoursApprovedSeconds: optional(pipe(number(), integer())),
 		idempotencyKey: pipe(string(), minLength(1), maxLength(120)),
 		internalNote: pipe(string(), maxLength(maxNote)),
 		noteToMaker: pipe(string(), maxLength(maxNote)),
 		reason: pipe(string(), minLength(1), maxLength(maxNote), nonBlank),
+		technicalFeatures: optional(pipe(string(), maxLength(maxNote))),
 		version: nonNegative,
 	}),
 	title("AmendDecisionRequest"),
@@ -854,6 +863,7 @@ export const amendDecisionRequestSchema = pipe(
 export const journalReviewRequestSchema = pipe(
 	object({
 		approvedSeconds: nonNegative,
+		deflationReason: optional(pipe(string(), maxLength(maxNote))),
 		reviewerNote: pipe(string(), maxLength(maxNote)),
 		version: nonNegative,
 	}),

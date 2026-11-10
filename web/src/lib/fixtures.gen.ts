@@ -615,7 +615,9 @@ const reviewBundleFixture: InferOutput<typeof reviewBundleSchema> = {
 		"holdTiers": [
 			0
 		],
-		"noteRequiredForChanges": 0
+		"noteRequiredForChanges": 0,
+		"requireDeflationReason": 0,
+		"requireTechnicalFeatures": 0
 	},
 	"priorReviews": [
 		{
@@ -708,7 +710,6 @@ const reviewBundleFixture: InferOutput<typeof reviewBundleSchema> = {
 		"hoursJournalSeconds": 0,
 		"id": "id",
 		"ingestedAt": "2026-01-01T00:00:00Z",
-		"submittedAt": "2026-01-01T00:00:00Z",
 		"makerEmail": "test@example.com",
 		"makerName": "makerName",
 		"makerSlackId": "makerSlackId",
@@ -960,7 +961,6 @@ const searchResponseFixture: InferOutput<typeof searchResponseSchema> = {
 			"hoursJournalSeconds": 0,
 			"id": "id",
 			"ingestedAt": "2026-01-01T00:00:00Z",
-			"submittedAt": "2026-01-01T00:00:00Z",
 			"makerName": "makerName",
 			"stage": 0,
 			"status": "status",

@@ -14,6 +14,9 @@ type AmendDecisionRequest struct {
 	// Decision corresponds to the JSON schema field "decision".
 	Decision string `json:"decision" yaml:"decision" mapstructure:"decision"`
 
+	// DeflationReason corresponds to the JSON schema field "deflationReason".
+	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
+
 	// HoursApprovedSeconds corresponds to the JSON schema field
 	// "hoursApprovedSeconds".
 	HoursApprovedSeconds *int `json:"hoursApprovedSeconds,omitempty,omitzero" yaml:"hoursApprovedSeconds,omitempty" mapstructure:"hoursApprovedSeconds,omitempty"`
@@ -29,6 +32,9 @@ type AmendDecisionRequest struct {
 
 	// Reason corresponds to the JSON schema field "reason".
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
+
+	// TechnicalFeatures corresponds to the JSON schema field "technicalFeatures".
+	TechnicalFeatures *string `json:"technicalFeatures,omitempty,omitzero" yaml:"technicalFeatures,omitempty" mapstructure:"technicalFeatures,omitempty"`
 
 	// Version corresponds to the JSON schema field "version".
 	Version int `json:"version" yaml:"version" mapstructure:"version"`
@@ -69,6 +75,9 @@ func (j *AmendDecisionRequest) UnmarshalJSON(value []byte) error {
 	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
 	}
+	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
+	}
 	if utf8.RuneCountInString(string(plain.IdempotencyKey)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "idempotencyKey", 1)
 	}
@@ -89,6 +98,9 @@ func (j *AmendDecisionRequest) UnmarshalJSON(value []byte) error {
 	}
 	if utf8.RuneCountInString(string(plain.Reason)) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "reason", 4000)
+	}
+	if plain.TechnicalFeatures != nil && utf8.RuneCountInString(string(*plain.TechnicalFeatures)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "technicalFeatures", 4000)
 	}
 	if 0 > plain.Version {
 		return fmt.Errorf("field %s: must be >= %v", "version", 0)
@@ -695,6 +707,9 @@ type DecisionRequest struct {
 	// Decision corresponds to the JSON schema field "decision".
 	Decision string `json:"decision" yaml:"decision" mapstructure:"decision"`
 
+	// DeflationReason corresponds to the JSON schema field "deflationReason".
+	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
+
 	// HoursApprovedSeconds corresponds to the JSON schema field
 	// "hoursApprovedSeconds".
 	HoursApprovedSeconds *int `json:"hoursApprovedSeconds,omitempty,omitzero" yaml:"hoursApprovedSeconds,omitempty" mapstructure:"hoursApprovedSeconds,omitempty"`
@@ -710,6 +725,9 @@ type DecisionRequest struct {
 
 	// OverrideReason corresponds to the JSON schema field "overrideReason".
 	OverrideReason *string `json:"overrideReason,omitempty,omitzero" yaml:"overrideReason,omitempty" mapstructure:"overrideReason,omitempty"`
+
+	// TechnicalFeatures corresponds to the JSON schema field "technicalFeatures".
+	TechnicalFeatures *string `json:"technicalFeatures,omitempty,omitzero" yaml:"technicalFeatures,omitempty" mapstructure:"technicalFeatures,omitempty"`
 
 	// Version corresponds to the JSON schema field "version".
 	Version int `json:"version" yaml:"version" mapstructure:"version"`
@@ -747,6 +765,9 @@ func (j *DecisionRequest) UnmarshalJSON(value []byte) error {
 	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
 	}
+	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
+	}
 	if utf8.RuneCountInString(string(plain.IdempotencyKey)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "idempotencyKey", 1)
 	}
@@ -761,6 +782,9 @@ func (j *DecisionRequest) UnmarshalJSON(value []byte) error {
 	}
 	if plain.OverrideReason != nil && utf8.RuneCountInString(string(*plain.OverrideReason)) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "overrideReason", 4000)
+	}
+	if plain.TechnicalFeatures != nil && utf8.RuneCountInString(string(*plain.TechnicalFeatures)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "technicalFeatures", 4000)
 	}
 	if 0 > plain.Version {
 		return fmt.Errorf("field %s: must be >= %v", "version", 0)
@@ -2007,6 +2031,9 @@ type JournalEntry struct {
 	// CoveredSeconds corresponds to the JSON schema field "coveredSeconds".
 	CoveredSeconds int `json:"coveredSeconds" yaml:"coveredSeconds" mapstructure:"coveredSeconds"`
 
+	// DeflationReason corresponds to the JSON schema field "deflationReason".
+	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
+
 	// ID corresponds to the JSON schema field "id".
 	ID string `json:"id" yaml:"id" mapstructure:"id"`
 
@@ -2119,6 +2146,9 @@ type JournalReviewRequest struct {
 	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
 	ApprovedSeconds int `json:"approvedSeconds" yaml:"approvedSeconds" mapstructure:"approvedSeconds"`
 
+	// DeflationReason corresponds to the JSON schema field "deflationReason".
+	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
+
 	// ReviewerNote corresponds to the JSON schema field "reviewerNote".
 	ReviewerNote string `json:"reviewerNote" yaml:"reviewerNote" mapstructure:"reviewerNote"`
 
@@ -2148,6 +2178,9 @@ func (j *JournalReviewRequest) UnmarshalJSON(value []byte) error {
 	}
 	if 0 > plain.ApprovedSeconds {
 		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
+	}
+	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
 	}
 	if utf8.RuneCountInString(string(plain.ReviewerNote)) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "reviewerNote", 4000)
@@ -3991,6 +4024,9 @@ type Review struct {
 	// Decision corresponds to the JSON schema field "decision".
 	Decision string `json:"decision" yaml:"decision" mapstructure:"decision"`
 
+	// DeflationReason corresponds to the JSON schema field "deflationReason".
+	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
+
 	// Held corresponds to the JSON schema field "held".
 	Held int `json:"held" yaml:"held" mapstructure:"held"`
 
@@ -4024,6 +4060,9 @@ type Review struct {
 
 	// Stage corresponds to the JSON schema field "stage".
 	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+
+	// TechnicalFeatures corresponds to the JSON schema field "technicalFeatures".
+	TechnicalFeatures *string `json:"technicalFeatures,omitempty,omitzero" yaml:"technicalFeatures,omitempty" mapstructure:"technicalFeatures,omitempty"`
 }
 
 type ReviewBundle struct {
@@ -4396,6 +4435,14 @@ type ReviewPolicy struct {
 	// NoteRequiredForChanges corresponds to the JSON schema field
 	// "noteRequiredForChanges".
 	NoteRequiredForChanges int `json:"noteRequiredForChanges" yaml:"noteRequiredForChanges" mapstructure:"noteRequiredForChanges"`
+
+	// RequireDeflationReason corresponds to the JSON schema field
+	// "requireDeflationReason".
+	RequireDeflationReason int `json:"requireDeflationReason" yaml:"requireDeflationReason" mapstructure:"requireDeflationReason"`
+
+	// RequireTechnicalFeatures corresponds to the JSON schema field
+	// "requireTechnicalFeatures".
+	RequireTechnicalFeatures int `json:"requireTechnicalFeatures" yaml:"requireTechnicalFeatures" mapstructure:"requireTechnicalFeatures"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -4419,6 +4466,12 @@ func (j *ReviewPolicy) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["noteRequiredForChanges"]; raw != nil && !ok {
 		return fmt.Errorf("field noteRequiredForChanges in ReviewPolicy: required")
 	}
+	if _, ok := raw["requireDeflationReason"]; raw != nil && !ok {
+		return fmt.Errorf("field requireDeflationReason in ReviewPolicy: required")
+	}
+	if _, ok := raw["requireTechnicalFeatures"]; raw != nil && !ok {
+		return fmt.Errorf("field requireTechnicalFeatures in ReviewPolicy: required")
+	}
 	type Plain ReviewPolicy
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
@@ -4441,6 +4494,18 @@ func (j *ReviewPolicy) UnmarshalJSON(value []byte) error {
 	}
 	if 0 > plain.NoteRequiredForChanges {
 		return fmt.Errorf("field %s: must be >= %v", "noteRequiredForChanges", 0)
+	}
+	if 1 < plain.RequireDeflationReason {
+		return fmt.Errorf("field %s: must be <= %v", "requireDeflationReason", 1)
+	}
+	if 0 > plain.RequireDeflationReason {
+		return fmt.Errorf("field %s: must be >= %v", "requireDeflationReason", 0)
+	}
+	if 1 < plain.RequireTechnicalFeatures {
+		return fmt.Errorf("field %s: must be <= %v", "requireTechnicalFeatures", 1)
+	}
+	if 0 > plain.RequireTechnicalFeatures {
+		return fmt.Errorf("field %s: must be >= %v", "requireTechnicalFeatures", 0)
 	}
 	*j = ReviewPolicy(plain)
 	return nil

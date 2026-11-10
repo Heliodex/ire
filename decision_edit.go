@@ -20,6 +20,8 @@ type finalReviewRow struct {
 	Decision                                    string
 	Hours                                       int
 	NoteToMaker                                 string
+	TechnicalFeatures                           string
+	DeflationReason                             string
 	SupersedesID                                string
 	HeldReason                                  string
 }
@@ -30,11 +32,13 @@ func (a *ireApp) loadFinalReview(ctx context.Context, submissionID string) (fina
 
 	err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), reviewer_email, coalesce(reviewer_name, ''),
 			stage, decision, coalesce(hours_approved_seconds, 0), note_to_maker,
+			coalesce(technical_features, ''), coalesce(deflation_reason, ''),
 			coalesce(supersedes_review_id, ''), coalesce(held_reason, '')
 		from review where submission_id = ? and is_final = 1 and invalidated_at is null
 		order by created_at desc limit 1`, submissionID).
 		Scan(&row.ID, &row.ReviewerID, &row.ReviewerEmail, &row.ReviewerName,
 			&row.Stage, &row.Decision, &row.Hours, &row.NoteToMaker,
+			&row.TechnicalFeatures, &row.DeflationReason,
 			&row.SupersedesID, &row.HeldReason)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
@@ -277,6 +281,21 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	technicalFeatures := strings.TrimSpace(stringValue(request.TechnicalFeatures))
+	if technicalFeatures == "" {
+		technicalFeatures = final.TechnicalFeatures
+	}
+
+	deflationReason := strings.TrimSpace(stringValue(request.DeflationReason))
+	if deflationReason == "" {
+		deflationReason = final.DeflationReason
+	}
+
+	if problem := justificationProblem(request.Decision, hours, capturedSeconds(ship), technicalFeatures, deflationReason, note, a.policyFor(r.Context(), ship.ProgramID)); problem != nil {
+		problem.write(w)
+		return
+	}
+
 	now := a.nowText()
 	reviewID := newID("rev")
 	stage := final.Stage
@@ -287,16 +306,17 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 	decisionReq := contract.DecisionRequest{
 		Acknowledgements:     request.Acknowledgements,
 		Decision:             request.Decision,
+		DeflationReason:      &deflationReason,
 		HoursApprovedSeconds: request.HoursApprovedSeconds,
 		IdempotencyKey:       request.IdempotencyKey,
 		InternalNote:         request.InternalNote,
 		NoteToMaker:          request.NoteToMaker,
 		OverrideReason:       &reason,
+		TechnicalFeatures:    &technicalFeatures,
 		Version:              request.Version,
 	}
-	_ = decisionReq
 
-	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, decisionReq, hours, note, reason, stage, now)
+	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, decisionReq, hours, note, technicalFeatures, deflationReason, reason, stage, now)
 	if err != nil {
 		writeStorage(w, err)
 		return
@@ -306,7 +326,8 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 	record := decisionRecord{
 		ship: ship, person: person, request: decisionReq,
 		reviewID: reviewID, status: statusDecided, stage: stage, submissionStage: ship.Stage,
-		hours: hours, note: note, reason: "", overrideReason: reason, supersedes: final.ID,
+		hours: hours, note: note, technicalFeatures: technicalFeatures, deflationReason: deflationReason,
+		reason: "", overrideReason: reason, supersedes: final.ID,
 		held: false, secondPass: secondPass, event: event, payload: payloadJSON, now: now,
 	}
 
@@ -378,12 +399,12 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 				where id = ? and invalidated_at is null`,
 			Args: []any{now, person.ID, record.overrideReason, finalID}},
 		{SQL: `insert into review (id, submission_id, version, stage, reviewer_id, reviewer_email, reviewer_name, reviewer_role,
-				decision, note_to_maker, internal_note, hours_approved_seconds, acknowledgements, policy_version, held, held_reason,
-				supersedes_review_id, is_final, idempotency_key, created_at)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				decision, note_to_maker, internal_note, technical_features, deflation_reason, hours_approved_seconds,
+				acknowledgements, policy_version, held, held_reason, supersedes_review_id, is_final, idempotency_key, created_at)
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{record.reviewID, record.ship.ID, record.ship.Version, record.stage, record.person.ID, record.person.Email, record.person.Name, record.person.Role,
-				record.request.Decision, record.note, strings.TrimSpace(record.request.InternalNote), record.hours, marshalStrings(record.request.Acknowledgements),
-				a.policyVersion(ctx, record.ship.ProgramID), 0, nil,
+				record.request.Decision, record.note, strings.TrimSpace(record.request.InternalNote), record.technicalFeatures, record.deflationReason, record.hours,
+				marshalStrings(record.request.Acknowledgements), a.policyVersion(ctx, record.ship.ProgramID), 0, nil,
 				nullString(record.supersedes), 1, record.request.IdempotencyKey, record.now}},
 		{SQL: `update submission set status = ?, stage = ?, hours_approved_seconds = ?, held_reason = null,
 				decided_at = ?, updated_at = ? where id = ?`,

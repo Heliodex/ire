@@ -98,11 +98,15 @@ function item(id: string, claimedBy?: string): QueueItem {
 		hoursJournalSeconds: 0,
 		id,
 		ingestedAt: "2026-01-01T00:00:00Z",
+		journalCount: 0,
+		journalImageCount: 0,
+		journalTextLength: 0,
 		makerEmail: "maker@example.com",
 		makerName: "Maker",
 		priority: 0,
 		stage: 1,
 		status: "ready",
+		submittedAt: "2026-01-01T00:00:00Z",
 		title: id,
 		version: 1,
 	}
@@ -111,7 +115,18 @@ function item(id: string, claimedBy?: string): QueueItem {
 // stubQueue answers the queue endpoint with the given items and records every request URL.
 function stubQueue(items: QueueItem[], seen: string[], status = 200): void {
 	const queue = {
-		counts: { checking: 0, claimed: 0, fast: 0, mine: 0, needsAttention: 0, ready: 0, stage2Hold: 0 },
+		counts: {
+			checking: 0,
+			claimed: 0,
+			easy: 0,
+			fast: 0,
+			hard: 0,
+			medium: 0,
+			mine: 0,
+			needsAttention: 0,
+			ready: 0,
+			stage2Hold: 0,
+		},
 		hasMore: false,
 		items,
 	}

@@ -225,6 +225,7 @@ func (a *ireApp) loadBom(ctx context.Context, submissionID string) ([]contract.B
 // loadReviews returns every review for a ship, newest first.
 func (a *ireApp) loadReviews(ctx context.Context, submissionID string) ([]contract.Review, error) {
 	rows, err := a.store.Query(ctx, `select review.id, review.stage, review.decision, review.note_to_maker, coalesce(review.internal_note, ''),
+			coalesce(review.technical_features, ''), coalesce(review.deflation_reason, ''),
 			coalesce(review.hours_approved_seconds, 0), review.reviewer_email, coalesce(review.reviewer_name, ''), review.held,
 			coalesce(review.held_reason, ''), coalesce(review_override.reason, ''), coalesce(review.acknowledgements, ''),
 			coalesce(review.invalidated_at, ''), review.created_at
@@ -240,18 +241,21 @@ func (a *ireApp) loadReviews(ctx context.Context, submissionID string) ([]contra
 
 	for rows.Next() {
 		var (
-			item                                 contract.Review
-			internalNote, reviewerName           string
-			heldReason, overrideReason, acksJSON string
-			invalidatedAt                        string
-			hours                                int
+			item                                               contract.Review
+			internalNote, technicalFeatures, deflationReason   string
+			reviewerName, heldReason, overrideReason, acksJSON string
+			invalidatedAt                                      string
+			hours                                              int
 		)
-		if err := rows.Scan(&item.ID, &item.Stage, &item.Decision, &item.NoteToMaker, &internalNote, &hours,
+		if err := rows.Scan(&item.ID, &item.Stage, &item.Decision, &item.NoteToMaker, &internalNote,
+			&technicalFeatures, &deflationReason, &hours,
 			&item.ReviewerEmail, &reviewerName, &item.Held, &heldReason, &overrideReason, &acksJSON, &invalidatedAt, &item.CreatedAt); err != nil {
 			return nil, err
 		}
 
 		item.InternalNote = stringPtr(internalNote)
+		item.TechnicalFeatures = optionalText(technicalFeatures)
+		item.DeflationReason = optionalText(deflationReason)
 
 		item.ReviewerName = stringPtr(reviewerName)
 		item.HeldReason = optionalText(heldReason)
@@ -356,21 +360,25 @@ func (a *ireApp) policyFor(ctx context.Context, programID string) reviewPolicy {
 
 // reviewPolicy is the stage 1 policy the prototype enforces. Stage 2 fraud is always out of scope for stage 1.
 type reviewPolicy struct {
-	HoldOnWarn             bool  `json:"holdOnWarn"`
-	HoldMinApprovedSeconds int   `json:"holdMinApprovedSeconds"`
-	HoldTiers              []int `json:"holdTiers"`
-	NoteRequiredForChanges bool  `json:"noteRequiredForChanges"`
-	FraudMinStage          int   `json:"fraudMinStage"`
+	HoldOnWarn               bool  `json:"holdOnWarn"`
+	HoldMinApprovedSeconds   int   `json:"holdMinApprovedSeconds"`
+	HoldTiers                []int `json:"holdTiers"`
+	NoteRequiredForChanges   bool  `json:"noteRequiredForChanges"`
+	FraudMinStage            int   `json:"fraudMinStage"`
+	RequireTechnicalFeatures bool  `json:"requireTechnicalFeatures"`
+	RequireDeflationReason   bool  `json:"requireDeflationReason"`
 }
 
 // defaultPolicy is the seeded policy when the setting is missing.
 func defaultPolicy() reviewPolicy {
 	return reviewPolicy{
-		HoldOnWarn:             true,
-		HoldMinApprovedSeconds: 0,
-		HoldTiers:              []int{2, 3},
-		NoteRequiredForChanges: true,
-		FraudMinStage:          2,
+		HoldOnWarn:               true,
+		HoldMinApprovedSeconds:   0,
+		HoldTiers:                []int{2, 3},
+		NoteRequiredForChanges:   true,
+		FraudMinStage:            2,
+		RequireTechnicalFeatures: true,
+		RequireDeflationReason:   true,
 	}
 }
 
@@ -380,11 +388,13 @@ func contractPolicy(policy reviewPolicy) contract.ReviewPolicy {
 	copy(tiers, policy.HoldTiers)
 
 	return contract.ReviewPolicy{
-		HoldOnWarn:             boolInt(policy.HoldOnWarn),
-		HoldMinApprovedSeconds: policy.HoldMinApprovedSeconds,
-		HoldTiers:              tiers,
-		NoteRequiredForChanges: boolInt(policy.NoteRequiredForChanges),
-		FraudMinStage:          policy.FraudMinStage,
+		HoldOnWarn:               boolInt(policy.HoldOnWarn),
+		HoldMinApprovedSeconds:   policy.HoldMinApprovedSeconds,
+		HoldTiers:                tiers,
+		NoteRequiredForChanges:   boolInt(policy.NoteRequiredForChanges),
+		FraudMinStage:            policy.FraudMinStage,
+		RequireDeflationReason:   boolInt(policy.RequireDeflationReason),
+		RequireTechnicalFeatures: boolInt(policy.RequireTechnicalFeatures),
 	}
 }
 

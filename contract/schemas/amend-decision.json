@@ -11,6 +11,10 @@
 			"type": "string",
 			"pattern": "^(approved|changes|rejected)$"
 		},
+		"deflationReason": {
+			"type": "string",
+			"maxLength": 4000
+		},
 		"hoursApprovedSeconds": {
 			"type": "integer"
 		},
@@ -32,6 +36,10 @@
 			"minLength": 1,
 			"maxLength": 4000,
 			"pattern": "\\S"
+		},
+		"technicalFeatures": {
+			"type": "string",
+			"maxLength": 4000
 		},
 		"version": {
 			"type": "integer",

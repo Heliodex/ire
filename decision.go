@@ -53,6 +53,8 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	note := strings.TrimSpace(request.NoteToMaker)
+	technicalFeatures := strings.TrimSpace(stringValue(request.TechnicalFeatures))
+	deflationReason := strings.TrimSpace(stringValue(request.DeflationReason))
 	policy := a.policyFor(r.Context(), ship.ProgramID)
 
 	if problem := noteProblem(request, note, policy); problem != nil {
@@ -80,10 +82,23 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		}
 
 		note, supersedes, heldDecision, heldHours = base.note, base.supersedes, base.heldDecision, base.heldHours
+
+		if technicalFeatures == "" {
+			technicalFeatures = base.technicalFeatures
+		}
+
+		if deflationReason == "" {
+			deflationReason = base.deflationReason
+		}
 	}
 
 	hours, overrideReason, problem := resolveHours(request, hours, secondPass, heldDecision, heldHours)
 	if problem != nil {
+		problem.write(w)
+		return
+	}
+
+	if problem := justificationProblem(request.Decision, hours, capturedSeconds(ship), technicalFeatures, deflationReason, note, policy); problem != nil {
 		problem.write(w)
 		return
 	}
@@ -94,7 +109,7 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	reviewID := newID("rev")
 	status, stage, submissionStage := decisionState(ship, held)
 
-	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, request, hours, note, overrideReason, stage, now)
+	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, request, hours, note, technicalFeatures, deflationReason, overrideReason, stage, now)
 	if err != nil {
 		writeStorage(w, err)
 
@@ -105,7 +120,8 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	record := decisionRecord{
 		ship: ship, person: person, request: request,
 		reviewID: reviewID, status: status, stage: stage, submissionStage: submissionStage,
-		hours: hours, note: note, reason: reason, overrideReason: overrideReason, supersedes: supersedes,
+		hours: hours, note: note, technicalFeatures: technicalFeatures, deflationReason: deflationReason,
+		reason: reason, overrideReason: overrideReason, supersedes: supersedes,
 		held: held, secondPass: secondPass, event: event, payload: payloadJSON, now: now,
 	}
 
@@ -157,7 +173,8 @@ type decisionRecord struct {
 	request                                  contract.DecisionRequest
 	reviewID, status                         string
 	stage, submissionStage, hours            int
-	note, reason, overrideReason, supersedes string
+	note, technicalFeatures, deflationReason string
+	reason, overrideReason, supersedes       string
 	held, secondPass                         bool
 	event                                    string
 	payload                                  []byte
@@ -168,12 +185,12 @@ type decisionRecord struct {
 func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) ([]storage.TransactionStatement, string, *decisionProblem) {
 	statements := []storage.TransactionStatement{
 		{SQL: `insert into review (id, submission_id, version, stage, reviewer_id, reviewer_email, reviewer_name, reviewer_role,
-				decision, note_to_maker, internal_note, hours_approved_seconds, acknowledgements, policy_version, held, held_reason,
-				supersedes_review_id, is_final, idempotency_key, created_at)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				decision, note_to_maker, internal_note, technical_features, deflation_reason, hours_approved_seconds,
+				acknowledgements, policy_version, held, held_reason, supersedes_review_id, is_final, idempotency_key, created_at)
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{record.reviewID, record.ship.ID, record.ship.Version, record.stage, record.person.ID, record.person.Email, record.person.Name, record.person.Role,
-				record.request.Decision, record.note, strings.TrimSpace(record.request.InternalNote), record.hours, marshalStrings(record.request.Acknowledgements),
-				a.policyVersion(ctx, record.ship.ProgramID), boolInt(record.held), nullString(record.reason),
+				record.request.Decision, record.note, strings.TrimSpace(record.request.InternalNote), record.technicalFeatures, record.deflationReason, record.hours,
+				marshalStrings(record.request.Acknowledgements), a.policyVersion(ctx, record.ship.ProgramID), boolInt(record.held), nullString(record.reason),
 				nullString(record.supersedes), boolInt(!record.held), record.request.IdempotencyKey, record.now}},
 		{SQL: `update submission set status = ?, stage = ?, hours_approved_seconds = ?, held_reason = ?,
 				decided_at = ?, updated_at = ? where id = ?`,
@@ -247,9 +264,9 @@ func decisionState(ship submissionRow, held bool) (string, int, int) {
 }
 
 // decisionPayloadJSON builds the exact event bytes for the outbox.
-func (a *ireApp) decisionPayloadJSON(ctx context.Context, ship submissionRow, person reviewer, checks []contract.CheckResult, request contract.DecisionRequest, hours int, note, overrideReason string, stage int, now string) ([]byte, error) {
+func (a *ireApp) decisionPayloadJSON(ctx context.Context, ship submissionRow, person reviewer, checks []contract.CheckResult, request contract.DecisionRequest, hours int, note, technicalFeatures, deflationReason, overrideReason string, stage int, now string) ([]byte, error) {
 	history := a.stageHistory(ctx, ship.ID, person, request.Decision, now, stage)
-	payload := a.outboundPayload(ship, person, checks, request.Decision, hours, note, strings.TrimSpace(request.InternalNote), overrideReason, now, history, payloadHackatimeProjects(ctx, a.store, ship.ID, ship.Version))
+	payload := a.outboundPayload(ship, person, checks, request.Decision, hours, note, technicalFeatures, deflationReason, strings.TrimSpace(request.InternalNote), overrideReason, now, history, payloadHackatimeProjects(ctx, a.store, ship.ID, ship.Version))
 
 	return json.Marshal(payload)
 }
@@ -302,6 +319,37 @@ func noteProblem(request contract.DecisionRequest, note string, policy reviewPol
 
 	if request.Decision != decisionApproved && policy.NoteRequiredForChanges && note == "" {
 		return &decisionProblem{status: http.StatusUnprocessableEntity, code: "note_required", field: "noteToMaker", message: "a note to the maker is required for changes or rejection"}
+	}
+
+	return nil
+}
+
+// capturedSeconds is the time the reviewer is cutting against: the larger of the claimed time and the evidence total.
+func capturedSeconds(ship submissionRow) int {
+	captured := ship.HoursJournal + ship.HoursHackatim
+
+	return max(captured, ship.HoursClaimed)
+}
+
+// justificationProblem enforces the two review fields that make a decision defensible: the specific technical features and, when time is cut, the reason for the deflation.
+func justificationProblem(decision string, hours, captured int, technicalFeatures, deflationReason, note string, policy reviewPolicy) *decisionProblem {
+	if decision != decisionApproved {
+		return nil
+	}
+
+	if policy.RequireTechnicalFeatures && technicalFeatures == "" {
+		return &decisionProblem{status: http.StatusUnprocessableEntity, code: "technical_features_required", field: "technicalFeatures",
+			message: "name the specific technical features that account for these hours"}
+	}
+
+	if policy.RequireDeflationReason && hours < captured && deflationReason == "" {
+		return &decisionProblem{status: http.StatusUnprocessableEntity, code: "deflation_reason_required", field: "deflationReason",
+			message: "explain why the approved time is lower than the captured time"}
+	}
+
+	if deflationReason != "" && note != "" && strings.EqualFold(strings.TrimSpace(deflationReason), strings.TrimSpace(note)) {
+		return &decisionProblem{status: http.StatusUnprocessableEntity, code: "deflation_reason_is_note", field: "deflationReason",
+			message: "the deflation reason is internal reasoning, not the note to the maker"}
 	}
 
 	return nil
@@ -375,8 +423,9 @@ func resolveHours(request contract.DecisionRequest, hours int, secondPass bool, 
 
 // secondPassBase is the first-pass decision a 2nd pass starts from.
 type secondPassBase struct {
-	hours, heldHours               int
-	note, supersedes, heldDecision string
+	hours, heldHours                   int
+	note, supersedes, heldDecision     string
+	technicalFeatures, deflationReason string
 }
 
 // secondPassBase loads the held review and rejects a decision on the organiser's own 1st pass.
@@ -396,7 +445,8 @@ func (a *ireApp) secondPassBase(ctx context.Context, ship submissionRow, person 
 		return secondPassBase{}, &decisionProblem{status: http.StatusUnprocessableEntity, code: "own_decision", message: "another organiser must confirm your first-pass decision"}
 	}
 
-	base := secondPassBase{hours: held.Hours, note: note, supersedes: held.ID, heldDecision: held.Decision, heldHours: held.Hours}
+	base := secondPassBase{hours: held.Hours, note: note, supersedes: held.ID, heldDecision: held.Decision, heldHours: held.Hours,
+		technicalFeatures: held.TechnicalFeatures, deflationReason: held.DeflationReason}
 
 	if request.Decision == decisionApproved && note == "" {
 		base.note = held.NoteToMaker
@@ -441,15 +491,18 @@ type heldReview struct {
 	ID, ReviewerID, Decision string
 	Hours                    int
 	NoteToMaker              string
+	TechnicalFeatures        string
+	DeflationReason          string
 }
 
 // heldReview reads the latest held, non-invalidated first-pass review for a ship.
 func (a *ireApp) heldReview(ctx context.Context, submissionID string) (heldReview, bool, error) {
 	var row heldReview
 
-	err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), decision, coalesce(hours_approved_seconds, 0), note_to_maker
+	err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), decision, coalesce(hours_approved_seconds, 0), note_to_maker,
+			coalesce(technical_features, ''), coalesce(deflation_reason, '')
 		from review where submission_id = ? and held = 1 and invalidated_at is null
-		order by created_at desc limit 1`, submissionID).Scan(&row.ID, &row.ReviewerID, &row.Decision, &row.Hours, &row.NoteToMaker)
+		order by created_at desc limit 1`, submissionID).Scan(&row.ID, &row.ReviewerID, &row.Decision, &row.Hours, &row.NoteToMaker, &row.TechnicalFeatures, &row.DeflationReason)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return heldReview{}, false, nil

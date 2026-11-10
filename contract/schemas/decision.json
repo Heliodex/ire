@@ -11,6 +11,10 @@
 			"type": "string",
 			"pattern": "^(approved|changes|rejected)$"
 		},
+		"deflationReason": {
+			"type": "string",
+			"maxLength": 4000
+		},
 		"hoursApprovedSeconds": {
 			"type": "integer"
 		},
@@ -28,6 +32,10 @@
 			"maxLength": 4000
 		},
 		"overrideReason": {
+			"type": "string",
+			"maxLength": 4000
+		},
+		"technicalFeatures": {
 			"type": "string",
 			"maxLength": 4000
 		},

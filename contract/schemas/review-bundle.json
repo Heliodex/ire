@@ -272,6 +272,9 @@
 						"type": "integer",
 						"minimum": 0
 					},
+					"deflationReason": {
+						"type": "string"
+					},
 					"id": {
 						"type": "string",
 						"minLength": 1
@@ -398,6 +401,16 @@
 					"type": "integer",
 					"minimum": 0,
 					"maximum": 1
+				},
+				"requireDeflationReason": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 1
+				},
+				"requireTechnicalFeatures": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 1
 				}
 			},
 			"required": [
@@ -405,7 +418,9 @@
 				"holdMinApprovedSeconds",
 				"holdOnWarn",
 				"holdTiers",
-				"noteRequiredForChanges"
+				"noteRequiredForChanges",
+				"requireDeflationReason",
+				"requireTechnicalFeatures"
 			],
 			"title": "ReviewPolicy"
 		},
@@ -615,6 +630,9 @@
 						"type": "string",
 						"minLength": 1
 					},
+					"deflationReason": {
+						"type": "string"
+					},
 					"held": {
 						"type": "integer",
 						"minimum": 0
@@ -651,6 +669,9 @@
 					"stage": {
 						"type": "integer",
 						"minimum": 0
+					},
+					"technicalFeatures": {
+						"type": "string"
 					}
 				},
 				"required": [

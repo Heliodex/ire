@@ -8,7 +8,7 @@ import (
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 12
+const schemaVersion = 13
 
 // schemaStatements is the prototype subset of plan/03-data-model.md: programmes, people, sessions, ships, evidence, checks, claims, reviews, drafts, timeline, audit, outbox and settings. Fraud, forms, counters and retention jobs come later.
 //
@@ -169,7 +169,8 @@ func schemaStatements() []storage.Statement {
 			timelapses text,
 			sort integer not null default 0,
 			approved_seconds integer,
-			reviewer_note text
+			reviewer_note text,
+			deflation_reason text
 		)`,
 
 		`create index if not exists journal_submission_idx on journal_entry(submission_id, at)`,
@@ -279,6 +280,8 @@ func schemaStatements() []storage.Statement {
 			decision text not null check (decision in ('approved','changes','rejected')),
 			note_to_maker text not null default '',
 			internal_note text,
+			technical_features text not null default '',
+			deflation_reason text not null default '',
 			hours_approved_seconds integer,
 			hours_adjustments text,
 			tier_override integer,
@@ -310,6 +313,65 @@ func schemaStatements() []storage.Statement {
 			where is_final = 1 and invalidated_at is null`,
 
 		`create index if not exists review_submission_idx on review(submission_id, created_at desc)`,
+
+		`create table if not exists finding (
+			id text primary key,
+			program_id text not null references program(id) on delete cascade,
+			external_id text not null,
+			opened_submission_id text not null references submission(id) on delete cascade,
+			opened_version integer not null,
+			station text not null default 'synthesis',
+			question text not null default '',
+			severity text not null check (severity in ('block','fixable','note','hold')),
+			status text not null check (status in ('open','fixed','accepted','disputed','withdrawn')),
+			summary text not null,
+			detail text,
+			maker_action text,
+			evidence text not null default '{}',
+			opened_by text,
+			resolved_by text,
+			resolved_submission_id text,
+			resolved_version integer,
+			resolution text,
+			created_at text not null,
+			updated_at text not null
+		)`,
+
+		`create index if not exists finding_project_idx on finding(program_id, external_id, status)`,
+
+		`create index if not exists finding_opened_idx on finding(opened_submission_id, status)`,
+
+		`create table if not exists finding_return (
+			review_id text not null references review(id) on delete cascade,
+			finding_id text not null references finding(id) on delete cascade,
+			submission_id text not null references submission(id) on delete cascade,
+			version integer not null,
+			created_at text not null,
+			primary key (review_id, finding_id)
+		)`,
+
+		`create table if not exists artifact_ref (
+			submission_id text not null references submission(id) on delete cascade,
+			kind text not null,
+			key text not null,
+			hash text not null,
+			url text,
+			created_at text not null,
+			primary key (submission_id, kind, key)
+		)`,
+
+		`create table if not exists time_adjustment (
+			id text primary key,
+			submission_id text not null references submission(id) on delete cascade,
+			kind text not null check (kind in ('bonus','cut')),
+			seconds integer not null,
+			reason text not null,
+			note text,
+			reviewer_id text,
+			created_at text not null
+		)`,
+
+		`create index if not exists time_adjustment_submission_idx on time_adjustment(submission_id)`,
 
 		`create table if not exists draft (
 			submission_id text not null references submission(id) on delete cascade,
@@ -482,6 +544,21 @@ var lateColumns = []struct {
 		table:  "journal_entry",
 		column: "reviewer_note",
 		sql:    `alter table journal_entry add column reviewer_note text`,
+	},
+	{
+		table:  "journal_entry",
+		column: "deflation_reason",
+		sql:    `alter table journal_entry add column deflation_reason text`,
+	},
+	{
+		table:  "review",
+		column: "technical_features",
+		sql:    `alter table review add column technical_features text not null default ''`,
+	},
+	{
+		table:  "review",
+		column: "deflation_reason",
+		sql:    `alter table review add column deflation_reason text not null default ''`,
 	},
 }
 

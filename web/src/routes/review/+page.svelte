@@ -87,6 +87,8 @@ let skipAnim = $state(false)
 const swipeGap = 16
 let note = $state("")
 let internalNote = $state("")
+let technicalFeatures = $state("")
+let deflationReason = $state("")
 let hours = $state(0)
 let acknowledgements = $state<string[]>([])
 let deciding = $state(false)
@@ -95,6 +97,8 @@ let toast = $state("")
 let showShortcuts = $state(false)
 let decisionOpen = $state(false)
 let noteElement = $state<HTMLTextAreaElement | null>(undefined)
+let technicalElement = $state<HTMLTextAreaElement | null>(undefined)
+let deflationElement = $state<HTMLTextAreaElement | null>(undefined)
 let claimedId = $state("")
 let idempotencyKey = $state("")
 let refreshingEvidence = $state(false)
@@ -113,6 +117,8 @@ let amendDecisionValue = $state<"approved" | "changes" | "rejected">("approved")
 let amendHours = $state(0)
 let amendNote = $state("")
 let amendInternalNote = $state("")
+let amendTechnicalFeatures = $state("")
+let amendDeflationReason = $state("")
 let amendReason = $state("")
 let amendAcknowledgements = $state<string[]>([])
 let amendError = $state("")
@@ -187,6 +193,13 @@ const amendMissingAcks = $derived(
 )
 const amendCanApprove = $derived(blocking.length === 0 && (amendIsSecondPass || amendMissingAcks.length === 0))
 const approvedSeconds = $derived(Math.max(0, Math.round((Number(hours) || 0) * 3600)))
+const capturedSeconds = $derived(
+	Math.max(
+		submission?.hoursClaimedSeconds ?? 0,
+		(submission?.hoursJournalSeconds ?? 0) + (submission?.hoursHackatimeSeconds ?? 0),
+	),
+)
+const deflationRequired = $derived(approvedSeconds < capturedSeconds)
 const timeSegments = $derived.by((): TimeSegment[] => {
 	const claimed = submission?.hoursClaimedSeconds ?? 0
 	const timelapsed = (bundle?.journals ?? []).reduce((sum, entry) => sum + entry.coveredSeconds, 0)
@@ -574,6 +587,9 @@ function showCachedBundle(cached: Bundle): void {
 	actionError = ""
 	note = cached.draft?.note ?? ""
 	internalNote = cached.draft?.internalNote ?? ""
+	const held = cached.reviews.find(review => review.held === 1)
+	technicalFeatures = held?.technicalFeatures ?? ""
+	deflationReason = held?.deflationReason ?? ""
 	hourInit()
 }
 
@@ -595,6 +611,8 @@ async function load(target = id): Promise<void> {
 		if (!sameShip) {
 			note = ""
 			internalNote = ""
+			technicalFeatures = ""
+			deflationReason = ""
 		}
 
 		actionError = ""
@@ -621,6 +639,12 @@ async function load(target = id): Promise<void> {
 
 		// Restore the server-side draft so a refresh or another device does not lose typed notes.
 		if (next.draft) ({ note, internalNote } = next.draft)
+
+		if (next.submission.stage === 2 || next.submission.status === "stage2_hold") {
+			const held = next.reviews.find(review => review.held === 1)
+			technicalFeatures = held?.technicalFeatures ?? ""
+			deflationReason = held?.deflationReason ?? ""
+		}
 
 		hourInit()
 		error = ""
@@ -725,6 +749,26 @@ async function refreshEvidenceNow(): Promise<void> {
 	}
 }
 
+// justificationProblem checks the two fields that make an approval defensible and returns the message to show.
+function justificationProblem(): string | undefined {
+	if (technicalFeatures.trim() === "") {
+		technicalElement?.focus()
+		return "Name the specific technical features that account for these hours."
+	}
+
+	if (deflationRequired && deflationReason.trim() === "") {
+		deflationElement?.focus()
+		return "Explain why the approved time is lower than the captured time."
+	}
+
+	if (deflationReason.trim() !== "" && deflationReason.trim().toLowerCase() === note.trim().toLowerCase()) {
+		deflationElement?.focus()
+		return "The deflation reason is internal reasoning, not the note to the maker."
+	}
+
+	return undefined
+}
+
 async function decide(decision: "approved" | "changes" | "rejected"): Promise<void> {
 	if (!bundle || deciding) return
 
@@ -745,6 +789,13 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		if (!secondPass && missingAcks.length > 0) {
 			actionError = `Acknowledge ${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} before approving.`
 			flash(actionError)
+			return
+		}
+
+		const problem = justificationProblem()
+		if (problem) {
+			actionError = problem
+			flash(problem)
 			return
 		}
 	} else if (note.trim() === "") {
@@ -776,11 +827,13 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 		const result = await decideShip(id, {
 			acknowledgements,
 			decision,
+			deflationReason: deflationReason.trim(),
 			hoursApprovedSeconds: approvedSeconds,
 			idempotencyKey: key,
 			internalNote: internalNote.trim(),
 			noteToMaker: note.trim(),
 			overrideReason: overrideReason.trim(),
+			technicalFeatures: technicalFeatures.trim(),
 			version: bundle.submission.version,
 		})
 		idempotencyKey = ""
@@ -850,6 +903,8 @@ function openAmendDecision(): void {
 		Math.round(((finalDecision.hoursApprovedSeconds ?? bundle.submission.hoursClaimedSeconds) / 3600) * 100) / 100
 	amendNote = finalDecision.noteToMaker ?? ""
 	amendInternalNote = finalDecision.internalNote ?? ""
+	amendTechnicalFeatures = finalDecision.technicalFeatures ?? ""
+	amendDeflationReason = finalDecision.deflationReason ?? ""
 	amendReason = ""
 	amendAcknowledgements = [...(finalDecision.acknowledgements ?? [])]
 	amendKey = ""
@@ -874,6 +929,25 @@ async function submitAmendDecision(): Promise<void> {
 		return
 	}
 
+	const amendSeconds = Math.max(0, Math.round((Number(amendHours) || 0) * 3600))
+	if (amendDecisionValue === "approved") {
+		if (amendTechnicalFeatures.trim() === "") {
+			amendError = "Name the specific technical features that account for these hours."
+			return
+		}
+		if (amendSeconds < capturedSeconds && amendDeflationReason.trim() === "") {
+			amendError = "Explain why the approved time is lower than the captured time."
+			return
+		}
+		if (
+			amendDeflationReason.trim() !== ""
+			&& amendDeflationReason.trim().toLowerCase() === amendNote.trim().toLowerCase()
+		) {
+			amendError = "The deflation reason is internal reasoning, not the note to the maker."
+			return
+		}
+	}
+
 	amending = true
 
 	try {
@@ -882,14 +956,13 @@ async function submitAmendDecision(): Promise<void> {
 		const outcome = await amendDecision(bundle.submission.id, {
 			acknowledgements: amendDecisionValue === "approved" ? amendAcknowledgements : [],
 			decision: amendDecisionValue,
-			hoursApprovedSeconds:
-				amendDecisionValue === "approved"
-					? Math.max(0, Math.round((Number(amendHours) || 0) * 3600))
-					: undefined,
+			deflationReason: amendDeflationReason.trim(),
+			hoursApprovedSeconds: amendDecisionValue === "approved" ? amendSeconds : undefined,
 			idempotencyKey: key,
 			internalNote: amendInternalNote,
 			noteToMaker: amendNote,
 			reason: amendReason.trim(),
+			technicalFeatures: amendTechnicalFeatures.trim(),
 			version: bundle.submission.version,
 		})
 		if (outcome.deliveryStatus === "failed") flash("Decision amended, but the delivery to Half Life failed.")
@@ -1075,6 +1148,54 @@ async function saveDraftNow(): Promise<void> {
 				<span class="hours-hint">/ {formatHours(submission.hoursClaimedSeconds)} claimed</span>
 			</span>
 		</label>
+
+		<label class="field">
+			<span class="field-head">
+				<span>
+					Specific technical features
+					<span class="internal-tag">Internal</span>
+				</span>
+				<span aria-hidden="true" class="field-count">{technicalFeatures.length} / {maxNote}</span>
+			</span>
+			<textarea
+				aria-label="Specific technical features"
+				class="ui-input"
+				maxlength={maxNote}
+				onblur={(): void => void saveDraftNow()}
+				placeholder="The specific work that accounts for these hours: firmware, board, enclosure, and what it does."
+				rows="4"
+				bind:this={technicalElement}
+				bind:value={technicalFeatures}
+			></textarea>
+			<span class="field-hint">Required to approve. Name what was built, not just the parts.</span>
+		</label>
+
+		{#if deflationRequired || deflationReason.trim() !== ""}
+			<label class="field">
+				<span class="field-head">
+					<span>
+						Why the time is right
+						<span class="internal-tag">Internal</span>
+					</span>
+					<span aria-hidden="true" class="field-count">{deflationReason.length} / {maxNote}</span>
+				</span>
+				<textarea
+					aria-label="Deflation reason"
+					class="ui-input"
+					maxlength={maxNote}
+					onblur={(): void => void saveDraftNow()}
+					placeholder="Why is this amount reasonable for this maker? Compare with what an intermediate maker would take."
+					rows="3"
+					bind:this={deflationElement}
+					bind:value={deflationReason}
+				></textarea>
+				<span class="field-hint"
+					>{deflationRequired
+						? `Required: you approved ${formatHours(approvedSeconds)} of ${formatHours(capturedSeconds)} captured.`
+						: "Optional while the approved hours match the captured time."}</span
+				>
+			</label>
+		{/if}
 
 		<label class="field">
 			<span class="field-head">
@@ -1780,6 +1901,26 @@ async function saveDraftNow(): Promise<void> {
 												maxlength={maxNote}
 												rows="2"
 												bind:value={amendInternalNote}
+											></textarea>
+										</label>
+										<label class="edit-field">
+											<span>Specific technical features (internal)</span>
+											<textarea
+												class="ui-input"
+												maxlength={maxNote}
+												placeholder="The specific work that accounts for these hours."
+												rows="3"
+												bind:value={amendTechnicalFeatures}
+											></textarea>
+										</label>
+										<label class="edit-field">
+											<span>Why the time is right (internal)</span>
+											<textarea
+												class="ui-input"
+												maxlength={maxNote}
+												placeholder="Why is this amount reasonable for this maker?"
+												rows="2"
+												bind:value={amendDeflationReason}
 											></textarea>
 										</label>
 										<label class="edit-field">
@@ -2521,6 +2662,27 @@ h1 {
 	font-variant-numeric: tabular-nums;
 	color: var(--text-2);
 	white-space: nowrap;
+}
+
+.internal-tag {
+	display: inline-block;
+	padding: 0 5px;
+	margin-left: var(--space-1);
+	font-size: 0.6rem;
+	font-weight: 700;
+	vertical-align: 1px;
+	color: var(--text-3);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	background: var(--surface-3);
+	border-radius: 99px;
+}
+
+.field-hint {
+	font-size: var(--text-sm);
+	font-weight: 400;
+	line-height: 1.35;
+	color: var(--text-3);
 }
 
 .hours-row {

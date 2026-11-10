@@ -23,6 +23,9 @@
 					"type": "integer",
 					"minimum": 0
 				},
+				"deflationReason": {
+					"type": "string"
+				},
 				"id": {
 					"type": "string",
 					"minLength": 1

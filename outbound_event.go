@@ -109,15 +109,15 @@ func outboundEventName(decision string) string {
 }
 
 // outboundPayload builds the final event. A held decision never reaches here because no outbox row is written.
-func (a *ireApp) outboundPayload(ship submissionRow, person reviewer, checks []contract.CheckResult, decision string, hours int, note, internalNote, overrideReason, now string, history []outboundStage, hackatimeProjects []string) outboundEvent {
+func (a *ireApp) outboundPayload(ship submissionRow, person reviewer, checks []contract.CheckResult, decision string, hours int, note, technicalFeatures, deflationReason, internalNote, overrideReason, now string, history []outboundStage, hackatimeProjects []string) outboundEvent {
 	results := make([]outboundCheck, 0, len(checks))
 	for _, check := range checks {
 		results = append(results, outboundCheck{Key: check.Key, Status: check.Status, Summary: check.Summary})
 	}
 
-	justification := outboundJustification{}
-	if hours < ship.HoursClaimed {
-		justification.DeflationReason = "Reviewed down to " + formatHours(hours) + " from " + formatHours(ship.HoursClaimed) + "."
+	justification := outboundJustification{
+		TechnicalFeatures: technicalFeatures,
+		DeflationReason:   deflationReason,
 	}
 
 	return outboundEvent{
