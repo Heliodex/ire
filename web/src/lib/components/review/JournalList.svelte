@@ -39,12 +39,13 @@ function toggleEntry(id: string): void {
 						type="button"
 					>
 						<span class="journal-title">{entry.title || "Work session"}</span>
-						<span class="journal-meta">{formatHours(entry.seconds)} · {formatDateTime(entry.at)}</span>
+						<span class="journal-hours">{formatHours(entry.seconds)}</span>
 						{#if entry.approvedSeconds !== undefined && entry.approvedSeconds < entry.seconds}
 							<span class="ui-badge" data-tone="changes"
 								>Deflated to {formatHours(entry.approvedSeconds)}</span
 							>
 						{/if}
+						<span class="journal-date">{formatDateTime(entry.at)}</span>
 						<svg
 							aria-hidden="true"
 							class="chevron"
@@ -145,14 +146,20 @@ function toggleEntry(id: string): void {
 	color: var(--text);
 }
 
-.journal-meta {
+.journal-hours {
 	font-weight: 500;
 	color: var(--text-3);
 }
 
+.journal-date {
+	margin-left: auto;
+	font-weight: 500;
+	color: var(--text-3);
+	white-space: nowrap;
+}
+
 .chevron {
 	flex: none;
-	margin-left: auto;
 	color: var(--text-3);
 	transition: transform 0.15s;
 }
