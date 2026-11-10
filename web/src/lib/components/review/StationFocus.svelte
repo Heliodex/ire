@@ -1247,8 +1247,10 @@ async function persistDraft(): Promise<void> {
 					{#if nextStationKey !== ""}
 						<p class="muted">Next up: {nextLabel}.</p>
 						<div class="complete-actions">
-							<a class="ui-button primary" href={nextHref}>Open {nextLabel}</a>
-							<kbd class="ui-kbd">Enter</kbd>
+							<a class="ui-button primary" href={nextHref}>
+								Open {nextLabel}
+								<kbd class="ui-kbd">Enter</kbd>
+							</a>
 						</div>
 					{:else if showDecision}
 						<p class="muted">Every station is answered. Record the decision below.</p>
@@ -1993,6 +1995,12 @@ async function persistDraft(): Promise<void> {
 	flex-wrap: wrap;
 	gap: var(--space-2);
 	padding-top: var(--space-1);
+}
+
+.complete-actions .ui-kbd {
+	color: inherit;
+	background: color-mix(in srgb, currentColor 18%, transparent);
+	border-color: color-mix(in srgb, currentColor 35%, transparent);
 }
 
 .muted {
