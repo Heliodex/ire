@@ -39,46 +39,7 @@ const returnable = $derived(
 )
 </script>
 
-{#if stationKey === "time"}
-	<section class="ui-card padded fields-card">
-		<div class="fields-head">
-			<h2>Why this time is right</h2>
-			<span class="internal-tag">Internal</span>
-		</div>
-		{#if cuts > 0}
-			<p class="hint">
-				Built from {cuts} journal cut{cuts === 1 ? "" : "s"}; edit it into a sentence about this maker.
-			</p>
-		{:else}
-			<p class="hint">
-				No journal cuts yet. This field is only required when the approved time is below the captured time.
-			</p>
-		{/if}
-		<textarea
-			aria-label="Deflation reason"
-			class="ui-input"
-			maxlength="4000"
-			oninput={(event): void => onChange("deflationReason", event.currentTarget.value)}
-			placeholder="Why is this amount reasonable for this maker? Compare with what an intermediate maker would take."
-			readonly={!editable}
-			rows="4"
-			value={deflationReason}
-		></textarea>
-		<div class="field-actions">
-			<button
-				class="ui-button ghost sm"
-				onclick={(): void => onChange("deflationReason", suggestDeflationReason(bundle, capturedSeconds))}
-				type="button"
-			>
-				Use journal cuts
-			</button>
-			<span class="muted"
-				>{formatHours(capturedSeconds)}
-				captured · {formatHours(bundle.submission.hoursApprovedSeconds ?? capturedSeconds)} approved</span
-			>
-		</div>
-	</section>
-{:else if stationKey === "narrative"}
+{#if stationKey === "narrative"}
 	<section class="ui-card padded fields-card">
 		<div class="fields-head">
 			<h2>Specific technical features</h2>
