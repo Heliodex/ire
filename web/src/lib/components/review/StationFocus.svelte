@@ -227,7 +227,6 @@ const canApprove = $derived(
 		&& blocking.length === 0
 		&& (secondPass || missingAcks.length === 0)
 		&& returnable.length === 0
-		&& technicalFeatures.trim() !== ""
 		&& (!deflationRequired || deflationReason.trim() !== ""),
 )
 // canDeleteNote lets the author or a note manager remove an internal note.
@@ -521,8 +520,6 @@ async function removeNote(entry: Note): Promise<void> {
 
 // justificationProblem reports the approval field that is still missing.
 function justificationProblem(): string | undefined {
-	if (technicalFeatures.trim() === "") return "Name the specific technical features that account for these hours."
-
 	if (deflationRequired && deflationReason.trim() === "")
 		return "Explain why the approved time is lower than the captured time."
 
@@ -710,16 +707,9 @@ async function submitAmendDecision(): Promise<void> {
 	}
 
 	const amendSeconds = Math.max(0, Math.round((Number(amendHours) || 0) * 3600))
-	if (amendDecisionValue === "approved") {
-		if (amendTechnicalFeatures.trim() === "") {
-			amendError = "Name the specific technical features that account for these hours."
-			return
-		}
-
-		if (amendSeconds < capturedSeconds && amendDeflationReason.trim() === "") {
-			amendError = "Explain why the approved time is lower than the captured time."
-			return
-		}
+	if (amendDecisionValue === "approved" && amendSeconds < capturedSeconds && amendDeflationReason.trim() === "") {
+		amendError = "Explain why the approved time is lower than the captured time."
+		return
 	}
 
 	amending = true

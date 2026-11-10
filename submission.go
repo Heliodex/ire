@@ -379,7 +379,7 @@ func defaultPolicy() reviewPolicy {
 		HoldTiers:                []int{2, 3},
 		NoteRequiredForChanges:   true,
 		FraudMinStage:            2,
-		RequireTechnicalFeatures: true,
+		RequireTechnicalFeatures: false,
 		RequireDeflationReason:   true,
 	}
 }
