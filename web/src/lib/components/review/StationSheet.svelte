@@ -3,8 +3,10 @@ import { tick } from "svelte"
 import { maxNote } from "../../contract"
 import {
 	answerFor,
+	answersFor,
 	initialStationKey,
 	nextQuestionKey,
+	questionConflict,
 	type StationAnswer,
 	type StationDefinition,
 	type StationQuestion,
@@ -22,8 +24,10 @@ interface Props {
 	editable: boolean
 	focusStation?: string
 	onAnswer(stationKey: string, questionKey: string, answer: StationVerdict, evidence: string): Promise<void>
+	onCreateFinding?(request: FindingRequest): Promise<void>
 	/** Pins the sheet to focusStation: other stations show status only. */
 	pinned?: boolean
+	reviewerId?: string
 	states: StationState[]
 	stations: StationDefinition[]
 	version: number
@@ -35,7 +39,9 @@ let {
 	editable,
 	focusStation,
 	onAnswer,
+	onCreateFinding,
 	pinned = false,
+	reviewerId = "",
 	states,
 	stations,
 	version,
@@ -56,6 +62,22 @@ let errors = $state<{ [_: string]: string }>({})
 let queue = $state<PendingAnswer[]>([])
 let active = $state<PendingAnswer | undefined>(undefined)
 let running = $state(false)
+let findingKey = $state("")
+let findingSummary = $state("")
+let findingAction = $state("")
+let findingSeverity = $state<"block" | "fixable">("fixable")
+let findingSaving = $state(false)
+let findingError = $state("")
+
+interface FindingRequest {
+	detail?: string
+	evidence?: string
+	makerAction?: string
+	question?: string
+	severity: "block" | "fixable"
+	station: string
+	summary: string
+}
 
 interface PendingAnswer {
 	evidence: string
@@ -68,7 +90,7 @@ interface PendingAnswer {
 const selectedStation = $derived(orderedStations.find(item => item.key === selected) ?? orderedStations[0])
 const selectedState = $derived(selectedStation ? statesByKey.get(selectedStation.key) : undefined)
 const questions = $derived(selectedStation ? selectedStation.questions.toSorted((a, b) => a.sort - b.sort) : [])
-const nextKey = $derived(selectedStation ? nextQuestionKey(selectedStation, answers) : undefined)
+const nextKey = $derived(selectedStation ? nextQuestionKey(selectedStation, answers, reviewerId) : undefined)
 const allDone = $derived(states.length > 0 && states.every(state => state.status === "done"))
 
 // A focus link from the station queue wins over the workflow's current station.
@@ -128,7 +150,7 @@ function evidenceValue(stationKey: string, questionKey: string): string {
 	const key = answerKey(stationKey, questionKey)
 	if (key in drafts) return drafts[key]
 
-	return answerFor(answers, stationKey, questionKey)?.evidence ?? ""
+	return answerFor(answers, stationKey, questionKey, reviewerId)?.evidence ?? ""
 }
 
 function setEvidence(stationKey: string, questionKey: string, value: string): void {
@@ -184,6 +206,38 @@ async function drain(): Promise<void> {
 	}
 }
 
+// openFinding starts an inline finding for a failed question.
+function openFinding(stationKey: string, question: StationQuestion): void {
+	findingKey = answerKey(stationKey, question.key)
+	findingSummary = question.prompt
+	findingAction = ""
+	findingSeverity = "fixable"
+	findingError = ""
+}
+
+// saveFinding sends the inline finding and closes the form.
+async function saveFinding(stationKey: string, question: StationQuestion): Promise<void> {
+	if (onCreateFinding === undefined || findingSummary.trim() === "") return
+
+	findingSaving = true
+	findingError = ""
+
+	try {
+		await onCreateFinding({
+			makerAction: findingAction.trim(),
+			question: question.prompt,
+			severity: findingSeverity,
+			station: stationKey,
+			summary: findingSummary.trim(),
+		})
+		findingKey = ""
+	} catch (err) {
+		findingError = err instanceof Error ? err.message : "Could not save the finding."
+	} finally {
+		findingSaving = false
+	}
+}
+
 function isQueued(key: string): boolean {
 	return queue.some(item => item.key === key)
 }
@@ -229,9 +283,16 @@ function onKeydown(event: KeyboardEvent): void {
 			</p>
 		{/if}
 		{#if selectedState}
-			<span class="ui-badge" data-tone={stationTone(selectedState.status)}
-				>{stationStatusLabel(selectedState.status)}</span
-			>
+			{#if selectedState.conflicts > 0}
+				<span class="ui-badge" data-tone="changes"
+					>{selectedState.conflicts}
+					conflict{selectedState.conflicts === 1 ? "" : "s"}</span
+				>
+			{:else}
+				<span class="ui-badge" data-tone={stationTone(selectedState.status)}
+					>{stationStatusLabel(selectedState.status)}</span
+				>
+			{/if}
 		{/if}
 	</div>
 
@@ -287,7 +348,12 @@ function onKeydown(event: KeyboardEvent): void {
 				<div class="station-head">
 					<h3>{selectedStation.label}</h3>
 					{#if selectedState}
-						<small>{selectedState.answered} of {selectedState.required} required answered</small>
+						<small>
+							{selectedState.answered}
+							of {selectedState.required} required answered{selectedState.conflicts > 0
+								? ` · ${selectedState.conflicts} conflict${selectedState.conflicts === 1 ? "" : "s"}`
+								: ""}
+						</small>
 					{/if}
 				</div>
 
@@ -300,7 +366,13 @@ function onKeydown(event: KeyboardEvent): void {
 				{:else}
 					<ol class="questions">
 						{#each questions as question (question.key)}
-							{const answer = $derived(answerFor(answers, selectedStation.key, question.key))}
+							{const answer = $derived(answerFor(answers, selectedStation.key, question.key, reviewerId))}
+							{const others = $derived(
+								answersFor(answers, selectedStation.key, question.key).filter(
+									item => item.reviewerId !== reviewerId,
+								),
+							)}
+							{const conflict = $derived(questionConflict(answers, selectedStation.key, question.key))}
 							{const key = $derived(answerKey(selectedStation.key, question.key))}
 							<li
 								data-question={question.key}
@@ -313,12 +385,37 @@ function onKeydown(event: KeyboardEvent): void {
 											<span class="required">Required</span>
 										{/if}
 									</p>
-									{#if answer}
+									{#if conflict}
+										<span class="ui-badge" data-tone="changes">Conflict</span>
+									{:else if answer}
 										<span class="ui-badge" data-tone={verdictTone(answer.answer)}
 											>{verdictLabel(answer.answer)}</span
 										>
 									{/if}
 								</div>
+
+								{#if others.length > 0}
+									<div class="other-answers">
+										<span class="other-label">
+											{conflict ? "Reviewers disagree:" : "Also answered by:"}
+										</span>
+										{#each others as other (other.id)}
+											<button
+												class="other-answer"
+												disabled={!editable || active?.key === key}
+												onclick={(): Promise<void> =>
+													submitAnswer(question, other.answer as StationVerdict)}
+												title={editable ? "Use this answer as yours" : undefined}
+												type="button"
+											>
+												<span>{other.reviewerName || other.reviewerId || "Reviewer"}</span>
+												<span class="ui-badge" data-tone={verdictTone(other.answer)}
+													>{verdictLabel(other.answer)}</span
+												>
+											</button>
+										{/each}
+									</div>
+								{/if}
 
 								{#if editable}
 									<label class="evidence-field">
@@ -372,7 +469,65 @@ function onKeydown(event: KeyboardEvent): void {
 								{/if}
 
 								{#if answer?.answer === "fail"}
-									<p class="fail-hint">Add a finding for this below.</p>
+									<div class="fail-row">
+										<p class="fail-hint">A failed answer needs a finding.</p>
+										{#if onCreateFinding !== undefined && editable}
+											<button
+												class="ui-button sm changes"
+												onclick={(): void => openFinding(selectedStation.key, question)}
+												type="button"
+											>
+												Record finding
+											</button>
+										{/if}
+									</div>
+									{#if findingKey === key}
+										<div class="finding-form">
+											<label class="finding-field">
+												<span>Summary</span>
+												<input class="ui-input" maxlength="500" bind:value={findingSummary}>
+											</label>
+											<label class="finding-field">
+												<span>Maker action</span>
+												<input
+													class="ui-input"
+													maxlength="4000"
+													placeholder="What should the maker change?"
+													bind:value={findingAction}
+												>
+											</label>
+											<label class="finding-field">
+												<span>Severity</span>
+												<select class="ui-input" bind:value={findingSeverity}>
+													<option value="fixable">Fixable</option>
+													<option value="block">Block</option>
+												</select>
+											</label>
+											{#if findingError}
+												<p class="fail-hint">{findingError}</p>
+											{/if}
+											<div class="finding-actions">
+												<button
+													class="ui-button sm ok"
+													disabled={findingSaving || findingSummary.trim() === ""}
+													onclick={(): Promise<void> =>
+														saveFinding(selectedStation.key, question)}
+													type="button"
+												>
+													{findingSaving ? "Saving…" : "Add finding"}
+												</button>
+												<button
+													class="ui-button sm ghost"
+													onclick={(): void => {
+														findingKey = ""
+													}}
+													type="button"
+												>
+													Cancel
+												</button>
+											</div>
+										</div>
+									{/if}
 								{/if}
 
 								{#if active?.key === key}
@@ -603,6 +758,71 @@ function onKeydown(event: KeyboardEvent): void {
 .verdict-buttons .chosen {
 	outline: 2px solid var(--text);
 	outline-offset: 1px;
+}
+
+.other-answers {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1);
+	align-items: center;
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.other-label {
+	font-weight: 700;
+}
+
+.other-answer {
+	display: inline-flex;
+	gap: var(--space-1);
+	align-items: center;
+	padding: 0;
+	font: inherit;
+	color: var(--text-2);
+	cursor: pointer;
+	background: none;
+	border: 0;
+}
+
+.other-answer:hover:not(:disabled) {
+	color: var(--text);
+}
+
+.other-answer:disabled {
+	cursor: default;
+}
+
+.fail-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+	justify-content: space-between;
+}
+
+.finding-form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	padding: var(--space-2);
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
+}
+
+.finding-field {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-2);
+}
+
+.finding-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1);
 }
 
 .fail-hint,

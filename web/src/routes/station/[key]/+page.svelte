@@ -21,10 +21,12 @@ let loadedKey = ""
 const station = $derived(data?.station)
 // Search params are only available after hydration; prerendering must not read them.
 let focusId = $state("")
+let stage = $state(1)
 const stationKey = $derived(page.params.key ?? key)
 
 $effect((): void => {
 	focusId = browser ? (page.url.searchParams.get("id") ?? "") : ""
+	stage = browser && page.url.searchParams.get("stage") === "2" ? 2 : 1
 })
 
 $effect((): void => {
@@ -32,9 +34,10 @@ $effect((): void => {
 	if (target === "") return
 
 	if (target !== key) key = target
-	if (focusId !== "" || target === loadedKey) return
+	const keyed = `${stage}:${target}`
+	if (focusId !== "" || keyed === loadedKey) return
 
-	loadedKey = target
+	loadedKey = keyed
 	void load(target)
 })
 
@@ -51,7 +54,7 @@ async function load(target: string): Promise<void> {
 	}
 
 	try {
-		const next = await fetchStationQueue(target)
+		const next = await fetchStationQueue(target, stage)
 		if (target !== key) return
 
 		data = next
@@ -114,7 +117,7 @@ async function load(target: string): Promise<void> {
 					class="row"
 					href={key === "synthesis"
 						? `/review/${encodeURIComponent(item.id)}?station=synthesis`
-						: `/station/${encodeURIComponent(key)}?id=${encodeURIComponent(item.id)}`}
+						: `/station/${encodeURIComponent(key)}?id=${encodeURIComponent(item.id)}&stage=${stage}`}
 				>
 					<span class="row-main">
 						<span class="row-title">{item.title}</span>

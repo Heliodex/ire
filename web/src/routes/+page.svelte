@@ -21,7 +21,7 @@ const accounts = [
 
 onMount((): void => {
 	if (session.me) {
-		void goto("/overview")
+		void goto("/stations")
 		return
 	}
 
@@ -70,7 +70,7 @@ async function signIn(address: string): Promise<void> {
 	error = ""
 	try {
 		session.me = await login(address)
-		void goto("/overview")
+		void goto("/stations")
 	} catch (err) {
 		error = err instanceof ApiError || err instanceof Error ? err.message : "Could not sign in."
 	} finally {

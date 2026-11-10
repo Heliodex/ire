@@ -40,6 +40,11 @@ function toggleEntry(id: string): void {
 					>
 						<span class="journal-title">{entry.title || "Work session"}</span>
 						<span class="journal-meta">{formatHours(entry.seconds)} · {formatDateTime(entry.at)}</span>
+						{#if entry.approvedSeconds !== undefined && entry.approvedSeconds < entry.seconds}
+							<span class="ui-badge" data-tone="changes"
+								>Deflated to {formatHours(entry.approvedSeconds)}</span
+							>
+						{/if}
 						<svg
 							aria-hidden="true"
 							class="chevron"

@@ -2,12 +2,27 @@
 import { onMount } from "svelte"
 import { SvelteSet } from "svelte/reactivity"
 import { goto } from "$app/navigation"
-import { type Bundle, claimShip, fetchBundle, fetchMe, heartbeat, releaseShip, saveDraft } from "../../api"
-import { saveStationAnswer } from "../../api.gen"
+import {
+	type Bundle,
+	claimShip,
+	createNote,
+	decideShip,
+	deleteNote,
+	fetchBundle,
+	fetchMe,
+	heartbeat,
+	type Note,
+	program,
+	releaseShip,
+	saveDraft,
+} from "../../api"
+import { createFinding, saveStationAnswer, updateFinding } from "../../api.gen"
 import { ApiError } from "../../api-error"
 import { ignore } from "../../async"
-import { isActive, severityTone, statusLabel } from "../../findings"
+import { isBlocking, isWarning } from "../../checks"
+import { isActive, isReturnable, selectedFindingIds, severityTone, statusLabel } from "../../findings"
 import { formatHours, humanStatus, statusTone } from "../../format"
+import { hasPermission, permissionSecondPass, programPermissions } from "../../permissions"
 import { dropSignIn, session } from "../../session.svelte.js"
 import {
 	draftValues,
@@ -19,8 +34,16 @@ import {
 import { type StationVerdict, upsertStationAnswer } from "../../stations"
 import LoadingState from "../LoadingState.svelte"
 import BomTab from "./BomTab.svelte"
+import ChecksTab from "./ChecksTab.svelte"
+import FindingsCard from "./FindingsCard.svelte"
+import HistoryTab from "./HistoryTab.svelte"
 import JournalList from "./JournalList.svelte"
 import Markdown from "./Markdown.svelte"
+import NotesCard from "./NotesCard.svelte"
+import PriorReviews from "./PriorReviews.svelte"
+import ResubmissionDiff from "./ResubmissionDiff.svelte"
+import ReturnComposer from "./ReturnComposer.svelte"
+import ReviewTimeline from "./ReviewTimeline.svelte"
 import StationFields from "./StationFields.svelte"
 import StationSheet from "./StationSheet.svelte"
 import TimeEvidenceBar from "./TimeEvidenceBar.svelte"
@@ -51,7 +74,18 @@ let deflationReason = $state("")
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 let claimedHere = false
 let loadedShip = ""
+let hours = $state(0)
+let acknowledgements = $state<string[]>([])
+let returnSelection = $state<string[]>([])
+let overrideReason = $state("")
+let deciding = $state(false)
+let decisionError = $state("")
+let idempotencyKey = ""
 const journalCollapsed = new SvelteSet<string>()
+const checksCollapsed = new SvelteSet<string>()
+
+type FindingCreate = Parameters<typeof createFinding>[1]
+type FindingUpdate = Parameters<typeof updateFinding>[2]
 
 const triageCheckKeys = new Set(["repo.accessible", "repo.bom", "repo.readme", "repo.readme.images"])
 const hardwareCheckKeys = new Set(["repo.accessible", "repo.design_files", "repo.files.empty"])
@@ -116,17 +150,47 @@ const stationState = $derived((bundle?.stationStates ?? []).find(item => item.ke
 const answers = $derived(bundle?.stationAnswers ?? [])
 const stationComplete = $derived(stationState?.status === "done")
 const stationBlocked = $derived(stationState?.status === "blocked")
+const secondPass = $derived(!closed && (submission?.stage === 2 || submission?.status === "stage2_hold"))
+const permissions = $derived(programPermissions(session.me, program))
+const canSecondPass = $derived(hasPermission(permissions, permissionSecondPass))
+const checking = $derived(submission?.status === "checking")
+const canDecide = $derived(!readOnly && !closed && !checking && (!secondPass || canSecondPass))
+const canEditFindings = $derived(editable)
+const warnings = $derived((bundle?.checks ?? []).filter(isWarning))
+const blocking = $derived((bundle?.checks ?? []).filter(isBlocking))
+const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
+const returnable = $derived((bundle?.findings ?? []).filter(isReturnable))
+const approvedSeconds = $derived(Math.max(0, Math.round((Number(hours) || 0) * 3600)))
+const capturedSeconds = $derived(
+	Math.max(
+		submission?.hoursClaimedSeconds ?? 0,
+		(submission?.hoursJournalSeconds ?? 0) + (submission?.hoursHackatimeSeconds ?? 0),
+	),
+)
+const deflationRequired = $derived(approvedSeconds < capturedSeconds)
+const stationsDone = $derived((bundle?.currentStation ?? "") === "")
+const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? undefined)
+const showDecision = $derived(stationKey === "synthesis" || stationKey === "verify")
+const canApprove = $derived(
+	!closed && stationsDone && blocking.length === 0 && (secondPass || missingAcks.length === 0),
+)
+// canDeleteNote lets the author remove their own internal note.
+function canDeleteNote(entry: Note): boolean {
+	return (session.me?.user.email ?? "") === entry.authorEmail
+}
 const stationLabel = $derived(station?.label ?? stationKey)
-const queueHref = $derived(`/station/${encodeURIComponent(stationKey)}`)
+const stage = $derived(station?.stage ?? 1)
+const queueHref = $derived(`/station/${encodeURIComponent(stationKey)}?stage=${stage}`)
 const reviewHref = $derived(`/review/${encodeURIComponent(shipId)}?station=synthesis`)
 const fullReviewHref = $derived(`/review/${encodeURIComponent(shipId)}`)
 const nextKey = $derived(bundle?.currentStation ?? "")
 const nextStationKey = $derived(nextKey !== "" && nextKey !== stationKey ? nextKey : "")
 const nextLabel = $derived(stationDefs.find(item => item.key === nextStationKey)?.label ?? nextStationKey)
+const nextStage = $derived(stationDefs.find(item => item.key === nextStationKey)?.stage ?? stage)
 const nextHref = $derived(
 	nextStationKey === ""
 		? reviewHref
-		: `/station/${encodeURIComponent(nextStationKey)}?id=${encodeURIComponent(shipId)}`,
+		: `/station/${encodeURIComponent(nextStationKey)}?id=${encodeURIComponent(shipId)}&stage=${nextStage}`,
 )
 const evidence = $derived(bundle?.evidence)
 const readme = $derived(evidence?.readme ?? "")
@@ -215,6 +279,7 @@ function applyBundle(next: Bundle): void {
 	)
 	if (deflationReason === "" && hasCuts) deflationReason = suggestDeflationReason(next, captured)
 
+	hourInit(next)
 	holding = next.claim?.isMine === 1
 	coverFailed = false
 	error = ""
@@ -222,6 +287,16 @@ function applyBundle(next: Bundle): void {
 		next.claim !== undefined && next.claim.isMine !== 1
 			? `Held by ${next.claim.reviewerName || next.claim.reviewerEmail}. You can read the evidence but not answer until it is free.`
 			: ""
+}
+
+// hourInit seeds the decision fields from the saved decision or the claim.
+function hourInit(next: Bundle): void {
+	const seconds = next.submission.hoursApprovedSeconds ?? next.submission.hoursClaimedSeconds
+	hours = Math.round((seconds / 3600) * 100) / 100
+	acknowledgements = [...next.acknowledgements]
+	returnSelection = next.findings.filter(isReturnable).map(finding => finding.id)
+	overrideReason = ""
+	decisionError = ""
 }
 
 // isUnauthorized sends a dead session back to sign-in and reports whether it handled the error.
@@ -291,6 +366,167 @@ async function answerStation(
 	} catch (err) {
 		actionError = err instanceof Error ? err.message : "Could not save this answer."
 		throw err
+	}
+}
+
+// toggleAck records one warning acknowledgement.
+function toggleAck(key: string): void {
+	acknowledgements = acknowledgements.includes(key)
+		? acknowledgements.filter(value => value !== key)
+		: [...acknowledgements, key]
+}
+
+// acknowledgeAll clears every warning at once.
+function acknowledgeAll(): void {
+	acknowledgements = warnings.map(check => check.key)
+}
+
+// addFinding records a finding that follows the project and shows it immediately.
+async function addFinding(request: FindingCreate): Promise<void> {
+	if (bundle === undefined) return
+
+	const { finding } = await createFinding(bundle.submission.id, request)
+	bundle.findings = [finding, ...bundle.findings]
+}
+
+// saveFinding stores a resolution and replaces the local copy.
+async function saveFinding(findingId: string, request: FindingUpdate): Promise<void> {
+	if (bundle === undefined) return
+
+	const { finding } = await updateFinding(bundle.submission.id, findingId, request)
+	bundle.findings = bundle.findings.map(item => (item.id === finding.id ? finding : item))
+}
+
+// addNote stores an internal note on the ship.
+async function addNote(body: string): Promise<void> {
+	if (bundle === undefined) return
+
+	const entry = await createNote(bundle.submission.id, { body, subjectType: "submission" })
+	bundle.notes = [entry, ...bundle.notes]
+}
+
+// removeNote deletes an internal note and drops it from the list.
+async function removeNote(entry: Note): Promise<void> {
+	await deleteNote(entry.id)
+	if (bundle !== undefined) bundle.notes = bundle.notes.filter(item => item.id !== entry.id)
+}
+
+// justificationProblem reports the approval field that is still missing.
+function justificationProblem(): string | undefined {
+	if (technicalFeatures.trim() === "") return "Name the specific technical features that account for these hours."
+
+	if (deflationRequired && deflationReason.trim() === "")
+		return "Explain why the approved time is lower than the captured time."
+
+	if (deflationReason.trim() !== "" && deflationReason.trim().toLowerCase() === note.trim().toLowerCase())
+		return "The deflation reason is internal reasoning, not the note to the maker."
+
+	return undefined
+}
+
+// approveProblem reports the first thing keeping an approval from going out.
+function approveProblem(): boolean {
+	if (blocking.length > 0) {
+		decisionError = "Approval is blocked by a failing check. Ask for changes or reject with a note."
+		return true
+	}
+
+	if (!secondPass && missingAcks.length > 0) {
+		decisionError = `Acknowledge ${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} before approving.`
+		return true
+	}
+
+	if (returnable.length > 0) {
+		decisionError = `Resolve or return the ${returnable.length} open finding${returnable.length === 1 ? "" : "s"} first.`
+		return true
+	}
+
+	if (!stationsDone) {
+		decisionError = "Finish every station before approving."
+		return true
+	}
+
+	const problem = justificationProblem()
+	if (problem === undefined) return false
+
+	decisionError = problem
+	return true
+}
+
+// decide records the synthesis decision and leaves the station workflow.
+async function decide(decision: "approved" | "changes" | "rejected"): Promise<void> {
+	if (bundle === undefined || deciding) return
+
+	decisionError = ""
+
+	if (!canDecide) {
+		decisionError = "Only organisers can decide the 2nd pass."
+		return
+	}
+
+	if (decision === "approved") {
+		if (approveProblem()) return
+	} else if (note.trim() === "") {
+		decisionError = "Write a note to the maker before returning or rejecting."
+		return
+	}
+
+	if (
+		secondPass
+		&& heldReview !== undefined
+		&& (decision !== "approved" || approvedSeconds !== (heldReview.hoursApprovedSeconds ?? 0))
+		&& overrideReason.trim() === ""
+	) {
+		decisionError = "Explain why the 2nd pass changes the first-pass decision or hours."
+		return
+	}
+
+	deciding = true
+
+	try {
+		const prefix = `${shipId}:${bundle.submission.version}:`
+		const key = idempotencyKey.startsWith(prefix) ? idempotencyKey : `${prefix}${crypto.randomUUID()}`
+		idempotencyKey = key
+
+		const result = await decideShip(shipId, {
+			acknowledgements,
+			decision,
+			deflationReason: deflationReason.trim(),
+			findingIds: decision === "changes" ? selectedFindingIds(returnable, returnSelection) : [],
+			hoursApprovedSeconds: approvedSeconds,
+			idempotencyKey: key,
+			internalNote: internalNote.trim(),
+			noteToMaker: note.trim(),
+			overrideReason: overrideReason.trim(),
+			technicalFeatures: technicalFeatures.trim(),
+			version: bundle.submission.version,
+		})
+		idempotencyKey = ""
+
+		if (result.held === 1) notice = `Held for the 2nd pass: ${result.heldReason ?? "policy"}.`
+		else
+			notice =
+				decision === "approved"
+					? "Approved and sent."
+					: decision === "changes"
+						? "Changes requested."
+						: "Rejected."
+
+		if (result.nextId !== undefined && result.nextId !== "") {
+			void goto(`/review/${encodeURIComponent(result.nextId)}`)
+			return
+		}
+
+		void goto("/stations")
+	} catch (err) {
+		decisionError =
+			err instanceof ApiError && err.code === "stale_version"
+				? "This ship changed since you opened it. Reload before deciding."
+				: err instanceof Error
+					? err.message
+					: "Could not record the decision."
+	} finally {
+		deciding = false
 	}
 }
 
@@ -606,42 +842,81 @@ async function persistDraft(): Promise<void> {
 					<h2 class="card-title">Design checks</h2>
 					{@render checkRows(hardwareChecks)}
 				</section>
-			{:else if stationKey === "synthesis"}
+			{:else if stationKey === "synthesis" || stationKey === "verify"}
+				{#if bundle.resubmission}
+					<ResubmissionDiff diff={bundle.resubmission} />
+				{/if}
+
+				{#if readme !== ""}
+					<details class="ui-card padded readme-card">
+						<summary>
+							<span class="card-title">README</span>
+							<span class="muted">Expand</span>
+						</summary>
+						<div class="readme-body"><Markdown text={readme} /></div>
+					</details>
+				{/if}
+
 				<section class="ui-card padded stack">
-					<h2 class="card-title">Synthesis and decision</h2>
-					<p class="description">
-						Station answers are ready. Open the full review to read the decision rail and record the
-						outcome.
-					</p>
-					<div>
-						<a class="ui-button primary" href={reviewHref}>Open synthesis and decision</a>
+					<div class="card-head">
+						<h2 class="card-title">Findings</h2>
+						<span class="muted">{returnable.length} open to resolve or return</span>
 					</div>
+					<FindingsCard
+						editable={canEditFindings}
+						findings={bundle.findings}
+						onCreate={addFinding}
+						onUpdate={saveFinding}
+						version={bundle.submission.version}
+					/>
 				</section>
 
 				<section class="ui-card padded stack">
-					<h2 class="card-title">Findings</h2>
-					{#if findings.length === 0}
-						<p class="muted">No open findings.</p>
-					{:else}
-						<ul class="finding-list">
-							{#each findings as finding (finding.id)}
-								<li>
-									<div class="finding-head">
-										<span class="ui-badge" data-tone={severityTone(finding.severity)}
-											>{finding.severity}</span
-										>
-										<span>{statusLabel(finding.status)}</span>
-										<span class="finding-station">{finding.station}</span>
-									</div>
-									<p class="finding-summary">{finding.summary}</p>
-									{#if finding.makerAction}
-										<p class="finding-action">Maker action: {finding.makerAction}</p>
-									{/if}
-								</li>
-							{/each}
-						</ul>
-					{/if}
+					<h2 class="card-title">Checks</h2>
+					<ChecksTab
+						{acknowledgements}
+						checks={bundle.checks}
+						collapsed={checksCollapsed}
+						onAcknowledgeAll={acknowledgeAll}
+						onToggle={toggleAck}
+					/>
 				</section>
+
+				{#if bundle.priorReviews.length > 0 || bundle.reviews.length > 0 || bundle.events.length > 0}
+					<details class="ui-card padded history-card">
+						<summary>
+							<span class="card-title">History</span>
+							<span class="muted">Prior reviews, decisions and events</span>
+						</summary>
+						<div class="history-body">
+							<PriorReviews reviews={bundle.priorReviews} />
+							<HistoryTab reviews={bundle.reviews} />
+							<ReviewTimeline events={bundle.events} />
+						</div>
+					</details>
+				{/if}
+
+				{#if bundle.notes.length > 0}
+					<details class="ui-card padded history-card">
+						<summary>
+							<span class="card-title">Internal notes</span>
+							<span class="muted">{bundle.notes.length}</span>
+						</summary>
+						<div class="history-body">
+							<NotesCard
+								canDelete={canDeleteNote}
+								notes={bundle.notes}
+								onAdd={addNote}
+								onRemove={removeNote}
+							/>
+						</div>
+					</details>
+				{/if}
+
+				<p class="muted">
+					<a class="card-link" href={fullReviewHref}>Open the full record</a>
+					for evidence tabs and file previews.
+				</p>
 			{:else}
 				<div class="ui-card padded stack">
 					<h2 class="card-title">No focused evidence for this station</h2>
@@ -681,7 +956,10 @@ async function persistDraft(): Promise<void> {
 				</section>
 			{/if}
 
-			{#if stationKey === "time" || stationKey === "narrative" || stationKey === "synthesis"}
+			{#if stationKey === "time"
+				|| stationKey === "narrative"
+				|| stationKey === "synthesis"
+				|| stationKey === "verify"}
 				<StationFields
 					{bundle}
 					{deflationReason}
@@ -701,11 +979,121 @@ async function persistDraft(): Promise<void> {
 					{editable}
 					focusStation={stationKey}
 					onAnswer={answerStation}
+					onCreateFinding={addFinding}
 					pinned
+					reviewerId={session.me?.user.id ?? ""}
 					states={bundle.stationStates}
 					stations={bundle.stations}
 					version={bundle.submission.version}
 				/>
+			{/if}
+
+			{#if showDecision}
+				<section class="ui-card padded decision-card">
+					<div class="fields-head">
+						<h2>Decision</h2>
+						{#if stationComplete}
+							<span class="ui-badge" data-tone="approved">Stations done</span>
+						{:else}
+							<span class="ui-badge" data-tone="pending">Stations open</span>
+						{/if}
+					</div>
+
+					{#if decisionError}
+						<p class="ui-notice" data-tone="bad" role="alert">{decisionError}</p>
+					{:else if notice}
+						<p class="ui-notice" data-tone="good">{notice}</p>
+					{/if}
+
+					<label class="field">
+						<span class="field-head">
+							<span>Approved hours</span>
+							<span class="muted">{formatHours(approvedSeconds)}</span>
+						</span>
+						<input
+							class="ui-input"
+							max={Math.max(0, capturedSeconds / 3600)}
+							min="0"
+							readonly={!editable}
+							step="0.01"
+							type="number"
+							bind:value={hours}
+						>
+						<span class="hint">
+							{formatHours(capturedSeconds)}
+							captured by journals and Hackatime.
+							{#if deflationRequired}
+								Deflation needs a reason.
+							{/if}
+						</span>
+					</label>
+
+					{#if secondPass}
+						<label class="field">
+							<span class="field-head"
+								><span>2nd-pass override reason</span><span class="internal-tag">Internal</span></span
+							>
+							<textarea
+								class="ui-input"
+								placeholder="Why does this differ from the first-pass decision or hours?"
+								readonly={!editable}
+								rows="2"
+								bind:value={overrideReason}
+							></textarea>
+						</label>
+					{/if}
+
+					{#if returnable.length > 0}
+						<ReturnComposer
+							findings={returnable}
+							onDraft={(text): void => onFieldChange("note", text)}
+							bind:selected={returnSelection}
+						/>
+					{/if}
+
+					<div class="decision-actions">
+						<button
+							class="ui-button ok block"
+							disabled={deciding || !canApprove || !canDecide}
+							onclick={(): Promise<void> => decide("approved")}
+							type="button"
+						>
+							{deciding ? "Saving…" : secondPass ? "Confirm approval" : "Approve"}
+						</button>
+						<button
+							class="ui-button changes"
+							disabled={deciding || !canDecide || note.trim() === ""}
+							onclick={(): Promise<void> => decide("changes")}
+							type="button"
+						>
+							Request changes
+						</button>
+						<button
+							class="ui-button danger"
+							disabled={deciding || !canDecide || note.trim() === ""}
+							onclick={(): Promise<void> => decide("rejected")}
+							type="button"
+						>
+							Reject
+						</button>
+					</div>
+
+					{#if !canDecide}
+						<p class="hint">Only organisers can decide the 2nd pass.</p>
+					{:else if !stationsDone}
+						<p class="hint">Finish every station before approving.</p>
+					{:else if blocking.length > 0}
+						<p class="hint">A blocking check prevents approval.</p>
+					{:else if !secondPass && missingAcks.length > 0}
+						<p class="hint">
+							{missingAcks.length}
+							warning{missingAcks.length === 1 ? "" : "s"}
+							left to acknowledge.
+						</p>
+					{:else if returnable.length > 0}
+						<p class="hint">Resolve or return the open findings before approving.</p>
+					{/if}
+				</section>
 			{/if}
 
 			<p class="queue-link"><a href={queueHref}>Back to queue</a></p>
@@ -1050,9 +1438,51 @@ async function persistDraft(): Promise<void> {
 	color: var(--text-2);
 }
 
-.complete-card h2 {
+.complete-card h2,
+.decision-card h2 {
 	font-size: var(--text-md);
 	font-weight: 700;
+}
+
+.decision-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.fields-head,
+.field-head {
+	display: flex;
+	gap: var(--space-2);
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+}
+
+.field-head {
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-2);
+}
+
+.hint {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.decision-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1);
+}
+
+.decision-actions .block {
+	flex-basis: 100%;
 }
 
 .complete-actions {

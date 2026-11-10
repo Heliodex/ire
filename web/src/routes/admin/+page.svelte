@@ -243,6 +243,9 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 		<h1>Admin</h1>
 		<p>Roster, roles and recent actions</p>
 	</div>
+	{#if canRoster}
+		<a class="ui-button" data-variant="outline" href="/admin/stations">Edit stations</a>
+	{/if}
 </section>
 
 {#if error}

@@ -62,13 +62,28 @@ export function verdictLabel(answer: string): string {
 	}
 }
 
-// answerFor finds one saved answer in the bundle.
+// answersFor lists every reviewer's answer to one question.
+export function answersFor(answers: StationAnswer[], stationKey: string, questionKey: string): StationAnswer[] {
+	return answers.filter(answer => answer.stationKey === stationKey && answer.questionKey === questionKey)
+}
+
+// answerFor finds one saved answer in the bundle. It returns the current reviewer's
+// answer when reviewerID is set, and any answer otherwise.
 export function answerFor(
 	answers: StationAnswer[],
 	stationKey: string,
 	questionKey: string,
+	reviewerID?: string,
 ): StationAnswer | undefined {
-	return answers.find(answer => answer.stationKey === stationKey && answer.questionKey === questionKey)
+	const matches = answersFor(answers, stationKey, questionKey)
+	if (reviewerID === undefined || reviewerID === "") return matches[0]
+
+	return matches.find(answer => answer.reviewerId === reviewerID)
+}
+
+// questionConflict reports whether reviewers disagree about one question.
+export function questionConflict(answers: StationAnswer[], stationKey: string, questionKey: string): boolean {
+	return new Set(answersFor(answers, stationKey, questionKey).map(answer => answer.answer)).size > 1
 }
 
 // initialStationKey picks the station the sheet opens on: the focus link first, then the
@@ -92,16 +107,23 @@ export function initialStationKey(
 }
 
 // nextQuestionKey finds the first question in a station that has no answer yet.
-export function nextQuestionKey(station: StationDefinition, answers: StationAnswer[]): string | undefined {
+export function nextQuestionKey(
+	station: StationDefinition,
+	answers: StationAnswer[],
+	reviewerID?: string,
+): string | undefined {
 	const ordered = station.questions.toSorted((a, b) => a.sort - b.sort)
 
-	return ordered.find(question => answerFor(answers, station.key, question.key) === undefined)?.key
+	return ordered.find(question => answerFor(answers, station.key, question.key, reviewerID) === undefined)?.key
 }
 
 // upsertStationAnswer replaces one station question's answer or appends a new one.
 export function upsertStationAnswer(answers: StationAnswer[], next: StationAnswer): StationAnswer[] {
 	const index = answers.findIndex(
-		answer => answer.stationKey === next.stationKey && answer.questionKey === next.questionKey,
+		answer =>
+			answer.stationKey === next.stationKey
+			&& answer.questionKey === next.questionKey
+			&& answer.reviewerId === next.reviewerId,
 	)
 	if (index === -1) return [...answers, next]
 

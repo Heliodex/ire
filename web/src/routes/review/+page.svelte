@@ -1853,6 +1853,8 @@ async function saveDraftNow(): Promise<void> {
 									editable={canEditFindings}
 									{focusStation}
 									onAnswer={answerStation}
+									onCreateFinding={addFinding}
+									reviewerId={session.me?.user.id ?? ""}
 									states={bundleStationStates}
 									stations={bundleStations}
 									version={submission.version}

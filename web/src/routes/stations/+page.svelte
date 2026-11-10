@@ -9,7 +9,8 @@ import { dropSignIn, session } from "../../lib/session.svelte.js"
 
 type StationSummary = Awaited<ReturnType<typeof fetchStations>>["stations"][number]
 
-let stations = $state<StationSummary[]>([])
+let firstPass = $state<StationSummary[]>([])
+let secondPass = $state<StationSummary[]>([])
 let loading = $state(true)
 let error = $state("")
 
@@ -26,8 +27,9 @@ async function boot(): Promise<void> {
 	}
 
 	try {
-		const { stations: next } = await fetchStations()
-		stations = next
+		const [one, two] = await Promise.all([fetchStations(1), fetchStations(2)])
+		firstPass = one.stations
+		secondPass = two.stations
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
 			dropSignIn()
@@ -61,26 +63,39 @@ async function boot(): Promise<void> {
 	<div class="ui-card">
 		<LoadingState message="Loading stations…" />
 	</div>
-{:else if stations.length === 0}
+{:else if firstPass.length === 0 && secondPass.length === 0}
 	<div class="ui-card ui-empty">
 		<strong>No stations configured</strong>
 		<span>This programme has no station workflow yet.</span>
 	</div>
 {:else}
-	<div class="grid">
-		{#each stations as station (station.key)}
-			<a class="ui-card station-card" href={`/station/${encodeURIComponent(station.key)}`}>
-				<span class="station-copy">
-					<strong>{station.label}</strong>
-					<span>{station.description || "No description yet."}</span>
-				</span>
-				<span class="waiting">
-					<strong>{station.count}</strong>
-					<span>waiting</span>
-				</span>
-			</a>
-		{/each}
-	</div>
+	{#each [
+		{ items: firstPass, label: "First pass", stage: 1 },
+		{ items: secondPass, label: "Second pass", stage: 2 },
+	] as group (group.stage)}
+		{#if group.items.length > 0}
+			<section class="stage">
+				<h2>{group.label}</h2>
+				<div class="grid">
+					{#each group.items as station (station.key)}
+						<a
+							class="ui-card station-card"
+							href={`/station/${encodeURIComponent(station.key)}?stage=${group.stage}`}
+						>
+							<span class="station-copy">
+								<strong>{station.label}</strong>
+								<span>{station.description || "No description yet."}</span>
+							</span>
+							<span class="waiting">
+								<strong>{station.count}</strong>
+								<span>waiting</span>
+							</span>
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
+	{/each}
 {/if}
 
 <style>
@@ -101,6 +116,17 @@ h1 {
 	padding-top: var(--space-1);
 	font-size: var(--text-sm);
 	color: var(--text-2);
+}
+
+.stage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding-top: var(--space-4);
+}
+
+.stage h2 {
+	font-size: var(--text-lg);
 }
 
 .grid {
