@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 18
+const schemaVersion = 19
 
 // stationSortHardware keeps the hardware station after the shared narrative station.
 const stationSortHardware = 40
@@ -576,6 +576,8 @@ func schemaStatements() []storage.Statement {
 }
 
 // lateColumns are columns added to a table after it first shipped. Their create statement carries them, which keeps a replay safe, but `create table if not exists` cannot add them to a database that already has the table. migrate asks the live schema which are missing and appends one alter for each, so an older database upgrades and a current one is left alone.
+//
+// Warning: an alter runs exactly once per database, so the versioned statement set changes after the first apply. The supervisor checksums the set per version, and any redeploy of that version afterwards mismatches. Prefer the ensure* fixups below (outside the versioned checksum) for additive columns, and follow a late-column deploy with another version bump to re-stabilise the set.
 var lateColumns = []struct {
 	table  string
 	column string
@@ -605,11 +607,6 @@ var lateColumns = []struct {
 		table:  "review",
 		column: "deflation_reason",
 		sql:    `alter table review add column deflation_reason text not null default ''`,
-	},
-	{
-		table:  "time_adjustment",
-		column: "source",
-		sql:    `alter table time_adjustment add column source text not null default ''`,
 	},
 }
 
