@@ -515,18 +515,11 @@ async function resolve(finding: Finding, status: Finding["status"]): Promise<voi
 	white-space: nowrap;
 }
 
-.internal-tag {
-	display: inline-block;
-	padding: 0 5px;
-	margin-left: var(--space-1);
-	font-size: 0.6rem;
+.required {
+	margin-left: 2px;
+	font-size: var(--text-sm);
 	font-weight: 700;
-	vertical-align: 1px;
-	color: var(--text-3);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	background: var(--surface-3);
-	border-radius: 99px;
+	color: var(--accent-red);
 }
 
 .finding-form > .ui-notice {
