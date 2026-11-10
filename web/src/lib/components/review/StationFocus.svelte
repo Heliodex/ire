@@ -55,6 +55,7 @@ import ChecksTab from "./ChecksTab.svelte"
 import EvidenceTab from "./EvidenceTab.svelte"
 import FindingsCard from "./FindingsCard.svelte"
 import HackatimeAdjustment from "./HackatimeAdjustment.svelte"
+import Icon from "../Icon.svelte"
 import HistoryTab from "./HistoryTab.svelte"
 import JournalList from "./JournalList.svelte"
 import Markdown from "./Markdown.svelte"
@@ -943,7 +944,7 @@ async function persistDraft(): Promise<void> {
 				<details class="ui-card padded collapse-card" open>
 					<summary>
 						<span class="card-title">Project image</span>
-						<span class="muted">Expand</span>
+						<Icon class="collapse-chevron" name="chevD" size={16} />
 					</summary>
 					<div class="collapse-body">
 						{#if submission?.thumbnailUrl && !coverFailed}
@@ -975,7 +976,7 @@ async function persistDraft(): Promise<void> {
 				<details class="ui-card padded collapse-card">
 					<summary>
 						<span class="card-title">What they built</span>
-						<span class="muted">Expand</span>
+						<Icon class="collapse-chevron" name="chevD" size={16} />
 					</summary>
 					<div class="collapse-body">
 						<p class="description">{submission?.description || "No description was sent."}</p>
@@ -1004,7 +1005,7 @@ async function persistDraft(): Promise<void> {
 					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">README</span>
-							<span class="muted">Expand</span>
+							<Icon class="collapse-chevron" name="chevD" size={16} />
 						</summary>
 						<div class="readme-body"><Markdown imageBase={readmeImageBase} text={readme} /></div>
 					</details>
@@ -1018,7 +1019,7 @@ async function persistDraft(): Promise<void> {
 				<details class="ui-card padded collapse-card">
 					<summary>
 						<span class="card-title">Repo checks</span>
-						<span class="muted">Expand</span>
+						<Icon class="collapse-chevron" name="chevD" size={16} />
 					</summary>
 					<div class="collapse-body">{@render checkRows(triageChecks)}</div>
 				</details>
@@ -1193,7 +1194,7 @@ async function persistDraft(): Promise<void> {
 					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">README</span>
-							<span class="muted">Expand</span>
+							<Icon class="collapse-chevron" name="chevD" size={16} />
 						</summary>
 						<div class="readme-body"><Markdown imageBase={readmeImageBase} text={readme} /></div>
 					</details>
@@ -1802,9 +1803,19 @@ async function persistDraft(): Promise<void> {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-2);
-	align-items: baseline;
+	align-items: center;
 	justify-content: space-between;
 	cursor: pointer;
+}
+
+.collapse-card summary .collapse-chevron {
+	flex: none;
+	color: var(--text-3);
+	transition: transform 0.15s;
+}
+
+.collapse-card[open] > summary .collapse-chevron {
+	transform: rotate(180deg);
 }
 
 .readme-body {
