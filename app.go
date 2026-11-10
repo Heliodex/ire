@@ -306,7 +306,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 // protectedPage reports the prerendered routes that need a session.
 func protectedPage(path string) bool {
-	for _, prefix := range []string{"/overview", "/queue", "/reviewed", "/review", "/reviewers", "/makers", "/deliveries", "/admin", "/stations"} {
+	for _, prefix := range []string{"/overview", "/queue", "/reviewed", "/review", "/reviewers", "/makers", "/deliveries", "/admin", "/stations", "/station"} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}

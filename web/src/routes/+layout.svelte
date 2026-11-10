@@ -52,7 +52,7 @@ const navItems = $derived.by((): NavItem[] => {
 	const sections: NavItem[] = [
 		{ active: path === "/overview", href: "/overview", label: "Overview" },
 		{ active: isQueueRoute(path), href: "/queue", label: "Queue" },
-		{ active: path.startsWith("/stations"), href: "/stations", label: "Stations" },
+		{ active: path.startsWith("/station"), href: "/stations", label: "Stations" },
 		{ active: isReviewedRoute(path), href: "/reviewed", label: "Reviewed" },
 		{ active: path.startsWith("/deliveries"), href: "/deliveries", label: "Deliveries" },
 	]

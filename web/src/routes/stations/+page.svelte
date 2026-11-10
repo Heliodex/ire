@@ -69,7 +69,7 @@ async function boot(): Promise<void> {
 {:else}
 	<div class="grid">
 		{#each stations as station (station.key)}
-			<a class="ui-card station-card" href={`/stations/${encodeURIComponent(station.key)}`}>
+			<a class="ui-card station-card" href={`/station/${encodeURIComponent(station.key)}`}>
 				<span class="station-copy">
 					<strong>{station.label}</strong>
 					<span>{station.description || "No description yet."}</span>
