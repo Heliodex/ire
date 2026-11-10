@@ -38,7 +38,17 @@ let seenCurrent = currentStation ?? ""
 let seenVersion = version
 let drafts = $state<{ [_: string]: string }>({})
 let errors = $state<{ [_: string]: string }>({})
-let saving = $state<string[]>([])
+let queue = $state<PendingAnswer[]>([])
+let active = $state<PendingAnswer | undefined>(undefined)
+let running = $state(false)
+
+interface PendingAnswer {
+	evidence: string
+	key: string
+	questionKey: string
+	stationKey: string
+	verdict: StationVerdict
+}
 
 const selectedStation = $derived(orderedStations.find(item => item.key === selected) ?? orderedStations[0])
 const selectedState = $derived(selectedStation ? statesByKey.get(selectedStation.key) : undefined)
@@ -76,7 +86,9 @@ $effect((): void => {
 	seenVersion = version
 	drafts = {}
 	errors = {}
-	saving = []
+	queue = []
+	active = undefined
+	running = false
 })
 
 // If the workflow changes underneath the sheet, fall back to a station that still exists.
@@ -109,23 +121,55 @@ function setEvidence(stationKey: string, questionKey: string, value: string): vo
 }
 
 // submitAnswer records one verdict with the evidence typed for that question.
-async function submitAnswer(question: StationQuestion, verdict: StationVerdict): Promise<void> {
+// Answers are queued so a fast second click is applied after the first response
+// instead of racing it or being silently dropped.
+function submitAnswer(question: StationQuestion, verdict: StationVerdict): void {
 	if (!editable || selectedStation === undefined) return
 
 	const stationKey = selectedStation.key
 	const key = answerKey(stationKey, question.key)
-	if (saving.includes(key)) return
+	if (active?.key === key) return
 
+	const task: PendingAnswer = {
+		evidence: evidenceValue(stationKey, question.key).trim(),
+		key,
+		questionKey: question.key,
+		stationKey,
+		verdict,
+	}
 	delete errors[key]
-	saving = [...saving, key]
+	queue = [...queue.filter(item => item.key !== key), task]
+	void drain()
+}
+
+// drain applies queued answers one at a time, so each response carries the state
+// written by the previous answer.
+async function drain(): Promise<void> {
+	if (running || queue.length === 0) return
+
+	running = true
+	const [task] = queue
+	if (!task) {
+		running = false
+		return
+	}
+
+	queue = queue.slice(1)
+	active = task
 
 	try {
-		await onAnswer(stationKey, question.key, verdict, evidenceValue(stationKey, question.key).trim())
+		await onAnswer(task.stationKey, task.questionKey, task.verdict, task.evidence)
 	} catch (err) {
-		errors[key] = err instanceof Error ? err.message : "Could not save this answer."
+		errors[task.key] = err instanceof Error ? err.message : "Could not save this answer."
 	} finally {
-		saving = saving.filter(item => item !== key)
+		active = undefined
+		running = false
+		void drain()
 	}
+}
+
+function isQueued(key: string): boolean {
+	return queue.some(item => item.key === key)
 }
 </script>
 
@@ -227,7 +271,7 @@ async function submitAnswer(question: StationQuestion, verdict: StationVerdict):
 									<div aria-label={`Answer: ${question.prompt}`} class="verdict-buttons" role="group">
 										<button
 											class="ui-button sm ok"
-											disabled={saving.includes(key)}
+											disabled={active?.key === key}
 											onclick={(): Promise<void> => submitAnswer(question, "pass")}
 											type="button"
 											class:chosen={answer?.answer === "pass"}
@@ -236,7 +280,7 @@ async function submitAnswer(question: StationQuestion, verdict: StationVerdict):
 										</button>
 										<button
 											class="ui-button sm danger"
-											disabled={saving.includes(key)}
+											disabled={active?.key === key}
 											onclick={(): Promise<void> => submitAnswer(question, "fail")}
 											type="button"
 											class:chosen={answer?.answer === "fail"}
@@ -245,7 +289,7 @@ async function submitAnswer(question: StationQuestion, verdict: StationVerdict):
 										</button>
 										<button
 											class="ui-button sm ghost"
-											disabled={saving.includes(key)}
+											disabled={active?.key === key}
 											onclick={(): Promise<void> => submitAnswer(question, "na")}
 											type="button"
 											class:chosen={answer?.answer === "na"}
@@ -261,8 +305,10 @@ async function submitAnswer(question: StationQuestion, verdict: StationVerdict):
 									<p class="fail-hint">Add a finding for this below.</p>
 								{/if}
 
-								{#if saving.includes(key)}
+								{#if active?.key === key}
 									<p class="saving" role="status">Saving…</p>
+								{:else if isQueued(key)}
+									<p class="saving" role="status">Queued…</p>
 								{/if}
 
 								{#if errors[key]}
