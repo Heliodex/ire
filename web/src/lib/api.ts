@@ -125,6 +125,7 @@ export async function fetchAudit(offset = 0, limit = 50, filters: AuditFilters =
 // shared types; the generated wrappers re-export here so existing imports keep working.
 export {
 	claimShip,
+	clearStationAnswer,
 	createNote,
 	createRole,
 	decideShip,

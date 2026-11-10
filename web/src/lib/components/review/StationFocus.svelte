@@ -5,6 +5,7 @@ import { goto } from "$app/navigation"
 import {
 	type Bundle,
 	claimShip,
+	clearStationAnswer,
 	createNote,
 	decideShip,
 	deleteNote,
@@ -460,6 +461,25 @@ async function answerStation(
 		actionError = ""
 	} catch (err) {
 		actionError = err instanceof Error ? err.message : "Could not save this answer."
+		throw err
+	}
+}
+
+// clearAnswer removes the reviewer's verdict and refreshes the station workflow.
+async function clearAnswer(key: string, questionKey: string): Promise<void> {
+	if (bundle === undefined) return
+
+	try {
+		const result = await clearStationAnswer(bundle.submission.id, key, questionKey, bundle.submission.version)
+		const me = session.me?.user.id ?? ""
+		bundle.stationAnswers = (bundle.stationAnswers ?? []).filter(
+			item => !(item.stationKey === key && item.questionKey === questionKey && (item.reviewerId ?? "") === me),
+		)
+		bundle.stationStates = result.states
+		bundle.currentStation = result.currentStation
+		actionError = ""
+	} catch (err) {
+		actionError = err instanceof Error ? err.message : "Could not clear this answer."
 		throw err
 	}
 }
@@ -1365,6 +1385,7 @@ async function persistDraft(): Promise<void> {
 					findings={bundle.findings}
 					focusStation={stationKey}
 					onAnswer={answerStation}
+					onClear={clearAnswer}
 					onCreateFinding={addFinding}
 					onResolve={resolveConflict}
 					onUpdateFinding={saveFinding}

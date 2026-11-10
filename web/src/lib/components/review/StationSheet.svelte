@@ -31,6 +31,7 @@ interface Props {
 	findings?: Finding[]
 	focusStation?: string
 	onAnswer(stationKey: string, questionKey: string, answer: StationVerdict, evidence: string): Promise<void>
+	onClear(stationKey: string, questionKey: string): Promise<void>
 	onCreateFinding?(request: FindingRequest): Promise<void>
 	onResolve?(stationKey: string, questionKey: string, answer: StationVerdict): Promise<void>
 	onUpdateFinding?(findingId: string, request: FindingUpdate): Promise<void>
@@ -51,6 +52,7 @@ let {
 	findings = [],
 	focusStation,
 	onAnswer,
+	onClear,
 	canResolve = false,
 	closed = false,
 	onCreateFinding,
@@ -76,10 +78,12 @@ let seenCurrent = currentStation ?? ""
 let seenVersion = version
 let drafts = $state<{ [_: string]: string }>({})
 let errors = $state<{ [_: string]: string }>({})
-let queue = $state<PendingAnswer[]>([])
-let active = $state<PendingAnswer | undefined>(undefined)
+let queue = $state<PendingTask[]>([])
+let active = $state<PendingTask | undefined>(undefined)
 // pending applies instantly so the reviewer keeps working while saves land.
 let pending = $state<{ [_: string]: StationVerdict }>({})
+// cleared marks optimistically cleared answers until the bundle confirms them.
+let cleared = $state<string[]>([])
 let running = $state(false)
 let findingKey = $state("")
 let findingEdit = $state<{ id: string; status: Finding["status"] } | undefined>(undefined)
@@ -108,6 +112,15 @@ interface PendingAnswer {
 	stationKey: string
 	verdict: StationVerdict
 }
+
+interface PendingClear {
+	clear: true
+	key: string
+	questionKey: string
+	stationKey: string
+}
+
+type PendingTask = PendingAnswer | PendingClear
 
 const selectedStation = $derived(orderedStations.find(item => item.key === selected) ?? orderedStations[0])
 const selectedState = $derived(selectedStation ? statesByKey.get(selectedStation.key) : undefined)
@@ -147,6 +160,8 @@ $effect((): void => {
 	errors = {}
 	queue = []
 	active = undefined
+	pending = {}
+	cleared = []
 	running = false
 })
 
@@ -203,11 +218,24 @@ function submitAnswer(question: StationQuestion, verdict: StationVerdict): void 
 	}
 	delete errors[key]
 	pending[key] = verdict
+	if (cleared.includes(key)) cleared = cleared.filter(item => item !== key)
 	if (verdict === "fail" && findingKey !== key) {
 		openFinding(stationKey, question)
 		findingKey = key
 	}
 	queue = [...queue.filter(item => item.key !== key), task]
+	void drain()
+}
+
+// clearAnswer removes the reviewer's verdict so the question opens unanswered again.
+function clearAnswer(question: StationQuestion): void {
+	if (!editable || selectedStation === undefined) return
+	const key = answerKey(selectedStation.key, question.key)
+	if (active?.key === key) return
+	if (!cleared.includes(key)) cleared = [...cleared, key]
+	delete errors[key]
+	delete pending[key]
+	queue = [...queue.filter(item => item.key !== key), { clear: true, key, questionKey: question.key, stationKey: selectedStation.key }]
 	void drain()
 }
 
@@ -227,13 +255,22 @@ async function drain(): Promise<void> {
 	active = task
 
 	try {
-		await onAnswer(task.stationKey, task.questionKey, task.verdict, task.evidence)
-		if (task.stationKey === selectedStation?.key) void scrollToNext()
+		if ("clear" in task) await onClear(task.stationKey, task.questionKey)
+		else {
+			await onAnswer(task.stationKey, task.questionKey, task.verdict, task.evidence)
+			if (task.stationKey === selectedStation?.key) void scrollToNext()
+		}
 	} catch (err) {
-		errors[task.key] = err instanceof Error ? err.message : "Could not save this answer."
+		errors[task.key] = err instanceof Error
+			? err.message
+			: "clear" in task
+				? "Could not clear this answer."
+				: "Could not save this answer."
+		if ("clear" in task) cleared = cleared.filter(item => item !== task.key)
+		else delete pending[task.key]
 	} finally {
 		active = undefined
-		delete pending[task.key]
+		if (!("clear" in task)) delete pending[task.key]
 		running = false
 		void drain()
 	}
@@ -454,8 +491,11 @@ function onKeydown(event: KeyboardEvent): void {
 		{const openNextKey = $derived.by((): string | undefined => {
 			if (failNeedsFinding) return undefined
 			for (const item of questions) {
-				if (answerFor(answers, selectedStation.key, item.key, reviewerId) !== undefined) continue
-				const pend = pending[answerKey(selectedStation.key, item.key)]
+				const itemKey = answerKey(selectedStation.key, item.key)
+				if (cleared.includes(itemKey)) return item.key
+				if (answerFor(answers, selectedStation.key, item.key, reviewerId) !== undefined && pending[itemKey] === undefined)
+					continue
+				const pend = pending[itemKey]
 				if (pend === undefined) return item.key
 				if (pend === "fail") return undefined
 			}
@@ -491,14 +531,15 @@ function onKeydown(event: KeyboardEvent): void {
 							)}
 							{const conflict = $derived(questionConflict(answers, selectedStation.key, question.key))}
 							{const key = $derived(answerKey(selectedStation.key, question.key))}
-							{const pendingVerdict = $derived(pending[key])}
-							{const effective = $derived(pendingVerdict ?? answer?.answer)}
+							{const effective = $derived(
+								cleared.includes(key) ? undefined : (pending[key] ?? answer?.answer),
+							)}
 							{const existingFinding = $derived(questionFinding(selectedStation.key, question.prompt))}
 							<li
 								data-question={question.key}
 								class:needs-finding={effective === "fail"
 									&& !questionHasFinding(selectedStation.key, question.prompt)}
-								class:next={editable && answer === undefined && pendingVerdict === undefined && openNextKey === question.key}
+								class:next={editable && openNextKey === question.key}
 							>
 								<details
 									class="question-details"
@@ -518,13 +559,9 @@ function onKeydown(event: KeyboardEvent): void {
 										<span class="question-meta">
 											{#if conflict}
 												<span class="ui-badge" data-tone="changes">Conflict</span>
-											{:else if answer}
-												<span class="ui-badge" data-tone={verdictTone(answer.answer)}
-													>{verdictLabel(answer.answer)}</span
-												>
-											{:else if pendingVerdict}
-												<span class="ui-badge" data-tone={verdictTone(pendingVerdict)}
-													>{verdictLabel(pendingVerdict)}</span
+											{:else if effective}
+												<span class="ui-badge" data-tone={verdictTone(effective)}
+													>{verdictLabel(effective)}</span
 												>
 											{/if}
 											<span class="question-toggle">
@@ -639,6 +676,17 @@ function onKeydown(event: KeyboardEvent): void {
 											>
 												N/A
 											</button>
+											{#if effective !== undefined}
+												<button
+													class="ui-button sm ghost"
+													disabled={active?.key === key}
+													onclick={(): void => clearAnswer(question)}
+													title="Remove this verdict so the question is unanswered again"
+													type="button"
+												>
+													Clear
+												</button>
+											{/if}
 										</div>
 									{:else if answer?.evidence}
 										<p class="evidence-text">{answer.evidence}</p>
