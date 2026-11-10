@@ -701,6 +701,7 @@ async function persistDraft(): Promise<void> {
 					{editable}
 					focusStation={stationKey}
 					onAnswer={answerStation}
+					pinned
 					states={bundle.stationStates}
 					stations={bundle.stations}
 					version={bundle.submission.version}

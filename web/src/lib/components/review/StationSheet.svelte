@@ -22,12 +22,24 @@ interface Props {
 	editable: boolean
 	focusStation?: string
 	onAnswer(stationKey: string, questionKey: string, answer: StationVerdict, evidence: string): Promise<void>
+	/** Pins the sheet to focusStation: other stations show status only. */
+	pinned?: boolean
 	states: StationState[]
 	stations: StationDefinition[]
 	version: number
 }
 
-let { answers, currentStation, editable, focusStation, onAnswer, states, stations, version }: Props = $props()
+let {
+	answers,
+	currentStation,
+	editable,
+	focusStation,
+	onAnswer,
+	pinned = false,
+	states,
+	stations,
+	version,
+}: Props = $props()
 
 const statesByKey = $derived(new Map(states.map(state => [state.key, state])))
 const orderedStations = $derived(
@@ -231,19 +243,33 @@ function onKeydown(event: KeyboardEvent): void {
 			{#each orderedStations as station (station.key)}
 				{const state = $derived(statesByKey.get(station.key))}
 				<li>
-					<button
-						aria-pressed={station.key === selected}
-						class="progress-item"
-						data-status={state?.status ?? "todo"}
-						onclick={(): void => selectStation(station.key)}
-						type="button"
-					>
-						<span aria-hidden="true" class="progress-dot"></span>
-						<span class="progress-label">{station.label}</span>
-						{#if state}
-							<span class="progress-count">{state.answered}/{state.required}</span>
-						{/if}
-					</button>
+					{#if pinned}
+						<div
+							aria-current={station.key === selected ? "true" : undefined}
+							class="progress-item static"
+							data-status={state?.status ?? "todo"}
+						>
+							<span aria-hidden="true" class="progress-dot"></span>
+							<span class="progress-label">{station.label}</span>
+							{#if state}
+								<span class="progress-count">{state.answered}/{state.required}</span>
+							{/if}
+						</div>
+					{:else}
+						<button
+							aria-pressed={station.key === selected}
+							class="progress-item"
+							data-status={state?.status ?? "todo"}
+							onclick={(): void => selectStation(station.key)}
+							type="button"
+						>
+							<span aria-hidden="true" class="progress-dot"></span>
+							<span class="progress-label">{station.label}</span>
+							{#if state}
+								<span class="progress-count">{state.answered}/{state.required}</span>
+							{/if}
+						</button>
+					{/if}
 				</li>
 			{/each}
 		</ol>
@@ -430,10 +456,25 @@ function onKeydown(event: KeyboardEvent): void {
 	background: var(--surface-3);
 }
 
-.progress-item[aria-pressed="true"] {
+.progress-item.static {
+	cursor: default;
+}
+
+.progress-item.static:hover {
+	color: var(--text-2);
+	background: var(--surface-2);
+}
+
+.progress-item[aria-pressed="true"],
+.progress-item[aria-current="true"] {
 	color: var(--text);
 	background: color-mix(in srgb, var(--primary) 10%, var(--surface));
 	border-color: var(--primary);
+}
+
+.progress-item.static[aria-current="true"]:hover {
+	color: var(--text);
+	background: color-mix(in srgb, var(--primary) 10%, var(--surface));
 }
 
 .progress-item[data-status="done"] {
