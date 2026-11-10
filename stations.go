@@ -224,7 +224,7 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 	openAt := map[string]int{}
 
 	for _, finding := range findings {
-		if finding.Status == "open" && (finding.Severity == "block" || finding.Severity == "fixable") {
+		if findingActive(finding.Status) && (finding.Severity == "block" || finding.Severity == "fixable") {
 			openAt[finding.Station]++
 		}
 	}

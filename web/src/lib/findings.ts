@@ -31,9 +31,10 @@ export const statusLabel = (status: FindingStatus): string => statusLabelByStatu
 // isActive treats disputed findings as unresolved, so their actions stay reachable.
 export const isActive = (finding: Finding): boolean => finding.status === "open" || finding.status === "disputed"
 
-// isReturnable finds the open findings that can block an approval and belong on a return.
+// isReturnable finds the open or disputed findings that can block an approval and belong on a return.
 export const isReturnable = (finding: Finding): boolean =>
-	finding.status === "open" && (finding.severity === "block" || finding.severity === "fixable")
+	(finding.status === "open" || finding.status === "disputed")
+	&& (finding.severity === "block" || finding.severity === "fixable")
 
 // returnNote builds the maker-facing bullet list from the findings chosen for a return.
 function returnLine(finding: Finding): string {

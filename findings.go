@@ -126,6 +126,11 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if ship.Status == statusDecided || ship.Status == statusWithdrawn {
+		app.WriteError(w, http.StatusConflict, "this ship has been closed")
+		return
+	}
+
 	if !a.holdsClaim(r.Context(), ship.ID, person.ID) {
 		app.WriteError(w, http.StatusConflict, "claim the ship before changing a finding")
 		return
@@ -296,7 +301,7 @@ func (a *ireApp) openFindings(ctx context.Context, programID, externalID string)
 	out := make([]contract.Finding, 0, len(findings))
 
 	for _, finding := range findings {
-		if finding.Status == "open" && (finding.Severity == "block" || finding.Severity == "fixable") {
+		if findingActive(finding.Status) && (finding.Severity == "block" || finding.Severity == "fixable") {
 			out = append(out, finding)
 		}
 	}
@@ -336,7 +341,7 @@ func (a *ireApp) findingProblem(ctx context.Context, request contract.DecisionRe
 	open := map[string]bool{}
 
 	for _, finding := range findings {
-		if finding.Status == "open" {
+		if findingActive(finding.Status) {
 			open[finding.ID] = true
 		}
 	}

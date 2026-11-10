@@ -101,6 +101,61 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 	}
 }
 
+// TestApprovalBlockedByDisputedFinding covers disputed block findings at the approval gate.
+func TestApprovalBlockedByDisputedFinding(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+
+	createBody, _ := json.Marshal(contract.FindingCreateRequest{
+		MakerAction: stringPtr("Add the Gerber ZIP."),
+		Severity:    "block",
+		Station:     "hardware",
+		Summary:     "The Gerber ZIP is missing.",
+	})
+
+	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, cookie, nil)
+	if created.Code != http.StatusOK {
+		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
+	}
+
+	finding := decode[contract.FindingResponse](t, created).Finding
+
+	disputeBody, _ := json.Marshal(contract.FindingUpdateRequest{Status: "disputed"})
+
+	if disputed := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/findings/"+finding.ID, disputeBody, cookie, nil); disputed.Code != http.StatusOK {
+		t.Fatalf("dispute finding = %d: %s", disputed.Code, disputed.Body.String())
+	}
+
+	hours := max(
+		bundle.Submission.HoursClaimedSeconds,
+		bundle.Submission.HoursJournalSeconds+bundle.Submission.HoursHackatimeSeconds,
+	)
+	approveBody, _ := json.Marshal(contract.DecisionRequest{
+		Acknowledgements:     warningKeys(bundle.Checks),
+		Decision:             decisionApproved,
+		HoursApprovedSeconds: &hours,
+		IdempotencyKey:       "dec-disputed-finding-1",
+		InternalNote:         "Checked.",
+		NoteToMaker:          "Nice.",
+		Version:              bundle.Submission.Version,
+	})
+
+	blocked := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", approveBody, cookie, nil)
+	if blocked.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("approval with disputed finding = %d: %s", blocked.Code, blocked.Body.String())
+	}
+
+	if problem := decode[contract.ErrorResponse](t, blocked); problem.Code != "open_findings" {
+		t.Fatalf("problem = %+v", problem)
+	}
+}
+
 // TestReturnRecordsItsFindings covers the finding_return rows that make a return auditable.
 func TestReturnRecordsItsFindings(t *testing.T) {
 	application := newTestApp(t)

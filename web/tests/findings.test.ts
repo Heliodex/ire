@@ -26,9 +26,10 @@ function finding(overrides: Partial<Finding>): Finding {
 }
 
 describe("isReturnable", () => {
-	test("accepts only open block and fixable findings", () => {
+	test("accepts open and disputed block and fixable findings", () => {
 		expect(isReturnable(finding({ severity: "block" }))).toBe(true)
 		expect(isReturnable(finding({ severity: "fixable" }))).toBe(true)
+		expect(isReturnable(finding({ severity: "block", status: "disputed" }))).toBe(true)
 		expect(isReturnable(finding({ severity: "note" }))).toBe(false)
 		expect(isReturnable(finding({ severity: "hold" }))).toBe(false)
 		expect(isReturnable(finding({ severity: "block", status: "fixed" }))).toBe(false)

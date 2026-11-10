@@ -30,6 +30,16 @@ func (a *ireApp) handleNoteCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if ship.Status == statusDecided || ship.Status == statusWithdrawn {
+		app.WriteError(w, http.StatusConflict, "this ship has been closed")
+		return
+	}
+
+	if !a.holdsClaim(r.Context(), ship.ID, person.ID) {
+		app.WriteError(w, http.StatusConflict, "claim the ship before adding a note")
+		return
+	}
+
 	var request contract.NoteRequest
 	if !app.ReadJSON(w, r, maxAPIBody, "body", &request) {
 		return
