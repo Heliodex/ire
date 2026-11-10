@@ -126,7 +126,7 @@ async function save(keepalive = false): Promise<void> {
 {#if editable}
 	<div class="journal-time">
 		<label class="field">
-			<span>Count as (hours)</span>
+			<span class="field-head">Count as (hours)</span>
 			<span class="journal-time-row">
 				<input
 					aria-label={`Approved hours for ${entry.title ?? "this entry"}`}
@@ -141,9 +141,9 @@ async function save(keepalive = false): Promise<void> {
 				<span class="hint">{formatHours(entry.seconds)} claimed</span>
 			</span>
 		</label>
-		{#if approvedSeconds < entry.seconds || reason !== ""}
+		{#if approvedSeconds < entry.seconds || reason !== "" || savedNote !== ""}
 			<label class="field">
-				<span>Why less? <span class="hint">staff only</span></span>
+				<span class="field-head"><span>Why less?</span><span class="hint">staff only</span></span>
 				<select
 					aria-label={`Deflation reason for ${entry.title ?? "this entry"}`}
 					class="ui-input"
@@ -156,18 +156,18 @@ async function save(keepalive = false): Promise<void> {
 					{/each}
 				</select>
 			</label>
+			<label class="field">
+				<span class="field-head"><span>Deflation note</span><span class="hint">staff only</span></span>
+				<input
+					aria-label={`Deflation note for ${entry.title ?? "this entry"}`}
+					class="ui-input"
+					onblur={flush}
+					oninput={schedule}
+					placeholder="Why this entry counts for less"
+					bind:value={note}
+				>
+			</label>
 		{/if}
-		<label class="field">
-			<span>Deflation note <span class="hint">staff only</span></span>
-			<input
-				aria-label={`Deflation note for ${entry.title ?? "this entry"}`}
-				class="ui-input"
-				onblur={flush}
-				oninput={schedule}
-				placeholder="Why this entry counts for less"
-				bind:value={note}
-			>
-		</label>
 		<p aria-live="polite" class="journal-time-status">
 			{#if status === "saving"}
 				Saving…
@@ -202,6 +202,18 @@ async function save(keepalive = false): Promise<void> {
 
 .journal-time .field {
 	flex: 1 1 14rem;
+}
+
+.journal-time .field-head {
+	display: flex;
+	gap: var(--space-2);
+	align-items: baseline;
+	justify-content: space-between;
+	font-size: var(--text-xs);
+}
+
+.journal-time .ui-input {
+	font-size: var(--text-sm);
 }
 
 .journal-time-row {
