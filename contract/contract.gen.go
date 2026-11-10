@@ -4382,6 +4382,9 @@ type ReviewBundle struct {
 	// Claim corresponds to the JSON schema field "claim".
 	Claim *ClaimState `json:"claim,omitempty,omitzero" yaml:"claim,omitempty" mapstructure:"claim,omitempty"`
 
+	// CurrentStation corresponds to the JSON schema field "currentStation".
+	CurrentStation *string `json:"currentStation,omitempty,omitzero" yaml:"currentStation,omitempty" mapstructure:"currentStation,omitempty"`
+
 	// Draft corresponds to the JSON schema field "draft".
 	Draft *DraftState `json:"draft,omitempty,omitzero" yaml:"draft,omitempty" mapstructure:"draft,omitempty"`
 
@@ -4411,6 +4414,15 @@ type ReviewBundle struct {
 
 	// Reviews corresponds to the JSON schema field "reviews".
 	Reviews []Review `json:"reviews" yaml:"reviews" mapstructure:"reviews"`
+
+	// StationAnswers corresponds to the JSON schema field "stationAnswers".
+	StationAnswers []StationAnswer `json:"stationAnswers" yaml:"stationAnswers" mapstructure:"stationAnswers"`
+
+	// StationStates corresponds to the JSON schema field "stationStates".
+	StationStates []StationState `json:"stationStates" yaml:"stationStates" mapstructure:"stationStates"`
+
+	// Stations corresponds to the JSON schema field "stations".
+	Stations []StationDefinition `json:"stations" yaml:"stations" mapstructure:"stations"`
 
 	// Submission corresponds to the JSON schema field "submission".
 	Submission Submission `json:"submission" yaml:"submission" mapstructure:"submission"`
@@ -4451,6 +4463,15 @@ func (j *ReviewBundle) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["reviews"]; raw != nil && !ok {
 		return fmt.Errorf("field reviews in ReviewBundle: required")
+	}
+	if _, ok := raw["stationAnswers"]; raw != nil && !ok {
+		return fmt.Errorf("field stationAnswers in ReviewBundle: required")
+	}
+	if _, ok := raw["stationStates"]; raw != nil && !ok {
+		return fmt.Errorf("field stationStates in ReviewBundle: required")
+	}
+	if _, ok := raw["stations"]; raw != nil && !ok {
+		return fmt.Errorf("field stations in ReviewBundle: required")
 	}
 	if _, ok := raw["submission"]; raw != nil && !ok {
 		return fmt.Errorf("field submission in ReviewBundle: required")
@@ -5611,6 +5632,516 @@ func (j *SendBackResult) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 	*j = SendBackResult(plain)
+	return nil
+}
+
+type StationAnswer struct {
+	// Answer corresponds to the JSON schema field "answer".
+	Answer string `json:"answer" yaml:"answer" mapstructure:"answer"`
+
+	// ArtifactHash corresponds to the JSON schema field "artifactHash".
+	ArtifactHash *string `json:"artifactHash,omitempty,omitzero" yaml:"artifactHash,omitempty" mapstructure:"artifactHash,omitempty"`
+
+	// Evidence corresponds to the JSON schema field "evidence".
+	Evidence string `json:"evidence" yaml:"evidence" mapstructure:"evidence"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// QuestionKey corresponds to the JSON schema field "questionKey".
+	QuestionKey string `json:"questionKey" yaml:"questionKey" mapstructure:"questionKey"`
+
+	// ReviewerID corresponds to the JSON schema field "reviewerId".
+	ReviewerID *string `json:"reviewerId,omitempty,omitzero" yaml:"reviewerId,omitempty" mapstructure:"reviewerId,omitempty"`
+
+	// StationKey corresponds to the JSON schema field "stationKey".
+	StationKey string `json:"stationKey" yaml:"stationKey" mapstructure:"stationKey"`
+
+	// SubmissionID corresponds to the JSON schema field "submissionId".
+	SubmissionID string `json:"submissionId" yaml:"submissionId" mapstructure:"submissionId"`
+
+	// UpdatedAt corresponds to the JSON schema field "updatedAt".
+	UpdatedAt string `json:"updatedAt" yaml:"updatedAt" mapstructure:"updatedAt"`
+}
+
+type StationAnswerRequest struct {
+	// Answer corresponds to the JSON schema field "answer".
+	Answer string `json:"answer" yaml:"answer" mapstructure:"answer"`
+
+	// ArtifactHash corresponds to the JSON schema field "artifactHash".
+	ArtifactHash *string `json:"artifactHash,omitempty,omitzero" yaml:"artifactHash,omitempty" mapstructure:"artifactHash,omitempty"`
+
+	// Evidence corresponds to the JSON schema field "evidence".
+	Evidence string `json:"evidence" yaml:"evidence" mapstructure:"evidence"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationAnswerRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["answer"]; raw != nil && !ok {
+		return fmt.Errorf("field answer in StationAnswerRequest: required")
+	}
+	if _, ok := raw["evidence"]; raw != nil && !ok {
+		return fmt.Errorf("field evidence in StationAnswerRequest: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in StationAnswerRequest: required")
+	}
+	type Plain StationAnswerRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if matched, _ := regexp.MatchString(`^(pass|fail|na)$`, string(plain.Answer)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Answer", `^(pass|fail|na)$`)
+	}
+	if plain.ArtifactHash != nil && utf8.RuneCountInString(string(*plain.ArtifactHash)) > 200 {
+		return fmt.Errorf("field %s length: must be <= %d", "artifactHash", 200)
+	}
+	if utf8.RuneCountInString(string(plain.Evidence)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "evidence", 4000)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = StationAnswerRequest(plain)
+	return nil
+}
+
+type StationAnswerResult struct {
+	// Answer corresponds to the JSON schema field "answer".
+	Answer StationAnswer `json:"answer" yaml:"answer" mapstructure:"answer"`
+
+	// CurrentStation corresponds to the JSON schema field "currentStation".
+	CurrentStation *string `json:"currentStation,omitempty,omitzero" yaml:"currentStation,omitempty" mapstructure:"currentStation,omitempty"`
+
+	// States corresponds to the JSON schema field "states".
+	States []StationState `json:"states" yaml:"states" mapstructure:"states"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationAnswerResult) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["answer"]; raw != nil && !ok {
+		return fmt.Errorf("field answer in StationAnswerResult: required")
+	}
+	if _, ok := raw["states"]; raw != nil && !ok {
+		return fmt.Errorf("field states in StationAnswerResult: required")
+	}
+	type Plain StationAnswerResult
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = StationAnswerResult(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationAnswer) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["answer"]; raw != nil && !ok {
+		return fmt.Errorf("field answer in StationAnswer: required")
+	}
+	if _, ok := raw["evidence"]; raw != nil && !ok {
+		return fmt.Errorf("field evidence in StationAnswer: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in StationAnswer: required")
+	}
+	if _, ok := raw["questionKey"]; raw != nil && !ok {
+		return fmt.Errorf("field questionKey in StationAnswer: required")
+	}
+	if _, ok := raw["stationKey"]; raw != nil && !ok {
+		return fmt.Errorf("field stationKey in StationAnswer: required")
+	}
+	if _, ok := raw["submissionId"]; raw != nil && !ok {
+		return fmt.Errorf("field submissionId in StationAnswer: required")
+	}
+	if _, ok := raw["updatedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field updatedAt in StationAnswer: required")
+	}
+	type Plain StationAnswer
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if matched, _ := regexp.MatchString(`^(pass|fail|na)$`, string(plain.Answer)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Answer", `^(pass|fail|na)$`)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if utf8.RuneCountInString(string(plain.QuestionKey)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "questionKey", 1)
+	}
+	if utf8.RuneCountInString(string(plain.StationKey)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "stationKey", 1)
+	}
+	if utf8.RuneCountInString(string(plain.SubmissionID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "submissionId", 1)
+	}
+	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
+	}
+	*j = StationAnswer(plain)
+	return nil
+}
+
+type StationDefinition struct {
+	// Active corresponds to the JSON schema field "active".
+	Active int `json:"active" yaml:"active" mapstructure:"active"`
+
+	// Description corresponds to the JSON schema field "description".
+	Description string `json:"description" yaml:"description" mapstructure:"description"`
+
+	// Key corresponds to the JSON schema field "key".
+	Key string `json:"key" yaml:"key" mapstructure:"key"`
+
+	// Label corresponds to the JSON schema field "label".
+	Label string `json:"label" yaml:"label" mapstructure:"label"`
+
+	// Questions corresponds to the JSON schema field "questions".
+	Questions []StationQuestion `json:"questions" yaml:"questions" mapstructure:"questions"`
+
+	// Sort corresponds to the JSON schema field "sort".
+	Sort int `json:"sort" yaml:"sort" mapstructure:"sort"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
+
+	// Themes corresponds to the JSON schema field "themes".
+	Themes []string `json:"themes" yaml:"themes" mapstructure:"themes"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationDefinition) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["active"]; raw != nil && !ok {
+		return fmt.Errorf("field active in StationDefinition: required")
+	}
+	if _, ok := raw["description"]; raw != nil && !ok {
+		return fmt.Errorf("field description in StationDefinition: required")
+	}
+	if _, ok := raw["key"]; raw != nil && !ok {
+		return fmt.Errorf("field key in StationDefinition: required")
+	}
+	if _, ok := raw["label"]; raw != nil && !ok {
+		return fmt.Errorf("field label in StationDefinition: required")
+	}
+	if _, ok := raw["questions"]; raw != nil && !ok {
+		return fmt.Errorf("field questions in StationDefinition: required")
+	}
+	if _, ok := raw["sort"]; raw != nil && !ok {
+		return fmt.Errorf("field sort in StationDefinition: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in StationDefinition: required")
+	}
+	if _, ok := raw["themes"]; raw != nil && !ok {
+		return fmt.Errorf("field themes in StationDefinition: required")
+	}
+	type Plain StationDefinition
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 1 < plain.Active {
+		return fmt.Errorf("field %s: must be <= %v", "active", 1)
+	}
+	if 0 > plain.Active {
+		return fmt.Errorf("field %s: must be >= %v", "active", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
+	}
+	if 0 > plain.Sort {
+		return fmt.Errorf("field %s: must be >= %v", "sort", 0)
+	}
+	if 0 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
+	}
+	*j = StationDefinition(plain)
+	return nil
+}
+
+type StationQuestion struct {
+	// EvidenceKind corresponds to the JSON schema field "evidenceKind".
+	EvidenceKind string `json:"evidenceKind" yaml:"evidenceKind" mapstructure:"evidenceKind"`
+
+	// Key corresponds to the JSON schema field "key".
+	Key string `json:"key" yaml:"key" mapstructure:"key"`
+
+	// Prompt corresponds to the JSON schema field "prompt".
+	Prompt string `json:"prompt" yaml:"prompt" mapstructure:"prompt"`
+
+	// Required corresponds to the JSON schema field "required".
+	Required int `json:"required" yaml:"required" mapstructure:"required"`
+
+	// Sort corresponds to the JSON schema field "sort".
+	Sort int `json:"sort" yaml:"sort" mapstructure:"sort"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationQuestion) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["evidenceKind"]; raw != nil && !ok {
+		return fmt.Errorf("field evidenceKind in StationQuestion: required")
+	}
+	if _, ok := raw["key"]; raw != nil && !ok {
+		return fmt.Errorf("field key in StationQuestion: required")
+	}
+	if _, ok := raw["prompt"]; raw != nil && !ok {
+		return fmt.Errorf("field prompt in StationQuestion: required")
+	}
+	if _, ok := raw["required"]; raw != nil && !ok {
+		return fmt.Errorf("field required in StationQuestion: required")
+	}
+	if _, ok := raw["sort"]; raw != nil && !ok {
+		return fmt.Errorf("field sort in StationQuestion: required")
+	}
+	type Plain StationQuestion
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.EvidenceKind)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "evidenceKind", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Prompt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "prompt", 1)
+	}
+	if 1 < plain.Required {
+		return fmt.Errorf("field %s: must be <= %v", "required", 1)
+	}
+	if 0 > plain.Required {
+		return fmt.Errorf("field %s: must be >= %v", "required", 0)
+	}
+	if 0 > plain.Sort {
+		return fmt.Errorf("field %s: must be >= %v", "sort", 0)
+	}
+	*j = StationQuestion(plain)
+	return nil
+}
+
+type StationQueueResponse struct {
+	// HasMore corresponds to the JSON schema field "hasMore".
+	HasMore bool `json:"hasMore" yaml:"hasMore" mapstructure:"hasMore"`
+
+	// Items corresponds to the JSON schema field "items".
+	Items []QueueItem `json:"items" yaml:"items" mapstructure:"items"`
+
+	// Station corresponds to the JSON schema field "station".
+	Station StationDefinition `json:"station" yaml:"station" mapstructure:"station"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationQueueResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["hasMore"]; raw != nil && !ok {
+		return fmt.Errorf("field hasMore in StationQueueResponse: required")
+	}
+	if _, ok := raw["items"]; raw != nil && !ok {
+		return fmt.Errorf("field items in StationQueueResponse: required")
+	}
+	if _, ok := raw["station"]; raw != nil && !ok {
+		return fmt.Errorf("field station in StationQueueResponse: required")
+	}
+	type Plain StationQueueResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = StationQueueResponse(plain)
+	return nil
+}
+
+type StationState struct {
+	// Answered corresponds to the JSON schema field "answered".
+	Answered int `json:"answered" yaml:"answered" mapstructure:"answered"`
+
+	// Key corresponds to the JSON schema field "key".
+	Key string `json:"key" yaml:"key" mapstructure:"key"`
+
+	// Label corresponds to the JSON schema field "label".
+	Label string `json:"label" yaml:"label" mapstructure:"label"`
+
+	// OpenFindings corresponds to the JSON schema field "openFindings".
+	OpenFindings int `json:"openFindings" yaml:"openFindings" mapstructure:"openFindings"`
+
+	// Required corresponds to the JSON schema field "required".
+	Required int `json:"required" yaml:"required" mapstructure:"required"`
+
+	// Sort corresponds to the JSON schema field "sort".
+	Sort int `json:"sort" yaml:"sort" mapstructure:"sort"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationState) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["answered"]; raw != nil && !ok {
+		return fmt.Errorf("field answered in StationState: required")
+	}
+	if _, ok := raw["key"]; raw != nil && !ok {
+		return fmt.Errorf("field key in StationState: required")
+	}
+	if _, ok := raw["label"]; raw != nil && !ok {
+		return fmt.Errorf("field label in StationState: required")
+	}
+	if _, ok := raw["openFindings"]; raw != nil && !ok {
+		return fmt.Errorf("field openFindings in StationState: required")
+	}
+	if _, ok := raw["required"]; raw != nil && !ok {
+		return fmt.Errorf("field required in StationState: required")
+	}
+	if _, ok := raw["sort"]; raw != nil && !ok {
+		return fmt.Errorf("field sort in StationState: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in StationState: required")
+	}
+	type Plain StationState
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Answered {
+		return fmt.Errorf("field %s: must be >= %v", "answered", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
+	}
+	if 0 > plain.OpenFindings {
+		return fmt.Errorf("field %s: must be >= %v", "openFindings", 0)
+	}
+	if 0 > plain.Required {
+		return fmt.Errorf("field %s: must be >= %v", "required", 0)
+	}
+	if 0 > plain.Sort {
+		return fmt.Errorf("field %s: must be >= %v", "sort", 0)
+	}
+	if matched, _ := regexp.MatchString(`^(todo|current|done|blocked)$`, string(plain.Status)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Status", `^(todo|current|done|blocked)$`)
+	}
+	*j = StationState(plain)
+	return nil
+}
+
+type StationSummary struct {
+	// Count corresponds to the JSON schema field "count".
+	Count int `json:"count" yaml:"count" mapstructure:"count"`
+
+	// Description corresponds to the JSON schema field "description".
+	Description string `json:"description" yaml:"description" mapstructure:"description"`
+
+	// Key corresponds to the JSON schema field "key".
+	Key string `json:"key" yaml:"key" mapstructure:"key"`
+
+	// Label corresponds to the JSON schema field "label".
+	Label string `json:"label" yaml:"label" mapstructure:"label"`
+
+	// Sort corresponds to the JSON schema field "sort".
+	Sort int `json:"sort" yaml:"sort" mapstructure:"sort"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationSummary) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["count"]; raw != nil && !ok {
+		return fmt.Errorf("field count in StationSummary: required")
+	}
+	if _, ok := raw["description"]; raw != nil && !ok {
+		return fmt.Errorf("field description in StationSummary: required")
+	}
+	if _, ok := raw["key"]; raw != nil && !ok {
+		return fmt.Errorf("field key in StationSummary: required")
+	}
+	if _, ok := raw["label"]; raw != nil && !ok {
+		return fmt.Errorf("field label in StationSummary: required")
+	}
+	if _, ok := raw["sort"]; raw != nil && !ok {
+		return fmt.Errorf("field sort in StationSummary: required")
+	}
+	type Plain StationSummary
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.Count {
+		return fmt.Errorf("field %s: must be >= %v", "count", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
+	}
+	if 0 > plain.Sort {
+		return fmt.Errorf("field %s: must be >= %v", "sort", 0)
+	}
+	*j = StationSummary(plain)
+	return nil
+}
+
+type StationsResponse struct {
+	// Stations corresponds to the JSON schema field "stations".
+	Stations []StationSummary `json:"stations" yaml:"stations" mapstructure:"stations"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationsResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["stations"]; raw != nil && !ok {
+		return fmt.Errorf("field stations in StationsResponse: required")
+	}
+	type Plain StationsResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = StationsResponse(plain)
 	return nil
 }
 

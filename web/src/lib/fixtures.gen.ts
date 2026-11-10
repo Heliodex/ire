@@ -697,6 +697,9 @@ const reviewBundleFixture: InferOutput<typeof reviewBundleSchema> = {
 			"stage": 0
 		}
 	],
+	"stationAnswers": [],
+	"stationStates": [],
+	"stations": [],
 	"submission": {
 		"bomTotalCents": 0,
 		"decidedAt": "2026-01-01T00:00:00Z",

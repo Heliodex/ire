@@ -810,6 +810,100 @@ export const noteSchema = pipe(
 	title("Note"),
 )
 
+export const stationQuestionSchema = pipe(
+	object({
+		evidenceKind: pipe(string(), minLength(1)),
+		key: pipe(string(), minLength(1)),
+		prompt: pipe(string(), minLength(1)),
+		required: pipe(number(), integer(), minValue(0), maxValue(1)),
+		sort: nonNegative,
+	}),
+	title("StationQuestion"),
+)
+
+export const stationDefinitionSchema = pipe(
+	object({
+		active: pipe(number(), integer(), minValue(0), maxValue(1)),
+		description: string(),
+		key: pipe(string(), minLength(1)),
+		label: pipe(string(), minLength(1)),
+		questions: array(stationQuestionSchema),
+		sort: nonNegative,
+		stage: nonNegative,
+		themes: array(string()),
+	}),
+	title("StationDefinition"),
+)
+
+export const stationStateSchema = pipe(
+	object({
+		answered: nonNegative,
+		key: pipe(string(), minLength(1)),
+		label: pipe(string(), minLength(1)),
+		openFindings: nonNegative,
+		required: nonNegative,
+		sort: nonNegative,
+		status: pipe(string(), regex(/^(todo|current|done|blocked)$/)),
+	}),
+	title("StationState"),
+)
+
+export const stationSummarySchema = pipe(
+	object({
+		count: nonNegative,
+		description: string(),
+		key: pipe(string(), minLength(1)),
+		label: pipe(string(), minLength(1)),
+		sort: nonNegative,
+	}),
+	title("StationSummary"),
+)
+
+export const stationsResponseSchema = pipe(object({ stations: array(stationSummarySchema) }), title("StationsResponse"))
+
+export const stationQueueResponseSchema = pipe(
+	object({
+		hasMore: boolean(),
+		items: array(queueItemSchema),
+		station: stationDefinitionSchema,
+	}),
+	title("StationQueueResponse"),
+)
+
+export const stationAnswerSchema = pipe(
+	object({
+		answer: pipe(string(), regex(/^(pass|fail|na)$/)),
+		artifactHash: optionalString,
+		evidence: string(),
+		id: pipe(string(), minLength(1)),
+		questionKey: pipe(string(), minLength(1)),
+		reviewerId: optionalString,
+		stationKey: pipe(string(), minLength(1)),
+		submissionId: pipe(string(), minLength(1)),
+		updatedAt: timestamp,
+	}),
+	title("StationAnswer"),
+)
+
+export const stationAnswerRequestSchema = pipe(
+	object({
+		answer: pipe(string(), regex(/^(pass|fail|na)$/, "Choose pass, fail or not applicable.")),
+		artifactHash: optional(pipe(string(), maxLength(200))),
+		evidence: pipe(string(), maxLength(maxNote)),
+		version: nonNegative,
+	}),
+	title("StationAnswerRequest"),
+)
+
+export const stationAnswerResponseSchema = pipe(
+	object({
+		answer: stationAnswerSchema,
+		currentStation: optionalString,
+		states: array(stationStateSchema),
+	}),
+	title("StationAnswerResult"),
+)
+
 export const reviewBundleSchema = pipe(
 	object({
 		acknowledgements: array(string()),
@@ -817,6 +911,7 @@ export const reviewBundleSchema = pipe(
 		checkRun: optional(checkRunSchema),
 		checks: array(checkResultSchema),
 		claim: optional(claimSchema),
+		currentStation: optionalString,
 		draft: optional(draftSchema),
 		events: array(eventSchema),
 		evidence: optional(evidenceSchema),
@@ -827,6 +922,9 @@ export const reviewBundleSchema = pipe(
 		priorReviews: array(priorReviewSchema),
 		resubmission: optional(resubmissionSchema),
 		reviews: array(reviewSchema),
+		stationAnswers: array(stationAnswerSchema),
+		stationStates: array(stationStateSchema),
+		stations: array(stationDefinitionSchema),
 		submission: submissionSchema,
 	}),
 	title("ReviewBundle"),
@@ -1299,6 +1397,7 @@ export const requestSchemas = Object.freeze([
 	revertDecisionRequestSchema,
 	amendDecisionRequestSchema,
 	journalReviewRequestSchema,
+	stationAnswerRequestSchema,
 	noteRequestSchema,
 	ingestRequestSchema,
 	importReviewedRequestSchema,
@@ -1344,6 +1443,9 @@ export const responseSchemas = Object.freeze([
 	searchResponseSchema,
 	revertDecisionResultSchema,
 	sendBackResultSchema,
+	stationAnswerResponseSchema,
+	stationQueueResponseSchema,
+	stationsResponseSchema,
 	submissionFileResponseSchema,
 	statusResponseSchema,
 	withdrawResponseSchema,

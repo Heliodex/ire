@@ -1,0 +1,109 @@
+{
+	"type": "object",
+	"properties": {
+		"answer": {
+			"type": "object",
+			"properties": {
+				"answer": {
+					"type": "string",
+					"pattern": "^(pass|fail|na)$"
+				},
+				"artifactHash": {
+					"type": "string"
+				},
+				"evidence": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"questionKey": {
+					"type": "string",
+					"minLength": 1
+				},
+				"reviewerId": {
+					"type": "string"
+				},
+				"stationKey": {
+					"type": "string",
+					"minLength": 1
+				},
+				"submissionId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"updatedAt": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"required": [
+				"answer",
+				"evidence",
+				"id",
+				"questionKey",
+				"stationKey",
+				"submissionId",
+				"updatedAt"
+			],
+			"title": "StationAnswer"
+		},
+		"currentStation": {
+			"type": "string"
+		},
+		"states": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"answered": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"key": {
+						"type": "string",
+						"minLength": 1
+					},
+					"label": {
+						"type": "string",
+						"minLength": 1
+					},
+					"openFindings": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"required": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"sort": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"status": {
+						"type": "string",
+						"pattern": "^(todo|current|done|blocked)$"
+					}
+				},
+				"required": [
+					"answered",
+					"key",
+					"label",
+					"openFindings",
+					"required",
+					"sort",
+					"status"
+				],
+				"title": "StationState"
+			}
+		}
+	},
+	"required": [
+		"answer",
+		"states"
+	],
+	"title": "StationAnswerResult",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/station-answer-result.json"
+}

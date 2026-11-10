@@ -8,7 +8,10 @@ import (
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 14
+const schemaVersion = 15
+
+// stationSortHardware keeps the hardware station after the shared narrative station.
+const stationSortHardware = 40
 
 // schemaStatements is the prototype subset of plan/03-data-model.md: programmes, people, sessions, ships, evidence, checks, claims, reviews, drafts, timeline, audit, outbox and settings. Fraud, forms, counters and retention jobs come later.
 //
@@ -313,6 +316,46 @@ func schemaStatements() []storage.Statement {
 			where is_final = 1 and invalidated_at is null`,
 
 		`create index if not exists review_submission_idx on review(submission_id, created_at desc)`,
+
+		`create table if not exists station_definition (
+			program_id text not null references program(id) on delete cascade,
+			key text not null,
+			label text not null,
+			description text not null default '',
+			stage integer not null default 1,
+			sort integer not null default 0,
+			themes text not null default '[]',
+			active integer not null default 1,
+			primary key (program_id, key)
+		)`,
+
+		`create table if not exists station_question (
+			program_id text not null,
+			station_key text not null,
+			key text not null,
+			prompt text not null,
+			evidence_kind text not null default 'text',
+			required integer not null default 1,
+			sort integer not null default 0,
+			primary key (program_id, station_key, key),
+			foreign key (program_id, station_key) references station_definition(program_id, key) on delete cascade
+		)`,
+
+		`create table if not exists station_answer (
+			id text primary key,
+			submission_id text not null references submission(id) on delete cascade,
+			station_key text not null,
+			question_key text not null,
+			answer text not null check (answer in ('pass','fail','na')),
+			evidence text not null default '',
+			artifact_hash text,
+			reviewer_id text,
+			created_at text not null,
+			updated_at text not null,
+			unique (submission_id, station_key, question_key)
+		)`,
+
+		`create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`,
 
 		`create table if not exists finding (
 			id text primary key,
@@ -674,6 +717,10 @@ func (a *ireApp) seed(ctx context.Context) error {
 		return err
 	}
 
+	if err := a.seedStations(ctx); err != nil {
+		return err
+	}
+
 	settings := map[string]string{
 		"review_policy":          `{"holdOnWarn":true,"holdMinApprovedSeconds":0,"holdTiers":[2,3],"noteRequiredForChanges":true,"fraudMinStage":2}`,
 		"allow_legacy_signature": "true",
@@ -750,6 +797,113 @@ func (a *ireApp) seedRoleDefinitions(ctx context.Context, now string) error {
 			values (?, ?, ?, ?, ?, ?) on conflict(program_id, name) do nothing`,
 			"rol_"+name, programID, name, marshalStrings(defaults[name]), locked, now); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+// seedStations creates the Half Life review stations and their questions. Rows are never overwritten, so a programme edit survives restarts.
+func (a *ireApp) seedStations(ctx context.Context) error {
+	const evidenceText = "text"
+
+	stations := []struct {
+		key, label, description, themes string
+		stage, sort                     int
+		questions                       []struct {
+			key, prompt, evidence string
+			required              int
+		}
+	}{
+		{
+			key: "triage", label: "Triage", stage: 1, sort: 10, themes: "[]",
+			description: "Cheap completeness checks before the deeper review.",
+			questions: []struct {
+				key, prompt, evidence string
+				required              int
+			}{
+				{"cover_screenshot", "Is the cover a screenshot of this project?", "image", 1},
+				{"description_real", "Does the description describe the project, not the template?", evidenceText, 1},
+				{"repo_right", "Does the repository link lead to the right project?", "link", 1},
+				{"images_present", "Are the required images present?", "image", 1},
+				{"profile_valid", "Is the maker profile usable for payout?", evidenceText, 1},
+			},
+		},
+		{
+			key: "time", label: "Journals and time", stage: 1, sort: 20, themes: "[]",
+			description: "Read each entry once and decide what time is productive.",
+			questions: []struct {
+				key, prompt, evidence string
+				required              int
+			}{
+				{"entries_descriptive", "Does every journal entry describe what was worked on?", evidenceText, 1},
+				{"time_productive", "Is the logged time productive work, not tutorial consumption?", evidenceText, 1},
+				{"deflation_explained", "Is every cut explained with a reason and a benchmark?", evidenceText, 1},
+			},
+		},
+		{
+			key: "narrative", label: "README and claims", stage: 1, sort: 30, themes: "[]",
+			description: "One reading of the README, commits and claims.",
+			questions: []struct {
+				key, prompt, evidence string
+				required              int
+			}{
+				{"readme_explains", "Does the README explain the build, problems and solutions?", evidenceText, 1},
+				{"commits_authored", "Do the commits belong to the maker, with sync commits ignored?", evidenceText, 1},
+				{"claims_match", "Do the README and BOM claims match the files?", evidenceText, 1},
+				{"features", "Are the specific technical features named?", evidenceText, 1},
+			},
+		},
+		{
+			key: "hardware", label: "Hardware and firmware", stage: 1, sort: stationSortHardware, themes: `["pcb","cad","synth","displays"]`,
+			description: "A plausible design and firmware, with note-only issues.",
+			questions: []struct {
+				key, prompt, evidence string
+				required              int
+			}{
+				{"design_plausible", "Is the design plausible, and are issues noted for the maker?", evidenceText, 1},
+				{"bom_matches", "Does the BOM match the design and the parts list?", evidenceText, 1},
+				{"firmware_matches", "Does the firmware match the claimed features?", evidenceText, 1},
+			},
+		},
+		{
+			key: "synthesis", label: "Synthesis and decision", stage: 1, sort: 50, themes: "[]",
+			description: "Turn the answers into one record and one decision.",
+			questions: []struct {
+				key, prompt, evidence string
+				required              int
+			}{
+				{"findings_resolved", "Are all open findings resolved or included in the return?", evidenceText, 1},
+				{"hours_reasonable", "Are the approved hours and deflation reason defensible?", evidenceText, 1},
+				{"notes_complete", "Are the maker note and internal note complete?", evidenceText, 1},
+			},
+		},
+		{
+			key: "verify", label: "Verify record", stage: 2, sort: 10, themes: "[]",
+			description: "Stage 2 checks the record and samples the evidence.",
+			questions: []struct {
+				key, prompt, evidence string
+				required              int
+			}{
+				{"record_complete", "Are the answers, evidence and time ledger complete?", evidenceText, 1},
+				{"evidence_sample", "Does a sample of the evidence support the answers?", evidenceText, 1},
+			},
+		},
+	}
+
+	for _, station := range stations {
+		if _, err := a.store.Exec(ctx, `insert into station_definition (program_id, key, label, description, stage, sort, themes, active)
+			values (?, ?, ?, ?, ?, ?, ?, 1) on conflict(program_id, key) do nothing`,
+			programID, station.key, station.label, station.description, station.stage, station.sort, station.themes); err != nil {
+			return err
+		}
+
+		for index, question := range station.questions {
+			if _, err := a.store.Exec(ctx, `insert into station_question (program_id, station_key, key, prompt, evidence_kind, required, sort)
+				values (?, ?, ?, ?, ?, ?, ?) on conflict(program_id, station_key, key) do nothing`,
+				programID, station.key, question.key, question.prompt, question.evidence, question.required, index*10); err != nil {
+				return err
+			}
 		}
 	}
 

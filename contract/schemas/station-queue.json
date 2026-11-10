@@ -1,0 +1,299 @@
+{
+	"type": "object",
+	"properties": {
+		"hasMore": {
+			"type": "boolean"
+		},
+		"items": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"bomTotalCents": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"checkRun": {
+						"type": "object",
+						"properties": {
+							"attempts": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"error": {
+								"type": "string"
+							},
+							"finishedAt": {
+								"type": "string"
+							},
+							"runnerVersion": {
+								"type": "string",
+								"minLength": 1
+							},
+							"startedAt": {
+								"type": "string",
+								"minLength": 1
+							},
+							"status": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"attempts",
+							"runnerVersion",
+							"startedAt",
+							"status"
+						],
+						"title": "CheckRun"
+					},
+					"checkSummary": {
+						"$ref": "check-summary.json"
+					},
+					"checks": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"group": {
+									"type": "string",
+									"minLength": 1
+								},
+								"key": {
+									"type": "string",
+									"minLength": 1
+								},
+								"label": {
+									"type": "string",
+									"minLength": 1
+								},
+								"severity": {
+									"type": "string",
+									"minLength": 1
+								},
+								"status": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"required": [
+								"group",
+								"key",
+								"label",
+								"severity",
+								"status"
+							],
+							"title": "QueueCheck"
+						}
+					},
+					"claimedBy": {
+						"type": "string"
+					},
+					"externalId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"hoursClaimedSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"hoursHackatimeSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"hoursJournalSeconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"ingestedAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"journalCount": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"journalImageCount": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"journalTextLength": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"makerAvatarUrl": {
+						"type": "string"
+					},
+					"makerEmail": {
+						"type": "string",
+						"minLength": 1
+					},
+					"makerName": {
+						"type": "string",
+						"minLength": 1
+					},
+					"makerSlackId": {
+						"type": "string"
+					},
+					"previousReviewer": {
+						"type": "string"
+					},
+					"priority": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"requestedTier": {
+						"type": "string"
+					},
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"status": {
+						"type": "string",
+						"minLength": 1
+					},
+					"submittedAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"theme": {
+						"type": "string"
+					},
+					"thumbnailUrl": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string",
+						"minLength": 1
+					},
+					"version": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"week": {
+						"type": "integer"
+					}
+				},
+				"required": [
+					"bomTotalCents",
+					"checkSummary",
+					"checks",
+					"externalId",
+					"hoursClaimedSeconds",
+					"hoursHackatimeSeconds",
+					"hoursJournalSeconds",
+					"id",
+					"ingestedAt",
+					"journalCount",
+					"journalImageCount",
+					"journalTextLength",
+					"makerEmail",
+					"makerName",
+					"priority",
+					"stage",
+					"status",
+					"submittedAt",
+					"title",
+					"version"
+				],
+				"title": "QueueItem"
+			}
+		},
+		"station": {
+			"type": "object",
+			"properties": {
+				"active": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 1
+				},
+				"description": {
+					"type": "string"
+				},
+				"key": {
+					"type": "string",
+					"minLength": 1
+				},
+				"label": {
+					"type": "string",
+					"minLength": 1
+				},
+				"questions": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"evidenceKind": {
+								"type": "string",
+								"minLength": 1
+							},
+							"key": {
+								"type": "string",
+								"minLength": 1
+							},
+							"prompt": {
+								"type": "string",
+								"minLength": 1
+							},
+							"required": {
+								"type": "integer",
+								"minimum": 0,
+								"maximum": 1
+							},
+							"sort": {
+								"type": "integer",
+								"minimum": 0
+							}
+						},
+						"required": [
+							"evidenceKind",
+							"key",
+							"prompt",
+							"required",
+							"sort"
+						],
+						"title": "StationQuestion"
+					}
+				},
+				"sort": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"stage": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"themes": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": [
+				"active",
+				"description",
+				"key",
+				"label",
+				"questions",
+				"sort",
+				"stage",
+				"themes"
+			],
+			"title": "StationDefinition"
+		}
+	},
+	"required": [
+		"hasMore",
+		"items",
+		"station"
+	],
+	"title": "StationQueueResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/station-queue.json"
+}

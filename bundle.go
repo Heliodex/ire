@@ -40,6 +40,11 @@ func (a *ireApp) reviewBundle(ctx context.Context, ship submissionRow, person re
 		return contract.ReviewBundle{}, err
 	}
 
+	stationDefs, stationAnswers, stationStates, currentStation, err := a.stationProgress(ctx, ship, findings)
+	if err != nil {
+		return contract.ReviewBundle{}, err
+	}
+
 	events, err := a.loadEvents(ctx, ship.ID)
 	if err != nil {
 		return contract.ReviewBundle{}, err
@@ -166,6 +171,10 @@ func (a *ireApp) reviewBundle(ctx context.Context, ship submissionRow, person re
 		Acknowledgements: a.acknowledgementsFor(ctx, ship.ID, ship.Version, person.ID),
 		Policy:           contractPolicy(policy),
 		Resubmission:     resubmission,
+		CurrentStation:   currentStation,
+		Stations:         stationDefs,
+		StationAnswers:   stationAnswers,
+		StationStates:    stationStates,
 	}
 
 	return bundle, nil

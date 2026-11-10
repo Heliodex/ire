@@ -202,6 +202,8 @@ func (a *ireApp) routes() {
 	a.mux.HandleFunc("POST /api/v1/dev/reset", a.handleDevReset)
 
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/queue", a.handleQueue)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/stations", a.handleStations)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/stations/{station}/queue", a.handleStationQueue)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/import-reviewed", a.handleImportReviewed)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/overview", a.handleOverview)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/reviewed", a.handleReviewed)
@@ -212,6 +214,7 @@ func (a *ireApp) routes() {
 	a.mux.HandleFunc("DELETE /api/v1/programs/{program}/submissions/{id}/claim", a.handleRelease)
 	a.mux.HandleFunc("PUT /api/v1/programs/{program}/submissions/{id}/draft", a.handleDraft)
 	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/submissions/{id}/journal/{entry}", a.handleJournalReview)
+	a.mux.HandleFunc("PUT /api/v1/programs/{program}/submissions/{id}/stations/{station}/answers/{question}", a.handleStationAnswer)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/submissions/{id}/findings", a.handleFindings)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/findings", a.handleFindingCreate)
 	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/submissions/{id}/findings/{finding}", a.handleFindingUpdate)
@@ -303,7 +306,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 // protectedPage reports the prerendered routes that need a session.
 func protectedPage(path string) bool {
-	for _, prefix := range []string{"/overview", "/queue", "/reviewed", "/review", "/reviewers", "/makers", "/deliveries", "/admin"} {
+	for _, prefix := range []string{"/overview", "/queue", "/reviewed", "/review", "/reviewers", "/makers", "/deliveries", "/admin", "/stations"} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}

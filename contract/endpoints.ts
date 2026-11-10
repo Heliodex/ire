@@ -25,6 +25,9 @@ import {
 	rolesResponseSchema,
 	searchResponseSchema,
 	sendBackResultSchema,
+	stationAnswerResponseSchema,
+	stationQueueResponseSchema,
+	stationsResponseSchema,
 	submissionFileResponseSchema,
 } from "../web/src/lib/contract"
 
@@ -118,6 +121,43 @@ export const endpoints: Endpoint[] = Object.freeze([
 		],
 		path: "/api/v1/programs/{program}/queue",
 		response: { schema: queueResponseSchema },
+	},
+	{
+		doc: "fetchStations lists the workflow stations and how many open ships are waiting in each.",
+		method: "GET",
+		name: "fetchStations",
+		params: [{ in: "path", name: "program", type: "string", value: "program" }],
+		path: "/api/v1/programs/{program}/stations",
+		response: { schema: stationsResponseSchema },
+	},
+	{
+		doc: "fetchStationQueue lists the open ships whose current station is this one.",
+		method: "GET",
+		name: "fetchStationQueue",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "station", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/stations/{station}/queue",
+		response: { schema: stationQueueResponseSchema },
+	},
+	{
+		doc: "saveStationAnswer records one station question's verdict and evidence.",
+		method: "PUT",
+		name: "saveStationAnswer",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "path", name: "station", type: "string" },
+			{ in: "path", name: "question", type: "string" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof stationAnswerRequestSchema>",
+			},
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/stations/{station}/answers/{question}",
+		response: { schema: stationAnswerResponseSchema },
 	},
 	{
 		doc: "fetchOverview returns the programme health readout: wait percentiles, today counts, status breakdown, leaderboard and daily activity.",

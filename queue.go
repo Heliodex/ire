@@ -46,6 +46,7 @@ type queueParams struct {
 	sortColumn string
 	sortDir    string
 	search     queueSearch
+	station    string
 }
 
 // parseQueueParams validates the listing query, writing the error for a bad stage, sort or role.
@@ -127,6 +128,12 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 		  and s.status in ('checking','ready','claimed','in_review','needs_attention','stage2_hold')`
 
 	args := []any{now, person.ProgramID, params.stage}
+
+	if params.station != "" {
+		query += ` and ` + currentStationSQL() + ` = ? and s.status not in ('checking','stage2_hold')`
+
+		args = append(args, params.station)
+	}
 
 	switch params.filter {
 	case queueFilterEasy:

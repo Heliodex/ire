@@ -109,6 +109,9 @@
 			],
 			"title": "ClaimState"
 		},
+		"currentStation": {
+			"type": "string"
+		},
 		"draft": {
 			"type": "object",
 			"properties": {
@@ -774,6 +777,189 @@
 				"title": "Review"
 			}
 		},
+		"stationAnswers": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"answer": {
+						"type": "string",
+						"pattern": "^(pass|fail|na)$"
+					},
+					"artifactHash": {
+						"type": "string"
+					},
+					"evidence": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"questionKey": {
+						"type": "string",
+						"minLength": 1
+					},
+					"reviewerId": {
+						"type": "string"
+					},
+					"stationKey": {
+						"type": "string",
+						"minLength": 1
+					},
+					"submissionId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"updatedAt": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"answer",
+					"evidence",
+					"id",
+					"questionKey",
+					"stationKey",
+					"submissionId",
+					"updatedAt"
+				],
+				"title": "StationAnswer"
+			}
+		},
+		"stationStates": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"answered": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"key": {
+						"type": "string",
+						"minLength": 1
+					},
+					"label": {
+						"type": "string",
+						"minLength": 1
+					},
+					"openFindings": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"required": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"sort": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"status": {
+						"type": "string",
+						"pattern": "^(todo|current|done|blocked)$"
+					}
+				},
+				"required": [
+					"answered",
+					"key",
+					"label",
+					"openFindings",
+					"required",
+					"sort",
+					"status"
+				],
+				"title": "StationState"
+			}
+		},
+		"stations": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"active": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 1
+					},
+					"description": {
+						"type": "string"
+					},
+					"key": {
+						"type": "string",
+						"minLength": 1
+					},
+					"label": {
+						"type": "string",
+						"minLength": 1
+					},
+					"questions": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"evidenceKind": {
+									"type": "string",
+									"minLength": 1
+								},
+								"key": {
+									"type": "string",
+									"minLength": 1
+								},
+								"prompt": {
+									"type": "string",
+									"minLength": 1
+								},
+								"required": {
+									"type": "integer",
+									"minimum": 0,
+									"maximum": 1
+								},
+								"sort": {
+									"type": "integer",
+									"minimum": 0
+								}
+							},
+							"required": [
+								"evidenceKind",
+								"key",
+								"prompt",
+								"required",
+								"sort"
+							],
+							"title": "StationQuestion"
+						}
+					},
+					"sort": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"stage": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"themes": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				},
+				"required": [
+					"active",
+					"description",
+					"key",
+					"label",
+					"questions",
+					"sort",
+					"stage",
+					"themes"
+				],
+				"title": "StationDefinition"
+			}
+		},
 		"submission": {
 			"type": "object",
 			"properties": {
@@ -904,6 +1090,9 @@
 		"policy",
 		"priorReviews",
 		"reviews",
+		"stationAnswers",
+		"stationStates",
+		"stations",
 		"submission"
 	],
 	"title": "ReviewBundle",

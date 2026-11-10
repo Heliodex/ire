@@ -1,0 +1,46 @@
+{
+	"type": "object",
+	"properties": {
+		"stations": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"count": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"description": {
+						"type": "string"
+					},
+					"key": {
+						"type": "string",
+						"minLength": 1
+					},
+					"label": {
+						"type": "string",
+						"minLength": 1
+					},
+					"sort": {
+						"type": "integer",
+						"minimum": 0
+					}
+				},
+				"required": [
+					"count",
+					"description",
+					"key",
+					"label",
+					"sort"
+				],
+				"title": "StationSummary"
+			}
+		}
+	},
+	"required": [
+		"stations"
+	],
+	"title": "StationsResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/stations.json"
+}
