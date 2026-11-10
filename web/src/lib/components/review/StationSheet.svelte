@@ -914,6 +914,7 @@ function onKeydown(event: KeyboardEvent): void {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-1);
+	padding-top: var(--space-1);
 }
 
 .verdict-buttons .ui-button {
@@ -974,12 +975,14 @@ function onKeydown(event: KeyboardEvent): void {
 	gap: var(--space-2);
 	align-items: center;
 	justify-content: space-between;
+	padding-top: var(--space-1);
 }
 
 .finding-details {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-1);
+	padding-top: var(--space-1);
 }
 
 .finding-details > summary {
