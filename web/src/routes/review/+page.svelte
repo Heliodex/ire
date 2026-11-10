@@ -25,7 +25,7 @@ import {
 	saveDraft,
 	sendShipBack,
 } from "../../lib/api"
-import { amendDecision, createFinding, revertDecision, updateFinding } from "../../lib/api.gen"
+import { amendDecision, createFinding, revertDecision, saveStationAnswer, updateFinding } from "../../lib/api.gen"
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
 import { type BundleCache, createBundleCache, prefetchNextBundle } from "../../lib/bundle-cache"
@@ -42,6 +42,7 @@ import PriorReviews from "../../lib/components/review/PriorReviews.svelte"
 import ResubmissionDiff from "../../lib/components/review/ResubmissionDiff.svelte"
 import ReturnComposer from "../../lib/components/review/ReturnComposer.svelte"
 import ReviewTimeline from "../../lib/components/review/ReviewTimeline.svelte"
+import StationSheet from "../../lib/components/review/StationSheet.svelte"
 import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
 import { isReturnable, selectedFindingIds } from "../../lib/findings"
@@ -64,6 +65,7 @@ import {
 import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
 import { reviewerHref } from "../../lib/reviewer"
 import { dropSignIn, session } from "../../lib/session.svelte.js"
+import { type StationVerdict, upsertStationAnswer } from "../../lib/stations"
 
 const tabKeys = ["overview", "journal", "checks", "bom", "evidence", "history"] as const
 type Tab = (typeof tabKeys)[number]
@@ -265,8 +267,13 @@ const timeSegments = $derived.by((): TimeSegment[] => {
 })
 const backPath = $derived(page.url.searchParams.get("from") === "reviewed" ? "/reviewed" : "/queue")
 const backLabel = $derived(backPath === "/reviewed" ? "Reviewed" : "Queue")
+const stationParam = $derived(page.url.searchParams.get("station") ?? "")
+const focusStation = $derived(stationParam === "" ? undefined : stationParam)
 const returnableFindings = $derived((bundle?.findings ?? []).filter(finding => isReturnable(finding)))
 const openFindings = $derived((bundle?.findings ?? []).filter(finding => finding.status === "open"))
+const bundleStations = $derived(bundle?.stations ?? [])
+const bundleStationStates = $derived(bundle?.stationStates ?? [])
+const bundleStationAnswers = $derived(bundle?.stationAnswers ?? [])
 const findingsBadge = $derived.by((): string => {
 	const count = bundle?.findings?.length ?? 0
 	if (count === 0) return ""
@@ -1139,6 +1146,28 @@ async function saveFinding(findingId: string, request: FindingUpdate): Promise<v
 	actionError = ""
 }
 
+// answerStation records one station verdict and keeps the workflow state in step.
+async function answerStation(
+	stationKey: string,
+	questionKey: string,
+	answer: StationVerdict,
+	evidence: string,
+): Promise<void> {
+	if (!bundle) return
+
+	const result = await saveStationAnswer(bundle.submission.id, stationKey, questionKey, {
+		answer,
+		evidence,
+		version: bundle.submission.version,
+	})
+
+	bundle.stationAnswers = upsertStationAnswer(bundle.stationAnswers ?? [], result.answer)
+	bundle.stationStates = result.states
+	bundle.currentStation = result.currentStation
+	bundleCache().write(bundle.submission.id, bundle)
+	actionError = ""
+}
+
 // canDeleteNote lets the author or a member with note management remove a note.
 function canDeleteNote(entry: Note): boolean {
 	return session.me?.user.email === entry.authorEmail || hasPermission(permissions, permissionNoteManage)
@@ -1755,6 +1784,20 @@ async function saveDraftNow(): Promise<void> {
 						{/if}
 						{#if bundle.resubmission}
 							<ResubmissionDiff diff={bundle.resubmission} />
+						{/if}
+						{#if bundleStations.length > 0}
+							<div class="section station-section">
+								<StationSheet
+									answers={bundleStationAnswers}
+									currentStation={bundle.currentStation}
+									editable={canEditFindings}
+									{focusStation}
+									onAnswer={answerStation}
+									states={bundleStationStates}
+									stations={bundleStations}
+									version={submission.version}
+								/>
+							</div>
 						{/if}
 						<h2>What the maker built</h2>
 						<p class="description">{submission.description || "No description was sent."}</p>
@@ -2608,6 +2651,10 @@ h1 {
 	padding-top: var(--space-4);
 	margin-top: var(--space-4);
 	border-top: 1px solid var(--border);
+}
+
+.station-section {
+	padding-bottom: var(--space-3);
 }
 
 .section h3 {

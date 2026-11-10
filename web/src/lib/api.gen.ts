@@ -2,7 +2,7 @@
 // Excluded from lint and format; verified byte-for-byte by wt contract --check.
 import type { InferOutput } from "valibot"
 import { parseJSON, program, requestVoid } from "./api-runtime"
-import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, findingResponseSchema, findingsResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, submissionFileResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type findingCreateRequestSchema, type findingUpdateRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type updateRoleSchema } from "./contract"
+import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, findingResponseSchema, findingsResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, stationAnswerResponseSchema, stationQueueResponseSchema, stationsResponseSchema, submissionFileResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type findingCreateRequestSchema, type findingUpdateRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type stationAnswerRequestSchema, type updateRoleSchema } from "./contract"
 
 // fetchAuthConfig returns which sign-in methods are enabled.
 export async function fetchAuthConfig(): Promise<InferOutput<typeof authConfigSchema>> {
@@ -62,6 +62,38 @@ export async function fetchQueue(
 	if (query.size > 0) url += `?${query}`
 	const response = await fetch(url)
 	const parsed = await parseJSON(response, queueResponseSchema)
+	return parsed
+}
+
+// fetchStations lists the workflow stations and how many open ships are waiting in each.
+export async function fetchStations(): Promise<InferOutput<typeof stationsResponseSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/stations`)
+	const parsed = await parseJSON(response, stationsResponseSchema)
+	return parsed
+}
+
+// fetchStationQueue lists the open ships whose current station is this one.
+export async function fetchStationQueue(
+	station: string,
+): Promise<InferOutput<typeof stationQueueResponseSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/stations/${encodeURIComponent(station)}/queue`)
+	const parsed = await parseJSON(response, stationQueueResponseSchema)
+	return parsed
+}
+
+// saveStationAnswer records one station question's verdict and evidence.
+export async function saveStationAnswer(
+	id: string,
+	station: string,
+	question: string,
+	request: InferOutput<typeof stationAnswerRequestSchema>,
+): Promise<InferOutput<typeof stationAnswerResponseSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/stations/${encodeURIComponent(station)}/answers/${encodeURIComponent(question)}`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "PUT",
+	})
+	const parsed = await parseJSON(response, stationAnswerResponseSchema)
 	return parsed
 }
 
