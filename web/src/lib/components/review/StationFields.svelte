@@ -37,16 +37,6 @@ const returnable = $derived(
 		finding => finding.status === "open" && (finding.severity === "block" || finding.severity === "fixable"),
 	),
 )
-
-// Fill the two fields that can be drafted from the evidence, once, when they are empty.
-$effect((): void => {
-	if (!editable) return
-	if (stationKey === "narrative" && technicalFeatures.trim() === "")
-		onChange("technicalFeatures", suggestTechnicalFeatures(bundle))
-
-	if (stationKey === "time" && deflationReason.trim() === "" && cuts > 0)
-		onChange("deflationReason", suggestDeflationReason(bundle, capturedSeconds))
-})
 </script>
 
 {#if stationKey === "time"}

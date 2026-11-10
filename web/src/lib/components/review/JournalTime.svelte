@@ -111,6 +111,9 @@ async function save(keepalive = false): Promise<void> {
 		savedApproved = approvedSeconds
 		savedNote = note
 		savedReason = reason
+		entry.approvedSeconds = approvedSeconds
+		entry.deflationReason = reason
+		entry.reviewerNote = note
 		onSaved(result.hoursApprovedSeconds)
 		status = "saved"
 	} catch (err) {

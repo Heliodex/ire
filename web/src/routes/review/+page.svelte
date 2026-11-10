@@ -65,7 +65,13 @@ import {
 import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
 import { reviewerHref } from "../../lib/reviewer"
 import { dropSignIn, session } from "../../lib/session.svelte.js"
-import { draftValues, parseDraftValues, suggestInternalNote, suggestTechnicalFeatures } from "../../lib/station-fields"
+import {
+	draftValues,
+	parseDraftValues,
+	suggestDeflationReason,
+	suggestInternalNote,
+	suggestTechnicalFeatures,
+} from "../../lib/station-fields"
 import { type StationVerdict, upsertStationAnswer } from "../../lib/stations"
 
 const tabKeys = ["overview", "journal", "checks", "bom", "evidence", "history"] as const
@@ -678,6 +684,18 @@ function applyDraft(next: Bundle): void {
 	const values = parseDraftValues(next.draft?.values)
 	technicalFeatures = values.technicalFeatures ?? ""
 	deflationReason = values.deflationReason ?? ""
+
+	if (technicalFeatures === "" && (next.evidence?.files.length ?? 0) > 0)
+		technicalFeatures = suggestTechnicalFeatures(next)
+
+	if (deflationReason === "") {
+		const captured = Math.max(
+			next.submission.hoursClaimedSeconds,
+			next.submission.hoursJournalSeconds + next.submission.hoursHackatimeSeconds,
+		)
+		if (next.journals.some(entry => entry.approvedSeconds !== undefined && entry.approvedSeconds < entry.seconds))
+			deflationReason = suggestDeflationReason(next, captured)
+	}
 
 	if (next.submission.stage === 2 || next.submission.status === "stage2_hold") {
 		const held = next.reviews.find(review => review.held === 1)
