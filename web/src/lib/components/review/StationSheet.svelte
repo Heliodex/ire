@@ -701,19 +701,20 @@ function onKeydown(event: KeyboardEvent): void {
 
 .progress {
 	display: flex;
+	flex-direction: column;
 	gap: var(--space-1);
 	padding: 0;
 	margin: 0;
-	overflow-x: auto;
 	list-style: none;
 }
 
 .progress li {
-	flex: 0 0 auto;
+	display: flex;
 }
 
 .progress-item {
 	display: inline-flex;
+	flex: 1 1 auto;
 	gap: var(--space-2);
 	align-items: center;
 	height: var(--control-sm);
@@ -779,6 +780,7 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 .progress-count {
+	margin-left: auto;
 	font-weight: 400;
 	font-variant-numeric: tabular-nums;
 	color: var(--text-3);
