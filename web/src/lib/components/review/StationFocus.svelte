@@ -354,7 +354,9 @@ function applyBundle(next: Bundle): void {
 	const hasCuts = next.journals.some(
 		entry => entry.approvedSeconds !== undefined && entry.approvedSeconds < entry.seconds,
 	)
-	if (deflationReason === "" && hasCuts) deflationReason = suggestDeflationReason(next, captured)
+	// The synthesis deflation reason is read-only and follows the journal cuts, so recompute it
+	// whenever cuts exist instead of keeping a stale draft.
+	if (hasCuts) deflationReason = suggestDeflationReason(next, captured)
 
 	if (next.submission.stage === 2 || next.submission.status === "stage2_hold") {
 		const held = next.reviews.find(review => review.held === 1)

@@ -3,7 +3,6 @@ import { type Bundle } from "../../api"
 import { formatHours } from "../../format"
 import {
 	type MainField,
-	suggestDeflationReason,
 	suggestInternalNote,
 	suggestTechnicalFeatures,
 } from "../../station-fields"
@@ -32,7 +31,16 @@ const cuts = $derived(
 		.length,
 )
 
+// focusHref returns the URL for the same ship at another station.
+function focusHref(key: string): string {
+	const stage = bundle.stations.find(item => item.key === key)?.stage ?? 1
+	return `/station/${encodeURIComponent(key)}?id=${encodeURIComponent(bundle.submission.id)}&stage=${stage}`
+}
 
+// stationLabel names another station, falling back when the workflow renames it.
+function stationLabel(key: string, fallback: string): string {
+	return bundle.stations.find(item => item.key === key)?.label ?? fallback
+}
 </script>
 
 {#if stationKey === "narrative"}
@@ -99,29 +107,22 @@ const cuts = $derived(
 		</div>
 		<p class="hint">
 			{#if cuts > 0}
-				Built from {cuts} journal cut{cuts === 1 ? "" : "s"}; compare with an intermediate maker.
+				Built from {cuts} journal cut{cuts === 1 ? "" : "s"} on the time station; edit the cuts there.
 			{:else}
-				Only needed when the approved time is below the captured time.
+				Only needed when the approved time is below the captured time; cut journal entries on the time
+				station.
 			{/if}
 		</p>
-		<textarea
-			aria-label="Deflation reason"
-			class="ui-input"
-			maxlength="4000"
-			oninput={(event): void => onChange("deflationReason", event.currentTarget.value)}
-			placeholder="Why is this amount reasonable for this maker?"
-			readonly={!editable}
-			rows="3"
-			value={deflationReason}
-		></textarea>
+		{#if deflationReason !== ""}
+			<p class="readonly-text">{deflationReason}</p>
+		{:else}
+			<p class="readonly-empty">Cut journal entries on the time station to explain a lower approval.</p>
+		{/if}
 		<div class="field-actions">
-			<button
-				class="ui-button ghost sm"
-				onclick={(): void => onChange("deflationReason", suggestDeflationReason(bundle, capturedSeconds))}
-				type="button"
-			>
-				Use journal cuts
-			</button>
+			<a class="ui-button ghost sm" href={focusHref("time")}>{stationLabel("time", "Journals and time")} ↗</a>
+			<a class="ui-button ghost sm" href={focusHref("narrative")}>
+				{stationLabel("narrative", "README and claims")} ↗
+			</a>
 			<span class="muted"
 				>{formatHours(capturedSeconds)}
 				captured · {formatHours(bundle.submission.hoursApprovedSeconds ?? capturedSeconds)} approved</span
@@ -215,5 +216,19 @@ const cuts = $derived(
 	flex-wrap: wrap;
 	gap: var(--space-2);
 	align-items: center;
+}
+
+.readonly-text {
+	padding: var(--space-2) var(--space-3);
+	font-size: var(--text-sm);
+	color: var(--text-2);
+	white-space: pre-wrap;
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
+}
+
+.readonly-empty {
+	font-size: var(--text-xs);
+	color: var(--text-3);
 }
 </style>
