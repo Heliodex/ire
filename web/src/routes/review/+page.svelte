@@ -25,7 +25,7 @@ import {
 	saveDraft,
 	sendShipBack,
 } from "../../lib/api"
-import { amendDecision, revertDecision } from "../../lib/api.gen"
+import { amendDecision, createFinding, revertDecision, updateFinding } from "../../lib/api.gen"
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
 import { type BundleCache, createBundleCache, prefetchNextBundle } from "../../lib/bundle-cache"
@@ -34,14 +34,17 @@ import LoadingState from "../../lib/components/LoadingState.svelte"
 import BomTab from "../../lib/components/review/BomTab.svelte"
 import ChecksTab from "../../lib/components/review/ChecksTab.svelte"
 import EvidenceTab from "../../lib/components/review/EvidenceTab.svelte"
+import FindingsCard from "../../lib/components/review/FindingsCard.svelte"
 import HistoryTab from "../../lib/components/review/HistoryTab.svelte"
 import JournalList from "../../lib/components/review/JournalList.svelte"
 import NotesCard from "../../lib/components/review/NotesCard.svelte"
 import PriorReviews from "../../lib/components/review/PriorReviews.svelte"
 import ResubmissionDiff from "../../lib/components/review/ResubmissionDiff.svelte"
+import ReturnComposer from "../../lib/components/review/ReturnComposer.svelte"
 import ReviewTimeline from "../../lib/components/review/ReviewTimeline.svelte"
 import TimeEvidenceBar from "../../lib/components/review/TimeEvidenceBar.svelte"
 import { maxNote } from "../../lib/contract"
+import { isReturnable, selectedFindingIds } from "../../lib/findings"
 import {
 	decisionLabel,
 	formatDateTime,
@@ -71,6 +74,9 @@ interface TimeSegment {
 	value: number
 }
 
+type FindingCreate = Parameters<typeof createFinding>[1]
+type FindingUpdate = Parameters<typeof updateFinding>[2]
+
 let bundle = $state<Bundle | null>(undefined)
 let id = $state("")
 let loading = $state(true)
@@ -86,6 +92,7 @@ let settling = $state(false)
 let skipAnim = $state(false)
 const swipeGap = 16
 let note = $state("")
+let returnSelection = $state<string[]>([])
 let internalNote = $state("")
 let technicalFeatures = $state("")
 let deflationReason = $state("")
@@ -160,6 +167,7 @@ const canSecondPass = $derived(hasPermission(permissions, permissionSecondPass))
 const checking = $derived(submission?.status === "checking")
 const readOnly = $derived(session.me?.readOnly ?? false)
 const canDecide = $derived(!readOnly && !reviewed && !checking && (!secondPass || canSecondPass))
+const canEditFindings = $derived(!readOnly && !reviewed && claimedId === id)
 const canAdjustEntries = $derived(canDecide && bundle?.claim?.isMine === 1)
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? undefined)
 const warnings = $derived(bundle?.checks.filter(isWarning) ?? [])
@@ -214,6 +222,22 @@ const timeSegments = $derived.by((): TimeSegment[] => {
 })
 const backPath = $derived(page.url.searchParams.get("from") === "reviewed" ? "/reviewed" : "/queue")
 const backLabel = $derived(backPath === "/reviewed" ? "Reviewed" : "Queue")
+const returnableFindings = $derived((bundle?.findings ?? []).filter(finding => isReturnable(finding)))
+const openFindings = $derived((bundle?.findings ?? []).filter(finding => finding.status === "open"))
+const findingsBadge = $derived.by((): string => {
+	const count = bundle?.findings?.length ?? 0
+	if (count === 0) return ""
+	if (openFindings.length > 0) return `${openFindings.length} open finding${openFindings.length === 1 ? "" : "s"}`
+
+	return `${count} finding${count === 1 ? "" : "s"}`
+})
+
+// Reset the return selection whenever the ship or its findings change.
+$effect(() => {
+	void bundle?.submission.id
+	void bundle?.submission.version
+	returnSelection = (bundle?.findings ?? []).filter(finding => isReturnable(finding)).map(finding => finding.id)
+})
 
 // idFromURL reads the ship id from /review/{id}, keeping the query form for old links.
 function idFromURL(): string {
@@ -769,6 +793,34 @@ function justificationProblem(): string | undefined {
 	return undefined
 }
 
+// approveProblem reports and focuses the first thing keeping an approval from going out.
+function approveProblem(): boolean {
+	if (blocking.length > 0) {
+		actionError = "Approval is blocked. Read the blocking check, then ask for changes or reject."
+		flash("Approval is blocked by a failing check.")
+		return true
+	}
+
+	if (!secondPass && missingAcks.length > 0) {
+		actionError = `Acknowledge ${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} before approving.`
+		flash(actionError)
+		return true
+	}
+
+	if (returnableFindings.length > 0) {
+		actionError = `Resolve or return the ${returnableFindings.length} open finding${returnableFindings.length === 1 ? "" : "s"} first.`
+		flash(actionError)
+		return true
+	}
+
+	const problem = justificationProblem()
+	if (!problem) return false
+
+	actionError = problem
+	flash(problem)
+	return true
+}
+
 async function decide(decision: "approved" | "changes" | "rejected"): Promise<void> {
 	if (!bundle || deciding) return
 
@@ -781,23 +833,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 	}
 
 	if (decision === "approved") {
-		if (blocking.length > 0) {
-			actionError = "Approval is blocked. Read the blocking check, then ask for changes or reject."
-			flash("Approval is blocked by a failing check.")
-			return
-		}
-		if (!secondPass && missingAcks.length > 0) {
-			actionError = `Acknowledge ${missingAcks.length} warning${missingAcks.length === 1 ? "" : "s"} before approving.`
-			flash(actionError)
-			return
-		}
-
-		const problem = justificationProblem()
-		if (problem) {
-			actionError = problem
-			flash(problem)
-			return
-		}
+		if (approveProblem()) return
 	} else if (note.trim() === "") {
 		actionError = "Write a note to the maker before returning or rejecting."
 		flash("Write a note to the maker first.")
@@ -828,6 +864,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 			acknowledgements,
 			decision,
 			deflationReason: deflationReason.trim(),
+			findingIds: decision === "changes" ? selectedFindingIds(returnableFindings, returnSelection) : [],
 			hoursApprovedSeconds: approvedSeconds,
 			idempotencyKey: key,
 			internalNote: internalNote.trim(),
@@ -929,6 +966,11 @@ async function submitAmendDecision(): Promise<void> {
 		return
 	}
 
+	if (amendDecisionValue === "approved" && returnableFindings.length > 0) {
+		amendError = `Resolve or return the ${returnableFindings.length} open finding${returnableFindings.length === 1 ? "" : "s"} first.`
+		return
+	}
+
 	const amendSeconds = Math.max(0, Math.round((Number(amendHours) || 0) * 3600))
 	if (amendDecisionValue === "approved") {
 		if (amendTechnicalFeatures.trim() === "") {
@@ -957,6 +999,7 @@ async function submitAmendDecision(): Promise<void> {
 			acknowledgements: amendDecisionValue === "approved" ? amendAcknowledgements : [],
 			decision: amendDecisionValue,
 			deflationReason: amendDeflationReason.trim(),
+			findingIds: amendDecisionValue === "changes" ? selectedFindingIds(returnableFindings, returnSelection) : [],
 			hoursApprovedSeconds: amendDecisionValue === "approved" ? amendSeconds : undefined,
 			idempotencyKey: key,
 			internalNote: amendInternalNote,
@@ -1031,6 +1074,26 @@ async function addNote(body: string): Promise<void> {
 async function removeNote(entry: Note): Promise<void> {
 	await deleteNote(entry.id)
 	if (bundle) bundle.notes = bundle.notes.filter(item => item.id !== entry.id)
+}
+
+// addFinding records a finding that follows the project and shows it immediately.
+async function addFinding(request: FindingCreate): Promise<void> {
+	if (!bundle) return
+
+	const { finding } = await createFinding(bundle.submission.id, request)
+	bundle.findings = [finding, ...(bundle.findings ?? [])]
+	bundleCache().write(bundle.submission.id, bundle)
+	actionError = ""
+}
+
+// saveFinding stores a resolution and replaces the local copy.
+async function saveFinding(findingId: string, request: FindingUpdate): Promise<void> {
+	if (!bundle) return
+
+	const { finding } = await updateFinding(bundle.submission.id, findingId, request)
+	bundle.findings = (bundle.findings ?? []).map(item => (item.id === finding.id ? finding : item))
+	bundleCache().write(bundle.submission.id, bundle)
+	actionError = ""
 }
 
 // canDeleteNote lets the author or a member with note management remove a note.
@@ -1216,6 +1279,14 @@ async function saveDraftNow(): Promise<void> {
 				bind:value={note}
 			></textarea>
 		</label>
+
+		<ReturnComposer
+			findings={bundle?.findings ?? []}
+			onDraft={(text): void => {
+				note = text
+			}}
+			bind:selected={returnSelection}
+		/>
 
 		<label class="field">
 			<span class="field-head">
@@ -1482,6 +1553,11 @@ async function saveDraftNow(): Promise<void> {
 						: humanStatus(submission.status)}</span
 				>
 				<span class="version">v{submission.version}</span>
+				{#if findingsBadge}
+					<span class="ui-badge" data-tone={openFindings.length > 0 ? "changes" : "neutral"}
+						>{findingsBadge}</span
+					>
+				{/if}
 			</div>
 			<p class="maker">
 				{#if submission.makerName}
@@ -1653,6 +1729,17 @@ async function saveDraftNow(): Promise<void> {
 								notes={bundle.notes}
 								onAdd={addNote}
 								onRemove={removeNote}
+							/>
+						</div>
+
+						<div class="section">
+							<h3>Findings</h3>
+							<FindingsCard
+								editable={canEditFindings}
+								findings={bundle?.findings ?? []}
+								onCreate={addFinding}
+								onUpdate={saveFinding}
+								version={submission.version}
 							/>
 						</div>
 					</article>
@@ -1894,6 +1981,13 @@ async function saveDraftNow(): Promise<void> {
 												bind:value={amendNote}
 											></textarea>
 										</label>
+										<ReturnComposer
+											findings={bundle?.findings ?? []}
+											onDraft={(text): void => {
+												amendNote = text
+											}}
+											bind:selected={returnSelection}
+										/>
 										<label class="edit-field">
 											<span>Internal note</span>
 											<textarea

@@ -84,9 +84,6 @@ func (a *ireApp) handleFindingCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	evidence := strings.TrimSpace(stringValue(request.Evidence))
-	if evidence == "" {
-		evidence = "{}"
-	}
 
 	now := a.nowText()
 	id := newID("fnd")
