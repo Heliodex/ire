@@ -264,8 +264,8 @@ func (a *ireApp) loadAdjustments(ctx context.Context, submissionID string) ([]co
 
 	for rows.Next() {
 		var (
-			item                 contract.TimeAdjustment
-			note, reviewerID     string
+			item             contract.TimeAdjustment
+			note, reviewerID string
 		)
 
 		if err := rows.Scan(&item.ID, &item.Kind, &item.Seconds, &item.Reason, &note, &reviewerID, &item.CreatedAt, &item.Source); err != nil {
