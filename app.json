@@ -20,7 +20,7 @@
 		"IRE_INGEST_SECRET": "secret://IRE_INGEST_SECRET",
 		"IRE_OUTBOUND_SECRET": "secret://IRE_OUTBOUND_SECRET",
 		"IRE_SEED_FIXTURES": "0",
-		"IRE_SHADOW": "0"
+		"IRE_SHADOW": "secret://IRE_SHADOW"
 	},
 	"health": "/healthz",
 	"host": "ire.localhost",
