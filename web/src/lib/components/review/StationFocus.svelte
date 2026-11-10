@@ -1654,10 +1654,6 @@ async function persistDraft(): Promise<void> {
 	min-width: 0;
 }
 
-.focus-rail :global(.ui-input) {
-	font-size: var(--text-sm);
-}
-
 .cover-card {
 	overflow: hidden;
 }

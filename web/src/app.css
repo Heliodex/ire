@@ -419,6 +419,7 @@ kbd {
 	width: 100%;
 	height: var(--control-md);
 	padding: 0 var(--space-3);
+	font-size: var(--text-sm);
 	color: var(--text);
 	outline: none;
 	background: var(--input);

@@ -212,10 +212,6 @@ async function save(keepalive = false): Promise<void> {
 	font-size: var(--text-xs);
 }
 
-.journal-time .ui-input {
-	font-size: var(--text-sm);
-}
-
 .journal-time-row {
 	display: flex;
 	gap: var(--space-2);
