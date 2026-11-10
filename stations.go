@@ -214,14 +214,15 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 		switch {
 		case done:
 			status = "done"
+		case failed || openAt[station.Key] > 0:
+			status = "blocked"
+
+			if current == -1 {
+				current = len(out)
+			}
 		case current == -1:
 			current = len(out)
-
-			if failed || openAt[station.Key] > 0 {
-				status = "blocked"
-			} else {
-				status = "current"
-			}
+			status = "current"
 		}
 
 		out = append(out, contract.StationState{

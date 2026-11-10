@@ -38,14 +38,13 @@ let seenCurrent = currentStation ?? ""
 let seenVersion = version
 let drafts = $state<{ [_: string]: string }>({})
 let errors = $state<{ [_: string]: string }>({})
-let savingKey = $state("")
+let saving = $state<string[]>([])
 
 const selectedStation = $derived(orderedStations.find(item => item.key === selected) ?? orderedStations[0])
 const selectedState = $derived(selectedStation ? statesByKey.get(selectedStation.key) : undefined)
 const questions = $derived(selectedStation ? selectedStation.questions.toSorted((a, b) => a.sort - b.sort) : [])
 const nextKey = $derived(selectedStation ? nextQuestionKey(selectedStation, answers) : undefined)
 const allDone = $derived(states.length > 0 && states.every(state => state.status === "done"))
-const busy = $derived(savingKey !== "")
 
 // A focus link from the station queue wins over the workflow's current station.
 $effect((): void => {
@@ -77,7 +76,7 @@ $effect((): void => {
 	seenVersion = version
 	drafts = {}
 	errors = {}
-	savingKey = ""
+	saving = []
 })
 
 // If the workflow changes underneath the sheet, fall back to a station that still exists.
@@ -111,19 +110,21 @@ function setEvidence(stationKey: string, questionKey: string, value: string): vo
 
 // submitAnswer records one verdict with the evidence typed for that question.
 async function submitAnswer(question: StationQuestion, verdict: StationVerdict): Promise<void> {
-	if (!editable || savingKey !== "" || selectedStation === undefined) return
+	if (!editable || selectedStation === undefined) return
 
 	const stationKey = selectedStation.key
 	const key = answerKey(stationKey, question.key)
+	if (saving.includes(key)) return
+
 	delete errors[key]
-	savingKey = key
+	saving = [...saving, key]
 
 	try {
 		await onAnswer(stationKey, question.key, verdict, evidenceValue(stationKey, question.key).trim())
 	} catch (err) {
 		errors[key] = err instanceof Error ? err.message : "Could not save this answer."
 	} finally {
-		savingKey = ""
+		saving = saving.filter(item => item !== key)
 	}
 }
 </script>
@@ -226,7 +227,7 @@ async function submitAnswer(question: StationQuestion, verdict: StationVerdict):
 									<div aria-label={`Answer: ${question.prompt}`} class="verdict-buttons" role="group">
 										<button
 											class="ui-button sm ok"
-											disabled={busy}
+											disabled={saving.includes(key)}
 											onclick={(): Promise<void> => submitAnswer(question, "pass")}
 											type="button"
 											class:chosen={answer?.answer === "pass"}
@@ -235,7 +236,7 @@ async function submitAnswer(question: StationQuestion, verdict: StationVerdict):
 										</button>
 										<button
 											class="ui-button sm danger"
-											disabled={busy}
+											disabled={saving.includes(key)}
 											onclick={(): Promise<void> => submitAnswer(question, "fail")}
 											type="button"
 											class:chosen={answer?.answer === "fail"}
@@ -244,7 +245,7 @@ async function submitAnswer(question: StationQuestion, verdict: StationVerdict):
 										</button>
 										<button
 											class="ui-button sm ghost"
-											disabled={busy}
+											disabled={saving.includes(key)}
 											onclick={(): Promise<void> => submitAnswer(question, "na")}
 											type="button"
 											class:chosen={answer?.answer === "na"}
@@ -260,7 +261,7 @@ async function submitAnswer(question: StationQuestion, verdict: StationVerdict):
 									<p class="fail-hint">Add a finding for this below.</p>
 								{/if}
 
-								{#if savingKey === key}
+								{#if saving.includes(key)}
 									<p class="saving" role="status">Saving…</p>
 								{/if}
 

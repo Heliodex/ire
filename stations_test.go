@@ -140,6 +140,58 @@ func TestStationQueueFiltersByCurrentStation(t *testing.T) {
 	}
 }
 
+// TestStationStatusReflectsEachSection covers the per-section badge while an earlier station is still current.
+func TestStationStatusReflectsEachSection(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	synthesis := stationByKey(bundle, "synthesis")
+
+	for _, question := range synthesis.Questions {
+		if question.Required == 1 {
+			answerQuestion(t, application, cookie, bundle.Submission.ID, "synthesis", question.Key, "pass", bundle.Submission.Version)
+		}
+	}
+
+	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	if after.CurrentStation == nil || *after.CurrentStation != "triage" {
+		t.Fatalf("current = %v, want triage", after.CurrentStation)
+	}
+
+	var synthesisDone bool
+
+	for _, state := range after.StationStates {
+		if state.Key == "synthesis" && state.Status == "done" {
+			synthesisDone = true
+		}
+	}
+
+	if !synthesisDone {
+		t.Fatalf("synthesis state = %+v, want done", after.StationStates)
+	}
+
+	answerQuestion(t, application, cookie, bundle.Submission.ID, "synthesis", synthesis.Questions[0].Key, "fail", bundle.Submission.Version)
+
+	failed := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+
+	var synthesisBlocked bool
+
+	for _, state := range failed.StationStates {
+		if state.Key == "synthesis" && state.Status == "blocked" {
+			synthesisBlocked = true
+		}
+	}
+
+	if !synthesisBlocked {
+		t.Fatalf("synthesis state after fail = %+v, want blocked", failed.StationStates)
+	}
+}
+
 // TestStationAnswerGuards covers the claim, question and version checks.
 func TestStationAnswerGuards(t *testing.T) {
 	application := newTestApp(t)
