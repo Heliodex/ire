@@ -120,6 +120,56 @@ func TestStationFlowMovesThroughTheQueue(t *testing.T) {
 	}
 }
 
+// TestStationAnswerClear removes one verdict and reopens its station.
+func TestStationAnswerClear(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	triage := stationByKey(bundle, "triage")
+	first := triage.Questions[0]
+	path := testBase + "/submissions/" + bundle.Submission.ID + "/stations/triage/answers/" + first.Key
+
+	answerQuestion(t, application, cookie, bundle.Submission.ID, "triage", first.Key, "pass", bundle.Submission.Version)
+
+	cleared := do(t, application, http.MethodDelete, path+"?version=1", nil, cookie, nil)
+	if cleared.Code != http.StatusOK {
+		t.Fatalf("clear = %d: %s", cleared.Code, cleared.Body.String())
+	}
+
+	result := decode[contract.StationAnswerDeleteResult](t, cleared)
+	if result.CurrentStation == nil || *result.CurrentStation != "triage" {
+		t.Fatalf("current = %v, want triage", result.CurrentStation)
+	}
+
+	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	for _, answer := range after.StationAnswers {
+		if answer.StationKey == "triage" && answer.QuestionKey == first.Key {
+			t.Fatalf("answer still present = %+v", answer)
+		}
+	}
+
+	stale := do(t, application, http.MethodDelete, path+"?version=99", nil, cookie, nil)
+	if stale.Code != http.StatusConflict {
+		t.Fatalf("stale clear = %d, want 409", stale.Code)
+	}
+
+	other := login(t, application, "organiser@example.com")
+	unclaimed := do(t, application, http.MethodDelete, path+"?version=1", nil, other, nil)
+	if unclaimed.Code != http.StatusConflict {
+		t.Fatalf("unclaimed clear = %d, want 409", unclaimed.Code)
+	}
+
+	missing := do(t, application, http.MethodDelete, testBase+"/submissions/"+bundle.Submission.ID+"/stations/triage/answers/nope?version=1", nil, cookie, nil)
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("unknown question clear = %d, want 404", missing.Code)
+	}
+}
+
 // TestStationQueueFiltersByCurrentStation covers the focused station queues.
 func TestStationQueueFiltersByCurrentStation(t *testing.T) {
 	application := newTestApp(t)

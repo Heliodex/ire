@@ -2,7 +2,7 @@
 // Excluded from lint and format; verified byte-for-byte by wt contract --check.
 import type { InferOutput } from "valibot"
 import { parseJSON, program, requestVoid } from "./api-runtime"
-import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, findingResponseSchema, findingsResponseSchema, hackatimeReviewResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, stationAnswerResponseSchema, stationDefinitionSchema, stationQueueResponseSchema, stationsResponseSchema, submissionFileResponseSchema, timelapseReviewResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type findingCreateRequestSchema, type findingUpdateRequestSchema, type hackatimeReviewRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type stationAnswerRequestSchema, type timelapseReviewRequestSchema, type updateRoleSchema } from "./contract"
+import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, findingResponseSchema, findingsResponseSchema, hackatimeReviewResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, stationAnswerDeleteResponseSchema, stationAnswerResponseSchema, stationDefinitionSchema, stationQueueResponseSchema, stationsResponseSchema, submissionFileResponseSchema, timelapseReviewResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type findingCreateRequestSchema, type findingUpdateRequestSchema, type hackatimeReviewRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type stationAnswerRequestSchema, type timelapseReviewRequestSchema, type updateRoleSchema } from "./contract"
 
 // fetchAuthConfig returns which sign-in methods are enabled.
 export async function fetchAuthConfig(): Promise<InferOutput<typeof authConfigSchema>> {
@@ -139,6 +139,24 @@ export async function saveStationAnswer(
 		method: "PUT",
 	})
 	const parsed = await parseJSON(response, stationAnswerResponseSchema)
+	return parsed
+}
+
+// clearStationAnswer removes the reviewer's verdict so the question is unanswered again.
+export async function clearStationAnswer(
+	id: string,
+	station: string,
+	question: string,
+	version: number,
+): Promise<InferOutput<typeof stationAnswerDeleteResponseSchema>> {
+	const query = new URLSearchParams()
+	query.set("version", String(version))
+	let url = `/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/stations/${encodeURIComponent(station)}/answers/${encodeURIComponent(question)}`
+	if (query.size > 0) url += `?${query}`
+	const response = await fetch(url, {
+		method: "DELETE",
+	})
+	const parsed = await parseJSON(response, stationAnswerDeleteResponseSchema)
 	return parsed
 }
 

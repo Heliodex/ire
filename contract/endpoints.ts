@@ -30,6 +30,7 @@ import {
 	searchResponseSchema,
 	sendBackResultSchema,
 	stationAnswerResponseSchema,
+	stationAnswerDeleteResponseSchema,
 	stationDefinitionSchema,
 	stationQueueResponseSchema,
 	stationsResponseSchema,
@@ -206,6 +207,20 @@ export const endpoints: Endpoint[] = Object.freeze([
 		],
 		path: "/api/v1/programs/{program}/submissions/{id}/stations/{station}/answers/{question}",
 		response: { schema: stationAnswerResponseSchema },
+	},
+	{
+		doc: "clearStationAnswer removes the reviewer's verdict so the question is unanswered again.",
+		method: "DELETE",
+		name: "clearStationAnswer",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "path", name: "station", type: "string" },
+			{ in: "path", name: "question", type: "string" },
+			{ in: "query", name: "version", type: "number" },
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/stations/{station}/answers/{question}",
+		response: { schema: stationAnswerDeleteResponseSchema },
 	},
 	{
 		doc: "resolveStationConflict sets every reviewer's answer for one question to the organiser's verdict.",

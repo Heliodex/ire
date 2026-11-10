@@ -5829,6 +5829,32 @@ type StationAnswer struct {
 	UpdatedAt string `json:"updatedAt" yaml:"updatedAt" mapstructure:"updatedAt"`
 }
 
+type StationAnswerDeleteResult struct {
+	// CurrentStation corresponds to the JSON schema field "currentStation".
+	CurrentStation *string `json:"currentStation,omitempty,omitzero" yaml:"currentStation,omitempty" mapstructure:"currentStation,omitempty"`
+
+	// States corresponds to the JSON schema field "states".
+	States []StationState `json:"states" yaml:"states" mapstructure:"states"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StationAnswerDeleteResult) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["states"]; raw != nil && !ok {
+		return fmt.Errorf("field states in StationAnswerDeleteResult: required")
+	}
+	type Plain StationAnswerDeleteResult
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = StationAnswerDeleteResult(plain)
+	return nil
+}
+
 type StationAnswerRequest struct {
 	// Answer corresponds to the JSON schema field "answer".
 	Answer string `json:"answer" yaml:"answer" mapstructure:"answer"`

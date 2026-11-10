@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"ire/contract"
@@ -574,6 +575,96 @@ func (a *ireApp) handleStationAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.WriteJSON(w, http.StatusOK, contract.StationAnswerResult{Answer: answer, States: states, CurrentStation: current})
+}
+
+// handleStationAnswerDelete removes the reviewer's answer so the question is unanswered again.
+func (a *ireApp) handleStationAnswerDelete(w http.ResponseWriter, r *http.Request) {
+	person, ok := a.requireReviewerWrite(w, r)
+	if !ok {
+		return
+	}
+
+	ship, ok := a.loadShipForReview(w, r)
+	if !ok {
+		return
+	}
+
+	if !a.holdsClaim(r.Context(), ship.ID, person.ID) {
+		app.WriteError(w, http.StatusConflict, "claim the ship before clearing a station answer")
+		return
+	}
+
+	version, err := strconv.Atoi(r.URL.Query().Get("version"))
+	if err != nil {
+		app.WriteError(w, http.StatusBadRequest, "version must be a number")
+		return
+	}
+
+	if version != ship.Version {
+		app.WriteErrorCode(w, http.StatusConflict, "stale_version", "this ship changed since you opened it; reload before clearing")
+		return
+	}
+
+	station, found, err := a.stationDefinition(r.Context(), ship.ProgramID, r.PathValue("station"))
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	if !found || station.Stage != ship.Stage || !stationApplies(station, ship) {
+		app.WriteError(w, http.StatusNotFound, "unknown station")
+		return
+	}
+
+	questionKey := r.PathValue("question")
+
+	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool { return question.Key == questionKey }) {
+		app.WriteError(w, http.StatusNotFound, "unknown station question")
+		return
+	}
+
+	now := a.nowText()
+
+	if _, err := a.store.Exec(r.Context(), `delete from station_answer where submission_id = ? and station_key = ? and question_key = ? and reviewer_id = ?`,
+		ship.ID, station.Key, questionKey, person.ID); err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	if _, err := a.store.Exec(r.Context(), `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at) values (?, ?, 'station_answer_cleared', ?, ?, ?, ?)`,
+		newID("evt"), ship.ID, person.ID, person.Email,
+		marshalMap(map[string]any{"station": station.Key, "question": questionKey}), now); err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	answers, err := a.stationAnswers(r.Context(), ship.ID)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	findings, err := a.loadFindings(r.Context(), ship.ProgramID, ship.ExternalID)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	definitions, err := a.stationDefinitions(r.Context(), ship.ProgramID, ship.Stage)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	states, current := stationStates(ship, definitions, answers, findings)
+
+	app.WriteJSON(w, http.StatusOK, contract.StationAnswerDeleteResult{States: states, CurrentStation: current})
 }
 
 // answerAt finds the reviewer's own saved answer.

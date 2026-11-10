@@ -942,6 +942,14 @@ export const stationAnswerResponseSchema = pipe(
 	title("StationAnswerResult"),
 )
 
+export const stationAnswerDeleteResponseSchema = pipe(
+	object({
+		currentStation: optionalString,
+		states: array(stationStateSchema),
+	}),
+	title("StationAnswerDeleteResult"),
+)
+
 export const reviewBundleSchema = pipe(
 	object({
 		acknowledgements: array(string()),
@@ -1524,6 +1532,7 @@ export const responseSchemas = Object.freeze([
 	revertDecisionResultSchema,
 	sendBackResultSchema,
 	stationAnswerResponseSchema,
+	stationAnswerDeleteResponseSchema,
 	stationQueueResponseSchema,
 	stationsResponseSchema,
 	submissionFileResponseSchema,
