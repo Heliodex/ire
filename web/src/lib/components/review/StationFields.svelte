@@ -107,8 +107,7 @@ function stationLabel(key: string, fallback: string): string {
 		{/if}
 
 		<div class="fields-head">
-			<h2>Deflation reason</h2>
-			<span class="internal-tag">Internal</span>
+			<h2>Deflation reason <span class="internal-tag">Internal</span></h2>
 		</div>
 		<p class="hint">
 			{#if cuts > 0}
