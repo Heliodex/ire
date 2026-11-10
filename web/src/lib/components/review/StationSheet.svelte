@@ -277,6 +277,12 @@ function questionHasFinding(stationKey: string, prompt: string): boolean {
 	return questionFinding(stationKey, prompt) !== undefined
 }
 
+// isFailWithoutFinding reports whether a question was failed but still needs its finding.
+function isFailWithoutFinding(stationKey: string, question: StationQuestion): boolean {
+	const existing = answerFor(answers, stationKey, question.key, reviewerId)
+	return existing?.answer === "fail" && !questionHasFinding(stationKey, question.prompt)
+}
+
 function isQueued(key: string): boolean {
 	return queue.some(item => item.key === key)
 }
@@ -391,6 +397,7 @@ function onKeydown(event: KeyboardEvent): void {
 
 {#if selectedStation}
 	<section aria-label={`${selectedStation.label} questions`} class="station-sheet">
+		{const failNeedsFinding = $derived(questions.some(question => isFailWithoutFinding(selectedStation.key, question)))}
 		<div class="station-body">
 				<div class="station-head">
 					<h3>{selectedStation.label}</h3>
@@ -432,7 +439,7 @@ function onKeydown(event: KeyboardEvent): void {
 									open={conflict
 										|| (answer?.answer === "fail"
 											&& !questionHasFinding(selectedStation.key, question.prompt))
-										|| question.key === nextKey}
+										|| (question.key === nextKey && !failNeedsFinding)}
 								>
 									<summary class="question-head">
 										<p class="prompt">
