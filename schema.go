@@ -10,7 +10,7 @@ import (
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 17
+const schemaVersion = 18
 
 // stationSortHardware keeps the hardware station after the shared narrative station.
 const stationSortHardware = 40
