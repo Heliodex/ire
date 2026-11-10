@@ -1283,14 +1283,14 @@ async function persistDraft(): Promise<void> {
 				<section class="ui-card padded complete-card blocked-card">
 					<h2>{stationLabel} needs attention</h2>
 					<p class="muted">
-						A failed answer or open finding blocks this station. Resolve it or return the ship before moving
-						on.
+						A reviewer conflict or a failed answer without a finding holds this station. Recorded
+						findings travel with the ship and resolve at synthesis.
 					</p>
 					<div class="complete-actions">
 						{#if showDecision}
-							<p class="muted">Resolve the finding or update the failing answer above.</p>
+							<p class="muted">Resolve the conflict or record the missing finding above.</p>
 						{:else}
-							<a class="ui-button ghost" href={synthesisHref}>Open findings</a>
+							<a class="ui-button ghost" href={synthesisHref}>Open synthesis</a>
 						{/if}
 					</div>
 				</section>

@@ -39,18 +39,23 @@ func currentStationSQL() string {
 					not exists (
 						select 1 from station_answer sa
 						where sa.submission_id = s.id and sa.station_key = sd.key and sa.question_key = sq.key
-						  and sa.answer in ('pass','na')
 					)
 					or (
 						select count(distinct sa.answer) from station_answer sa
 						where sa.submission_id = s.id and sa.station_key = sd.key and sa.question_key = sq.key
 					) > 1
+					or exists (
+						select 1 from station_answer sa
+						where sa.submission_id = s.id and sa.station_key = sd.key and sa.question_key = sq.key
+						  and sa.answer = 'fail'
+						  and not exists (
+							select 1 from finding f
+							where f.program_id = s.program_id and f.external_id = s.external_id
+							  and f.station = sd.key and f.question = sq.prompt
+							  and f.status in ('open','disputed')
+						)
+					)
 				  )
-			)
-			or exists (
-				select 1 from finding f
-				where f.program_id = s.program_id and f.external_id = s.external_id
-				  and f.station = sd.key and f.status = 'open' and f.severity in ('block','fixable')
 			)
 		  )
 		order by sd.sort, sd.key
@@ -223,6 +228,17 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 		}
 	}
 
+	// foundAt marks the questions with a finding on record. A failed answer only
+	// holds its station until its finding is recorded; open findings accumulate
+	// down the line and gate the synthesis decision instead.
+	foundAt := map[string]bool{}
+
+	for _, finding := range findings {
+		if findingActive(finding.Status) {
+			foundAt[finding.Station+"\x00"+stringValue(finding.Question)] = true
+		}
+	}
+
 	out := []contract.StationState{}
 	current := -1
 
@@ -253,20 +269,20 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 			case len(values) > 1:
 				conflicts++
 				failed = true
-			case values["fail"]:
+			case values["fail"] && !foundAt[station.Key+"\x00"+question.Prompt]:
 				failed = true
-			case values["pass"] || values["na"]:
+			default:
 				resolved++
 			}
 		}
 
-		done := required == resolved && openAt[station.Key] == 0
+		done := required == resolved
 		status := "todo"
 
 		switch {
 		case done:
 			status = "done"
-		case failed || openAt[station.Key] > 0:
+		case failed:
 			status = "blocked"
 
 			if current == -1 {

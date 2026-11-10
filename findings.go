@@ -17,6 +17,12 @@ var findingSeverities = map[string]bool{"block": true, "fixable": true, "hold": 
 
 var findingStatuses = map[string]bool{"accepted": true, "disputed": true, "fixed": true, "open": true, "withdrawn": true}
 
+// findingActive reports whether a finding still needs work: open or disputed.
+// Resolved and withdrawn findings stay on the record but no longer hold anything.
+func findingActive(status string) bool {
+	return status == "open" || status == "disputed"
+}
+
 // handleFindings lists the findings that follow a project across versions.
 func (a *ireApp) handleFindings(w http.ResponseWriter, r *http.Request) {
 	_, ok := a.requireReviewer(w, r)

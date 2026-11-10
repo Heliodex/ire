@@ -89,9 +89,17 @@ func TestStationFlowMovesThroughTheQueue(t *testing.T) {
 		t.Fatalf("time state = %+v, want blocked", failed.States)
 	}
 
-	passed := answerQuestion(t, application, cookie, bundle.Submission.ID, "time", first.Key, "pass", bundle.Submission.Version)
-	if passed.Answer.Answer != "pass" {
-		t.Fatalf("answer = %+v", passed.Answer)
+	// A recorded finding lets the failed station advance with its flag.
+	findingBody, _ := json.Marshal(contract.FindingCreateRequest{
+		MakerAction: stringPtr("Count only the productive journal time."),
+		Question:    stringPtr(first.Prompt),
+		Severity:    "fixable",
+		Station:     "time",
+		Summary:     "Tutorial consumption in the journals.",
+	})
+
+	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", findingBody, cookie, nil); created.Code != http.StatusOK {
+		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
 	}
 
 	for _, question := range timeStation.Questions[1:] {
@@ -100,9 +108,15 @@ func TestStationFlowMovesThroughTheQueue(t *testing.T) {
 		}
 	}
 
-	afterTime := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	if afterTime.CurrentStation == nil || *afterTime.CurrentStation != "narrative" {
-		t.Fatalf("current station after time = %v, want narrative", afterTime.CurrentStation)
+	afterFinding := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	if afterFinding.CurrentStation == nil || *afterFinding.CurrentStation != "narrative" {
+		t.Fatalf("current station after finding = %v, want narrative", afterFinding.CurrentStation)
+	}
+
+	for _, state := range afterFinding.StationStates {
+		if state.Key == "time" && state.Status != "done" {
+			t.Fatalf("time state = %+v, want done with an open finding", afterFinding.StationStates)
+		}
 	}
 }
 
@@ -193,6 +207,73 @@ func TestStationStatusReflectsEachSection(t *testing.T) {
 
 	if !synthesisBlocked {
 		t.Fatalf("synthesis state after fail = %+v, want blocked", failed.StationStates)
+	}
+
+	recordBody, _ := json.Marshal(contract.FindingCreateRequest{
+		MakerAction: stringPtr("Record one decision with its justification."),
+		Question:    stringPtr(synthesis.Questions[0].Prompt),
+		Severity:    "fixable",
+		Station:     "synthesis",
+		Summary:     "The synthesis record is missing.",
+	})
+
+	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", recordBody, cookie, nil); created.Code != http.StatusOK {
+		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
+	}
+
+	recorded := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+
+	for _, state := range recorded.StationStates {
+		if state.Key == "synthesis" && state.Status != "done" {
+			t.Fatalf("synthesis state after finding = %+v, want done", recorded.StationStates)
+		}
+
+		if state.Key == "synthesis" && state.OpenFindings != 1 {
+			t.Fatalf("synthesis open findings = %d, want 1", state.OpenFindings)
+		}
+	}
+}
+
+// TestOpenFindingsDoNotPinStations covers flags that travel with the ship: an open
+// finding keeps its station done and gates the synthesis decision instead.
+func TestOpenFindingsDoNotPinStations(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	triage := stationByKey(bundle, "triage")
+
+	for _, question := range triage.Questions {
+		if question.Required == 1 {
+			answerQuestion(t, application, cookie, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
+		}
+	}
+
+	flagBody, _ := json.Marshal(contract.FindingCreateRequest{
+		MakerAction: stringPtr("Add a real cover screenshot."),
+		Question:    stringPtr(triage.Questions[0].Prompt),
+		Severity:    "fixable",
+		Station:     "triage",
+		Summary:     "The cover looks like a template.",
+	})
+
+	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", flagBody, cookie, nil); created.Code != http.StatusOK {
+		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
+	}
+
+	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	if after.CurrentStation == nil || *after.CurrentStation != "time" {
+		t.Fatalf("current = %v, want time with an open finding behind", after.CurrentStation)
+	}
+
+	for _, state := range after.StationStates {
+		if state.Key == "triage" && (state.Status != "done" || state.OpenFindings != 1) {
+			t.Fatalf("triage state = %+v, want done with 1 open finding", after.StationStates)
+		}
 	}
 }
 
