@@ -1291,6 +1291,7 @@ async function persistDraft(): Promise<void> {
 					onAnswer={answerStation}
 					onCreateFinding={addFinding}
 					onResolve={resolveConflict}
+					onUpdateFinding={saveFinding}
 					pinned
 					reviewerId={session.me?.user.id ?? ""}
 					states={bundle.stationStates}

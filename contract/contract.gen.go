@@ -1473,11 +1473,20 @@ func (j *FindingResponse) UnmarshalJSON(value []byte) error {
 }
 
 type FindingUpdateRequest struct {
+	// MakerAction corresponds to the JSON schema field "makerAction".
+	MakerAction *string `json:"makerAction,omitempty,omitzero" yaml:"makerAction,omitempty" mapstructure:"makerAction,omitempty"`
+
 	// Resolution corresponds to the JSON schema field "resolution".
 	Resolution *string `json:"resolution,omitempty,omitzero" yaml:"resolution,omitempty" mapstructure:"resolution,omitempty"`
 
+	// Severity corresponds to the JSON schema field "severity".
+	Severity *string `json:"severity,omitempty,omitzero" yaml:"severity,omitempty" mapstructure:"severity,omitempty"`
+
 	// Status corresponds to the JSON schema field "status".
 	Status string `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Summary corresponds to the JSON schema field "summary".
+	Summary *string `json:"summary,omitempty,omitzero" yaml:"summary,omitempty" mapstructure:"summary,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -1494,11 +1503,25 @@ func (j *FindingUpdateRequest) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
 	}
+	if plain.MakerAction != nil && utf8.RuneCountInString(string(*plain.MakerAction)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "makerAction", 4000)
+	}
 	if plain.Resolution != nil && utf8.RuneCountInString(string(*plain.Resolution)) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "resolution", 4000)
 	}
+	if plain.Severity != nil {
+		if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, string(*plain.Severity)); !matched {
+			return fmt.Errorf("field %s pattern match: must match %s", "Severity", `^(block|fixable|note|hold)$`)
+		}
+	}
 	if matched, _ := regexp.MatchString(`^(open|fixed|accepted|disputed|withdrawn)$`, string(plain.Status)); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Status", `^(open|fixed|accepted|disputed|withdrawn)$`)
+	}
+	if plain.Summary != nil && utf8.RuneCountInString(string(*plain.Summary)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "summary", 1)
+	}
+	if plain.Summary != nil && utf8.RuneCountInString(string(*plain.Summary)) > 500 {
+		return fmt.Errorf("field %s length: must be <= %d", "summary", 500)
 	}
 	*j = FindingUpdateRequest(plain)
 	return nil

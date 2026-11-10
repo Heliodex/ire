@@ -1,7 +1,8 @@
 <script lang="ts">
 import { tick } from "svelte"
-import { maxNote } from "../../contract"
-import { type Finding } from "../../findings"
+import { type InferOutput } from "valibot"
+import { type findingUpdateRequestSchema, maxNote } from "../../contract"
+import { type Finding, isActive } from "../../findings"
 import {
 	answerFor,
 	answersFor,
@@ -31,6 +32,7 @@ interface Props {
 	onAnswer(stationKey: string, questionKey: string, answer: StationVerdict, evidence: string): Promise<void>
 	onCreateFinding?(request: FindingRequest): Promise<void>
 	onResolve?(stationKey: string, questionKey: string, answer: StationVerdict): Promise<void>
+	onUpdateFinding?(findingId: string, request: FindingUpdate): Promise<void>
 	/** Pins the sheet to focusStation: other stations show status only. */
 	pinned?: boolean
 	reviewerId?: string
@@ -50,6 +52,7 @@ let {
 	closed = false,
 	onCreateFinding,
 	onResolve,
+	onUpdateFinding,
 	pinned = false,
 	reviewerId = "",
 	states,
@@ -73,6 +76,7 @@ let queue = $state<PendingAnswer[]>([])
 let active = $state<PendingAnswer | undefined>(undefined)
 let running = $state(false)
 let findingKey = $state("")
+let findingEdit = $state<{ id: string; status: Finding["status"] } | undefined>(undefined)
 let findingSummary = $state("")
 let findingAction = $state("")
 let findingSeverity = $state<"block" | "fixable">("fixable")
@@ -88,6 +92,8 @@ interface FindingRequest {
 	station: string
 	summary: string
 }
+
+type FindingUpdate = InferOutput<typeof findingUpdateRequestSchema>
 
 interface PendingAnswer {
 	evidence: string
@@ -216,30 +222,48 @@ async function drain(): Promise<void> {
 	}
 }
 
-// openFinding starts an inline finding for a failed question.
+// questionFinding returns the newest finding recorded for this question, if any.
+function questionFinding(stationKey: string, prompt: string): Finding | undefined {
+	return findings.find(item => isActive(item) && item.station === stationKey && item.question === prompt)
+}
+
+// openFinding starts an inline finding for a failed question, or edits the one it already has.
 function openFinding(stationKey: string, question: StationQuestion): void {
+	const existing = questionFinding(stationKey, question.prompt)
 	findingKey = answerKey(stationKey, question.key)
-	findingSummary = ""
-	findingAction = ""
-	findingSeverity = "fixable"
+	findingEdit = existing === undefined ? undefined : { id: existing.id, status: existing.status }
+	findingSummary = existing?.summary ?? ""
+	findingAction = existing?.makerAction ?? ""
+	findingSeverity = existing?.severity === "block" ? "block" : "fixable"
 	findingError = ""
 }
 
-// saveFinding sends the inline finding and closes the form.
+// saveFinding sends the inline finding, creating it once and updating it after that.
 async function saveFinding(stationKey: string, question: StationQuestion): Promise<void> {
-	if (onCreateFinding === undefined || findingSummary.trim() === "") return
+	if (findingSummary.trim() === "") return
 
 	findingSaving = true
 	findingError = ""
 
 	try {
-		await onCreateFinding({
-			makerAction: findingAction.trim(),
-			question: question.prompt,
-			severity: findingSeverity,
-			station: stationKey,
-			summary: findingSummary.trim(),
-		})
+		if (findingEdit !== undefined) {
+			if (onUpdateFinding === undefined) return
+			await onUpdateFinding(findingEdit.id, {
+				makerAction: findingAction.trim(),
+				severity: findingSeverity,
+				status: findingEdit.status,
+				summary: findingSummary.trim(),
+			})
+		} else {
+			if (onCreateFinding === undefined) return
+			await onCreateFinding({
+				makerAction: findingAction.trim(),
+				question: question.prompt,
+				severity: findingSeverity,
+				station: stationKey,
+				summary: findingSummary.trim(),
+			})
+		}
 		findingKey = ""
 	} catch (err) {
 		findingError = err instanceof Error ? err.message : "Could not save the finding."
@@ -250,12 +274,13 @@ async function saveFinding(stationKey: string, question: StationQuestion): Promi
 
 // questionHasFinding reports whether a finding already follows this station answer.
 function questionHasFinding(stationKey: string, prompt: string): boolean {
-	return findings.some(item => item.station === stationKey && item.question === prompt)
+	return questionFinding(stationKey, prompt) !== undefined
 }
 
 function isQueued(key: string): boolean {
 	return queue.some(item => item.key === key)
 }
+
 // scrollToNext keeps the next unanswered question in view after a verdict.
 async function scrollToNext(): Promise<void> {
 	await tick()
@@ -589,7 +614,11 @@ function onKeydown(event: KeyboardEvent): void {
 																saveFinding(selectedStation.key, question)}
 															type="button"
 														>
-															{findingSaving ? "Saving…" : "Add finding"}
+															{findingSaving
+																? "Saving…"
+																: findingEdit === undefined
+																	? "Add finding"
+																	: "Save finding"}
 														</button>
 														<button
 															class="ui-button sm ghost"

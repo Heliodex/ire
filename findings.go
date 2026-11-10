@@ -135,6 +135,18 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	summary := strings.TrimSpace(stringValue(request.Summary))
+	if request.Summary != nil && summary == "" {
+		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "summary", "summarise the finding in one line")
+		return
+	}
+
+	severity := stringValue(request.Severity)
+	if request.Severity != nil && !findingSeverities[severity] {
+		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "severity", "choose block, fixable, note or hold")
+		return
+	}
+
 	finding, err := a.loadFinding(r.Context(), r.PathValue("finding"))
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
@@ -168,8 +180,10 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := a.store.Exec(r.Context(), `update finding set status = ?, resolution = ?, resolved_by = ?,
-			resolved_submission_id = ?, resolved_version = ?, updated_at = ? where id = ?`,
-		request.Status, nullString(resolution), resolvedBy, resolvedSubmission(resolvedBy, ship.ID), resolvedVersion, now, finding.ID); err != nil {
+			resolved_submission_id = ?, resolved_version = ?, updated_at = ?, summary = coalesce(?, summary),
+			maker_action = coalesce(?, maker_action), severity = coalesce(?, severity) where id = ?`,
+		request.Status, nullString(resolution), resolvedBy, resolvedSubmission(resolvedBy, ship.ID), resolvedVersion, now,
+		nullString(summary), request.MakerAction, nullString(severity), finding.ID); err != nil {
 		writeStorage(w, err)
 
 		return

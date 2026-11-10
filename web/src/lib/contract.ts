@@ -622,8 +622,11 @@ export const findingCreateRequestSchema = pipe(
 
 export const findingUpdateRequestSchema = pipe(
 	object({
+		makerAction: optional(pipe(string(), maxLength(maxNote))),
 		resolution: optional(pipe(string(), maxLength(maxNote))),
+		severity: optional(findingSeverityValues),
 		status: findingStatusValues,
+		summary: optional(pipe(string(), minLength(1), maxLength(500))),
 	}),
 	title("FindingUpdateRequest"),
 )

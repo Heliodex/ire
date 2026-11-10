@@ -43,6 +43,24 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 		t.Fatalf("findings = %+v", list.Findings)
 	}
 
+	editBody, _ := json.Marshal(contract.FindingUpdateRequest{
+		MakerAction: stringPtr("Add the missing build steps to the README."),
+		Severity:    stringPtr("block"),
+		Status:      "open",
+		Summary:     stringPtr("The README is a placeholder with no build steps."),
+	})
+
+	edited := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/findings/"+finding.ID, editBody, cookie, nil)
+	if edited.Code != http.StatusOK {
+		t.Fatalf("edit finding = %d: %s", edited.Code, edited.Body.String())
+	}
+
+	if updated := decode[contract.FindingResponse](t, edited).Finding; updated.Summary != "The README is a placeholder with no build steps." ||
+		updated.Severity != "block" || updated.MakerAction == nil ||
+		*updated.MakerAction != "Add the missing build steps to the README." {
+		t.Fatalf("edited finding = %+v", updated)
+	}
+
 	hours := max(
 		bundle.Submission.HoursClaimedSeconds,
 		bundle.Submission.HoursJournalSeconds+bundle.Submission.HoursHackatimeSeconds,
