@@ -30,7 +30,13 @@ import { ignore } from "../../async"
 import { isBlocking, isWarning } from "../../checks"
 import { isActive, isReturnable, selectedFindingIds, severityTone, statusLabel } from "../../findings"
 import { decisionLabel, formatHours, humanStatus, statusTone } from "../../format"
-import { hasPermission, permissionSecondPass, programPermissions } from "../../permissions"
+import {
+	hasPermission,
+	permissionNoteManage,
+	permissionSecondPass,
+	permissionWildcard,
+	programPermissions,
+} from "../../permissions"
 import { dropSignIn, session } from "../../session.svelte.js"
 import {
 	draftValues,
@@ -1256,6 +1262,7 @@ async function persistDraft(): Promise<void> {
 				<StationSheet
 					answers={bundle.stationAnswers}
 					canResolve={hasPermission(permissions, permissionSecondPass)}
+					{closed}
 					currentStation={bundle.currentStation}
 					{editable}
 					focusStation={stationKey}
@@ -1270,7 +1277,12 @@ async function persistDraft(): Promise<void> {
 				/>
 			{/if}
 
-			{#if closed && finalDecision !== undefined}
+			{#if closed && finalDecision === undefined}
+				<section class="ui-card padded decision-card">
+					<h2>Withdrawn</h2>
+					<p class="hint">This ship was withdrawn before a final decision.</p>
+				</section>
+			{:else if closed && finalDecision !== undefined}
 				<section class="ui-card padded decision-card">
 					<div class="fields-head">
 						<h2>Final decision</h2>
@@ -1280,7 +1292,7 @@ async function persistDraft(): Promise<void> {
 					</div>
 					<p class="hint">
 						{finalDecision.reviewerEmail ?? "Reviewer"}
-						· {formatHours(finalDecision.hoursApprovedSeconds ?? 0)} approved · v{finalDecision.version}
+						· {formatHours(finalDecision.hoursApprovedSeconds ?? 0)} approved
 					</p>
 					{#if finalDecision.noteToMaker}
 						<p class="description">{finalDecision.noteToMaker}</p>

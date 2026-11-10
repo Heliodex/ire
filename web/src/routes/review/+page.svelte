@@ -1877,6 +1877,7 @@ async function saveDraftNow(): Promise<void> {
 								<StationSheet
 									answers={bundleStationAnswers}
 									canResolve={hasPermission(permissions, permissionSecondPass)}
+									closed={reviewed}
 									currentStation={bundle.currentStation}
 									editable={canEditFindings}
 									{focusStation}

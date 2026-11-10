@@ -21,6 +21,7 @@ import {
 interface Props {
 	answers: StationAnswer[]
 	canResolve?: boolean
+	closed?: boolean
 	currentStation?: string
 	editable: boolean
 	focusStation?: string
@@ -42,6 +43,7 @@ let {
 	focusStation,
 	onAnswer,
 	canResolve = false,
+	closed = false,
 	onCreateFinding,
 	onResolve,
 	pinned = false,
@@ -344,7 +346,11 @@ function onKeydown(event: KeyboardEvent): void {
 		{/if}
 
 		{#if !editable}
-			<p class="ui-notice read-only-note">Read-only. Claim this ship to answer the station questions.</p>
+			<p class="ui-notice read-only-note">
+				{closed
+					? "Decided ship. Station answers are read-only."
+					: "Read-only. Claim this ship to answer the station questions."}
+			</p>
 		{/if}
 
 		{#if selectedStation}
