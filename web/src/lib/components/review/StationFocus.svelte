@@ -306,7 +306,8 @@ function onKeydown(event: KeyboardEvent): void {
 	const { target } = event
 	if (
 		target instanceof HTMLElement
-		&& target.closest("input, textarea, select, [contenteditable='true'], a, button") !== null
+		&& target.closest("input, textarea, select, summary, [contenteditable='true'], [role='button'], a, button")
+			!== null
 	)
 		return
 
