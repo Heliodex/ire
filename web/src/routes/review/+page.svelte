@@ -65,6 +65,7 @@ import {
 import { type ReviewPreview, readReviewPreview } from "../../lib/review-preview"
 import { reviewerHref } from "../../lib/reviewer"
 import { dropSignIn, session } from "../../lib/session.svelte.js"
+import { draftValues, parseDraftValues, suggestInternalNote, suggestTechnicalFeatures } from "../../lib/station-fields"
 import { type StationVerdict, upsertStationAnswer } from "../../lib/stations"
 
 const tabKeys = ["overview", "journal", "checks", "bom", "evidence", "history"] as const
@@ -187,7 +188,13 @@ const previewTimeSegments = $derived.by((): TimeSegment[] => {
 	return segments.filter(segment => segment.value > 0)
 })
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
-const canApprove = $derived(!reviewed && blocking.length === 0 && (secondPass || missingAcks.length === 0))
+const stationsDone = $derived((bundle?.currentStation ?? "") === "")
+const currentStationLabel = $derived(
+	bundle?.stations.find(station => station.key === (bundle?.currentStation ?? ""))?.label ?? "the station sheet",
+)
+const canApprove = $derived(
+	!reviewed && stationsDone && blocking.length === 0 && (secondPass || missingAcks.length === 0),
+)
 const finalDecision = $derived(bundle?.reviews.find(review => review.held === 0 && !review.invalidatedAt) ?? undefined)
 const canEditFinal = $derived(
 	reviewed
@@ -659,12 +666,24 @@ function showCachedBundle(cached: Bundle): void {
 	loading = false
 	error = ""
 	actionError = ""
-	note = cached.draft?.note ?? ""
-	internalNote = cached.draft?.internalNote ?? ""
-	const held = cached.reviews.find(review => review.held === 1)
-	technicalFeatures = held?.technicalFeatures ?? ""
-	deflationReason = held?.deflationReason ?? ""
+	applyDraft(cached)
 	hourInit()
+}
+
+// applyDraft restores the station fields and the held 2nd-pass values.
+function applyDraft(next: Bundle): void {
+	note = next.draft?.note ?? ""
+	internalNote = next.draft?.internalNote ?? ""
+
+	const values = parseDraftValues(next.draft?.values)
+	technicalFeatures = values.technicalFeatures ?? ""
+	deflationReason = values.deflationReason ?? ""
+
+	if (next.submission.stage === 2 || next.submission.status === "stage2_hold") {
+		const held = next.reviews.find(review => review.held === 1)
+		technicalFeatures = held?.technicalFeatures ?? technicalFeatures
+		deflationReason = held?.deflationReason ?? deflationReason
+	}
 }
 
 // schedulePrefetch warms the next ship's bundle once the current screen is idle.
@@ -712,14 +731,7 @@ async function load(target = id): Promise<void> {
 		claimedId = canClaim ? target : ""
 
 		// Restore the server-side draft so a refresh or another device does not lose typed notes.
-		if (next.draft) ({ note, internalNote } = next.draft)
-
-		if (next.submission.stage === 2 || next.submission.status === "stage2_hold") {
-			const held = next.reviews.find(review => review.held === 1)
-			technicalFeatures = held?.technicalFeatures ?? ""
-			deflationReason = held?.deflationReason ?? ""
-		}
-
+		applyDraft(next)
 		hourInit()
 		error = ""
 		watchChecks()
@@ -859,6 +871,12 @@ function approveProblem(): boolean {
 
 	if (returnableFindings.length > 0) {
 		actionError = `Resolve or return the ${returnableFindings.length} open finding${returnableFindings.length === 1 ? "" : "s"} first.`
+		flash(actionError)
+		return true
+	}
+
+	if (!stationsDone) {
+		actionError = `Finish ${currentStationLabel} in the station sheet first.`
 		flash(actionError)
 		return true
 	}
@@ -1176,7 +1194,11 @@ function canDeleteNote(entry: Note): boolean {
 async function saveDraftNow(): Promise<void> {
 	if (!bundle) return
 	try {
-		await saveDraft(id, { internalNote, note })
+		await saveDraft(id, {
+			internalNote,
+			note,
+			values: draftValues({ deflationReason, internalNote, note, technicalFeatures }),
+		})
 	} catch {
 		// Draft saving is best effort; the decision is the durable write.
 	}
@@ -1228,6 +1250,8 @@ async function saveDraftNow(): Promise<void> {
 		</p>
 	{:else if secondPass && !canSecondPass}
 		<p class="rail-hint">Only organisers can decide the 2nd pass.</p>
+	{:else if !stationsDone}
+		<p class="rail-hint">Finish {currentStationLabel} in the station sheet before approving.</p>
 	{/if}
 
 	<button
@@ -1303,6 +1327,15 @@ async function saveDraftNow(): Promise<void> {
 				bind:value={technicalFeatures}
 			></textarea>
 			<span class="field-hint">Required to approve. Name what was built, not just the parts.</span>
+			<button
+				class="link"
+				onclick={(): void => {
+					if (bundle) technicalFeatures = suggestTechnicalFeatures(bundle)
+				}}
+				type="button"
+			>
+				Suggest from the repo
+			</button>
 		</label>
 
 		{#if deflationRequired || deflationReason.trim() !== ""}
@@ -1385,6 +1418,15 @@ async function saveDraftNow(): Promise<void> {
 				rows="2"
 				bind:value={internalNote}
 			></textarea>
+			<button
+				class="link"
+				onclick={(): void => {
+					if (bundle) internalNote = suggestInternalNote(bundle)
+				}}
+				type="button"
+			>
+				Use station notes
+			</button>
 		</label>
 
 		{#if secondPass}
