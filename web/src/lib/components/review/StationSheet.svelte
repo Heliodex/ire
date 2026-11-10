@@ -408,7 +408,7 @@ function onKeydown(event: KeyboardEvent): void {
 									<div class="conflict-resolve">
 										<span>Resolve every answer as</span>
 										<button
-											class="ui-button sm ok"
+											class="ui-button sm"
 											disabled={active?.key === key}
 											onclick={(): Promise<void> =>
 												onResolve(selectedStation.key, question.key, "pass")}
@@ -480,7 +480,7 @@ function onKeydown(event: KeyboardEvent): void {
 									<!-- biome-ignore lint/a11y/useSemanticElements: the verdict buttons are a segmented control -->
 									<div aria-label={`Answer: ${question.prompt}`} class="verdict-buttons" role="group">
 										<button
-											class="ui-button sm ok"
+											class="ui-button sm"
 											disabled={active?.key === key}
 											onclick={(): Promise<void> => submitAnswer(question, "pass")}
 											type="button"
