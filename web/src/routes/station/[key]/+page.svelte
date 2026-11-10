@@ -17,6 +17,24 @@ let data = $state<StationQueue | undefined>(undefined)
 let loading = $state(true)
 let error = $state("")
 let loadedKey = ""
+let query = $state("")
+let appliedQuery = $state("")
+let sort = $state("")
+let dir = $state<1 | -1>(1)
+let seededKey = ""
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+
+const sortOptions = [
+	{ label: "Default order", value: "" },
+	{ label: "Ship", value: "ship" },
+	{ label: "Maker", value: "maker" },
+	{ label: "Status", value: "status" },
+	{ label: "Type", value: "type" },
+	{ label: "Version", value: "version" },
+	{ label: "Claimed", value: "claimed" },
+	{ label: "Age", value: "age" },
+	{ label: "Checks", value: "checks" },
+]
 
 const station = $derived(data?.station)
 // Search params are only available after hydration; prerendering must not read them.
@@ -34,12 +52,49 @@ $effect((): void => {
 	if (target === "") return
 
 	if (target !== key) key = target
-	const keyed = `${stage}:${target}`
+	const keyed = `${stage}:${target}:${appliedQuery}:${sort}:${dir}`
 	if (focusId !== "" || keyed === loadedKey) return
 
 	loadedKey = keyed
 	void load(target)
 })
+
+// The filter bar seeds from the URL when the station changes, then owns its state.
+$effect((): void => {
+	if (!browser) return
+	const target = page.params.key ?? ""
+	const scoped = `${stage}:${target}`
+	if (scoped === seededKey) return
+
+	seededKey = scoped
+	query = page.url.searchParams.get("q") ?? ""
+	appliedQuery = query
+	sort = page.url.searchParams.get("sort") ?? ""
+	dir = page.url.searchParams.get("dir") === "-1" ? -1 : 1
+})
+
+// refresh syncs the filter bar to the URL so the queue reloads and links share.
+function refresh(): void {
+	if (!browser) return
+	const params = new URLSearchParams()
+	params.set("stage", String(stage))
+	if (appliedQuery !== "") params.set("q", appliedQuery)
+	if (sort !== "") {
+		params.set("sort", sort)
+		params.set("dir", String(dir))
+	}
+	void goto(`${page.url.pathname}?${params}`, { replaceState: true })
+}
+
+// scheduleSearch waits for a pause in typing before reloading the queue.
+function scheduleSearch(): void {
+	if (searchTimer !== undefined) clearTimeout(searchTimer)
+	searchTimer = setTimeout((): void => {
+		searchTimer = undefined
+		appliedQuery = query.trim()
+		refresh()
+	}, 300)
+}
 
 async function load(target: string): Promise<void> {
 	loading = true
@@ -54,7 +109,7 @@ async function load(target: string): Promise<void> {
 	}
 
 	try {
-		const next = await fetchStationQueue(target, stage)
+		const next = await fetchStationQueue(target, stage, sort, dir, appliedQuery)
 		if (target !== key) return
 
 		data = next
@@ -101,14 +156,52 @@ async function load(target: string): Promise<void> {
 		<div class="ui-notice" data-tone="bad" role="alert">{error}</div>
 	{/if}
 
+	<div class="filter-bar">
+		<input
+			aria-label="Filter this station queue"
+			class="ui-input"
+			oninput={scheduleSearch}
+			placeholder="Filter ships — try status:ready, checks:fail>0, journals:>=2"
+			type="search"
+			bind:value={query}
+		>
+		<select
+			aria-label="Sort this station queue"
+			class="ui-input"
+			onchange={refresh}
+			bind:value={sort}
+		>
+			{#each sortOptions as option (option.value)}
+				<option value={option.value}>{option.label}</option>
+			{/each}
+		</select>
+		<button
+			aria-label={dir === 1 ? "Sort ascending" : "Sort descending"}
+			class="ui-button ghost sm"
+			disabled={sort === ""}
+			onclick={(): void => {
+				dir = dir === 1 ? -1 : 1
+				refresh()
+			}}
+			title={dir === 1 ? "Ascending" : "Descending"}
+			type="button"
+		>
+			{dir === 1 ? "↑" : "↓"}
+		</button>
+	</div>
+
 	{#if loading}
 		<div class="ui-card">
 			<LoadingState message="Loading station queue…" />
 		</div>
 	{:else if data && data.items.length === 0}
 		<div class="ui-card ui-empty">
-			<strong>Nothing waiting here</strong>
-			<span>Ships arrive when the previous station is done.</span>
+			<strong>{appliedQuery === "" ? "Nothing waiting here" : "No ships match"}</strong>
+			<span
+				>{appliedQuery === ""
+					? "Ships arrive when the previous station is done."
+					: "Try a different filter for this station."}</span
+			>
 		</div>
 	{:else if data}
 		<div class="ui-card list">
@@ -195,6 +288,22 @@ h1 {
 .stats span {
 	font-size: var(--text-xs);
 	color: var(--text-3);
+}
+
+.filter-bar {
+	display: flex;
+	gap: var(--space-2);
+	padding-bottom: var(--space-3);
+}
+
+.filter-bar input {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.filter-bar select {
+	flex: 0 1 11rem;
+	min-width: 0;
 }
 
 .list {
