@@ -1212,7 +1212,7 @@ func TestPageGate(t *testing.T) {
 	cookie := login(t, application, "reviewer@example.com")
 
 	signedIn := do(t, application, http.MethodGet, "/", nil, cookie, nil)
-	if signedIn.Code != http.StatusFound || signedIn.Header().Get("Location") != "/overview" {
+	if signedIn.Code != http.StatusFound || signedIn.Header().Get("Location") != "/stations" {
 		t.Fatalf("signed-in root = %d %q", signedIn.Code, signedIn.Header().Get("Location"))
 	}
 
@@ -1237,7 +1237,7 @@ func TestPageGate(t *testing.T) {
 	}
 
 	login := do(t, application, http.MethodGet, "/login", nil, cookie, nil)
-	if login.Code != http.StatusFound || login.Header().Get("Location") != "/overview" {
+	if login.Code != http.StatusFound || login.Header().Get("Location") != "/stations" {
 		t.Fatalf("signed-in login = %d %q", login.Code, login.Header().Get("Location"))
 	}
 

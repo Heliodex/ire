@@ -2,5 +2,5 @@
 export const prerender = true
 
 export function entries(): { key: string }[] {
-	return ["triage", "time", "narrative", "hardware", "synthesis", "verify"].map(key => ({ key }))
+	return ["loading", "triage", "time", "narrative", "hardware", "synthesis", "verify"].map(key => ({ key }))
 }

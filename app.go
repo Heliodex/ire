@@ -260,7 +260,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case path == "/":
 		if signedIn {
-			http.Redirect(w, r, "/overview", http.StatusFound)
+			http.Redirect(w, r, "/stations", http.StatusFound)
 			return
 		}
 
@@ -272,7 +272,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if signedIn {
-			target = "/overview"
+			target = "/stations"
 		}
 
 		//nolint:gosec // The target is a fixed local path plus the request query.
@@ -291,6 +291,11 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(path, "/review/") {
 			// Every review id shares the prerendered loading shell; the client router hydrates the real id.
 			page = "/review/loading"
+		}
+
+		if strings.HasPrefix(path, "/station/") {
+			// Station keys are dynamic; every key shares the prerendered shell.
+			page = "/station/loading"
 		}
 
 		if strings.HasPrefix(path, "/reviewers/") {
