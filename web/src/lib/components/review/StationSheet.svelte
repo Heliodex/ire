@@ -78,6 +78,8 @@ let drafts = $state<{ [_: string]: string }>({})
 let errors = $state<{ [_: string]: string }>({})
 let queue = $state<PendingAnswer[]>([])
 let active = $state<PendingAnswer | undefined>(undefined)
+// pending applies instantly so the reviewer keeps working while saves land.
+let pending = $state<{ [_: string]: StationVerdict }>({})
 let running = $state(false)
 let findingKey = $state("")
 let findingEdit = $state<{ id: string; status: Finding["status"] } | undefined>(undefined)
@@ -200,6 +202,11 @@ function submitAnswer(question: StationQuestion, verdict: StationVerdict): void 
 		verdict,
 	}
 	delete errors[key]
+	pending[key] = verdict
+	if (verdict === "fail" && findingKey !== key) {
+		openFinding(stationKey, question)
+		findingKey = key
+	}
 	queue = [...queue.filter(item => item.key !== key), task]
 	void drain()
 }
@@ -226,6 +233,7 @@ async function drain(): Promise<void> {
 		errors[task.key] = err instanceof Error ? err.message : "Could not save this answer."
 	} finally {
 		active = undefined
+		delete pending[task.key]
 		running = false
 		void drain()
 	}
@@ -443,6 +451,16 @@ function onKeydown(event: KeyboardEvent): void {
 {#if selectedStation}
 	<section aria-label={`${selectedStation.label} questions`} class="station-sheet">
 		{const failNeedsFinding = $derived(questions.some(question => isFailWithoutFinding(selectedStation.key, question)))}
+		{const openNextKey = $derived.by((): string | undefined => {
+			if (failNeedsFinding) return undefined
+			for (const item of questions) {
+				if (answerFor(answers, selectedStation.key, item.key, reviewerId) !== undefined) continue
+				const pend = pending[answerKey(selectedStation.key, item.key)]
+				if (pend === undefined) return item.key
+				if (pend === "fail") return undefined
+			}
+			return undefined
+		})}
 		<div class="station-body">
 				<div class="station-head">
 					<h3>{selectedStation.label}</h3>
@@ -473,19 +491,21 @@ function onKeydown(event: KeyboardEvent): void {
 							)}
 							{const conflict = $derived(questionConflict(answers, selectedStation.key, question.key))}
 							{const key = $derived(answerKey(selectedStation.key, question.key))}
+							{const pendingVerdict = $derived(pending[key])}
+							{const effective = $derived(pendingVerdict ?? answer?.answer)}
 							{const existingFinding = $derived(questionFinding(selectedStation.key, question.prompt))}
 							<li
 								data-question={question.key}
-								class:needs-finding={answer?.answer === "fail"
+								class:needs-finding={effective === "fail"
 									&& !questionHasFinding(selectedStation.key, question.prompt)}
-								class:next={editable && answer === undefined && nextKey === question.key}
+								class:next={editable && answer === undefined && pendingVerdict === undefined && openNextKey === question.key}
 							>
 								<details
 									class="question-details"
 									open={conflict
-										|| (answer?.answer === "fail"
+										|| (effective === "fail"
 											&& !questionHasFinding(selectedStation.key, question.prompt))
-										|| (question.key === nextKey && !failNeedsFinding)}
+										|| question.key === openNextKey}
 								>
 									<summary class="question-head">
 										<p class="prompt">
@@ -501,6 +521,10 @@ function onKeydown(event: KeyboardEvent): void {
 											{:else if answer}
 												<span class="ui-badge" data-tone={verdictTone(answer.answer)}
 													>{verdictLabel(answer.answer)}</span
+												>
+											{:else if pendingVerdict}
+												<span class="ui-badge" data-tone={verdictTone(pendingVerdict)}
+													>{verdictLabel(pendingVerdict)}</span
 												>
 											{/if}
 											<span class="question-toggle">
@@ -593,7 +617,7 @@ function onKeydown(event: KeyboardEvent): void {
 												disabled={active?.key === key}
 												onclick={(): Promise<void> => submitAnswer(question, "pass")}
 												type="button"
-												class:chosen={answer?.answer === "pass"}
+												class:chosen={effective === "pass"}
 											>
 												Pass
 											</button>
@@ -602,7 +626,7 @@ function onKeydown(event: KeyboardEvent): void {
 												disabled={active?.key === key}
 												onclick={(): Promise<void> => submitAnswer(question, "fail")}
 												type="button"
-												class:chosen={answer?.answer === "fail"}
+												class:chosen={effective === "fail"}
 											>
 												Fail
 											</button>
@@ -611,7 +635,7 @@ function onKeydown(event: KeyboardEvent): void {
 												disabled={active?.key === key}
 												onclick={(): Promise<void> => submitAnswer(question, "na")}
 												type="button"
-												class:chosen={answer?.answer === "na"}
+												class:chosen={effective === "na"}
 											>
 												N/A
 											</button>
@@ -620,7 +644,7 @@ function onKeydown(event: KeyboardEvent): void {
 										<p class="evidence-text">{answer.evidence}</p>
 									{/if}
 
-									{#if answer?.answer === "fail"}
+									{#if effective === "fail"}
 										{#if onCreateFinding !== undefined && editable}
 											<details
 												class="finding-details"
