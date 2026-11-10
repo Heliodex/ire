@@ -778,20 +778,24 @@ function onKeydown(event: KeyboardEvent): void {
 .questions {
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-2);
 	padding: 0;
 	margin: 0;
+	overflow: hidden;
 	list-style: none;
+	background: var(--surface-2);
+	border-radius: var(--radius-sm);
 }
 
 .questions li {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-2);
-	padding: var(--space-3);
-	background: var(--surface-2);
+	padding: 0;
 	border-left: 3px solid transparent;
-	border-radius: var(--radius-sm);
+}
+
+.questions li + li {
+	border-top: 1px solid var(--border);
 }
 
 .questions li.next {
@@ -803,8 +807,18 @@ function onKeydown(event: KeyboardEvent): void {
 	gap: var(--space-2);
 	align-items: flex-start;
 	justify-content: space-between;
+	padding: var(--space-2) var(--space-3);
+	margin: 0 calc(-1 * var(--space-3));
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-2);
 	cursor: pointer;
 	list-style: none;
+}
+
+.question-head:hover {
+	color: var(--text);
+	background: var(--surface-3);
 }
 
 .question-head::-webkit-details-marker {
@@ -833,12 +847,17 @@ function onKeydown(event: KeyboardEvent): void {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-2);
+	padding: 0 var(--space-3);
+}
+
+.question-details[open] {
+	padding-bottom: var(--space-3);
 }
 
 .prompt {
-	font-size: var(--text-sm);
-	font-weight: 600;
-	color: var(--text);
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: inherit;
 	overflow-wrap: anywhere;
 }
 
