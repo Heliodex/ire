@@ -129,6 +129,7 @@ async function load(target: string): Promise<void> {
 }
 
 .crumbs {
+	flex-basis: 100%;
 	padding-bottom: var(--space-1);
 	font-size: var(--text-sm);
 	color: var(--text-3);
