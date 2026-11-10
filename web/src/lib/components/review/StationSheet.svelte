@@ -356,11 +356,9 @@ function onKeydown(event: KeyboardEvent): void {
 							class="progress-item static"
 							data-status={state?.status ?? "todo"}
 						>
-							<Icon
-								class="progress-mark"
-								name={stationIcon(state?.status ?? "todo")}
-								size={14}
-							/>
+							<span aria-hidden="true" class="progress-mark"
+								><Icon name={stationIcon(state?.status ?? "todo")} size={14} /></span
+							>
 							<span class="progress-label">{station.label}</span>
 							{#if state}
 								<span class="progress-count">{state.answered}/{state.required}</span>
@@ -374,11 +372,9 @@ function onKeydown(event: KeyboardEvent): void {
 							onclick={(): void => selectStation(station.key)}
 							type="button"
 						>
-							<Icon
-								class="progress-mark"
-								name={stationIcon(state?.status ?? "todo")}
-								size={14}
-							/>
+							<span aria-hidden="true" class="progress-mark"
+								><Icon name={stationIcon(state?.status ?? "todo")} size={14} /></span
+							>
 							<span class="progress-label">{station.label}</span>
 							{#if state}
 								<span class="progress-count">{state.answered}/{state.required}</span>
@@ -781,6 +777,7 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 .progress-mark {
+	display: inline-flex;
 	flex: none;
 	color: var(--station-status, var(--text-3));
 }
