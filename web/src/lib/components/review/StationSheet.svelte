@@ -2,7 +2,7 @@
 import { tick } from "svelte"
 import { type InferOutput } from "valibot"
 import { type findingUpdateRequestSchema, maxNote } from "../../contract"
-import { type Finding, isActive } from "../../findings"
+import { type Finding, isActive, severityTone } from "../../findings"
 import {
 	answerFor,
 	answersFor,
@@ -433,6 +433,7 @@ function onKeydown(event: KeyboardEvent): void {
 							)}
 							{const conflict = $derived(questionConflict(answers, selectedStation.key, question.key))}
 							{const key = $derived(answerKey(selectedStation.key, question.key))}
+							{const existingFinding = $derived(questionFinding(selectedStation.key, question.prompt))}
 							<li
 								data-question={question.key}
 								class:needs-finding={answer?.answer === "fail"
@@ -591,8 +592,18 @@ function onKeydown(event: KeyboardEvent): void {
 												open={findingKey === key}
 											>
 												<summary class="fail-row">
-													<span class="fail-hint">A failed answer needs a finding.</span>
-													<span class="ui-button sm changes">Record finding</span>
+													{#if existingFinding === undefined}
+														<span class="fail-hint">A failed answer needs a finding.</span>
+														<span class="ui-button sm changes">Record finding</span>
+													{:else}
+														<span class="finding-recorded">
+															<span class="ui-badge" data-tone={severityTone(existingFinding.severity)}
+																>{existingFinding.severity}</span
+															>
+															<span class="finding-recorded-summary">{existingFinding.summary}</span>
+														</span>
+														<span class="ui-button sm changes">Edit finding</span>
+													{/if}
 												</summary>
 												<div class="finding-form">
 													<label class="finding-field">
@@ -988,6 +999,22 @@ function onKeydown(event: KeyboardEvent): void {
 	align-items: center;
 	justify-content: space-between;
 	padding-top: var(--space-1);
+}
+
+.finding-recorded {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+	min-width: 0;
+}
+
+.finding-recorded-summary {
+	overflow: hidden;
+	font-size: var(--text-xs);
+	font-weight: 600;
+	color: var(--text-2);
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .finding-details {
