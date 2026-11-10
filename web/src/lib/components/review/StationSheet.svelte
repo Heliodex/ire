@@ -215,7 +215,7 @@ async function drain(): Promise<void> {
 // openFinding starts an inline finding for a failed question.
 function openFinding(stationKey: string, question: StationQuestion): void {
 	findingKey = answerKey(stationKey, question.key)
-	findingSummary = question.prompt
+	findingSummary = ""
 	findingAction = ""
 	findingSeverity = "fixable"
 	findingError = ""
@@ -528,7 +528,12 @@ function onKeydown(event: KeyboardEvent): void {
 										<div class="finding-form">
 											<label class="finding-field">
 												<span>Summary</span>
-												<input class="ui-input" maxlength="500" bind:value={findingSummary}>
+												<input
+													autocomplete="off"
+													class="ui-input"
+													maxlength="500"
+													bind:value={findingSummary}
+												>
 											</label>
 											<label class="finding-field">
 												<span>Maker action</span>
