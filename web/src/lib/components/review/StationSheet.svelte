@@ -456,7 +456,7 @@ function onKeydown(event: KeyboardEvent): void {
 										<div class="conflict-resolve">
 											<span>Resolve every answer as</span>
 											<button
-												class="ui-button sm"
+												class="ui-button sm pass"
 												disabled={active?.key === key}
 												onclick={(): Promise<void> =>
 													onResolve(selectedStation.key, question.key, "pass")}
@@ -532,7 +532,7 @@ function onKeydown(event: KeyboardEvent): void {
 											role="group"
 										>
 											<button
-												class="ui-button sm"
+												class="ui-button sm pass"
 												disabled={active?.key === key}
 												onclick={(): Promise<void> => submitAnswer(question, "pass")}
 												type="button"
@@ -913,6 +913,10 @@ function onKeydown(event: KeyboardEvent): void {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-1);
+}
+
+.verdict-buttons .ui-button {
+	flex: 1 1 0;
 }
 
 .verdict-buttons .chosen {

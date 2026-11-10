@@ -300,6 +300,20 @@ kbd {
 	background: color-mix(in srgb, var(--accent-red) 18%, var(--surface));
 }
 
+.ui-button.pass {
+	color: var(--accent-green);
+	background: var(--surface);
+	border-color: color-mix(in srgb, var(--accent-green) 35%, transparent);
+}
+
+.ui-button.pass:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--accent-green) 12%, var(--surface));
+}
+
+.ui-button.pass:active:not(:disabled) {
+	background: color-mix(in srgb, var(--accent-green) 18%, var(--surface));
+}
+
 .ui-button.soft {
 	color: var(--primary);
 	background: var(--primary-soft);
