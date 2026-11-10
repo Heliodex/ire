@@ -45,6 +45,7 @@ import {
 	draftValues,
 	type MainField,
 	parseDraftValues,
+	showTechnicalFeatures,
 	suggestDeflationReason,
 	suggestTechnicalFeatures,
 } from "../../station-fields"
@@ -349,10 +350,11 @@ function applyBundle(next: Bundle): void {
 	for (const entry of next.journals) journalCollapsed.add(entry.id)
 	internalNote = next.draft?.internalNote ?? ""
 	const values = parseDraftValues(next.draft?.values)
-	technicalFeatures = values.technicalFeatures ?? ""
+	// While the technical-features field is disabled it stays empty everywhere, backend included.
+	technicalFeatures = showTechnicalFeatures ? (values.technicalFeatures ?? "") : ""
 	deflationReason = values.deflationReason ?? ""
 
-	if (technicalFeatures === "" && (next.evidence?.files.length ?? 0) > 0)
+	if (showTechnicalFeatures && technicalFeatures === "" && (next.evidence?.files.length ?? 0) > 0)
 		technicalFeatures = suggestTechnicalFeatures(next)
 
 	const captured = Math.max(
@@ -368,7 +370,7 @@ function applyBundle(next: Bundle): void {
 
 	if (next.submission.stage === 2 || next.submission.status === "stage2_hold") {
 		const held = next.reviews.find(review => review.held === 1)
-		technicalFeatures = held?.technicalFeatures ?? technicalFeatures
+		if (showTechnicalFeatures) technicalFeatures = held?.technicalFeatures ?? technicalFeatures
 		deflationReason = held?.deflationReason ?? deflationReason
 	}
 
@@ -612,7 +614,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 			internalNote: internalNote.trim(),
 			noteToMaker: findingNote.trim(),
 			overrideReason: overrideReason.trim(),
-			technicalFeatures: technicalFeatures.trim(),
+			technicalFeatures: showTechnicalFeatures ? technicalFeatures.trim() : "",
 			version: bundle.submission.version,
 		})
 		idempotencyKey = ""
@@ -736,7 +738,7 @@ async function submitAmendDecision(): Promise<void> {
 			internalNote: amendInternalNote,
 			noteToMaker: amendNote,
 			reason: amendReason.trim(),
-			technicalFeatures: amendTechnicalFeatures.trim(),
+			technicalFeatures: showTechnicalFeatures ? amendTechnicalFeatures.trim() : "",
 			version: bundle.submission.version,
 		})
 		notice = "Decision amended."
@@ -857,7 +859,12 @@ async function persistDraft(): Promise<void> {
 		await saveDraft(bundle.submission.id, {
 			internalNote,
 			note: findingNote,
-			values: draftValues({ deflationReason, internalNote, note: findingNote, technicalFeatures }),
+			values: draftValues({
+				deflationReason,
+				internalNote,
+				note: findingNote,
+				technicalFeatures: showTechnicalFeatures ? technicalFeatures : "",
+			}),
 		})
 	} catch {
 		// Draft saving is best effort; the station answers are the durable writes.
@@ -1437,6 +1444,7 @@ async function persistDraft(): Promise<void> {
 											bind:value={amendHours}
 										>
 									</label>
+								{#if showTechnicalFeatures}
 									<label class="field">
 										<span class="field-head">Specific technical features</span>
 										<textarea
@@ -1445,6 +1453,7 @@ async function persistDraft(): Promise<void> {
 											bind:value={amendTechnicalFeatures}
 										></textarea>
 									</label>
+								{/if}
 									<label class="field">
 										<span class="field-head">Deflation reason</span>
 										<textarea

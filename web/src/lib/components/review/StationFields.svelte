@@ -3,6 +3,7 @@ import { type Bundle } from "../../api"
 import { formatHours } from "../../format"
 import {
 	type MainField,
+	showTechnicalFeatures,
 	suggestInternalNote,
 	suggestTechnicalFeatures,
 } from "../../station-fields"
@@ -44,62 +45,66 @@ function stationLabel(key: string, fallback: string): string {
 </script>
 
 {#if stationKey === "narrative"}
-	<section class="ui-card padded fields-card">
-		<div class="fields-head">
-			<h2>Specific technical features</h2>
-			<span class="internal-tag">Internal</span>
-		</div>
-		<p class="hint">
-			The work that accounts for these hours. Suggested from the description, BOM and file kinds; edit it.
-		</p>
-		<textarea
-			aria-label="Specific technical features"
-			class="ui-input"
-			maxlength="4000"
-			oninput={(event): void => onChange("technicalFeatures", event.currentTarget.value)}
-			placeholder="Firmware, board, enclosure, and what each one does."
-			readonly={!editable}
-			rows="5"
-			value={technicalFeatures}
-		></textarea>
-		<div class="field-actions">
-			<button
-				class="ui-button ghost sm"
-				onclick={(): void => onChange("technicalFeatures", suggestTechnicalFeatures(bundle))}
-				type="button"
-			>
-				Suggest from the repo
-			</button>
-			<span class="muted">{bundle.bom.length} BOM lines · {bundle.evidence?.files.length ?? 0} files</span>
-		</div>
-	</section>
+	{#if showTechnicalFeatures}
+		<section class="ui-card padded fields-card">
+			<div class="fields-head">
+				<h2>Specific technical features</h2>
+				<span class="internal-tag">Internal</span>
+			</div>
+			<p class="hint">
+				The work that accounts for these hours. Suggested from the description, BOM and file kinds; edit it.
+			</p>
+			<textarea
+				aria-label="Specific technical features"
+				class="ui-input"
+				maxlength="4000"
+				oninput={(event): void => onChange("technicalFeatures", event.currentTarget.value)}
+				placeholder="Firmware, board, enclosure, and what each one does."
+				readonly={!editable}
+				rows="5"
+				value={technicalFeatures}
+			></textarea>
+			<div class="field-actions">
+				<button
+					class="ui-button ghost sm"
+					onclick={(): void => onChange("technicalFeatures", suggestTechnicalFeatures(bundle))}
+					type="button"
+				>
+					Suggest from the repo
+				</button>
+				<span class="muted">{bundle.bom.length} BOM lines · {bundle.evidence?.files.length ?? 0} files</span>
+			</div>
+		</section>
+	{/if}
 {:else if stationKey === "synthesis" || stationKey === "verify"}
 	<section class="ui-card padded fields-card">
-		<div class="fields-head">
-			<h2>Specific technical features</h2>
-			<span class="internal-tag">Internal</span>
-		</div>
-		<p class="hint">The work that accounts for these hours. Edit the suggestion before deciding.</p>
-		<textarea
-			aria-label="Specific technical features"
-			class="ui-input"
-			maxlength="4000"
-			oninput={(event): void => onChange("technicalFeatures", event.currentTarget.value)}
-			placeholder="Firmware, board, enclosure, and what each one does."
-			readonly={!editable}
-			rows="4"
-			value={technicalFeatures}
-		></textarea>
-		<div class="field-actions">
-			<button
-				class="ui-button ghost sm"
-				onclick={(): void => onChange("technicalFeatures", suggestTechnicalFeatures(bundle))}
-				type="button"
-			>
-				Suggest from the repo
-			</button>
-			<span class="muted">{bundle.bom.length} BOM lines · {bundle.evidence?.files.length ?? 0} files</span>
-		</div>
+		{#if showTechnicalFeatures}
+			<div class="fields-head">
+				<h2>Specific technical features</h2>
+				<span class="internal-tag">Internal</span>
+			</div>
+			<p class="hint">The work that accounts for these hours. Edit the suggestion before deciding.</p>
+			<textarea
+				aria-label="Specific technical features"
+				class="ui-input"
+				maxlength="4000"
+				oninput={(event): void => onChange("technicalFeatures", event.currentTarget.value)}
+				placeholder="Firmware, board, enclosure, and what each one does."
+				readonly={!editable}
+				rows="4"
+				value={technicalFeatures}
+			></textarea>
+			<div class="field-actions">
+				<button
+					class="ui-button ghost sm"
+					onclick={(): void => onChange("technicalFeatures", suggestTechnicalFeatures(bundle))}
+					type="button"
+				>
+					Suggest from the repo
+				</button>
+				<span class="muted">{bundle.bom.length} BOM lines · {bundle.evidence?.files.length ?? 0} files</span>
+			</div>
+		{/if}
 
 		<div class="fields-head">
 			<h2>Deflation reason</h2>

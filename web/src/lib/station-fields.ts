@@ -6,6 +6,10 @@ const reasonNames: { [_: string]: string } = reasonLabels
 
 export type MainField = "technicalFeatures" | "deflationReason" | "note" | "internalNote"
 
+// showTechnicalFeatures gates the optional technical-features field while it is evaluated.
+// Flip it back on to restore the textareas on the narrative and synthesis rails.
+export const showTechnicalFeatures = false
+
 export interface MainFields {
 	deflationReason: string
 	internalNote: string
