@@ -1,0 +1,95 @@
+{
+	"type": "object",
+	"properties": {
+		"finding": {
+			"type": "object",
+			"properties": {
+				"createdAt": {
+					"type": "string",
+					"minLength": 1
+				},
+				"detail": {
+					"type": "string"
+				},
+				"evidence": {
+					"type": "string"
+				},
+				"externalId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"makerAction": {
+					"type": "string"
+				},
+				"openedBy": {
+					"type": "string"
+				},
+				"openedSubmissionId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"openedVersion": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"question": {
+					"type": "string"
+				},
+				"resolution": {
+					"type": "string"
+				},
+				"resolvedBy": {
+					"type": "string"
+				},
+				"resolvedVersion": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"severity": {
+					"type": "string",
+					"pattern": "^(block|fixable|note|hold)$"
+				},
+				"station": {
+					"type": "string",
+					"minLength": 1
+				},
+				"status": {
+					"type": "string",
+					"pattern": "^(open|fixed|accepted|disputed|withdrawn)$"
+				},
+				"summary": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 4000
+				},
+				"updatedAt": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"required": [
+				"createdAt",
+				"externalId",
+				"id",
+				"openedSubmissionId",
+				"openedVersion",
+				"severity",
+				"station",
+				"status",
+				"summary",
+				"updatedAt"
+			],
+			"title": "Finding"
+		}
+	},
+	"required": [
+		"finding"
+	],
+	"title": "FindingResponse",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/finding.json"
+}

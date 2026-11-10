@@ -581,6 +581,7 @@ const reviewBundleFixture: InferOutput<typeof reviewBundleSchema> = {
 		"readme": "readme",
 		"truncated": false
 	},
+	"findings": [],
 	"journals": [
 		{
 			"approvedSeconds": 0,

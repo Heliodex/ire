@@ -26,6 +26,14 @@ const optionalString = optional(string())
 const timestamp = pipe(string(), minLength(1))
 
 const decisionValues = pipe(string(), regex(/^(approved|changes|rejected)$/, "Choose approved, changes or rejected."))
+const findingSeverityValues = pipe(
+	string(),
+	regex(/^(block|fixable|note|hold)$/, "Choose block, fixable, note or hold."),
+)
+const findingStatusValues = pipe(
+	string(),
+	regex(/^(open|fixed|accepted|disputed|withdrawn)$/, "Choose open, fixed, accepted, disputed or withdrawn."),
+)
 
 // ─── Shared ─────────────────────────────────────────────────────────────────
 
@@ -575,6 +583,55 @@ export const bomLineSchema = pipe(
 	title("BomLine"),
 )
 
+export const findingSchema = pipe(
+	object({
+		createdAt: timestamp,
+		detail: optionalString,
+		evidence: optionalString,
+		externalId: pipe(string(), minLength(1)),
+		id: pipe(string(), minLength(1)),
+		makerAction: optionalString,
+		openedBy: optionalString,
+		openedSubmissionId: pipe(string(), minLength(1)),
+		openedVersion: nonNegative,
+		question: optionalString,
+		resolution: optionalString,
+		resolvedBy: optionalString,
+		resolvedVersion: optional(pipe(number(), integer(), minValue(0))),
+		severity: findingSeverityValues,
+		station: pipe(string(), minLength(1)),
+		status: findingStatusValues,
+		summary: pipe(string(), minLength(1), maxLength(maxNote)),
+		updatedAt: timestamp,
+	}),
+	title("Finding"),
+)
+
+export const findingCreateRequestSchema = pipe(
+	object({
+		detail: optional(pipe(string(), maxLength(maxNote))),
+		evidence: optional(pipe(string(), maxLength(maxNote))),
+		makerAction: optional(pipe(string(), maxLength(maxNote))),
+		question: optional(pipe(string(), maxLength(200))),
+		severity: findingSeverityValues,
+		station: pipe(string(), minLength(1), maxLength(120), nonBlank),
+		summary: pipe(string(), minLength(1), maxLength(500), nonBlank),
+	}),
+	title("FindingCreateRequest"),
+)
+
+export const findingUpdateRequestSchema = pipe(
+	object({
+		resolution: optional(pipe(string(), maxLength(maxNote))),
+		status: findingStatusValues,
+	}),
+	title("FindingUpdateRequest"),
+)
+
+export const findingResponseSchema = pipe(object({ finding: findingSchema }), title("FindingResponse"))
+
+export const findingsResponseSchema = pipe(object({ findings: array(findingSchema) }), title("FindingsResponse"))
+
 export const reviewSchema = pipe(
 	object({
 		acknowledgements: array(string()),
@@ -763,6 +820,7 @@ export const reviewBundleSchema = pipe(
 		draft: optional(draftSchema),
 		events: array(eventSchema),
 		evidence: optional(evidenceSchema),
+		findings: array(findingSchema),
 		journals: array(journalSchema),
 		notes: array(noteSchema),
 		policy: reviewPolicySchema,
@@ -799,6 +857,7 @@ export const decisionRequestSchema = pipe(
 		acknowledgements: array(string()),
 		decision: decisionValues,
 		deflationReason: optional(pipe(string(), maxLength(maxNote))),
+		findingIds: optional(array(string())),
 		hoursApprovedSeconds: optional(pipe(number(), integer())),
 		idempotencyKey: pipe(string(), minLength(1), maxLength(120)),
 		internalNote: pipe(string(), maxLength(maxNote)),
@@ -849,6 +908,7 @@ export const amendDecisionRequestSchema = pipe(
 		acknowledgements: array(string()),
 		decision: decisionValues,
 		deflationReason: optional(pipe(string(), maxLength(maxNote))),
+		findingIds: optional(array(string())),
 		hoursApprovedSeconds: optional(pipe(number(), integer())),
 		idempotencyKey: pipe(string(), minLength(1), maxLength(120)),
 		internalNote: pipe(string(), maxLength(maxNote)),
@@ -1232,6 +1292,8 @@ export const fakeDeliveriesResponseSchema = pipe(
 export const requestSchemas = Object.freeze([
 	loginRequestSchema,
 	draftRequestSchema,
+	findingCreateRequestSchema,
+	findingUpdateRequestSchema,
 	decisionRequestSchema,
 	sendBackRequestSchema,
 	revertDecisionRequestSchema,
@@ -1259,6 +1321,8 @@ export const responseSchemas = Object.freeze([
 	errorResponseSchema,
 	eventsResponseSchema,
 	fakeDeliveriesResponseSchema,
+	findingResponseSchema,
+	findingsResponseSchema,
 	importReviewedResponseSchema,
 	ingestResponseSchema,
 	journalReviewResponseSchema,

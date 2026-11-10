@@ -17,6 +17,9 @@ type AmendDecisionRequest struct {
 	// DeflationReason corresponds to the JSON schema field "deflationReason".
 	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
 
+	// FindingIds corresponds to the JSON schema field "findingIds".
+	FindingIds []string `json:"findingIds,omitempty,omitzero" yaml:"findingIds,omitempty" mapstructure:"findingIds,omitempty"`
+
 	// HoursApprovedSeconds corresponds to the JSON schema field
 	// "hoursApprovedSeconds".
 	HoursApprovedSeconds *int `json:"hoursApprovedSeconds,omitempty,omitzero" yaml:"hoursApprovedSeconds,omitempty" mapstructure:"hoursApprovedSeconds,omitempty"`
@@ -710,6 +713,9 @@ type DecisionRequest struct {
 	// DeflationReason corresponds to the JSON schema field "deflationReason".
 	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
 
+	// FindingIds corresponds to the JSON schema field "findingIds".
+	FindingIds []string `json:"findingIds,omitempty,omitzero" yaml:"findingIds,omitempty" mapstructure:"findingIds,omitempty"`
+
 	// HoursApprovedSeconds corresponds to the JSON schema field
 	// "hoursApprovedSeconds".
 	HoursApprovedSeconds *int `json:"hoursApprovedSeconds,omitempty,omitzero" yaml:"hoursApprovedSeconds,omitempty" mapstructure:"hoursApprovedSeconds,omitempty"`
@@ -1298,6 +1304,301 @@ func (j *FakeDelivery) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "verified", 0)
 	}
 	*j = FakeDelivery(plain)
+	return nil
+}
+
+type Finding struct {
+	// CreatedAt corresponds to the JSON schema field "createdAt".
+	CreatedAt string `json:"createdAt" yaml:"createdAt" mapstructure:"createdAt"`
+
+	// Detail corresponds to the JSON schema field "detail".
+	Detail *string `json:"detail,omitempty,omitzero" yaml:"detail,omitempty" mapstructure:"detail,omitempty"`
+
+	// Evidence corresponds to the JSON schema field "evidence".
+	Evidence *string `json:"evidence,omitempty,omitzero" yaml:"evidence,omitempty" mapstructure:"evidence,omitempty"`
+
+	// ExternalID corresponds to the JSON schema field "externalId".
+	ExternalID string `json:"externalId" yaml:"externalId" mapstructure:"externalId"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// MakerAction corresponds to the JSON schema field "makerAction".
+	MakerAction *string `json:"makerAction,omitempty,omitzero" yaml:"makerAction,omitempty" mapstructure:"makerAction,omitempty"`
+
+	// OpenedBy corresponds to the JSON schema field "openedBy".
+	OpenedBy *string `json:"openedBy,omitempty,omitzero" yaml:"openedBy,omitempty" mapstructure:"openedBy,omitempty"`
+
+	// OpenedSubmissionID corresponds to the JSON schema field "openedSubmissionId".
+	OpenedSubmissionID string `json:"openedSubmissionId" yaml:"openedSubmissionId" mapstructure:"openedSubmissionId"`
+
+	// OpenedVersion corresponds to the JSON schema field "openedVersion".
+	OpenedVersion int `json:"openedVersion" yaml:"openedVersion" mapstructure:"openedVersion"`
+
+	// Question corresponds to the JSON schema field "question".
+	Question *string `json:"question,omitempty,omitzero" yaml:"question,omitempty" mapstructure:"question,omitempty"`
+
+	// Resolution corresponds to the JSON schema field "resolution".
+	Resolution *string `json:"resolution,omitempty,omitzero" yaml:"resolution,omitempty" mapstructure:"resolution,omitempty"`
+
+	// ResolvedBy corresponds to the JSON schema field "resolvedBy".
+	ResolvedBy *string `json:"resolvedBy,omitempty,omitzero" yaml:"resolvedBy,omitempty" mapstructure:"resolvedBy,omitempty"`
+
+	// ResolvedVersion corresponds to the JSON schema field "resolvedVersion".
+	ResolvedVersion *int `json:"resolvedVersion,omitempty,omitzero" yaml:"resolvedVersion,omitempty" mapstructure:"resolvedVersion,omitempty"`
+
+	// Severity corresponds to the JSON schema field "severity".
+	Severity string `json:"severity" yaml:"severity" mapstructure:"severity"`
+
+	// Station corresponds to the JSON schema field "station".
+	Station string `json:"station" yaml:"station" mapstructure:"station"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+
+	// Summary corresponds to the JSON schema field "summary".
+	Summary string `json:"summary" yaml:"summary" mapstructure:"summary"`
+
+	// UpdatedAt corresponds to the JSON schema field "updatedAt".
+	UpdatedAt string `json:"updatedAt" yaml:"updatedAt" mapstructure:"updatedAt"`
+}
+
+type FindingCreateRequest struct {
+	// Detail corresponds to the JSON schema field "detail".
+	Detail *string `json:"detail,omitempty,omitzero" yaml:"detail,omitempty" mapstructure:"detail,omitempty"`
+
+	// Evidence corresponds to the JSON schema field "evidence".
+	Evidence *string `json:"evidence,omitempty,omitzero" yaml:"evidence,omitempty" mapstructure:"evidence,omitempty"`
+
+	// MakerAction corresponds to the JSON schema field "makerAction".
+	MakerAction *string `json:"makerAction,omitempty,omitzero" yaml:"makerAction,omitempty" mapstructure:"makerAction,omitempty"`
+
+	// Question corresponds to the JSON schema field "question".
+	Question *string `json:"question,omitempty,omitzero" yaml:"question,omitempty" mapstructure:"question,omitempty"`
+
+	// Severity corresponds to the JSON schema field "severity".
+	Severity string `json:"severity" yaml:"severity" mapstructure:"severity"`
+
+	// Station corresponds to the JSON schema field "station".
+	Station string `json:"station" yaml:"station" mapstructure:"station"`
+
+	// Summary corresponds to the JSON schema field "summary".
+	Summary string `json:"summary" yaml:"summary" mapstructure:"summary"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FindingCreateRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["severity"]; raw != nil && !ok {
+		return fmt.Errorf("field severity in FindingCreateRequest: required")
+	}
+	if _, ok := raw["station"]; raw != nil && !ok {
+		return fmt.Errorf("field station in FindingCreateRequest: required")
+	}
+	if _, ok := raw["summary"]; raw != nil && !ok {
+		return fmt.Errorf("field summary in FindingCreateRequest: required")
+	}
+	type Plain FindingCreateRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if plain.Detail != nil && utf8.RuneCountInString(string(*plain.Detail)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "detail", 4000)
+	}
+	if plain.Evidence != nil && utf8.RuneCountInString(string(*plain.Evidence)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "evidence", 4000)
+	}
+	if plain.MakerAction != nil && utf8.RuneCountInString(string(*plain.MakerAction)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "makerAction", 4000)
+	}
+	if plain.Question != nil && utf8.RuneCountInString(string(*plain.Question)) > 200 {
+		return fmt.Errorf("field %s length: must be <= %d", "question", 200)
+	}
+	if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, string(plain.Severity)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Severity", `^(block|fixable|note|hold)$`)
+	}
+	if matched, _ := regexp.MatchString(`\S`, string(plain.Station)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Station", `\S`)
+	}
+	if utf8.RuneCountInString(string(plain.Station)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "station", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Station)) > 120 {
+		return fmt.Errorf("field %s length: must be <= %d", "station", 120)
+	}
+	if matched, _ := regexp.MatchString(`\S`, string(plain.Summary)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Summary", `\S`)
+	}
+	if utf8.RuneCountInString(string(plain.Summary)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "summary", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Summary)) > 500 {
+		return fmt.Errorf("field %s length: must be <= %d", "summary", 500)
+	}
+	*j = FindingCreateRequest(plain)
+	return nil
+}
+
+type FindingResponse struct {
+	// Finding corresponds to the JSON schema field "finding".
+	Finding Finding `json:"finding" yaml:"finding" mapstructure:"finding"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FindingResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["finding"]; raw != nil && !ok {
+		return fmt.Errorf("field finding in FindingResponse: required")
+	}
+	type Plain FindingResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = FindingResponse(plain)
+	return nil
+}
+
+type FindingUpdateRequest struct {
+	// Resolution corresponds to the JSON schema field "resolution".
+	Resolution *string `json:"resolution,omitempty,omitzero" yaml:"resolution,omitempty" mapstructure:"resolution,omitempty"`
+
+	// Status corresponds to the JSON schema field "status".
+	Status string `json:"status" yaml:"status" mapstructure:"status"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FindingUpdateRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in FindingUpdateRequest: required")
+	}
+	type Plain FindingUpdateRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if plain.Resolution != nil && utf8.RuneCountInString(string(*plain.Resolution)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "resolution", 4000)
+	}
+	if matched, _ := regexp.MatchString(`^(open|fixed|accepted|disputed|withdrawn)$`, string(plain.Status)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Status", `^(open|fixed|accepted|disputed|withdrawn)$`)
+	}
+	*j = FindingUpdateRequest(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Finding) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["createdAt"]; raw != nil && !ok {
+		return fmt.Errorf("field createdAt in Finding: required")
+	}
+	if _, ok := raw["externalId"]; raw != nil && !ok {
+		return fmt.Errorf("field externalId in Finding: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in Finding: required")
+	}
+	if _, ok := raw["openedSubmissionId"]; raw != nil && !ok {
+		return fmt.Errorf("field openedSubmissionId in Finding: required")
+	}
+	if _, ok := raw["openedVersion"]; raw != nil && !ok {
+		return fmt.Errorf("field openedVersion in Finding: required")
+	}
+	if _, ok := raw["severity"]; raw != nil && !ok {
+		return fmt.Errorf("field severity in Finding: required")
+	}
+	if _, ok := raw["station"]; raw != nil && !ok {
+		return fmt.Errorf("field station in Finding: required")
+	}
+	if _, ok := raw["status"]; raw != nil && !ok {
+		return fmt.Errorf("field status in Finding: required")
+	}
+	if _, ok := raw["summary"]; raw != nil && !ok {
+		return fmt.Errorf("field summary in Finding: required")
+	}
+	if _, ok := raw["updatedAt"]; raw != nil && !ok {
+		return fmt.Errorf("field updatedAt in Finding: required")
+	}
+	type Plain Finding
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
+	}
+	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if utf8.RuneCountInString(string(plain.OpenedSubmissionID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "openedSubmissionId", 1)
+	}
+	if 0 > plain.OpenedVersion {
+		return fmt.Errorf("field %s: must be >= %v", "openedVersion", 0)
+	}
+	if plain.ResolvedVersion != nil && 0 > *plain.ResolvedVersion {
+		return fmt.Errorf("field %s: must be >= %v", "resolvedVersion", 0)
+	}
+	if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, string(plain.Severity)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Severity", `^(block|fixable|note|hold)$`)
+	}
+	if utf8.RuneCountInString(string(plain.Station)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "station", 1)
+	}
+	if matched, _ := regexp.MatchString(`^(open|fixed|accepted|disputed|withdrawn)$`, string(plain.Status)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "Status", `^(open|fixed|accepted|disputed|withdrawn)$`)
+	}
+	if utf8.RuneCountInString(string(plain.Summary)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "summary", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Summary)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "summary", 4000)
+	}
+	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
+	}
+	*j = Finding(plain)
+	return nil
+}
+
+type FindingsResponse struct {
+	// Findings corresponds to the JSON schema field "findings".
+	Findings []Finding `json:"findings" yaml:"findings" mapstructure:"findings"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *FindingsResponse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["findings"]; raw != nil && !ok {
+		return fmt.Errorf("field findings in FindingsResponse: required")
+	}
+	type Plain FindingsResponse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	*j = FindingsResponse(plain)
 	return nil
 }
 
@@ -4090,6 +4391,9 @@ type ReviewBundle struct {
 	// Evidence corresponds to the JSON schema field "evidence".
 	Evidence *Evidence `json:"evidence,omitempty,omitzero" yaml:"evidence,omitempty" mapstructure:"evidence,omitempty"`
 
+	// Findings corresponds to the JSON schema field "findings".
+	Findings []Finding `json:"findings" yaml:"findings" mapstructure:"findings"`
+
 	// Journals corresponds to the JSON schema field "journals".
 	Journals []JournalEntry `json:"journals" yaml:"journals" mapstructure:"journals"`
 
@@ -4129,6 +4433,9 @@ func (j *ReviewBundle) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["events"]; raw != nil && !ok {
 		return fmt.Errorf("field events in ReviewBundle: required")
+	}
+	if _, ok := raw["findings"]; raw != nil && !ok {
+		return fmt.Errorf("field findings in ReviewBundle: required")
 	}
 	if _, ok := raw["journals"]; raw != nil && !ok {
 		return fmt.Errorf("field journals in ReviewBundle: required")

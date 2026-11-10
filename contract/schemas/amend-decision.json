@@ -15,6 +15,12 @@
 			"type": "string",
 			"maxLength": 4000
 		},
+		"findingIds": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
 		"hoursApprovedSeconds": {
 			"type": "integer"
 		},

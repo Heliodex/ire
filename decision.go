@@ -52,6 +52,11 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if problem := a.findingProblem(r.Context(), request, ship); problem != nil {
+		problem.write(w)
+		return
+	}
+
 	note := strings.TrimSpace(request.NoteToMaker)
 	technicalFeatures := strings.TrimSpace(stringValue(request.TechnicalFeatures))
 	deflationReason := strings.TrimSpace(stringValue(request.DeflationReason))
@@ -121,7 +126,7 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		ship: ship, person: person, request: request,
 		reviewID: reviewID, status: status, stage: stage, submissionStage: submissionStage,
 		hours: hours, note: note, technicalFeatures: technicalFeatures, deflationReason: deflationReason,
-		reason: reason, overrideReason: overrideReason, supersedes: supersedes,
+		reason: reason, overrideReason: overrideReason, supersedes: supersedes, findingIDs: request.FindingIds,
 		held: held, secondPass: secondPass, event: event, payload: payloadJSON, now: now,
 	}
 
@@ -175,6 +180,7 @@ type decisionRecord struct {
 	stage, submissionStage, hours            int
 	note, technicalFeatures, deflationReason string
 	reason, overrideReason, supersedes       string
+	findingIDs                               []string
 	held, secondPass                         bool
 	event                                    string
 	payload                                  []byte
@@ -210,6 +216,13 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 		statements = append(statements, storage.TransactionStatement{
 			SQL:  `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
 			Args: []any{record.reviewID, record.overrideReason, record.now},
+		})
+	}
+
+	for _, findingID := range record.findingIDs {
+		statements = append(statements, storage.TransactionStatement{
+			SQL:  `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
+			Args: []any{record.reviewID, findingID, record.ship.ID, record.ship.Version, record.now},
 		})
 	}
 

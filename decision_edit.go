@@ -267,6 +267,11 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if problem := a.findingProblem(r.Context(), contract.DecisionRequest{Decision: request.Decision, FindingIds: request.FindingIds}, ship); problem != nil {
+		problem.write(w)
+		return
+	}
+
 	hours := final.Hours
 	if hours <= 0 {
 		hours = ship.HoursClaimed
@@ -307,6 +312,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		Acknowledgements:     request.Acknowledgements,
 		Decision:             request.Decision,
 		DeflationReason:      &deflationReason,
+		FindingIds:           request.FindingIds,
 		HoursApprovedSeconds: request.HoursApprovedSeconds,
 		IdempotencyKey:       request.IdempotencyKey,
 		InternalNote:         request.InternalNote,
@@ -327,7 +333,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		ship: ship, person: person, request: decisionReq,
 		reviewID: reviewID, status: statusDecided, stage: stage, submissionStage: ship.Stage,
 		hours: hours, note: note, technicalFeatures: technicalFeatures, deflationReason: deflationReason,
-		reason: "", overrideReason: reason, supersedes: final.ID,
+		reason: "", overrideReason: reason, supersedes: final.ID, findingIDs: request.FindingIds,
 		held: false, secondPass: secondPass, event: event, payload: payloadJSON, now: now,
 	}
 
@@ -425,6 +431,13 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 		statements = append(statements, storage.TransactionStatement{
 			SQL:  `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
 			Args: []any{record.reviewID, record.overrideReason, record.now},
+		})
+	}
+
+	for _, findingID := range record.findingIDs {
+		statements = append(statements, storage.TransactionStatement{
+			SQL:  `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
+			Args: []any{record.reviewID, findingID, record.ship.ID, record.ship.Version, record.now},
 		})
 	}
 

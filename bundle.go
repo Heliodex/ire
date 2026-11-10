@@ -35,6 +35,11 @@ func (a *ireApp) reviewBundle(ctx context.Context, ship submissionRow, person re
 		return contract.ReviewBundle{}, err
 	}
 
+	findings, err := a.loadFindings(ctx, ship.ProgramID, ship.ExternalID)
+	if err != nil {
+		return contract.ReviewBundle{}, err
+	}
+
 	events, err := a.loadEvents(ctx, ship.ID)
 	if err != nil {
 		return contract.ReviewBundle{}, err
@@ -147,6 +152,7 @@ func (a *ireApp) reviewBundle(ctx context.Context, ship submissionRow, person re
 	bundle := contract.ReviewBundle{
 		Submission:       submission,
 		Checks:           checks,
+		Findings:         findings,
 		Journals:         journals,
 		Bom:              bom,
 		Notes:            notes,
