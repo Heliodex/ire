@@ -95,6 +95,13 @@ html {
 	background: var(--bg);
 }
 
+/* Thin views scroll inside main, never the document, so drop the reserved gutter track. */
+@media (max-width: 40rem) {
+	html {
+		scrollbar-gutter: auto;
+	}
+}
+
 body {
 	min-height: 100dvh;
 	margin: 0;
