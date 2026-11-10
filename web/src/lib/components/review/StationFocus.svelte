@@ -173,7 +173,13 @@ const stationsDone = $derived((bundle?.currentStation ?? "") === "")
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? undefined)
 const showDecision = $derived(stationKey === "synthesis" || stationKey === "verify")
 const canApprove = $derived(
-	!closed && stationsDone && blocking.length === 0 && (secondPass || missingAcks.length === 0),
+	!closed
+		&& stationsDone
+		&& blocking.length === 0
+		&& (secondPass || missingAcks.length === 0)
+		&& returnable.length === 0
+		&& technicalFeatures.trim() !== ""
+		&& (!deflationRequired || deflationReason.trim() !== ""),
 )
 // canDeleteNote lets the author or a note manager remove an internal note.
 function canDeleteNote(entry: Note): boolean {
@@ -986,7 +992,11 @@ async function persistDraft(): Promise<void> {
 						on.
 					</p>
 					<div class="complete-actions">
-						<a class="ui-button ghost" href={synthesisHref}>Open findings</a>
+						{#if showDecision}
+							<p class="muted">Resolve the finding or update the failing answer above.</p>
+						{:else}
+							<a class="ui-button ghost" href={synthesisHref}>Open findings</a>
+						{/if}
 					</div>
 				</section>
 			{:else if stationComplete}
