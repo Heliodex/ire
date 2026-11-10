@@ -899,6 +899,9 @@ type DraftState struct {
 
 	// UpdatedAt corresponds to the JSON schema field "updatedAt".
 	UpdatedAt string `json:"updatedAt" yaml:"updatedAt" mapstructure:"updatedAt"`
+
+	// Values corresponds to the JSON schema field "values".
+	Values string `json:"values" yaml:"values" mapstructure:"values"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -915,6 +918,9 @@ func (j *DraftState) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["updatedAt"]; raw != nil && !ok {
 		return fmt.Errorf("field updatedAt in DraftState: required")
+	}
+	if _, ok := raw["values"]; raw != nil && !ok {
+		return fmt.Errorf("field values in DraftState: required")
 	}
 	type Plain DraftState
 	var plain Plain

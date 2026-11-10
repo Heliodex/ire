@@ -438,15 +438,15 @@ func jsonCoveredSeconds(value string) int {
 
 // draftFor returns the caller's saved draft for a ship, so a refresh restores typed notes.
 func (a *ireApp) draftFor(ctx context.Context, submissionID, reviewerID string) *contract.DraftState {
-	var note, internalNote, updatedAt string
+	var note, internalNote, values, updatedAt string
 
-	err := a.store.QueryRow(ctx, `select note, internal_note, updated_at from draft where submission_id = ? and reviewer_id = ?`,
-		submissionID, reviewerID).Scan(&note, &internalNote, &updatedAt)
+	err := a.store.QueryRow(ctx, `select note, internal_note, coalesce("values", '{}'), updated_at from draft where submission_id = ? and reviewer_id = ?`,
+		submissionID, reviewerID).Scan(&note, &internalNote, &values, &updatedAt)
 	if err != nil {
 		return nil
 	}
 
-	return &contract.DraftState{Note: note, InternalNote: internalNote, UpdatedAt: updatedAt}
+	return &contract.DraftState{Note: note, InternalNote: internalNote, Values: values, UpdatedAt: updatedAt}
 }
 
 // payloadHackatimeProjects reads the Hackatime project names Half Life sent with the ship so the outbound event mirrors them.

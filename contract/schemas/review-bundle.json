@@ -124,12 +124,16 @@
 				"updatedAt": {
 					"type": "string",
 					"minLength": 1
+				},
+				"values": {
+					"type": "string"
 				}
 			},
 			"required": [
 				"internalNote",
 				"note",
-				"updatedAt"
+				"updatedAt",
+				"values"
 			],
 			"title": "DraftState"
 		},

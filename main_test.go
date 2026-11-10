@@ -1279,13 +1279,15 @@ func TestDraftSurvivesReload(t *testing.T) {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
-	draft, _ := json.Marshal(contract.DraftRequest{Note: "Check the USB pads.", InternalNote: "Routing looks fine."})
+	values := `{"technicalFeatures":"Firmware and board.","deflationReason":"Tutorial build."}`
+
+	draft, _ := json.Marshal(contract.DraftRequest{Note: "Check the USB pads.", InternalNote: "Routing looks fine.", Values: values})
 	if saved := do(t, application, http.MethodPut, testBase+"/submissions/sub_fixture_1/draft", draft, cookie, nil); saved.Code != http.StatusOK {
 		t.Fatalf("draft = %d: %s", saved.Code, saved.Body.String())
 	}
 
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	if bundle.Draft == nil || bundle.Draft.Note != "Check the USB pads." || bundle.Draft.InternalNote != "Routing looks fine." {
+	if bundle.Draft == nil || bundle.Draft.Note != "Check the USB pads." || bundle.Draft.InternalNote != "Routing looks fine." || bundle.Draft.Values != values {
 		t.Fatalf("draft = %+v", bundle.Draft)
 	}
 }

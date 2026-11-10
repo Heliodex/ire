@@ -704,6 +704,7 @@ export const draftSchema = pipe(
 		internalNote: string(),
 		note: string(),
 		updatedAt: timestamp,
+		values: string(),
 	}),
 	title("DraftState"),
 )
