@@ -1,6 +1,5 @@
 <script lang="ts">
 import { type Bundle } from "../../api"
-import { returnNote } from "../../findings"
 import { formatHours } from "../../format"
 import {
 	type MainField,
@@ -32,11 +31,8 @@ const cuts = $derived(
 	bundle.journals.filter(entry => entry.approvedSeconds !== undefined && entry.approvedSeconds < entry.seconds)
 		.length,
 )
-const returnable = $derived(
-	bundle.findings.filter(
-		finding => finding.status === "open" && (finding.severity === "block" || finding.severity === "fixable"),
-	),
-)
+
+
 </script>
 
 {#if stationKey === "narrative"}
@@ -135,33 +131,19 @@ const returnable = $derived(
 		<div class="fields-head">
 			<h2>Notes</h2>
 		</div>
-		<p class="hint">The maker note is public. The internal note is for the team and the audit record.</p>
-		<label class="field">
-			<span class="field-head"><span>Note to maker</span><span class="muted">{note.length} / 4000</span></span>
-			<textarea
-				aria-label="Note to maker"
-				class="ui-input"
-				maxlength="4000"
-				oninput={(event): void => onChange("note", event.currentTarget.value)}
-				placeholder="What should they change, or why is this good?"
-				readonly={!editable}
-				rows="4"
-				value={note}
-			></textarea>
-		</label>
-		<div class="field-actions">
-			<button
-				class="ui-button ghost sm"
-				disabled={returnable.length === 0}
-				onclick={(): void => onChange("note", returnNote(returnable))}
-				type="button"
-			>
-				Draft note from {returnable.length} finding{returnable.length === 1 ? "" : "s"}
-			</button>
-		</div>
+		<p class="hint">
+			The maker note is public and built from the findings chosen for return. The internal note is for the
+			team and the audit record.
+		</p>
+		<span class="field-head"><span>Note to maker</span></span>
+		{#if note !== ""}
+			<p class="readonly-text">{note}</p>
+		{:else}
+			<p class="readonly-empty">No findings chosen for return – the maker note is empty.</p>
+		{/if}
 		<label class="field">
 			<span class="field-head"
-				><span>Internal note <span class="internal-tag">Internal</span></span
+				><span>Internal note<span class="internal-tag">Internal</span></span
 				><span class="muted">{internalNote.length} / 4000</span></span
 			>
 			<textarea

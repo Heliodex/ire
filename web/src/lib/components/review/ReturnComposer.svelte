@@ -1,16 +1,15 @@
 <script lang="ts">
 import { type Bundle } from "../../api"
-import { isReturnable, returnNote, severityTone } from "../../findings"
+import { isReturnable, severityTone } from "../../findings"
 
 type Finding = Bundle["findings"][number]
 
 interface Props {
 	findings: Finding[]
-	onDraft(note: string): void
 	selected?: string[]
 }
 
-let { findings, onDraft, selected = $bindable([]) }: Props = $props()
+let { findings, selected = $bindable([]) }: Props = $props()
 
 const returnable = $derived(findings.filter(finding => isReturnable(finding)))
 const selectedCount = $derived(returnable.filter(finding => selected.includes(finding.id)).length)
@@ -32,12 +31,6 @@ function toggle(findingId: string, checked: boolean): void {
 
 function selectAll(): void {
 	selected = returnable.map(finding => finding.id)
-}
-
-function draftNote(): void {
-	const chosen = returnable.filter(finding => selected.includes(finding.id))
-	if (chosen.length === 0) return
-	onDraft(returnNote(chosen))
 }
 </script>
 
@@ -77,20 +70,11 @@ function draftNote(): void {
 			<p class="ui-notice" data-tone="warn">{missingMessage}</p>
 		{/if}
 
-		<div class="composer-actions">
-			{#if missingCount > 0}
+		{#if missingCount > 0}
+			<div class="composer-actions">
 				<button class="ui-button ghost sm" onclick={selectAll} type="button">Select all</button>
-			{/if}
-			<button
-				class="ui-button sm"
-				disabled={selectedCount === 0}
-				onclick={draftNote}
-				title="Replaces the note to maker with a bullet list from the selected findings."
-				type="button"
-			>
-				Draft note from findings (replaces the note)
-			</button>
-		</div>
+			</div>
+		{/if}
 	{/if}
 </div>
 

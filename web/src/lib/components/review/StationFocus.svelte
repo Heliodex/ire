@@ -29,7 +29,7 @@ import {
 import { ApiError } from "../../api-error"
 import { ignore } from "../../async"
 import { isBlocking, isWarning } from "../../checks"
-import { isActive, isReturnable, selectedFindingIds, severityTone, statusLabel } from "../../findings"
+import { isActive, isReturnable, returnNote, selectedFindingIds, severityTone, statusLabel } from "../../findings"
 import { decisionLabel, formatHours, humanStatus, statusTone } from "../../format"
 import {
 	hasPermission,
@@ -84,7 +84,6 @@ let actionError = $state("")
 let notice = $state("")
 let coverFailed = $state(false)
 let holding = $state(false)
-let note = $state("")
 let internalNote = $state("")
 let technicalFeatures = $state("")
 let deflationReason = $state("")
@@ -196,6 +195,8 @@ const warnings = $derived((bundle?.checks ?? []).filter(isWarning))
 const blocking = $derived((bundle?.checks ?? []).filter(isBlocking))
 const missingAcks = $derived(warnings.filter(check => !acknowledgements.includes(check.key)))
 const returnable = $derived((bundle?.findings ?? []).filter(isReturnable))
+// findingNote is the maker note, built only from the findings chosen for return.
+const findingNote = $derived(returnNote(returnable.filter(finding => returnSelection.includes(finding.id))))
 const approvedSeconds = $derived(Math.max(0, Math.round((Number(hours) || 0) * 3600)))
 const capturedSeconds = $derived(
 	Math.max(
@@ -338,7 +339,6 @@ function canClaim(next: Bundle): boolean {
 // applyBundle seeds the draft fields from the server copy of the review draft.
 function applyBundle(next: Bundle): void {
 	bundle = next
-	note = next.draft?.note ?? ""
 	internalNote = next.draft?.internalNote ?? ""
 	const values = parseDraftValues(next.draft?.values)
 	technicalFeatures = values.technicalFeatures ?? ""
@@ -524,7 +524,7 @@ function justificationProblem(): string | undefined {
 	if (deflationRequired && deflationReason.trim() === "")
 		return "Explain why the approved time is lower than the captured time."
 
-	if (deflationReason.trim() !== "" && deflationReason.trim().toLowerCase() === note.trim().toLowerCase())
+	if (deflationReason.trim() !== "" && deflationReason.trim().toLowerCase() === findingNote.trim().toLowerCase())
 		return "The deflation reason is internal reasoning, not the note to the maker."
 
 	return undefined
@@ -572,8 +572,8 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 
 	if (decision === "approved") {
 		if (approveProblem()) return
-	} else if (note.trim() === "") {
-		decisionError = "Write a note to the maker before returning or rejecting."
+	} else if (findingNote.trim() === "") {
+		decisionError = "Choose findings for the maker note before returning or rejecting."
 		return
 	}
 
@@ -602,7 +602,7 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 			hoursApprovedSeconds: approvedSeconds,
 			idempotencyKey: key,
 			internalNote: internalNote.trim(),
-			noteToMaker: note.trim(),
+			noteToMaker: findingNote.trim(),
 			overrideReason: overrideReason.trim(),
 			technicalFeatures: technicalFeatures.trim(),
 			version: bundle.submission.version,
@@ -836,8 +836,7 @@ function scheduleDraft(): void {
 function onFieldChange(field: MainField, value: string): void {
 	if (field === "technicalFeatures") technicalFeatures = value
 	else if (field === "deflationReason") deflationReason = value
-	else if (field === "note") note = value
-	else internalNote = value
+	else if (field === "internalNote") internalNote = value
 	scheduleDraft()
 }
 
@@ -848,8 +847,8 @@ async function persistDraft(): Promise<void> {
 	try {
 		await saveDraft(bundle.submission.id, {
 			internalNote,
-			note,
-			values: draftValues({ deflationReason, internalNote, note, technicalFeatures }),
+			note: findingNote,
+			values: draftValues({ deflationReason, internalNote, note: findingNote, technicalFeatures }),
 		})
 	} catch {
 		// Draft saving is best effort; the station answers are the durable writes.
@@ -1293,7 +1292,7 @@ async function persistDraft(): Promise<void> {
 					{deflationReason}
 					{editable}
 					{internalNote}
-					{note}
+					note={findingNote}
 					onChange={onFieldChange}
 					{stationKey}
 					{technicalFeatures}
@@ -1518,11 +1517,7 @@ async function persistDraft(): Promise<void> {
 					{/if}
 
 					{#if returnable.length > 0}
-						<ReturnComposer
-							findings={returnable}
-							onDraft={(text): void => onFieldChange("note", text)}
-							bind:selected={returnSelection}
-						/>
+						<ReturnComposer findings={returnable} bind:selected={returnSelection} />
 					{/if}
 
 					<div class="decision-actions">
@@ -1536,7 +1531,7 @@ async function persistDraft(): Promise<void> {
 						</button>
 						<button
 							class="ui-button changes"
-							disabled={deciding || !canDecide || note.trim() === ""}
+							disabled={deciding || !canDecide || findingNote.trim() === ""}
 							onclick={(): Promise<void> => decide("changes")}
 							type="button"
 						>
@@ -1544,7 +1539,7 @@ async function persistDraft(): Promise<void> {
 						</button>
 						<button
 							class="ui-button danger"
-							disabled={deciding || !canDecide || note.trim() === ""}
+							disabled={deciding || !canDecide || findingNote.trim() === ""}
 							onclick={(): Promise<void> => decide("rejected")}
 							type="button"
 						>
