@@ -62,8 +62,10 @@ The reasoning behind each is in [decisions.md](./decisions.md).
 5. [05-ui.md](./05-ui.md) – routes, review screen, stage 1 speed, stage 2, shortcuts.
 6. [06-integration.md](./06-integration.md) – ingest, status, outbound events, Ari compatibility, cutover.
 7. [07-delivery.md](./07-delivery.md) – phases, testing, deployment, risks, open questions.
-8. [decisions.md](./decisions.md) – the architectural decisions and their consequences.
-9. [todo.md](./todo.md) – what is built, what is stubbed, and the next four implementation steps.
+8. [09-review-pipeline.md](./09-review-pipeline.md) – review pipeline models, findings ledger, return gate, recommended model.
+9. [10-implementation.md](./10-implementation.md) – the Starbie case, the fines, milestones, schema, API, first pull requests.
+10. [decisions.md](./decisions.md) – the architectural decisions and their consequences.
+11. [todo.md](./todo.md) – what is built, what is stubbed, and the next four implementation steps.
 
 ## Current repository state
 
