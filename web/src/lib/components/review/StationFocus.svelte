@@ -191,11 +191,11 @@ const station = $derived(stationDefs.find(item => item.key === stationKey))
 const stationState = $derived((bundle?.stationStates ?? []).find(item => item.key === stationKey))
 const answers = $derived(bundle?.stationAnswers ?? [])
 const stationComplete = $derived(stationState?.status === "done")
+const stationBlocked = $derived(stationState?.status === "blocked")
 // showAttention mirrors the blocked state from client data (plus the server state
 // as a fallback) so the header badge reacts the moment a verdict lands.
 let sheetAttention = $state(false)
 const showAttention = $derived(bundle !== undefined && (stationBlocked || sheetAttention))
-const stationBlocked = $derived(stationState?.status === "blocked")
 const secondPass = $derived(!closed && (submission?.stage === 2 || submission?.status === "stage2_hold"))
 const permissions = $derived(programPermissions(session.me, program))
 const canSecondPass = $derived(hasPermission(permissions, permissionSecondPass))
@@ -217,7 +217,7 @@ const capturedSeconds = $derived(
 )
 const deflationRequired = $derived(approvedSeconds < capturedSeconds)
 const stationsDone = $derived((bundle?.currentStation ?? "") === "")
-const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? undefined)
+const heldReview = $derived(bundle?.reviews.find(review => review.held === 1 && !review.invalidatedAt) ?? undefined)
 const showDecision = $derived(stationKey === "synthesis" || stationKey === "verify")
 const finalDecision = $derived(bundle?.reviews.find(review => review.held === 0 && !review.invalidatedAt))
 const canEditFinal = $derived(
@@ -601,6 +601,21 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 	if (bundle === undefined || deciding) return
 
 	decisionError = ""
+
+	if (readOnly) {
+		decisionError = "Your access is read-only."
+		return
+	}
+
+	if (closed) {
+		decisionError = "This ship is already decided."
+		return
+	}
+
+	if (checking) {
+		decisionError = "Checks are still running."
+		return
+	}
 
 	if (!canDecide) {
 		decisionError = "Only organisers can decide the 2nd pass."
@@ -1348,8 +1363,7 @@ async function persistDraft(): Promise<void> {
 		</div>
 
 		<aside
-			aria-label={railOpen ? `${stationLabel} review panel` : undefined}
-			aria-modal={railOpen ? "true" : undefined}
+			aria-label={`${stationLabel} review panel`}
 			class="focus-rail"
 			class:sheet-open={railOpen}
 			role={railOpen ? "dialog" : undefined}
@@ -1526,13 +1540,12 @@ async function persistDraft(): Promise<void> {
 									<textarea class="ui-input" rows="2" bind:value={amendInternalNote}></textarea>
 								</label>
 								<label class="field">
-									<span class="field-head">Why change this decision</span>
-									<textarea
-										class="ui-input"
-										placeholder="Required"
-										rows="2"
-										bind:value={amendReason}
-									></textarea>
+									<span class="field-head"
+										><span>Why change this decision
+											<span aria-hidden="true" class="required" title="Required">*</span></span
+										><span class="muted">Required</span></span
+									>
+									<textarea class="ui-input" required rows="2" bind:value={amendReason}></textarea>
 								</label>
 								{#if amendError}
 									<p class="ui-notice" data-tone="bad" role="alert">{amendError}</p>
@@ -1551,13 +1564,12 @@ async function persistDraft(): Promise<void> {
 						{#if revertOpen}
 							<div class="amend-form">
 								<label class="field">
-									<span class="field-head">Why revert this decision</span>
-									<textarea
-										class="ui-input"
-										placeholder="Required"
-										rows="2"
-										bind:value={revertReason}
-									></textarea>
+									<span class="field-head"
+										><span>Why revert this decision
+											<span aria-hidden="true" class="required" title="Required">*</span></span
+										><span class="muted">Required</span></span
+									>
+									<textarea class="ui-input" required rows="2" bind:value={revertReason}></textarea>
 								</label>
 								{#if revertError}
 									<p class="ui-notice" data-tone="bad" role="alert">{revertError}</p>
@@ -1607,7 +1619,7 @@ async function persistDraft(): Promise<void> {
 						>
 						<span class="hint">
 							{formatHours(capturedSeconds)}
-							captured by journals and Hackatime.
+							captured by journals and Hackatime. Approving above it holds the ship for the 2nd pass.
 							{#if deflationRequired}
 								Deflation needs a reason.
 							{/if}
@@ -2112,6 +2124,13 @@ async function persistDraft(): Promise<void> {
 	gap: var(--space-2);
 	align-items: baseline;
 	justify-content: space-between;
+}
+
+.required {
+	margin-left: 2px;
+	font-size: var(--text-sm);
+	font-weight: 700;
+	color: var(--accent-red);
 }
 
 .field {

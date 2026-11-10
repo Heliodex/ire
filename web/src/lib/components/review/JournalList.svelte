@@ -26,7 +26,7 @@ function toggleEntry(id: string): void {
 {#if entries.length === 0}
 	<div class="ui-card ui-empty">
 		<strong>No journal entries</strong>
-		<span>Half Life sent no written evidence with this ship.</span>
+		<span>No written evidence was sent with this ship.</span>
 	</div>
 {:else}
 	<div class="ui-card journals-card">

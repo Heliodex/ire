@@ -25,7 +25,7 @@ let requestId = 0
 
 const sortOptions = [
 	{ label: "Default order", value: "" },
-	{ label: "Ship", value: "ship" },
+	{ label: "Title", value: "ship" },
 	{ label: "Maker", value: "maker" },
 	{ label: "Status", value: "status" },
 	{ label: "Type", value: "type" },
@@ -139,7 +139,7 @@ async function load(target: string): Promise<void> {
 			<div class="stats ui-card">
 				<div>
 					<strong>{data.filteredTotal}</strong>
-					<span>{data.filteredTotal === data.total ? "waiting" : `of ${data.total} waiting`}</span>
+					<span>{data.filteredTotal === data.total ? "waiting" : `matching · ${data.total} waiting`}</span>
 				</div>
 			</div>
 		{/if}

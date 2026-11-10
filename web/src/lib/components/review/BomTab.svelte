@@ -13,7 +13,7 @@ let { bom, totalCents }: Props = $props()
 {#if bom.length === 0}
 	<div class="ui-card ui-empty">
 		<strong>No BOM lines</strong>
-		<span>Half Life sent no priced parts with this ship.</span>
+		<span>No priced parts were sent with this ship.</span>
 	</div>
 {:else}
 	<div class="ui-card table-wrap">

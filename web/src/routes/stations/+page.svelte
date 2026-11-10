@@ -51,7 +51,7 @@ async function boot(): Promise<void> {
 <section class="page-head">
 	<div>
 		<h1>Stations</h1>
-		<p>Each station is one question set; open a station to work its queue.</p>
+		<p>Each station reviews one part of a ship; open a station to work its queue.</p>
 	</div>
 </section>
 
@@ -84,7 +84,7 @@ async function boot(): Promise<void> {
 						>
 							<span class="station-copy">
 								<strong>{station.label}</strong>
-								<span>{station.description || "No description yet."}</span>
+								<span>{station.description || "No description for this station yet."}</span>
 							</span>
 							<span class="waiting">
 								<strong>{station.count}</strong>

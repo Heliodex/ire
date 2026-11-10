@@ -169,7 +169,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 {#if !evidence}
 	<div class="ui-card ui-empty">
 		<strong>No repository snapshot</strong>
-		<span>Evidence is fetched for GitHub ships on ingest. Fixtures keep their prescribed checks.</span>
+		<span>Evidence is fetched for GitHub ships on ingest.</span>
 	</div>
 {:else}
 	<div class="evidence-meta">
