@@ -78,7 +78,8 @@
 				"noComponentHookFactories": "off",
 				"noUndeclaredVariables": "off",
 				"noUnresolvedImports": "off",
-				"useImportExtensions": "off"
+				"useImportExtensions": "off",
+				"useQwikValidLexicalScope": "off"
 			},
 			"nursery": {
 				"noAccidentalBitwiseOperators": "error",
