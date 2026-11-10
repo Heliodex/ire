@@ -131,7 +131,7 @@ h1 {
 
 .grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+	grid-template-columns: 1fr;
 	gap: var(--space-3);
 }
 
@@ -140,7 +140,7 @@ h1 {
 	gap: var(--space-3);
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--space-4);
+	padding: var(--space-2) var(--space-4);
 	color: inherit;
 	text-decoration: none;
 	transition:
