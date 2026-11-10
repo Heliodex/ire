@@ -371,7 +371,12 @@ onMount((): (() => void) => {
 						{:else}
 							<div class="ui-card list">
 								{#each visible as item (item.id)}
-									<a class="row" href={`/review/${encodeURIComponent(item.id)}?from=reviewed`}>
+									<a
+										class="row"
+										href={item.stage === 2
+											? `/station/verify?id=${encodeURIComponent(item.id)}&stage=2`
+											: `/station/synthesis?id=${encodeURIComponent(item.id)}&stage=1`}
+									>
 										<span class="thumb">
 											{#if item.thumbnailUrl}
 												<img alt="" decoding="async" loading="lazy" src={item.thumbnailUrl}>

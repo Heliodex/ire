@@ -131,6 +131,7 @@ export const endpoints: Endpoint[] = Object.freeze([
 		params: [
 			{ in: "path", name: "program", type: "string", value: "program" },
 			{ default: "1", in: "query", name: "stage", type: "number" },
+			{ default: "0", in: "query", name: "all", type: "number" },
 		],
 		response: { schema: stationsResponseSchema },
 	},
@@ -200,6 +201,24 @@ export const endpoints: Endpoint[] = Object.freeze([
 			},
 		],
 		path: "/api/v1/programs/{program}/submissions/{id}/stations/{station}/answers/{question}",
+		response: { schema: stationAnswerResponseSchema },
+	},
+	{
+		doc: "resolveStationConflict sets every reviewer's answer for one question to the organiser's verdict.",
+		method: "POST",
+		name: "resolveStationConflict",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "id", type: "string" },
+			{ in: "path", name: "station", type: "string" },
+			{ in: "path", name: "question", type: "string" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof stationAnswerRequestSchema>",
+			},
+		],
+		path: "/api/v1/programs/{program}/submissions/{id}/stations/{station}/answers/{question}/resolve",
 		response: { schema: stationAnswerResponseSchema },
 	},
 	{

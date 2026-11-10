@@ -344,3 +344,53 @@ func TestAdminAuthorsStations(t *testing.T) {
 		t.Fatalf("reviewer save station = %d, want 403", denied.Code)
 	}
 }
+
+// TestOrganiserResolvesStationConflict covers the override path for disagreeing reviewers.
+func TestOrganiserResolvesStationConflict(t *testing.T) {
+	application := newTestApp(t)
+	reviewer := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
+	triage := stationByKey(bundle, "triage")
+	firstQuestion := triage.Questions[0]
+
+	for _, question := range triage.Questions {
+		if question.Required == 1 {
+			answerQuestion(t, application, reviewer, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
+		}
+	}
+
+	if release := do(t, application, http.MethodDelete, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); release.Code != http.StatusNoContent {
+		t.Fatalf("release = %d", release.Code)
+	}
+
+	organiser := login(t, application, "organiser@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, organiser, nil); claim.Code != http.StatusOK {
+		t.Fatalf("organiser claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	answerQuestion(t, application, organiser, bundle.Submission.ID, "triage", firstQuestion.Key, "fail", bundle.Submission.Version)
+
+	body, _ := json.Marshal(contract.StationAnswerRequest{Answer: "pass", Evidence: "Organiser resolved.", Version: bundle.Submission.Version})
+	path := testBase + "/submissions/sub_fixture_1/stations/triage/answers/" + firstQuestion.Key + "/resolve"
+
+	resolved := decode[contract.StationAnswerResult](t, do(t, application, http.MethodPost, path, body, organiser, nil))
+
+	for _, state := range resolved.States {
+		if state.Key == "triage" && (state.Status != "done" || state.Conflicts != 0) {
+			t.Fatalf("triage = %+v, want done without conflicts", state)
+		}
+	}
+
+	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, organiser, nil))
+	for _, answer := range after.StationAnswers {
+		if answer.StationKey == "triage" && answer.QuestionKey == firstQuestion.Key && answer.Answer != "pass" {
+			t.Fatalf("answer = %+v, want pass", answer)
+		}
+	}
+}

@@ -68,9 +68,11 @@ export async function fetchQueue(
 // fetchStations lists the workflow stations and how many open ships are waiting in each.
 export async function fetchStations(
 	stage = 1,
+	all = 0,
 ): Promise<InferOutput<typeof stationsResponseSchema>> {
 	const query = new URLSearchParams()
 	query.set("stage", String(stage))
+	query.set("all", String(all))
 	let url = `/api/v1/programs/${program}/stations`
 	if (query.size > 0) url += `?${query}`
 	const response = await fetch(url)
@@ -135,6 +137,22 @@ export async function saveStationAnswer(
 		body: JSON.stringify(request),
 		headers: { "content-type": "application/json" },
 		method: "PUT",
+	})
+	const parsed = await parseJSON(response, stationAnswerResponseSchema)
+	return parsed
+}
+
+// resolveStationConflict sets every reviewer's answer for one question to the organiser's verdict.
+export async function resolveStationConflict(
+	id: string,
+	station: string,
+	question: string,
+	request: InferOutput<typeof stationAnswerRequestSchema>,
+): Promise<InferOutput<typeof stationAnswerResponseSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/stations/${encodeURIComponent(station)}/answers/${encodeURIComponent(question)}/resolve`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "POST",
 	})
 	const parsed = await parseJSON(response, stationAnswerResponseSchema)
 	return parsed

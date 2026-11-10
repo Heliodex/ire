@@ -56,7 +56,7 @@ async function boot(): Promise<void> {
 
 async function refresh(): Promise<void> {
 	try {
-		const [one, two] = await Promise.all([fetchStations(1), fetchStations(2)])
+		const [one, two] = await Promise.all([fetchStations(1, 1), fetchStations(2, 1)])
 		stations = [...one.stations, ...two.stations]
 	} catch (err) {
 		if (err instanceof ApiError && err.code === "unauthorized") {
@@ -226,7 +226,10 @@ async function remove(key: string): Promise<void> {
 						class:active={draft?.key === station.key}
 					>
 						<span>{station.label}</span>
-						<small>{station.key} · {station.count} waiting</small>
+						<small>
+							{station.key}
+							· {station.count} waiting{station.active === 0 ? " · inactive" : ""}
+						</small>
 					</button>
 				{/each}
 			{/each}

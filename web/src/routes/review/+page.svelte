@@ -25,7 +25,14 @@ import {
 	saveDraft,
 	sendShipBack,
 } from "../../lib/api"
-import { amendDecision, createFinding, revertDecision, saveStationAnswer, updateFinding } from "../../lib/api.gen"
+import {
+	amendDecision,
+	createFinding,
+	resolveStationConflict,
+	revertDecision,
+	saveStationAnswer,
+	updateFinding,
+} from "../../lib/api.gen"
 import { ApiError } from "../../lib/api-error"
 import { ignore, sleep } from "../../lib/async"
 import { type BundleCache, createBundleCache, prefetchNextBundle } from "../../lib/bundle-cache"
@@ -1204,6 +1211,26 @@ async function answerStation(
 	actionError = ""
 }
 
+// resolveConflict sets every reviewer's answer to the organiser's verdict.
+async function resolveConflict(stationKey: string, questionKey: string, answer: StationVerdict): Promise<void> {
+	if (!bundle) return
+
+	const result = await resolveStationConflict(bundle.submission.id, stationKey, questionKey, {
+		answer,
+		evidence: "",
+		version: bundle.submission.version,
+	})
+
+	bundle.stationAnswers = bundle.stationAnswers.map(item =>
+		item.stationKey === stationKey && item.questionKey === questionKey ? { ...item, answer } : item,
+	)
+	bundle.stationAnswers = upsertStationAnswer(bundle.stationAnswers ?? [], result.answer)
+	bundle.stationStates = result.states
+	bundle.currentStation = result.currentStation
+	bundleCache().write(bundle.submission.id, bundle)
+	actionError = ""
+}
+
 // canDeleteNote lets the author or a member with note management remove a note.
 function canDeleteNote(entry: Note): boolean {
 	return session.me?.user.email === entry.authorEmail || hasPermission(permissions, permissionNoteManage)
@@ -1849,11 +1876,13 @@ async function saveDraftNow(): Promise<void> {
 							<div class="section station-section">
 								<StationSheet
 									answers={bundleStationAnswers}
+									canResolve={hasPermission(permissions, permissionSecondPass)}
 									currentStation={bundle.currentStation}
 									editable={canEditFindings}
 									{focusStation}
 									onAnswer={answerStation}
 									onCreateFinding={addFinding}
+									onResolve={resolveConflict}
 									reviewerId={session.me?.user.id ?? ""}
 									states={bundleStationStates}
 									stations={bundleStations}

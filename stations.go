@@ -9,6 +9,7 @@ import (
 	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // stationQueuePageLimit is the page size for a focused station queue.
@@ -58,8 +59,21 @@ func currentStationSQL() string {
 
 // stationDefinitions loads the active stations for one stage, with their questions.
 func (a *ireApp) stationDefinitions(ctx context.Context, programID string, stage int) ([]contract.StationDefinition, error) {
-	rows, err := a.store.Query(ctx, `select key, label, description, stage, sort, themes, active
-		from station_definition where program_id = ? and stage = ? and active = 1 order by sort, key`, programID, stage)
+	return a.stationDefinitionsWith(ctx, programID, stage, false)
+}
+
+// stationDefinitionsWith loads one stage's stations, optionally including inactive rows for the editor.
+func (a *ireApp) stationDefinitionsWith(ctx context.Context, programID string, stage int, includeInactive bool) ([]contract.StationDefinition, error) {
+	query := `select key, label, description, stage, sort, themes, active
+		from station_definition where program_id = ? and stage = ?`
+
+	if !includeInactive {
+		query += ` and active = 1`
+	}
+
+	query += ` order by sort, key`
+
+	rows, err := a.store.Query(ctx, query, programID, stage)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +353,7 @@ func (a *ireApp) handleStations(w http.ResponseWriter, r *http.Request) {
 
 	stage := stationStage(r)
 
-	definitions, err := a.stationDefinitions(r.Context(), person.ProgramID, stage)
+	definitions, err := a.stationDefinitionsWith(r.Context(), person.ProgramID, stage, r.URL.Query().Get("all") == "1")
 	if err != nil {
 		writeStorage(w, err)
 
@@ -555,4 +569,113 @@ func answerAt(answers []contract.StationAnswer, stationKey, questionKey, reviewe
 	}
 
 	return contract.StationAnswer{}, false
+}
+
+// handleStationConflictResolve makes every reviewer's answer to one question match
+// the organiser's verdict, clearing a merge conflict in one action.
+func (a *ireApp) handleStationConflictResolve(w http.ResponseWriter, r *http.Request) {
+	person, ok := a.requirePermission(w, r, permSecondPass, "only organisers can resolve a station conflict")
+	if !ok {
+		return
+	}
+
+	ship, ok := a.loadShipForReview(w, r)
+	if !ok {
+		return
+	}
+
+	if !a.holdsClaim(r.Context(), ship.ID, person.ID) {
+		app.WriteError(w, http.StatusConflict, "claim the ship before resolving a conflict")
+		return
+	}
+
+	var request contract.StationAnswerRequest
+	if !app.ReadJSON(w, r, maxAPIBody, "answer", &request) {
+		return
+	}
+
+	if request.Version != ship.Version {
+		app.WriteErrorCode(w, http.StatusConflict, "stale_version", "this ship changed since you opened it; reload before answering")
+		return
+	}
+
+	station, found, err := a.stationDefinition(r.Context(), ship.ProgramID, r.PathValue("station"))
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	if !found || station.Stage != ship.Stage || !stationApplies(station, ship) {
+		app.WriteError(w, http.StatusNotFound, "unknown station")
+		return
+	}
+
+	questionKey := r.PathValue("question")
+
+	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool { return question.Key == questionKey }) {
+		app.WriteError(w, http.StatusNotFound, "unknown station question")
+		return
+	}
+
+	if request.Answer != "pass" && request.Answer != "fail" && request.Answer != "na" {
+		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "answer", "choose pass, fail or not applicable")
+		return
+	}
+
+	if len(request.Evidence) > maxNote {
+		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "evidence", "evidence is limited to 4000 characters")
+		return
+	}
+
+	now := a.nowText()
+
+	if _, err := a.store.Transaction(r.Context(),
+		storage.TransactionStatement{SQL: `update station_answer set answer = ?, updated_at = ?
+			where submission_id = ? and station_key = ? and question_key = ?`,
+			Args: []any{request.Answer, now, ship.ID, station.Key, questionKey}},
+		storage.TransactionStatement{SQL: `insert into station_answer (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			on conflict(submission_id, station_key, question_key, reviewer_id) do update set
+				answer = excluded.answer, evidence = excluded.evidence, artifact_hash = excluded.artifact_hash,
+				updated_at = excluded.updated_at`,
+			Args: []any{newID("sta"), ship.ID, station.Key, questionKey, request.Answer, request.Evidence, nullString(stringValue(request.ArtifactHash)), person.ID, now, now}},
+		storage.TransactionStatement{SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at) values (?, ?, 'station_conflict_resolved', ?, ?, ?, ?)`,
+			Args: []any{newID("evt"), ship.ID, person.ID, person.Email, marshalMap(map[string]any{"station": station.Key, "question": questionKey, "answer": request.Answer}), now}},
+	); err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	answers, err := a.stationAnswers(r.Context(), ship.ID)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	findings, err := a.loadFindings(r.Context(), ship.ProgramID, ship.ExternalID)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	definitions, err := a.stationDefinitions(r.Context(), ship.ProgramID, ship.Stage)
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	states, current := stationStates(ship, definitions, answers, findings)
+
+	answer, found := answerAt(answers, station.Key, questionKey, person.ID)
+	if !found {
+		app.WriteError(w, http.StatusInternalServerError, "could not read the saved answer")
+		return
+	}
+
+	app.WriteJSON(w, http.StatusOK, contract.StationAnswerResult{Answer: answer, States: states, CurrentStation: current})
 }

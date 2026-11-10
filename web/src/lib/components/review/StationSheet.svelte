@@ -20,11 +20,13 @@ import {
 
 interface Props {
 	answers: StationAnswer[]
+	canResolve?: boolean
 	currentStation?: string
 	editable: boolean
 	focusStation?: string
 	onAnswer(stationKey: string, questionKey: string, answer: StationVerdict, evidence: string): Promise<void>
 	onCreateFinding?(request: FindingRequest): Promise<void>
+	onResolve?(stationKey: string, questionKey: string, answer: StationVerdict): Promise<void>
 	/** Pins the sheet to focusStation: other stations show status only. */
 	pinned?: boolean
 	reviewerId?: string
@@ -39,7 +41,9 @@ let {
 	editable,
 	focusStation,
 	onAnswer,
+	canResolve = false,
 	onCreateFinding,
+	onResolve,
 	pinned = false,
 	reviewerId = "",
 	states,
@@ -393,6 +397,39 @@ function onKeydown(event: KeyboardEvent): void {
 										>
 									{/if}
 								</div>
+
+								{#if conflict && canResolve && onResolve !== undefined && editable}
+									<div class="conflict-resolve">
+										<span>Resolve every answer as</span>
+										<button
+											class="ui-button sm ok"
+											disabled={active?.key === key}
+											onclick={(): Promise<void> =>
+												onResolve(selectedStation.key, question.key, "pass")}
+											type="button"
+										>
+											Pass
+										</button>
+										<button
+											class="ui-button sm danger"
+											disabled={active?.key === key}
+											onclick={(): Promise<void> =>
+												onResolve(selectedStation.key, question.key, "fail")}
+											type="button"
+										>
+											Fail
+										</button>
+										<button
+											class="ui-button sm ghost"
+											disabled={active?.key === key}
+											onclick={(): Promise<void> =>
+												onResolve(selectedStation.key, question.key, "na")}
+											type="button"
+										>
+											N/A
+										</button>
+									</div>
+								{/if}
 
 								{#if others.length > 0}
 									<div class="other-answers">
@@ -758,6 +795,16 @@ function onKeydown(event: KeyboardEvent): void {
 .verdict-buttons .chosen {
 	outline: 2px solid var(--text);
 	outline-offset: 1px;
+}
+
+.conflict-resolve {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1);
+	align-items: center;
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--status-changes);
 }
 
 .other-answers {

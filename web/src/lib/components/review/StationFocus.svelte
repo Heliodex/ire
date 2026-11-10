@@ -15,13 +15,21 @@ import {
 	program,
 	releaseShip,
 	saveDraft,
+	sendShipBack,
 } from "../../api"
-import { createFinding, saveStationAnswer, updateFinding } from "../../api.gen"
+import {
+	amendDecision,
+	createFinding,
+	resolveStationConflict,
+	revertDecision,
+	saveStationAnswer,
+	updateFinding,
+} from "../../api.gen"
 import { ApiError } from "../../api-error"
 import { ignore } from "../../async"
 import { isBlocking, isWarning } from "../../checks"
 import { isActive, isReturnable, selectedFindingIds, severityTone, statusLabel } from "../../findings"
-import { formatHours, humanStatus, statusTone } from "../../format"
+import { decisionLabel, formatHours, humanStatus, statusTone } from "../../format"
 import { hasPermission, permissionSecondPass, programPermissions } from "../../permissions"
 import { dropSignIn, session } from "../../session.svelte.js"
 import {
@@ -82,6 +90,24 @@ let overrideReason = $state("")
 let deciding = $state(false)
 let decisionError = $state("")
 let idempotencyKey = ""
+let sendBackReason = $state("")
+let sendingBack = $state(false)
+let sendBackError = $state("")
+let amendOpen = $state(false)
+let amendDecisionValue = $state<"approved" | "changes" | "rejected">("approved")
+let amendHours = $state(0)
+let amendNote = $state("")
+let amendInternalNote = $state("")
+let amendTechnicalFeatures = $state("")
+let amendDeflationReason = $state("")
+let amendReason = $state("")
+let amendError = $state("")
+let amending = $state(false)
+let amendKey = ""
+let revertOpen = $state(false)
+let revertReason = $state("")
+let revertError = $state("")
+let reverting = $state(false)
 const journalCollapsed = new SvelteSet<string>()
 const checksCollapsed = new SvelteSet<string>()
 
@@ -172,6 +198,19 @@ const deflationRequired = $derived(approvedSeconds < capturedSeconds)
 const stationsDone = $derived((bundle?.currentStation ?? "") === "")
 const heldReview = $derived(bundle?.reviews.find(review => review.held === 1) ?? undefined)
 const showDecision = $derived(stationKey === "synthesis" || stationKey === "verify")
+const finalDecision = $derived(bundle?.reviews.find(review => review.held === 0 && !review.invalidatedAt))
+const canEditFinal = $derived(
+	closed
+		&& !readOnly
+		&& finalDecision !== undefined
+		&& submission?.status === "decided"
+		&& (hasPermission(permissions, permissionWildcard)
+			|| (session.me?.user.email ?? "").toLowerCase() === (finalDecision.reviewerEmail ?? "").toLowerCase()),
+)
+const amendIsSecondPass = $derived((finalDecision?.stage ?? 1) === 2)
+const amendMissingAcks = $derived(
+	amendIsSecondPass ? [] : warnings.filter(check => !acknowledgements.includes(check.key)),
+)
 const canApprove = $derived(
 	!closed
 		&& stationsDone
@@ -402,6 +441,29 @@ function acknowledgeAll(): void {
 	acknowledgements = warnings.map(check => check.key)
 }
 
+// resolveConflict sets every reviewer's answer to the organiser's verdict.
+async function resolveConflict(targetStation: string, targetQuestion: string, verdict: StationVerdict): Promise<void> {
+	if (bundle === undefined) return
+
+	try {
+		const result = await resolveStationConflict(bundle.submission.id, targetStation, targetQuestion, {
+			answer: verdict,
+			evidence: "",
+			version: bundle.submission.version,
+		})
+		bundle.stationAnswers = bundle.stationAnswers.map(item =>
+			item.stationKey === targetStation && item.questionKey === targetQuestion
+				? { ...item, answer: verdict }
+				: item,
+		)
+		bundle.stationAnswers = upsertStationAnswer(bundle.stationAnswers, result.answer)
+		bundle.stationStates = result.states
+		bundle.currentStation = result.currentStation
+	} catch (err) {
+		actionError = err instanceof Error ? err.message : "Could not resolve this conflict."
+	}
+}
+
 // addFinding records a finding that follows the project and shows it immediately.
 async function addFinding(request: FindingCreate): Promise<void> {
 	if (bundle === undefined) return
@@ -548,6 +610,161 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 					: "Could not record the decision."
 	} finally {
 		deciding = false
+	}
+}
+
+// sendBackToStageOne returns a stage 2 ship for another first-pass review.
+async function sendBackToStageOne(): Promise<void> {
+	if (bundle === undefined || sendingBack) return
+
+	sendBackError = ""
+
+	if (sendBackReason.trim() === "") {
+		sendBackError = "Write why stage 1 should look at this ship again."
+		return
+	}
+
+	sendingBack = true
+
+	try {
+		await sendShipBack(bundle.submission.id, {
+			reason: sendBackReason.trim(),
+			version: bundle.submission.version,
+		})
+		notice = "Sent back to stage 1."
+		void goto("/stations")
+	} catch (err) {
+		sendBackError =
+			err instanceof ApiError && err.code === "stale_version"
+				? "This ship changed since you opened it. Reload before sending it back."
+				: err instanceof Error
+					? err.message
+					: "Could not send the ship back."
+	} finally {
+		sendingBack = false
+	}
+}
+
+// openAmendDecision seeds the amendment form from the final review.
+function openAmendDecision(): void {
+	if (bundle === undefined || finalDecision === undefined) return
+
+	amendOpen = true
+	revertOpen = false
+	amendError = ""
+	amendDecisionValue = (finalDecision.decision as "approved" | "changes" | "rejected") ?? "approved"
+	amendHours =
+		Math.round(((finalDecision.hoursApprovedSeconds ?? bundle.submission.hoursClaimedSeconds) / 3600) * 100) / 100
+	amendNote = finalDecision.noteToMaker ?? ""
+	amendInternalNote = finalDecision.internalNote ?? ""
+	amendTechnicalFeatures = finalDecision.technicalFeatures ?? ""
+	amendDeflationReason = finalDecision.deflationReason ?? ""
+	amendReason = ""
+	amendKey = ""
+}
+
+// submitAmendDecision replaces the final review with the corrected decision.
+async function submitAmendDecision(): Promise<void> {
+	if (bundle === undefined || !canEditFinal || amending) return
+
+	amendError = ""
+
+	if (amendReason.trim() === "") {
+		amendError = "Explain why this decision is being changed."
+		return
+	}
+
+	if (amendDecisionValue === "approved" && blocking.length > 0) {
+		amendError = `Approval is blocked: ${blocking[0]?.summary ?? "a failing check"}.`
+		return
+	}
+
+	if (amendDecisionValue === "approved" && amendMissingAcks.length > 0) {
+		amendError = `Acknowledge ${amendMissingAcks.length} warning${amendMissingAcks.length === 1 ? "" : "s"} before approving.`
+		return
+	}
+
+	if (amendDecisionValue === "approved" && returnable.length > 0) {
+		amendError = `Resolve or return the ${returnable.length} open finding${returnable.length === 1 ? "" : "s"} first.`
+		return
+	}
+
+	const amendSeconds = Math.max(0, Math.round((Number(amendHours) || 0) * 3600))
+	if (amendDecisionValue === "approved") {
+		if (amendTechnicalFeatures.trim() === "") {
+			amendError = "Name the specific technical features that account for these hours."
+			return
+		}
+
+		if (amendSeconds < capturedSeconds && amendDeflationReason.trim() === "") {
+			amendError = "Explain why the approved time is lower than the captured time."
+			return
+		}
+	}
+
+	amending = true
+
+	try {
+		const key = amendKey.startsWith("amend-") ? amendKey : `amend-${crypto.randomUUID()}`
+		amendKey = key
+		await amendDecision(bundle.submission.id, {
+			acknowledgements: amendDecisionValue === "approved" ? acknowledgements : [],
+			decision: amendDecisionValue,
+			deflationReason: amendDeflationReason.trim(),
+			findingIds: amendDecisionValue === "changes" ? selectedFindingIds(returnable, returnSelection) : [],
+			hoursApprovedSeconds: amendDecisionValue === "approved" ? amendSeconds : undefined,
+			idempotencyKey: key,
+			internalNote: amendInternalNote,
+			noteToMaker: amendNote,
+			reason: amendReason.trim(),
+			technicalFeatures: amendTechnicalFeatures.trim(),
+			version: bundle.submission.version,
+		})
+		notice = "Decision amended."
+		amendOpen = false
+		void goto("/reviewed")
+	} catch (err) {
+		amendError =
+			err instanceof ApiError && err.code === "stale_version"
+				? "This ship changed since you opened it. Reload before amending."
+				: err instanceof Error
+					? err.message
+					: "Could not amend the decision."
+	} finally {
+		amending = false
+	}
+}
+
+// submitRevertDecision reopens a decided ship.
+async function submitRevertDecision(): Promise<void> {
+	if (bundle === undefined || !canEditFinal || reverting) return
+
+	revertError = ""
+
+	if (revertReason.trim() === "") {
+		revertError = "Explain why this decision is being reverted."
+		return
+	}
+
+	reverting = true
+
+	try {
+		await revertDecision(bundle.submission.id, {
+			reason: revertReason.trim(),
+			version: bundle.submission.version,
+		})
+		notice = "Decision reverted."
+		revertOpen = false
+		void goto("/stations")
+	} catch (err) {
+		revertError =
+			err instanceof ApiError && err.code === "stale_version"
+				? "This ship changed since you opened it. Reload before reverting."
+				: err instanceof Error
+					? err.message
+					: "Could not revert the decision."
+	} finally {
+		reverting = false
 	}
 }
 
@@ -1038,11 +1255,13 @@ async function persistDraft(): Promise<void> {
 			{#if stationDefs.length > 0}
 				<StationSheet
 					answers={bundle.stationAnswers}
+					canResolve={hasPermission(permissions, permissionSecondPass)}
 					currentStation={bundle.currentStation}
 					{editable}
 					focusStation={stationKey}
 					onAnswer={answerStation}
 					onCreateFinding={addFinding}
+					onResolve={resolveConflict}
 					pinned
 					reviewerId={session.me?.user.id ?? ""}
 					states={bundle.stationStates}
@@ -1051,7 +1270,143 @@ async function persistDraft(): Promise<void> {
 				/>
 			{/if}
 
-			{#if showDecision}
+			{#if closed && finalDecision !== undefined}
+				<section class="ui-card padded decision-card">
+					<div class="fields-head">
+						<h2>Final decision</h2>
+						<span class="ui-badge" data-tone={statusTone(submission?.status ?? "decided")}
+							>{decisionLabel(finalDecision.decision)}</span
+						>
+					</div>
+					<p class="hint">
+						{finalDecision.reviewerEmail ?? "Reviewer"}
+						· {formatHours(finalDecision.hoursApprovedSeconds ?? 0)} approved · v{finalDecision.version}
+					</p>
+					{#if finalDecision.noteToMaker}
+						<p class="description">{finalDecision.noteToMaker}</p>
+					{/if}
+
+					{#if canEditFinal}
+						<div class="decision-actions">
+							<button
+								class="ui-button changes"
+								onclick={(): void => {
+									if (amendOpen) amendOpen = false
+									else openAmendDecision()
+								}}
+								type="button"
+							>
+								{amendOpen ? "Close amendment" : "Amend decision"}
+							</button>
+							<button
+								class="ui-button danger"
+								onclick={(): void => {
+									amendOpen = false
+									revertOpen = !revertOpen
+									revertError = ""
+								}}
+								type="button"
+							>
+								{revertOpen ? "Close revert" : "Revert decision"}
+							</button>
+						</div>
+
+						{#if amendOpen}
+							<div class="amend-form">
+								<label class="field">
+									<span class="field-head">New decision</span>
+									<select class="ui-input" bind:value={amendDecisionValue}>
+										<option value="approved">Approve</option>
+										<option value="changes">Request changes</option>
+										<option value="rejected">Reject</option>
+									</select>
+								</label>
+								{#if amendDecisionValue === "approved"}
+									<label class="field">
+										<span class="field-head">Approved hours</span>
+										<input
+											class="ui-input"
+											min="0"
+											step="0.01"
+											type="number"
+											bind:value={amendHours}
+										>
+									</label>
+									<label class="field">
+										<span class="field-head">Specific technical features</span>
+										<textarea
+											class="ui-input"
+											rows="3"
+											bind:value={amendTechnicalFeatures}
+										></textarea>
+									</label>
+									<label class="field">
+										<span class="field-head">Deflation reason</span>
+										<textarea
+											class="ui-input"
+											rows="2"
+											bind:value={amendDeflationReason}
+										></textarea>
+									</label>
+								{/if}
+								<label class="field">
+									<span class="field-head">Note to maker</span>
+									<textarea class="ui-input" rows="3" bind:value={amendNote}></textarea>
+								</label>
+								<label class="field">
+									<span class="field-head">Internal note</span>
+									<textarea class="ui-input" rows="2" bind:value={amendInternalNote}></textarea>
+								</label>
+								<label class="field">
+									<span class="field-head">Why change this decision</span>
+									<textarea
+										class="ui-input"
+										placeholder="Required"
+										rows="2"
+										bind:value={amendReason}
+									></textarea>
+								</label>
+								{#if amendError}
+									<p class="ui-notice" data-tone="bad" role="alert">{amendError}</p>
+								{/if}
+								<button
+									class="ui-button primary"
+									disabled={amending}
+									onclick={(): Promise<void> => submitAmendDecision()}
+									type="button"
+								>
+									{amending ? "Saving…" : "Save amendment"}
+								</button>
+							</div>
+						{/if}
+
+						{#if revertOpen}
+							<div class="amend-form">
+								<label class="field">
+									<span class="field-head">Why revert this decision</span>
+									<textarea
+										class="ui-input"
+										placeholder="Required"
+										rows="2"
+										bind:value={revertReason}
+									></textarea>
+								</label>
+								{#if revertError}
+									<p class="ui-notice" data-tone="bad" role="alert">{revertError}</p>
+								{/if}
+								<button
+									class="ui-button danger"
+									disabled={reverting}
+									onclick={(): Promise<void> => submitRevertDecision()}
+									type="button"
+								>
+									{reverting ? "Reverting…" : "Revert decision"}
+								</button>
+							</div>
+						{/if}
+					{/if}
+				</section>
+			{:else if showDecision}
 				<section class="ui-card padded decision-card">
 					<div class="fields-head">
 						<h2>Decision</h2>
@@ -1140,6 +1495,31 @@ async function persistDraft(): Promise<void> {
 							Reject
 						</button>
 					</div>
+
+					{#if secondPass && canSecondPass && !closed}
+						<details class="send-back">
+							<summary>Send back to stage 1</summary>
+							<div class="field">
+								<textarea
+									class="ui-input"
+									placeholder="Why should stage 1 look at this ship again?"
+									rows="2"
+									bind:value={sendBackReason}
+								></textarea>
+								{#if sendBackError}
+									<p class="ui-notice" data-tone="bad" role="alert">{sendBackError}</p>
+								{/if}
+								<button
+									class="ui-button changes sm"
+									disabled={sendingBack}
+									onclick={(): Promise<void> => sendBackToStageOne()}
+									type="button"
+								>
+									{sendingBack ? "Sending…" : "Send back"}
+								</button>
+							</div>
+						</details>
+					{/if}
 
 					{#if !canDecide}
 						<p class="hint">Only organisers can decide the 2nd pass.</p>
@@ -1542,6 +1922,30 @@ async function persistDraft(): Promise<void> {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-1);
+}
+
+.amend-form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding-top: var(--space-2);
+	border-top: 1px solid var(--border);
+}
+
+.send-back {
+	padding-top: var(--space-2);
+	border-top: 1px solid var(--border);
+}
+
+.send-back summary {
+	font-size: var(--text-xs);
+	font-weight: 700;
+	color: var(--text-2);
+	cursor: pointer;
+}
+
+.send-back .field {
+	padding-top: var(--space-1);
 }
 
 .decision-actions .block {
