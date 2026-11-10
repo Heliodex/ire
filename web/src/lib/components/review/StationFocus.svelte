@@ -924,57 +924,68 @@ async function persistDraft(): Promise<void> {
 	<div class="focus-layout">
 		<div class="focus-evidence">
 			{#if stationKey === "triage"}
-				<div class="ui-card cover-card">
-					{#if submission?.thumbnailUrl && !coverFailed}
-						<img
-							alt={`${submission.title} project image`}
-							class="cover"
-							decoding="async"
-							loading="lazy"
-							onerror={(): void => {
-								coverFailed = true
-							}}
-							src={submission.thumbnailUrl}
-						>
-					{:else}
-						<div class="cover-empty">
-							<strong
-								>{submission?.thumbnailUrl ? "Project image unavailable" : "No project image"}</strong
+				<details class="ui-card padded collapse-card" open>
+					<summary>
+						<span class="card-title">Project image</span>
+						<span class="muted">Expand</span>
+					</summary>
+					<div class="collapse-body">
+						{#if submission?.thumbnailUrl && !coverFailed}
+							<img
+								alt={`${submission.title} project image`}
+								class="cover"
+								decoding="async"
+								loading="lazy"
+								onerror={(): void => {
+									coverFailed = true
+								}}
+								src={submission.thumbnailUrl}
 							>
-							<span>
-								{submission?.thumbnailUrl
-									? "The image link could not be loaded."
-									: "This ship does not include a project image."}
-							</span>
-						</div>
-					{/if}
-				</div>
-
-				<section class="ui-card padded stack">
-					<h2 class="card-title">What they built</h2>
-					<p class="description">{submission?.description || "No description was sent."}</p>
-					<div class="links">
-						{#if submission?.repoUrl}
-							<a class="ui-button ghost sm" href={submission.repoUrl} rel="noreferrer" target="_blank"
-								>Repository ↗</a
-							>
-						{/if}
-						{#if submission?.demoUrl}
-							<a class="ui-button ghost sm" href={submission.demoUrl} rel="noreferrer" target="_blank"
-								>Demo ↗</a
-							>
+						{:else}
+							<div class="cover-empty">
+								<strong
+									>{submission?.thumbnailUrl ? "Project image unavailable" : "No project image"}</strong
+								>
+								<span>
+									{submission?.thumbnailUrl
+										? "The image link could not be loaded."
+										: "This ship does not include a project image."}
+								</span>
+							</div>
 						{/if}
 					</div>
-					<p class="maker-line">
-						{submission?.makerName || "Unknown maker"}
-						{#if submission?.makerEmail}
-							· <a href={`mailto:${submission.makerEmail}`}>{submission.makerEmail}</a>
-						{/if}
-					</p>
-				</section>
+				</details>
+
+				<details class="ui-card padded collapse-card">
+					<summary>
+						<span class="card-title">What they built</span>
+						<span class="muted">Expand</span>
+					</summary>
+					<div class="collapse-body">
+						<p class="description">{submission?.description || "No description was sent."}</p>
+						<div class="links">
+							{#if submission?.repoUrl}
+								<a class="ui-button ghost sm" href={submission.repoUrl} rel="noreferrer" target="_blank"
+									>Repository ↗</a
+								>
+							{/if}
+							{#if submission?.demoUrl}
+								<a class="ui-button ghost sm" href={submission.demoUrl} rel="noreferrer" target="_blank"
+									>Demo ↗</a
+								>
+							{/if}
+						</div>
+						<p class="maker-line">
+							{submission?.makerName || "Unknown maker"}
+							{#if submission?.makerEmail}
+								· <a href={`mailto:${submission.makerEmail}`}>{submission.makerEmail}</a>
+							{/if}
+						</p>
+					</div>
+				</details>
 
 				{#if readme !== ""}
-					<details class="ui-card padded readme-card">
+					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">README</span>
 							<span class="muted">Expand</span>
@@ -988,10 +999,13 @@ async function persistDraft(): Promise<void> {
 					</div>
 				{/if}
 
-				<section class="ui-card padded stack">
-					<h2 class="card-title">Repo checks</h2>
-					{@render checkRows(triageChecks)}
-				</section>
+				<details class="ui-card padded collapse-card">
+					<summary>
+						<span class="card-title">Repo checks</span>
+						<span class="muted">Expand</span>
+					</summary>
+					<div class="collapse-body">{@render checkRows(triageChecks)}</div>
+				</details>
 			{:else if stationKey === "time"}
 				<JournalList
 					collapsed={journalCollapsed}
@@ -1069,7 +1083,7 @@ async function persistDraft(): Promise<void> {
 				</div>
 
 				{#if evidence}
-					<details class="ui-card padded readme-card">
+					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">Browse files and commits</span>
 							<span class="muted">Search and preview</span>
@@ -1127,7 +1141,7 @@ async function persistDraft(): Promise<void> {
 				</section>
 
 				{#if evidence}
-					<details class="ui-card padded readme-card">
+					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">Browse files and commits</span>
 							<span class="muted">Search and preview</span>
@@ -1150,7 +1164,7 @@ async function persistDraft(): Promise<void> {
 				{/if}
 
 				{#if readme !== ""}
-					<details class="ui-card padded readme-card">
+					<details class="ui-card padded collapse-card">
 						<summary>
 							<span class="card-title">README</span>
 							<span class="muted">Expand</span>
@@ -1663,8 +1677,11 @@ async function persistDraft(): Promise<void> {
 	min-width: 0;
 }
 
-.cover-card {
-	overflow: hidden;
+.collapse-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding-top: var(--space-2);
 }
 
 .cover {
@@ -1673,6 +1690,7 @@ async function persistDraft(): Promise<void> {
 	max-height: 24rem;
 	object-fit: contain;
 	background: var(--surface-2);
+	border-radius: var(--radius-md);
 }
 
 .cover-empty {
@@ -1685,6 +1703,7 @@ async function persistDraft(): Promise<void> {
 	padding: var(--space-6) var(--space-4);
 	text-align: center;
 	background: var(--surface-2);
+	border-radius: var(--radius-md);
 }
 
 .cover-empty strong {
@@ -1753,7 +1772,7 @@ async function persistDraft(): Promise<void> {
 	color: var(--primary);
 }
 
-.readme-card summary {
+.collapse-card summary {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-2);
