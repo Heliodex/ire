@@ -2,7 +2,7 @@
 import { tick } from "svelte"
 import { type InferOutput } from "valibot"
 import { type findingUpdateRequestSchema, maxNote } from "../../contract"
-import { type Finding, isActive, severityTone } from "../../findings"
+import { type Finding, isActive, isReturnable, severityTone } from "../../findings"
 import {
 	answerFor,
 	answersFor,
@@ -349,35 +349,48 @@ function onKeydown(event: KeyboardEvent): void {
 		<ol aria-label="Station progress" class="progress">
 			{#each orderedStations as station (station.key)}
 				{const state = $derived(statesByKey.get(station.key))}
+				{const flagged = $derived(
+					state?.status === "done"
+						&& (station.questions.some(question =>
+							answersFor(answers, station.key, question.key).some(item => item.answer === "fail"),
+						) || findings.some(finding => finding.station === station.key && isReturnable(finding))),
+				)}
+				{const displayStatus = $derived(flagged ? "flagged" : (state?.status ?? "todo"))}
 				<li>
 					{#if pinned}
 						<div
 							aria-current={station.key === selected ? "true" : undefined}
 							class="progress-item static"
-							data-status={state?.status ?? "todo"}
+							data-status={displayStatus}
 						>
 							<span aria-hidden="true" class="progress-mark"
-								><Icon name={stationIcon(state?.status ?? "todo")} size={14} /></span
+								><Icon name={stationIcon(displayStatus)} size={14} /></span
 							>
 							<span class="progress-label">{station.label}</span>
 							{#if state}
 								<span class="progress-count">{state.answered}/{state.required}</span>
+							{/if}
+							{#if flagged}
+								<span class="visually-hidden">Has flags</span>
 							{/if}
 						</div>
 					{:else}
 						<button
 							aria-pressed={station.key === selected}
 							class="progress-item"
-							data-status={state?.status ?? "todo"}
+							data-status={displayStatus}
 							onclick={(): void => selectStation(station.key)}
 							type="button"
 						>
 							<span aria-hidden="true" class="progress-mark"
-								><Icon name={stationIcon(state?.status ?? "todo")} size={14} /></span
+								><Icon name={stationIcon(displayStatus)} size={14} /></span
 							>
 							<span class="progress-label">{station.label}</span>
 							{#if state}
 								<span class="progress-count">{state.answered}/{state.required}</span>
+							{/if}
+							{#if flagged}
+								<span class="visually-hidden">Has flags</span>
 							{/if}
 						</button>
 					{/if}
@@ -785,6 +798,10 @@ function onKeydown(event: KeyboardEvent): void {
 
 .progress-item[data-status="todo"] {
 	--station-status: var(--status-neutral);
+}
+
+.progress-item[data-status="flagged"] {
+	--station-status: var(--accent-blue);
 }
 
 .progress-mark {

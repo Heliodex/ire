@@ -74,6 +74,7 @@ describe("stationTone", () => {
 describe("stationIcon", () => {
 	test("maps every workflow status to a progress glyph", () => {
 		expect(stationIcon("done")).toBe("checkCircle")
+		expect(stationIcon("flagged")).toBe("info")
 		expect(stationIcon("current")).toBe("clock")
 		expect(stationIcon("blocked")).toBe("info")
 		expect(stationIcon("todo")).toBe("circle")

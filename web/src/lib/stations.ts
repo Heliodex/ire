@@ -42,6 +42,8 @@ export function stationIcon(status: string): IconName {
 	switch (status) {
 		case "done":
 			return "checkCircle"
+		case "flagged":
+			return "info"
 		case "current":
 			return "clock"
 		case "blocked":
