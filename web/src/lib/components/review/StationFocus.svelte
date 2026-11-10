@@ -189,6 +189,10 @@ const station = $derived(stationDefs.find(item => item.key === stationKey))
 const stationState = $derived((bundle?.stationStates ?? []).find(item => item.key === stationKey))
 const answers = $derived(bundle?.stationAnswers ?? [])
 const stationComplete = $derived(stationState?.status === "done")
+// showAttention mirrors the blocked state from client data (plus the server state
+// as a fallback) so the header badge reacts the moment a verdict lands.
+let sheetAttention = $state(false)
+const showAttention = $derived(bundle !== undefined && (stationBlocked || sheetAttention))
 const stationBlocked = $derived(stationState?.status === "blocked")
 const secondPass = $derived(!closed && (submission?.stage === 2 || submission?.status === "stage2_hold"))
 const permissions = $derived(programPermissions(session.me, program))
@@ -935,6 +939,9 @@ async function persistDraft(): Promise<void> {
 					>
 					<span class="version">v{submission.version}</span>
 				{/if}
+				{#if showAttention}
+					<span class="ui-badge" data-tone="changes">Needs attention</span>
+				{/if}
 			</div>
 			{#if submission}
 				<p class="meta">
@@ -1322,22 +1329,7 @@ async function persistDraft(): Promise<void> {
 		</div>
 
 		<aside class="focus-rail">
-			{#if stationBlocked}
-				<section class="ui-card padded complete-card blocked-card">
-					<h2>{stationLabel} needs attention</h2>
-					<p class="muted">
-						A reviewer conflict or a failed answer without a finding holds this station. Recorded
-						findings travel with the ship and resolve at synthesis.
-					</p>
-					<div class="complete-actions">
-						{#if showDecision}
-							<p class="muted">Resolve the conflict or record the missing finding above.</p>
-						{:else}
-							<a class="ui-button ghost" href={synthesisHref}>Open synthesis</a>
-						{/if}
-					</div>
-				</section>
-			{:else if stationComplete}
+			{#if stationComplete}
 				<section class="ui-card padded complete-card">
 					<h2>{stationLabel} is complete</h2>
 					{#if nextStationKey !== ""}
@@ -1385,6 +1377,9 @@ async function persistDraft(): Promise<void> {
 					findings={bundle.findings}
 					focusStation={stationKey}
 					onAnswer={answerStation}
+					onAttentionChange={(needed: boolean): void => {
+						sheetAttention = needed
+					}}
 					onClear={clearAnswer}
 					onCreateFinding={addFinding}
 					onResolve={resolveConflict}

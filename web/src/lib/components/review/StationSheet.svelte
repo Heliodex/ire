@@ -31,6 +31,7 @@ interface Props {
 	findings?: Finding[]
 	focusStation?: string
 	onAnswer(stationKey: string, questionKey: string, answer: StationVerdict, evidence: string): Promise<void>
+	onAttentionChange?(needed: boolean): void
 	onClear(stationKey: string, questionKey: string): Promise<void>
 	onCreateFinding?(request: FindingRequest): Promise<void>
 	onResolve?(stationKey: string, questionKey: string, answer: StationVerdict): Promise<void>
@@ -52,6 +53,7 @@ let {
 	findings = [],
 	focusStation,
 	onAnswer,
+	onAttentionChange,
 	onClear,
 	canResolve = false,
 	closed = false,
@@ -336,6 +338,23 @@ function isFailWithoutFinding(stationKey: string, question: StationQuestion): bo
 	const existing = answerFor(answers, stationKey, question.key, reviewerId)
 	return existing?.answer === "fail" && !questionHasFinding(stationKey, question.prompt)
 }
+
+// selectedNeedsAttention mirrors the blocked state from client data so the header
+// badge reacts instantly, without waiting for the server's station states.
+function selectedNeedsAttention(): boolean {
+	if (selectedStation === undefined) return false
+	return questions.some(question => {
+		if (questionConflict(answers, selectedStation.key, question.key)) return true
+		const key = answerKey(selectedStation.key, question.key)
+		const effective = cleared.includes(key) ? undefined : (pending[key] ?? answerFor(answers, selectedStation.key, question.key, reviewerId)?.answer)
+		return effective === "fail" && !questionHasFinding(selectedStation.key, question.prompt)
+	})
+}
+
+// The parent header badge follows the sheet, so it appears the moment a verdict lands.
+$effect(() => {
+	onAttentionChange?.(selectedNeedsAttention())
+})
 
 function isQueued(key: string): boolean {
 	return queue.some(item => item.key === key)
