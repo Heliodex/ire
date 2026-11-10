@@ -20,8 +20,12 @@ let loadedKey = ""
 
 const station = $derived(data?.station)
 // Search params are only available after hydration; prerendering must not read them.
-const focusId = $derived(browser ? (page.url.searchParams.get("id") ?? "") : "")
+let focusId = $state("")
 const stationKey = $derived(page.params.key ?? key)
+
+$effect((): void => {
+	focusId = browser ? (page.url.searchParams.get("id") ?? "") : ""
+})
 
 $effect((): void => {
 	const target = page.params.key ?? ""

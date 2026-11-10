@@ -50,6 +50,7 @@ let technicalFeatures = $state("")
 let deflationReason = $state("")
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 let claimedHere = false
+let loadedShip = ""
 const journalCollapsed = new SvelteSet<string>()
 
 const triageCheckKeys = new Set(["repo.accessible", "repo.bom", "repo.readme", "repo.readme.images"])
@@ -159,9 +160,15 @@ const hardwareFiles = $derived(
 		.filter(group => group.files.length > 0),
 )
 
-onMount((): (() => void) => {
-	void load()
+// Load when the ship changes; effects run only in the browser, so prerendering stays on the queue.
+$effect((): void => {
+	if (shipId === loadedShip) return
 
+	loadedShip = shipId
+	void load()
+})
+
+onMount((): (() => void) => {
 	const beat = setInterval((): void => {
 		if (!holding || document.visibilityState !== "visible") return
 		ignore(heartbeat(shipId))
@@ -292,6 +299,21 @@ function entrySaved(seconds: number): void {
 	if (bundle !== undefined) bundle.submission.hoursApprovedSeconds = seconds
 }
 
+// onKeydown lets Enter move to the next station once this one is complete.
+function onKeydown(event: KeyboardEvent): void {
+	if (event.key !== "Enter" || !stationComplete || event.metaKey || event.ctrlKey || event.altKey) return
+
+	const { target } = event
+	if (
+		target instanceof HTMLElement
+		&& target.closest("input, textarea, select, [contenteditable='true'], a, button") !== null
+	)
+		return
+
+	event.preventDefault()
+	void goto(nextHref)
+}
+
 // scheduleDraft waits for a pause in typing before writing the station draft.
 function scheduleDraft(): void {
 	if (!editable) return
@@ -325,6 +347,8 @@ async function persistDraft(): Promise<void> {
 	}
 }
 </script>
+
+<svelte:window onkeydown={onKeydown} />
 
 <svelte:head>
 	<title>{submission ? `${submission.title} · ${stationLabel} · Ire` : "Station · Ire"}</title>
@@ -645,6 +669,7 @@ async function persistDraft(): Promise<void> {
 						<p class="muted">Next up: {nextLabel}.</p>
 						<div class="complete-actions">
 							<a class="ui-button primary" href={nextHref}>Open {nextLabel}</a>
+							<kbd class="ui-kbd">Enter</kbd>
 						</div>
 					{:else}
 						<p class="muted">Every station is answered. The decision is ready in the full review.</p>
@@ -655,7 +680,7 @@ async function persistDraft(): Promise<void> {
 				</section>
 			{/if}
 
-			{#if stationKey === "time" || stationKey === "narrative"}
+			{#if stationKey === "time" || stationKey === "narrative" || stationKey === "synthesis"}
 				<StationFields
 					{bundle}
 					{deflationReason}
