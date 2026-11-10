@@ -37,6 +37,8 @@ interface Props {
 	/** Pins the sheet to focusStation: other stations show status only. */
 	pinned?: boolean
 	reviewerId?: string
+	/** The open ship, so pinned stations link to its other stations. */
+	shipId?: string
 	states: StationState[]
 	stations: StationDefinition[]
 	version: number
@@ -56,6 +58,7 @@ let {
 	onUpdateFinding,
 	pinned = false,
 	reviewerId = "",
+	shipId = "",
 	states,
 	stations,
 	version,
@@ -157,6 +160,11 @@ $effect((): void => {
 function selectStation(key: string): void {
 	selected = key
 	manualSelection = key !== (currentStation ?? "")
+}
+
+// stationHref links one row to the same ship at another station.
+function stationHref(stationKey: string, stage: number): string {
+	return `/station/${encodeURIComponent(stationKey)}?id=${encodeURIComponent(shipId)}&stage=${stage}`
 }
 
 function answerKey(stationKey: string, questionKey: string): string {
@@ -358,22 +366,41 @@ function onKeydown(event: KeyboardEvent): void {
 				{const displayStatus = $derived(flagged ? "flagged" : (state?.status ?? "todo"))}
 				<li>
 					{#if pinned}
-						<div
-							aria-current={station.key === selected ? "true" : undefined}
-							class="progress-item static"
-							data-status={displayStatus}
-						>
-							<span aria-hidden="true" class="progress-mark"
-								><Icon name={stationIcon(displayStatus)} size={14} /></span
+						{#if shipId !== "" && station.key !== selected}
+							<a
+								class="progress-item"
+								data-status={displayStatus}
+								href={stationHref(station.key, station.stage)}
 							>
-							<span class="progress-label">{station.label}</span>
-							{#if state}
-								<span class="progress-count">{state.answered}/{state.required}</span>
-							{/if}
-							{#if flagged}
-								<span class="visually-hidden">Has flags</span>
-							{/if}
-						</div>
+								<span aria-hidden="true" class="progress-mark"
+									><Icon name={stationIcon(displayStatus)} size={14} /></span
+								>
+								<span class="progress-label">{station.label}</span>
+								{#if state}
+									<span class="progress-count">{state.answered}/{state.required}</span>
+								{/if}
+								{#if flagged}
+									<span class="visually-hidden">Has flags</span>
+								{/if}
+							</a>
+						{:else}
+							<div
+								aria-current={station.key === selected ? "true" : undefined}
+								class="progress-item static"
+								data-status={displayStatus}
+							>
+								<span aria-hidden="true" class="progress-mark"
+									><Icon name={stationIcon(displayStatus)} size={14} /></span
+								>
+								<span class="progress-label">{station.label}</span>
+								{#if state}
+									<span class="progress-count">{state.answered}/{state.required}</span>
+								{/if}
+								{#if flagged}
+									<span class="visually-hidden">Has flags</span>
+								{/if}
+							</div>
+						{/if}
 					{:else}
 						<button
 							aria-pressed={station.key === selected}
@@ -765,6 +792,11 @@ function onKeydown(event: KeyboardEvent): void {
 
 .progress-item.static {
 	cursor: default;
+}
+
+a.progress-item {
+	color: inherit;
+	text-decoration: none;
 }
 
 .progress-item.static:hover {

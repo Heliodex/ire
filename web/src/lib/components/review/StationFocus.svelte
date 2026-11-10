@@ -1363,6 +1363,7 @@ async function persistDraft(): Promise<void> {
 					onUpdateFinding={saveFinding}
 					pinned
 					reviewerId={session.me?.user.id ?? ""}
+					shipId={bundle.submission.id}
 					states={bundle.stationStates}
 					stations={bundle.stations}
 					version={bundle.submission.version}
