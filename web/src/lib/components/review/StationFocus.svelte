@@ -1284,6 +1284,7 @@ async function persistDraft(): Promise<void> {
 					{closed}
 					currentStation={bundle.currentStation}
 					{editable}
+					findings={bundle.findings}
 					focusStation={stationKey}
 					onAnswer={answerStation}
 					onCreateFinding={addFinding}

@@ -1,6 +1,7 @@
 <script lang="ts">
 import { tick } from "svelte"
 import { maxNote } from "../../contract"
+import { type Finding } from "../../findings"
 import {
 	answerFor,
 	answersFor,
@@ -17,6 +18,7 @@ import {
 	verdictLabel,
 	verdictTone,
 } from "../../stations"
+import Icon from "../Icon.svelte"
 
 interface Props {
 	answers: StationAnswer[]
@@ -24,6 +26,7 @@ interface Props {
 	closed?: boolean
 	currentStation?: string
 	editable: boolean
+	findings?: Finding[]
 	focusStation?: string
 	onAnswer(stationKey: string, questionKey: string, answer: StationVerdict, evidence: string): Promise<void>
 	onCreateFinding?(request: FindingRequest): Promise<void>
@@ -40,6 +43,7 @@ let {
 	answers,
 	currentStation,
 	editable,
+	findings = [],
 	focusStation,
 	onAnswer,
 	canResolve = false,
@@ -244,10 +248,14 @@ async function saveFinding(stationKey: string, question: StationQuestion): Promi
 	}
 }
 
+// questionHasFinding reports whether a finding already follows this station answer.
+function questionHasFinding(stationKey: string, prompt: string): boolean {
+	return findings.some(item => item.station === stationKey && item.question === prompt)
+}
+
 function isQueued(key: string): boolean {
 	return queue.some(item => item.key === key)
 }
-
 // scrollToNext keeps the next unanswered question in view after a verdict.
 async function scrollToNext(): Promise<void> {
 	await tick()
@@ -388,212 +396,229 @@ function onKeydown(event: KeyboardEvent): void {
 								data-question={question.key}
 								class:next={editable && answer === undefined && nextKey === question.key}
 							>
-								<div class="question-head">
-									<p class="prompt">
-										{question.prompt}
-										{#if question.required === 1}
-											<span class="required">Required</span>
-										{/if}
-									</p>
-									{#if conflict}
-										<span class="ui-badge" data-tone="changes">Conflict</span>
-									{:else if answer}
-										<span class="ui-badge" data-tone={verdictTone(answer.answer)}
-											>{verdictLabel(answer.answer)}</span
-										>
-									{/if}
-								</div>
-
-								{#if conflict && canResolve && onResolve !== undefined && editable}
-									<div class="conflict-resolve">
-										<span>Resolve every answer as</span>
-										<button
-											class="ui-button sm"
-											disabled={active?.key === key}
-											onclick={(): Promise<void> =>
-												onResolve(selectedStation.key, question.key, "pass")}
-											type="button"
-										>
-											Pass
-										</button>
-										<button
-											class="ui-button sm danger"
-											disabled={active?.key === key}
-											onclick={(): Promise<void> =>
-												onResolve(selectedStation.key, question.key, "fail")}
-											type="button"
-										>
-											Fail
-										</button>
-										<button
-											class="ui-button sm ghost"
-											disabled={active?.key === key}
-											onclick={(): Promise<void> =>
-												onResolve(selectedStation.key, question.key, "na")}
-											type="button"
-										>
-											N/A
-										</button>
-									</div>
-								{/if}
-
-								{#if others.length > 0}
-									<div class="other-answers">
-										<span class="other-label">
-											{conflict ? "Reviewers disagree:" : "Also answered by:"}
+								<details
+									class="question-details"
+									open={answer === undefined
+										|| conflict
+										|| (answer.answer === "fail"
+											&& !questionHasFinding(selectedStation.key, question.prompt))}
+								>
+									<summary class="question-head">
+										<p class="prompt">
+											{question.prompt}
+											{#if question.required === 1}
+												<span class="required">Required</span>
+											{/if}
+										</p>
+										<span class="question-meta">
+											{#if conflict}
+												<span class="ui-badge" data-tone="changes">Conflict</span>
+											{:else if answer}
+												<span class="ui-badge" data-tone={verdictTone(answer.answer)}
+													>{verdictLabel(answer.answer)}</span
+												>
+											{/if}
+											<span class="question-toggle">
+												<Icon name="chevD" size={14} />
+											</span>
 										</span>
-										{#each others as other (other.id)}
+									</summary>
+
+									{#if conflict && canResolve && onResolve !== undefined && editable}
+										<div class="conflict-resolve">
+											<span>Resolve every answer as</span>
 											<button
-												class="other-answer"
-												disabled={!editable || active?.key === key}
+												class="ui-button sm"
+												disabled={active?.key === key}
 												onclick={(): Promise<void> =>
-													submitAnswer(question, other.answer as StationVerdict)}
-												title={editable ? "Use this answer as yours" : undefined}
+													onResolve(selectedStation.key, question.key, "pass")}
 												type="button"
 											>
-												<span>{other.reviewerName || other.reviewerId || "Reviewer"}</span>
-												<span class="ui-badge" data-tone={verdictTone(other.answer)}
-													>{verdictLabel(other.answer)}</span
-												>
+												Pass
 											</button>
-										{/each}
-									</div>
-								{/if}
-
-								{#if editable}
-									<label class="evidence-field">
-										<span class="visually-hidden">Evidence for {question.prompt}</span>
-										<input
-											class="ui-input"
-											maxlength={maxNote}
-											oninput={(event): void =>
-												setEvidence(
-													selectedStation.key,
-													question.key,
-													(event.currentTarget as HTMLInputElement).value,
-												)}
-											placeholder="Evidence or note for this answer"
-											value={evidenceValue(selectedStation.key, question.key)}
-										>
-									</label>
-
-									<!-- biome-ignore lint/a11y/useSemanticElements: the verdict buttons are a segmented control -->
-									<div aria-label={`Answer: ${question.prompt}`} class="verdict-buttons" role="group">
-										<button
-											class="ui-button sm"
-											disabled={active?.key === key}
-											onclick={(): Promise<void> => submitAnswer(question, "pass")}
-											type="button"
-											class:chosen={answer?.answer === "pass"}
-										>
-											Pass
-										</button>
-										<button
-											class="ui-button sm danger"
-											disabled={active?.key === key}
-											onclick={(): Promise<void> => submitAnswer(question, "fail")}
-											type="button"
-											class:chosen={answer?.answer === "fail"}
-										>
-											Fail
-										</button>
-										<button
-											class="ui-button sm ghost"
-											disabled={active?.key === key}
-											onclick={(): Promise<void> => submitAnswer(question, "na")}
-											type="button"
-											class:chosen={answer?.answer === "na"}
-										>
-											N/A
-										</button>
-									</div>
-								{:else if answer?.evidence}
-									<p class="evidence-text">{answer.evidence}</p>
-								{/if}
-
-								{#if answer?.answer === "fail"}
-									{#if onCreateFinding !== undefined && editable}
-										<details
-											class="finding-details"
-											ontoggle={(event): void => {
-												if ((event.currentTarget as HTMLDetailsElement).open)
-													openFinding(selectedStation.key, question)
-												else if (findingKey === key) findingKey = ""
-											}}
-											open={findingKey === key}
-										>
-											<summary class="fail-row">
-												<span class="fail-hint">A failed answer needs a finding.</span>
-												<span class="ui-button sm changes">Record finding</span>
-											</summary>
-											<div class="finding-form">
-												<label class="finding-field">
-													<span>Summary</span>
-													<input
-														autocomplete="off"
-														class="ui-input"
-														maxlength="500"
-														bind:value={findingSummary}
-													>
-												</label>
-												<label class="finding-field">
-													<span>Maker action</span>
-													<input
-														autocomplete="off"
-														class="ui-input"
-														maxlength="4000"
-														placeholder="What should the maker change?"
-														bind:value={findingAction}
-													>
-												</label>
-												<label class="finding-field">
-													<span>Severity</span>
-													<select class="ui-input" bind:value={findingSeverity}>
-														<option value="fixable">Fixable</option>
-														<option value="block">Block</option>
-													</select>
-												</label>
-												{#if findingError}
-													<p class="fail-hint">{findingError}</p>
-												{/if}
-												<div class="finding-actions">
-													<button
-														class="ui-button sm ok"
-														disabled={findingSaving || findingSummary.trim() === ""}
-														onclick={(): Promise<void> =>
-															saveFinding(selectedStation.key, question)}
-														type="button"
-													>
-														{findingSaving ? "Saving…" : "Add finding"}
-													</button>
-													<button
-														class="ui-button sm ghost"
-														onclick={(): void => {
-															findingKey = ""
-														}}
-														type="button"
-													>
-														Cancel
-													</button>
-												</div>
-											</div>
-										</details>
-									{:else}
-										<div class="fail-row">
-											<p class="fail-hint">A failed answer needs a finding.</p>
+											<button
+												class="ui-button sm danger"
+												disabled={active?.key === key}
+												onclick={(): Promise<void> =>
+													onResolve(selectedStation.key, question.key, "fail")}
+												type="button"
+											>
+												Fail
+											</button>
+											<button
+												class="ui-button sm ghost"
+												disabled={active?.key === key}
+												onclick={(): Promise<void> =>
+													onResolve(selectedStation.key, question.key, "na")}
+												type="button"
+											>
+												N/A
+											</button>
 										</div>
 									{/if}
-								{/if}
 
-								{#if active?.key === key}
-									<p class="saving" role="status">Saving…</p>
-								{:else if isQueued(key)}
-									<p class="saving" role="status">Queued…</p>
-								{/if}
+									{#if others.length > 0}
+										<div class="other-answers">
+											<span class="other-label">
+												{conflict ? "Reviewers disagree:" : "Also answered by:"}
+											</span>
+											{#each others as other (other.id)}
+												<button
+													class="other-answer"
+													disabled={!editable || active?.key === key}
+													onclick={(): Promise<void> =>
+														submitAnswer(question, other.answer as StationVerdict)}
+													title={editable ? "Use this answer as yours" : undefined}
+													type="button"
+												>
+													<span>{other.reviewerName || other.reviewerId || "Reviewer"}</span>
+													<span class="ui-badge" data-tone={verdictTone(other.answer)}
+														>{verdictLabel(other.answer)}</span
+													>
+												</button>
+											{/each}
+										</div>
+									{/if}
 
-								{#if errors[key]}
-									<p class="ui-notice" data-tone="bad" role="alert">{errors[key]}</p>
-								{/if}
+									{#if editable}
+										<label class="evidence-field">
+											<span class="visually-hidden">Evidence for {question.prompt}</span>
+											<input
+												class="ui-input"
+												maxlength={maxNote}
+												oninput={(event): void =>
+													setEvidence(
+														selectedStation.key,
+														question.key,
+														(event.currentTarget as HTMLInputElement).value,
+													)}
+												placeholder="Evidence or note for this answer"
+												value={evidenceValue(selectedStation.key, question.key)}
+											>
+										</label>
+
+										<!-- biome-ignore lint/a11y/useSemanticElements: the verdict buttons are a segmented control -->
+										<div
+											aria-label={`Answer: ${question.prompt}`}
+											class="verdict-buttons"
+											role="group"
+										>
+											<button
+												class="ui-button sm"
+												disabled={active?.key === key}
+												onclick={(): Promise<void> => submitAnswer(question, "pass")}
+												type="button"
+												class:chosen={answer?.answer === "pass"}
+											>
+												Pass
+											</button>
+											<button
+												class="ui-button sm danger"
+												disabled={active?.key === key}
+												onclick={(): Promise<void> => submitAnswer(question, "fail")}
+												type="button"
+												class:chosen={answer?.answer === "fail"}
+											>
+												Fail
+											</button>
+											<button
+												class="ui-button sm ghost"
+												disabled={active?.key === key}
+												onclick={(): Promise<void> => submitAnswer(question, "na")}
+												type="button"
+												class:chosen={answer?.answer === "na"}
+											>
+												N/A
+											</button>
+										</div>
+									{:else if answer?.evidence}
+										<p class="evidence-text">{answer.evidence}</p>
+									{/if}
+
+									{#if answer?.answer === "fail"}
+										{#if onCreateFinding !== undefined && editable}
+											<details
+												class="finding-details"
+												ontoggle={(event): void => {
+													if ((event.currentTarget as HTMLDetailsElement).open)
+														openFinding(selectedStation.key, question)
+													else if (findingKey === key) findingKey = ""
+												}}
+												open={findingKey === key}
+											>
+												<summary class="fail-row">
+													<span class="fail-hint">A failed answer needs a finding.</span>
+													<span class="ui-button sm changes">Record finding</span>
+												</summary>
+												<div class="finding-form">
+													<label class="finding-field">
+														<span>Summary</span>
+														<input
+															autocomplete="off"
+															class="ui-input"
+															maxlength="500"
+															bind:value={findingSummary}
+														>
+													</label>
+													<label class="finding-field">
+														<span>Maker action</span>
+														<input
+															autocomplete="off"
+															class="ui-input"
+															maxlength="4000"
+															placeholder="What should the maker change?"
+															bind:value={findingAction}
+														>
+													</label>
+													<label class="finding-field">
+														<span>Severity</span>
+														<select class="ui-input" bind:value={findingSeverity}>
+															<option value="fixable">Fixable</option>
+															<option value="block">Block</option>
+														</select>
+													</label>
+													{#if findingError}
+														<p class="fail-hint">{findingError}</p>
+													{/if}
+													<div class="finding-actions">
+														<button
+															class="ui-button sm ok"
+															disabled={findingSaving || findingSummary.trim() === ""}
+															onclick={(): Promise<void> =>
+																saveFinding(selectedStation.key, question)}
+															type="button"
+														>
+															{findingSaving ? "Saving…" : "Add finding"}
+														</button>
+														<button
+															class="ui-button sm ghost"
+															onclick={(): void => {
+																findingKey = ""
+															}}
+															type="button"
+														>
+															Cancel
+														</button>
+													</div>
+												</div>
+											</details>
+										{:else}
+											<div class="fail-row">
+												<p class="fail-hint">A failed answer needs a finding.</p>
+											</div>
+										{/if}
+									{/if}
+
+									{#if active?.key === key}
+										<p class="saving" role="status">Saving…</p>
+									{:else if isQueued(key)}
+										<p class="saving" role="status">Queued…</p>
+									{/if}
+
+									{#if errors[key]}
+										<p class="ui-notice" data-tone="bad" role="alert">{errors[key]}</p>
+									{/if}
+								</details>
 							</li>
 						{/each}
 					</ol>
@@ -777,6 +802,36 @@ function onKeydown(event: KeyboardEvent): void {
 	gap: var(--space-2);
 	align-items: flex-start;
 	justify-content: space-between;
+	cursor: pointer;
+	list-style: none;
+}
+
+.question-head::-webkit-details-marker {
+	display: none;
+}
+
+.question-meta {
+	display: inline-flex;
+	flex: none;
+	gap: var(--space-2);
+	align-items: center;
+}
+
+.question-toggle {
+	display: inline-flex;
+	flex: none;
+	color: var(--text-3);
+	transition: transform 0.15s;
+}
+
+.question-details[open] > .question-head .question-toggle {
+	transform: rotate(180deg);
+}
+
+.question-details {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
 }
 
 .prompt {
