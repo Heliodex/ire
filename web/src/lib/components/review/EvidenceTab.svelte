@@ -1,6 +1,7 @@
 <script lang="ts">
 import { type Bundle, fetchSubmissionFile } from "../../api"
 import { formatDateTime } from "../../format"
+import { githubRawBase } from "../../markdown"
 import { isPreviewableKicad } from "../../preview"
 import LoadingState from "../LoadingState.svelte"
 import KicadPreview from "./KicadPreview.svelte"
@@ -29,6 +30,13 @@ let previewPath = $state("")
 let previewText = $state("")
 let previewLoading = $state(false)
 let previewError = $state("")
+
+// readmeImageBase resolves a README's relative image URLs to the raw files on the forge.
+const readmeImageBase = $derived(
+	evidence?.forge === "github"
+		? githubRawBase(evidence?.fullName ?? "", evidence?.defaultBranch ?? evidence?.headSha ?? undefined)
+		: undefined,
+)
 
 // togglePreview opens one board preview at a time, fetching its text on demand.
 async function togglePreview(path: string): Promise<void> {
@@ -299,7 +307,7 @@ const fileRows = $derived(buildFileRows(filteredFiles.slice(0, 80)))
 	{#if evidence.readme}
 		<section class="ui-card padded readme">
 			<h3>README</h3>
-			<div class="readme-body"><Markdown text={evidence.readme} /></div>
+			<div class="readme-body"><Markdown imageBase={readmeImageBase} text={evidence.readme} /></div>
 		</section>
 	{/if}
 {/if}

@@ -39,6 +39,7 @@ import {
 	programPermissions,
 } from "../../permissions"
 import { dropSignIn, session } from "../../session.svelte.js"
+import { githubRawBase } from "../../markdown"
 import {
 	draftValues,
 	type MainField,
@@ -255,6 +256,21 @@ const nextHref = $derived(
 )
 const evidence = $derived(bundle?.evidence)
 const readme = $derived(evidence?.readme ?? "")
+// readmeImageBase resolves a README's relative image URLs to the raw files on the forge.
+const readmeImageBase = $derived.by((): string | undefined => {
+	if (evidence?.forge !== "github") return undefined
+	return githubRawBase(evidence?.fullName ?? "", evidence?.defaultBranch ?? evidence?.headSha ?? undefined)
+})
+// readmeUrl points at the rendered README on the forge so reviewers can open the source.
+const readmeUrl = $derived.by((): string | undefined => {
+	const fullName = evidence?.fullName.trim() ?? ""
+	if (evidence?.forge === "github" && fullName !== "") {
+		const branch = evidence?.defaultBranch?.trim() || "HEAD"
+		return `https://github.com/${fullName}/blob/${branch}/README.md`
+	}
+
+	return submission?.repoUrl ?? undefined
+})
 const triageChecks = $derived((bundle?.checks ?? []).filter(check => triageCheckKeys.has(check.key)))
 const hardwareChecks = $derived((bundle?.checks ?? []).filter(check => hardwareCheckKeys.has(check.key)))
 const timelapseSeconds = $derived((bundle?.journals ?? []).reduce((sum, entry) => sum + entry.coveredSeconds, 0))
@@ -972,7 +988,7 @@ async function persistDraft(): Promise<void> {
 							<span class="card-title">README</span>
 							<span class="muted">Expand</span>
 						</summary>
-						<div class="readme-body"><Markdown text={readme} /></div>
+						<div class="readme-body"><Markdown imageBase={readmeImageBase} text={readme} /></div>
 					</details>
 				{:else}
 					<div class="ui-card ui-empty">
@@ -1017,8 +1033,13 @@ async function persistDraft(): Promise<void> {
 			{:else if stationKey === "narrative"}
 				{#if readme !== ""}
 					<section class="ui-card padded stack">
-						<h2 class="card-title">README</h2>
-						<div class="readme-body scroll"><Markdown text={readme} /></div>
+						<div class="card-head">
+							<h2 class="card-title">README</h2>
+							{#if readmeUrl}
+								<a class="card-link" href={readmeUrl} rel="noreferrer" target="_blank">README ↗</a>
+							{/if}
+						</div>
+						<div class="readme-body scroll"><Markdown imageBase={readmeImageBase} text={readme} /></div>
 					</section>
 				{:else}
 					<div class="ui-card ui-empty">
@@ -1143,7 +1164,7 @@ async function persistDraft(): Promise<void> {
 							<span class="card-title">README</span>
 							<span class="muted">Expand</span>
 						</summary>
-						<div class="readme-body"><Markdown text={readme} /></div>
+						<div class="readme-body"><Markdown imageBase={readmeImageBase} text={readme} /></div>
 					</details>
 				{/if}
 
