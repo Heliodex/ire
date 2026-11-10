@@ -208,6 +208,49 @@ const capturedSeconds = $derived(
 	),
 )
 const deflationRequired = $derived(approvedSeconds < capturedSeconds)
+const timeReasonLabels: { [key: string]: string } = Object.freeze({
+	duplicate: "Duplicate with Hackatime",
+	idle: "Idle gap",
+	long: "Unreasonably long",
+	nonproject: "Not project work",
+	other: "Other",
+	starter: "Starter build",
+	tutorial: "Tutorial consumption",
+	unverifiable: "Unverifiable",
+})
+const journalCuts = $derived.by((): { count: number; label: string; seconds: number }[] => {
+	const groups = new Map<string, { count: number; label: string; seconds: number }>()
+
+	for (const entry of bundle?.journals ?? []) {
+		if (entry.approvedSeconds === undefined || entry.approvedSeconds >= entry.seconds) continue
+
+		const key = entry.deflationReason ?? "other"
+		const group = groups.get(key) ?? { count: 0, label: timeReasonLabels[key] ?? key, seconds: 0 }
+		group.count += 1
+		group.seconds += entry.seconds - entry.approvedSeconds
+		groups.set(key, group)
+	}
+
+	return [...groups.values()]
+})
+
+// cutLabel is one journal-cut group in the generated reason.
+function cutLabel(cut: { count: number; label: string; seconds: number }): string {
+	const suffix = cut.count > 1 ? ` (${cut.count} entries)` : ""
+
+	return `${formatHours(cut.seconds)} ${cut.label.toLowerCase()}${suffix}`
+}
+
+// useCutSummary turns the per-entry reasons into the start of the deflation justification.
+function useCutSummary(): void {
+	if (journalCuts.length === 0) return
+
+	const total = journalCuts.reduce((sum, cut) => sum + cut.seconds, 0)
+	const parts = journalCuts.map(cutLabel).join(", ")
+	const opening = `Cut ${formatHours(total)} from ${formatHours(capturedSeconds)}: ${parts}. An intermediate maker would take about `
+	deflationReason = deflationReason.trim() === "" ? opening : `${deflationReason.trim()}\n${opening}`
+	deflationElement?.focus()
+}
 const timeSegments = $derived.by((): TimeSegment[] => {
 	const claimed = submission?.hoursClaimedSeconds ?? 0
 	const timelapsed = (bundle?.journals ?? []).reduce((sum, entry) => sum + entry.coveredSeconds, 0)
@@ -1242,6 +1285,17 @@ async function saveDraftNow(): Promise<void> {
 					</span>
 					<span aria-hidden="true" class="field-count">{deflationReason.length} / {maxNote}</span>
 				</span>
+				{#if journalCuts.length > 0}
+					<div class="cut-summary">
+						<span
+							>Journal cuts:
+							{journalCuts
+								.map(cut => `${formatHours(cut.seconds)} ${cut.label.toLowerCase()}`)
+								.join(" · ")}</span
+						>
+						<button class="link" onclick={useCutSummary} type="button">Use in the reason</button>
+					</div>
+				{/if}
 				<textarea
 					aria-label="Deflation reason"
 					class="ui-input"
@@ -2776,6 +2830,16 @@ h1 {
 	font-size: var(--text-sm);
 	font-weight: 400;
 	line-height: 1.35;
+	color: var(--text-3);
+}
+
+.cut-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: baseline;
+	padding: var(--space-1) 0;
+	font-size: var(--text-xs);
 	color: var(--text-3);
 }
 
