@@ -390,7 +390,7 @@ function onKeydown(event: KeyboardEvent): void {
 </section>
 
 {#if selectedStation}
-	<section aria-label={`${selectedStation.label} questions`} class="ui-card padded station-sheet">
+	<section aria-label={`${selectedStation.label} questions`} class="station-sheet">
 		<div class="station-body">
 				<div class="station-head">
 					<h3>{selectedStation.label}</h3>
