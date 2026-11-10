@@ -157,7 +157,11 @@ func (a *ireApp) handleDeleteStation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := a.store.Exec(r.Context(), `delete from station_definition where program_id = ? and key = ?`, person.ProgramID, key); err != nil {
+	if _, err := a.store.Transaction(r.Context(),
+		storage.TransactionStatement{SQL: `delete from station_answer where station_key = ?
+			and submission_id in (select id from submission where program_id = ?)`, Args: []any{key, person.ProgramID}},
+		storage.TransactionStatement{SQL: `delete from station_definition where program_id = ? and key = ?`, Args: []any{person.ProgramID, key}},
+	); err != nil {
 		writeStorage(w, err)
 
 		return

@@ -175,9 +175,13 @@ const showDecision = $derived(stationKey === "synthesis" || stationKey === "veri
 const canApprove = $derived(
 	!closed && stationsDone && blocking.length === 0 && (secondPass || missingAcks.length === 0),
 )
-// canDeleteNote lets the author remove their own internal note.
+// canDeleteNote lets the author or a note manager remove an internal note.
 function canDeleteNote(entry: Note): boolean {
-	return (session.me?.user.email ?? "") === entry.authorEmail
+	return (
+		(session.me?.user.email ?? "") === entry.authorEmail
+		|| hasPermission(permissions, permissionNoteManage)
+		|| hasPermission(permissions, permissionWildcard)
+	)
 }
 const stationLabel = $derived(station?.label ?? stationKey)
 const stage = $derived(station?.stage ?? 1)
@@ -939,22 +943,20 @@ async function persistDraft(): Promise<void> {
 					</details>
 				{/if}
 
-				{#if bundle.notes.length > 0}
-					<details class="ui-card padded history-card">
-						<summary>
-							<span class="card-title">Internal notes</span>
-							<span class="muted">{bundle.notes.length}</span>
-						</summary>
-						<div class="history-body">
-							<NotesCard
-								canDelete={canDeleteNote}
-								notes={bundle.notes}
-								onAdd={addNote}
-								onRemove={removeNote}
-							/>
-						</div>
-					</details>
-				{/if}
+				<details class="ui-card padded history-card">
+					<summary>
+						<span class="card-title">Internal notes</span>
+						<span class="muted">{bundle.notes.length}</span>
+					</summary>
+					<div class="history-body">
+						<NotesCard
+							canDelete={canDeleteNote}
+							notes={bundle.notes}
+							onAdd={addNote}
+							onRemove={removeNote}
+						/>
+					</div>
+				</details>
 
 				<p class="muted">
 					<a class="card-link" href={fullReviewHref}>Open the full record</a>
