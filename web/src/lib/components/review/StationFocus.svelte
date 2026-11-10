@@ -121,6 +121,8 @@ let revertReason = $state("")
 let revertError = $state("")
 let reverting = $state(false)
 let rerunning = $state(false)
+// railOpen turns the side rail into a bottom sheet on narrow views.
+let railOpen = $state(false)
 const journalCollapsed = new SvelteSet<string>()
 const checksCollapsed = new SvelteSet<string>()
 
@@ -319,6 +321,7 @@ $effect((): void => {
 	if (shipId === loadedShip) return
 
 	loadedShip = shipId
+	railOpen = false
 	void load()
 })
 
@@ -1328,7 +1331,26 @@ async function persistDraft(): Promise<void> {
 			{/if}
 		</div>
 
-		<aside class="focus-rail">
+		<aside
+			aria-label={railOpen ? `${stationLabel} review panel` : undefined}
+			aria-modal={railOpen ? "true" : undefined}
+			class="focus-rail"
+			class:sheet-open={railOpen}
+			role={railOpen ? "dialog" : undefined}
+		>
+			<div class="sheet-head">
+				<h2>{stationLabel}</h2>
+				<button
+					aria-label="Close panel"
+					class="ui-icon-button"
+					onclick={(): void => {
+						railOpen = false
+					}}
+					type="button"
+				>
+					×
+				</button>
+			</div>
 			{#if stationComplete}
 				<section class="ui-card padded complete-card">
 					<h2>{stationLabel} is complete</h2>
@@ -1668,6 +1690,33 @@ async function persistDraft(): Promise<void> {
 			<p class="queue-link"><a href={queueHref}>Back to queue</a></p>
 		</aside>
 	</div>
+
+	{#if railOpen}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- biome-ignore lint/a11y/noStaticElementInteractions: backdrop closes panel, keyboard uses Escape -->
+		<div
+			class="rail-backdrop"
+			onclick={(event): void => {
+				if (event.target === event.currentTarget) railOpen = false
+			}}
+			onkeydown={(event): void => {
+				if (event.key === "Escape") railOpen = false
+			}}
+		></div>
+	{/if}
+
+	<button
+		aria-expanded={railOpen}
+		aria-haspopup="dialog"
+		class="rail-fab ui-button primary"
+		onclick={(): void => {
+			railOpen = !railOpen
+		}}
+		type="button"
+	>
+		{showDecision ? "Decision" : "Stations"}
+	</button>
 {/if}
 
 <style>
@@ -2131,15 +2180,83 @@ async function persistDraft(): Promise<void> {
 	color: var(--primary);
 }
 
+.rail-fab,
+.sheet-head,
+.rail-backdrop {
+	display: none;
+}
+
 @media (max-width: 61.25rem) {
 	.focus-layout {
 		grid-template-columns: minmax(0, 1fr);
+	}
+
+	aside.focus-rail {
+		display: none;
+	}
+
+	aside.focus-rail.sheet-open {
+		position: fixed;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		z-index: var(--layer-dialog);
+		display: flex;
+		width: min(100%, 40rem);
+		max-height: 85dvh;
+		margin-inline: auto;
+		padding: var(--space-4) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
+		overflow-y: auto;
+		overscroll-behavior-y: contain;
+		background: var(--bg);
+		border: 1px solid var(--border);
+		border-bottom: 0;
+		border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+		box-shadow: var(--shadow-lg);
+	}
+
+	.sheet-open .sheet-head {
+		display: flex;
+		gap: var(--space-2);
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.sheet-open .sheet-head h2 {
+		margin: 0;
+		font-size: var(--text-md);
+		font-weight: 700;
+	}
+
+	.rail-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: calc(var(--layer-dialog) - 1);
+		display: block;
+		background: color-mix(in srgb, var(--bg) 40%, transparent);
+	}
+
+	.rail-fab {
+		position: fixed;
+		right: var(--space-4);
+		bottom: var(--space-4);
+		z-index: var(--layer-header);
+		display: inline-flex;
+		box-shadow: var(--shadow-lg);
 	}
 }
 
 @media (max-width: 40rem) {
 	.check-list li {
 		grid-template-columns: 3.5rem minmax(0, 1fr);
+	}
+
+	.rail-fab {
+		bottom: calc(7.5rem + env(safe-area-inset-bottom));
+	}
+
+	aside.focus-rail.sheet-open {
+		max-height: calc(100dvh - 8rem - env(safe-area-inset-bottom));
 	}
 
 	.check-summary {
