@@ -19,15 +19,19 @@ let approved = $state(hoursValue(entry.approvedSeconds ?? entry.seconds))
 // svelte-ignore state_referenced_locally
 let note = $state(entry.reviewerNote ?? "")
 // svelte-ignore state_referenced_locally
+let reason = $state(entry.deflationReason ?? "")
+// svelte-ignore state_referenced_locally
 let savedApproved = $state(entry.approvedSeconds ?? entry.seconds)
 // svelte-ignore state_referenced_locally
 let savedNote = $state(entry.reviewerNote ?? "")
+// svelte-ignore state_referenced_locally
+let savedReason = $state(entry.deflationReason ?? "")
 let status = $state<"idle" | "saving" | "saved" | "error">("idle")
 let error = $state("")
 let timer: ReturnType<typeof setTimeout> | null
 
 const approvedSeconds = $derived(Math.max(0, Math.round((Number(approved) || 0) * 3600)))
-const changed = $derived(approvedSeconds !== savedApproved || note !== savedNote)
+const changed = $derived(approvedSeconds !== savedApproved || note !== savedNote || reason !== savedReason)
 
 onDestroy(() => {
 	if (timer) clearTimeout(timer)
@@ -60,7 +64,25 @@ function flush(): void {
 	void save()
 }
 
-// save writes the entry's approved time and note, keeping the rail total in step.
+const reasonLabels = {
+	duplicate: "Duplicate with Hackatime",
+	idle: "Idle gap",
+	long: "Unreasonably long",
+	nonproject: "Not project work",
+	other: "Other",
+	starter: "Starter build, no original work",
+	tutorial: "Tutorial consumption without application",
+	unverifiable: "Unverifiable",
+} as const
+
+type Reason = keyof typeof reasonLabels
+
+// reasonLabel returns the human label for a stored reason code.
+function reasonLabel(value: string): string {
+	return reasonLabels[value as Reason] ?? value
+}
+
+// save writes the entry's approved time, reason and note, keeping the rail total in step.
 async function save(keepalive = false): Promise<void> {
 	if (timer) {
 		clearTimeout(timer)
@@ -68,6 +90,11 @@ async function save(keepalive = false): Promise<void> {
 	}
 	if (!changed) {
 		status = "idle"
+		return
+	}
+	if (approvedSeconds < entry.seconds && reason.trim() === "") {
+		status = "error"
+		error = "Choose why this entry counts for less."
 		return
 	}
 
@@ -78,11 +105,12 @@ async function save(keepalive = false): Promise<void> {
 		const result = await reviewJournal(
 			shipId,
 			entry.id,
-			{ approvedSeconds, reviewerNote: note, version },
+			{ approvedSeconds, deflationReason: reason, reviewerNote: note, version },
 			keepalive,
 		)
 		savedApproved = approvedSeconds
 		savedNote = note
+		savedReason = reason
 		onSaved(result.hoursApprovedSeconds)
 		status = "saved"
 	} catch (err) {
@@ -110,6 +138,22 @@ async function save(keepalive = false): Promise<void> {
 				<span class="hint">{formatHours(entry.seconds)} claimed</span>
 			</span>
 		</label>
+		{#if approvedSeconds < entry.seconds || reason !== ""}
+			<label class="field">
+				<span>Why less? <span class="hint">staff only</span></span>
+				<select
+					aria-label={`Deflation reason for ${entry.title ?? "this entry"}`}
+					class="ui-input"
+					onchange={schedule}
+					bind:value={reason}
+				>
+					<option value="">Choose a reason</option>
+					{#each Object.entries(reasonLabels) as [value, label] (value)}
+						<option {value}>{label}</option>
+					{/each}
+				</select>
+			</label>
+		{/if}
 		<label class="field">
 			<span>Deflation note <span class="hint">staff only</span></span>
 			<input
@@ -134,6 +178,9 @@ async function save(keepalive = false): Promise<void> {
 {:else if typeof entry.approvedSeconds === "number"}
 	<p class="journal-counted">
 		Counted {formatHours(entry.approvedSeconds)} of {formatHours(entry.seconds)}
+		{#if entry.deflationReason}
+			· {reasonLabel(entry.deflationReason)}
+		{/if}
 		{#if entry.reviewerNote}
 			· {entry.reviewerNote}
 		{/if}

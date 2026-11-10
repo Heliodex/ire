@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"ire/contract"
 
@@ -60,6 +61,12 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reason := strings.TrimSpace(stringValue(request.DeflationReason))
+	if request.ApprovedSeconds < entry.Seconds && reason == "" {
+		app.WriteErrorField(w, http.StatusUnprocessableEntity, "deflation_reason_required", "deflationReason", "explain why this entry counts for less")
+		return
+	}
+
 	total, err := a.journalApprovedTotal(r.Context(), ship.ID, entry.ID, request.ApprovedSeconds)
 	if err != nil {
 		writeStorage(w, err)
@@ -72,8 +79,8 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := a.store.Transaction(r.Context(),
 		storage.TransactionStatement{
-			SQL:  `update journal_entry set approved_seconds = ?, reviewer_note = ? where id = ? and submission_id = ?`,
-			Args: []any{request.ApprovedSeconds, nullString(note), entry.ID, ship.ID},
+			SQL:  `update journal_entry set approved_seconds = ?, reviewer_note = ?, deflation_reason = ? where id = ? and submission_id = ?`,
+			Args: []any{request.ApprovedSeconds, nullString(note), nullString(reason), entry.ID, ship.ID},
 		},
 		storage.TransactionStatement{
 			SQL:  `update submission set hours_approved_seconds = ?, updated_at = ? where id = ?`,
@@ -82,14 +89,14 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 		storage.TransactionStatement{
 			SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at)
 				values (?, ?, 'journal_adjusted', ?, ?, ?, ?)`,
-			Args: []any{newID("evt"), ship.ID, person.ID, person.Email, marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": request.ApprovedSeconds, "reviewerNote": note}), now},
+			Args: []any{newID("evt"), ship.ID, person.ID, person.Email, marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": request.ApprovedSeconds, "reviewerNote": note, "deflationReason": reason}), now},
 		},
 		storage.TransactionStatement{
 			SQL: `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
 				values (?, ?, ?, ?, 'journal.adjust', 'submission', ?, ?, ?, ?)`,
 			Args: []any{newID("aud"), ship.ProgramID, person.ID, person.Email, ship.ID,
-				marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": entry.ApprovedSeconds, "reviewerNote": entry.ReviewerNote}),
-				marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": request.ApprovedSeconds, "reviewerNote": note}), now},
+				marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": entry.ApprovedSeconds, "reviewerNote": entry.ReviewerNote, "deflationReason": entry.DeflationReason}),
+				marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": request.ApprovedSeconds, "reviewerNote": note, "deflationReason": reason}), now},
 		},
 	); err != nil {
 		writeStorage(w, err)
@@ -99,6 +106,7 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 
 	entry.ApprovedSeconds = &request.ApprovedSeconds
 	entry.ReviewerNote = optionalText(note)
+	entry.DeflationReason = optionalText(reason)
 
 	app.WriteJSON(w, http.StatusOK, contract.JournalAdjustment{Journal: entry, HoursApprovedSeconds: total})
 }
@@ -109,13 +117,14 @@ func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID str
 		item                                        contract.JournalEntry
 		title, text, markdown, mediaJSON, clipsJSON string
 		approvedSeconds                             int
-		reviewerNote                                string
+		reviewerNote, deflationReason               string
 	)
 
 	err := a.store.QueryRow(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
-			coalesce(media, '[]'), coalesce(timelapses, '[]'), coalesce(approved_seconds, -1), coalesce(reviewer_note, '')
+			coalesce(media, '[]'), coalesce(timelapses, '[]'), coalesce(approved_seconds, -1), coalesce(reviewer_note, ''),
+			coalesce(deflation_reason, '')
 		from journal_entry where id = ? and submission_id = ?`, entryID, submissionID).
-		Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON, &approvedSeconds, &reviewerNote)
+		Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON, &approvedSeconds, &reviewerNote, &deflationReason)
 	if err != nil {
 		return contract.JournalEntry{}, err
 	}
@@ -133,6 +142,7 @@ func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID str
 	}
 
 	item.ReviewerNote = optionalText(reviewerNote)
+	item.DeflationReason = optionalText(deflationReason)
 
 	return item, nil
 }
@@ -167,5 +177,11 @@ func (a *ireApp) journalApprovedTotal(ctx context.Context, submissionID, entryID
 		}
 	}
 
-	return total, rows.Err()
+	var adjustments int
+	if err := a.store.QueryRow(ctx, `select coalesce(sum(case kind when 'bonus' then seconds else -seconds end), 0)
+		from time_adjustment where submission_id = ?`, submissionID).Scan(&adjustments); err != nil {
+		return 0, err
+	}
+
+	return total + adjustments, rows.Err()
 }

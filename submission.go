@@ -154,7 +154,8 @@ func journalMediaURLs(raw string) []contract.JournalMedia {
 // loadJournals returns journal entries with their media and clip counts.
 func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contract.JournalEntry, error) {
 	rows, err := a.store.Query(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
-			coalesce(media, '[]'), coalesce(timelapses, '[]'), coalesce(approved_seconds, -1), coalesce(reviewer_note, '')
+			coalesce(media, '[]'), coalesce(timelapses, '[]'), coalesce(approved_seconds, -1), coalesce(reviewer_note, ''),
+			coalesce(deflation_reason, '')
 		from journal_entry where submission_id = ? order by sort, at`, submissionID)
 	if err != nil {
 		return nil, err
@@ -168,9 +169,9 @@ func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contr
 			item                                        contract.JournalEntry
 			title, text, markdown, mediaJSON, clipsJSON string
 			approvedSeconds                             int
-			reviewerNote                                string
+			reviewerNote, deflationReason               string
 		)
-		if err := rows.Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON, &approvedSeconds, &reviewerNote); err != nil {
+		if err := rows.Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON, &approvedSeconds, &reviewerNote, &deflationReason); err != nil {
 			return nil, err
 		}
 
@@ -187,6 +188,7 @@ func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contr
 		}
 
 		item.ReviewerNote = optionalText(reviewerNote)
+		item.DeflationReason = optionalText(deflationReason)
 		out = append(out, item)
 	}
 
