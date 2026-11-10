@@ -1064,15 +1064,18 @@ async function persistDraft(): Promise<void> {
 				</section>
 			{:else if stationKey === "narrative"}
 				{#if readme !== ""}
-					<section class="ui-card padded stack">
-						<div class="card-head">
-							<h2 class="card-title">README</h2>
-							{#if readmeUrl}
-								<a class="card-link" href={readmeUrl} rel="noreferrer" target="_blank">README ↗</a>
-							{/if}
-						</div>
+					<details class="ui-card padded collapse-card" open>
+						<summary>
+							<span class="card-title">README</span>
+							<span class="summary-side">
+								{#if readmeUrl}
+									<a class="card-link" href={readmeUrl} rel="noreferrer" target="_blank">README ↗</a>
+								{/if}
+								<Icon class="collapse-chevron" name="chevD" size={16} />
+							</span>
+						</summary>
 						<div class="readme-body scroll"><Markdown imageBase={readmeImageBase} text={readme} /></div>
-					</section>
+					</details>
 				{:else}
 					<div class="ui-card ui-empty">
 						<strong>No README</strong>
@@ -1080,34 +1083,47 @@ async function persistDraft(): Promise<void> {
 					</div>
 				{/if}
 
-				<section class="ui-card padded stack">
-					<div class="card-head">
-						<h2 class="card-title">Commits</h2>
-						{#if submission?.repoUrl}
-							<a class="card-link" href={submission.repoUrl} rel="noreferrer" target="_blank">Repo ↗</a>
+				<details class="ui-card padded collapse-card">
+					<summary>
+						<span class="card-title">Commits</span>
+						<span class="summary-side">
+							{#if submission?.repoUrl}
+								<a class="card-link" href={submission.repoUrl} rel="noreferrer" target="_blank">Repo ↗</a>
+							{/if}
+							<Icon class="collapse-chevron" name="chevD" size={16} />
+						</span>
+					</summary>
+					<div class="collapse-body">
+						{#if commits.length === 0}
+							<p class="muted">No commits were fetched.</p>
+						{:else}
+							<ul class="commit-list">
+								{#each commits as commit (commit.sha)}
+									<li>
+										<strong>{commit.message || "(no message)"}</strong>
+										<span
+											>{commit.author}
+											· {commit.date.slice(0, 10)} · <code>{commit.sha.slice(0, 7)}</code></span
+										>
+									</li>
+								{/each}
+							</ul>
 						{/if}
 					</div>
-					{#if commits.length === 0}
-						<p class="muted">No commits were fetched.</p>
-					{:else}
-						<ul class="commit-list">
-							{#each commits as commit (commit.sha)}
-								<li>
-									<strong>{commit.message || "(no message)"}</strong>
-									<span
-										>{commit.author}
-										· {commit.date.slice(0, 10)} · <code>{commit.sha.slice(0, 7)}</code></span
-									>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</section>
+				</details>
 
-				<div class="stack">
-					<h2 class="section-title">BOM lines</h2>
-					<BomTab bom={bundle.bom} totalCents={submission?.bomTotalCents ?? 0} />
-				</div>
+				<details class="ui-card padded collapse-card">
+					<summary>
+						<span class="card-title">BOM lines</span>
+						<span class="summary-side">
+							<span class="muted">{bundle.bom.length}</span>
+							<Icon class="collapse-chevron" name="chevD" size={16} />
+						</span>
+					</summary>
+					<div class="collapse-body">
+						<BomTab bom={bundle.bom} totalCents={submission?.bomTotalCents ?? 0} />
+					</div>
+				</details>
 
 				{#if evidence}
 					<details class="ui-card padded collapse-card">
@@ -1816,6 +1832,12 @@ async function persistDraft(): Promise<void> {
 
 .collapse-card[open] > summary .collapse-chevron {
 	transform: rotate(180deg);
+}
+
+.summary-side {
+	display: inline-flex;
+	gap: var(--space-2);
+	align-items: center;
 }
 
 .readme-body {
