@@ -84,9 +84,17 @@ export async function fetchStations(
 export async function fetchStationQueue(
 	station: string,
 	stage = 1,
+	sort: string | null = null,
+	dir: 1 | -1 = 1,
+	q = "",
 ): Promise<InferOutput<typeof stationQueueResponseSchema>> {
 	const query = new URLSearchParams()
 	query.set("stage", String(stage))
+	query.set("q", q)
+	if (sort) {
+		query.set("sort", sort)
+		query.set("dir", ({ "-1": "desc", "1": "asc" } as Record<string, string>)[String(dir)])
+	}
 	let url = `/api/v1/programs/${program}/stations/${encodeURIComponent(station)}/queue`
 	if (query.size > 0) url += `?${query}`
 	const response = await fetch(url)

@@ -414,21 +414,26 @@ func (a *ireApp) handleStationQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stage := stationStage(r)
+	params, ok := a.parseQueueParams(w, r, person)
+	if !ok {
+		return
+	}
 
-	if !found || station.Stage != stage {
+	if !found || station.Stage != params.stage {
 		app.WriteError(w, http.StatusNotFound, "unknown station")
 		return
 	}
 
-	items, hasMore, err := a.stationQueueItems(r.Context(), person, stage, station.Key)
+	params.station = station.Key
+
+	items, hasMore, err := a.stationQueueItems(r.Context(), person, params)
 	if err != nil {
 		writeStorage(w, err)
 
 		return
 	}
 
-	counts, err := a.stationCounts(r.Context(), person.ProgramID, stage)
+	counts, err := a.stationCounts(r.Context(), person.ProgramID, params.stage)
 	if err != nil {
 		writeStorage(w, err)
 
@@ -439,8 +444,8 @@ func (a *ireApp) handleStationQueue(w http.ResponseWriter, r *http.Request) {
 }
 
 // stationQueueItems returns one page of ships whose current station is the requested one.
-func (a *ireApp) stationQueueItems(ctx context.Context, person reviewer, stage int, station string) ([]contract.QueueItem, bool, error) {
-	query, args := a.queueListQuery(queueParams{stage: stage, filter: queueFilterAll, station: station}, person, stationQueuePageLimit+1, 0)
+func (a *ireApp) stationQueueItems(ctx context.Context, person reviewer, params queueParams) ([]contract.QueueItem, bool, error) {
+	query, args := a.queueListQuery(queueParams{stage: params.stage, filter: params.filter, sortColumn: params.sortColumn, sortDir: params.sortDir, search: params.search, station: params.station}, person, stationQueuePageLimit+1, 0)
 
 	rows, err := a.store.Query(ctx, query, args...)
 	if err != nil {

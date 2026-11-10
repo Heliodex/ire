@@ -204,6 +204,33 @@ func TestStationQueueFiltersByCurrentStation(t *testing.T) {
 	}
 }
 
+// TestStationQueueSearchAndSort covers the filter bar query on a focused station queue.
+func TestStationQueueSearchAndSort(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	miss := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue?q=no-such-ship", nil, cookie, nil))
+	if len(miss.Items) != 0 {
+		t.Fatalf("filtered queue = %d items, want 0", len(miss.Items))
+	}
+
+	sorted := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue?sort=maker&dir=desc", nil, cookie, nil))
+	if len(sorted.Items) != 3 {
+		t.Fatalf("sorted queue = %d items, want 3", len(sorted.Items))
+	}
+
+	for index := 1; index < len(sorted.Items); index++ {
+		if sorted.Items[index-1].MakerName < sorted.Items[index].MakerName {
+			t.Fatalf("queue not maker-descending: %+v", sorted.Items)
+		}
+	}
+
+	bad := do(t, application, http.MethodGet, testBase+"/stations/triage/queue?sort=bogus", nil, cookie, nil)
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("bad sort = %d, want 400", bad.Code)
+	}
+}
+
 // TestStationStatusReflectsEachSection covers the per-section badge while an earlier station is still current.
 func TestStationStatusReflectsEachSection(t *testing.T) {
 	application := newTestApp(t)
