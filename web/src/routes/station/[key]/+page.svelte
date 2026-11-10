@@ -130,7 +130,6 @@ async function load(target: string): Promise<void> {
 					</span>
 					<span class="row-side">
 						<span class="ui-badge" data-tone={statusTone(item.status)}>{humanStatus(item.status)}</span>
-						<span class="open">Open</span>
 					</span>
 				</a>
 			{/each}
@@ -253,12 +252,6 @@ h1 {
 	flex: none;
 	gap: var(--space-2);
 	align-items: center;
-}
-
-.open {
-	font-size: var(--text-xs);
-	font-weight: 700;
-	color: var(--primary);
 }
 
 .capped {
