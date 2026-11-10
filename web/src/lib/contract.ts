@@ -557,7 +557,9 @@ export const journalTimelapseSchema = pipe(
 		approvedSeconds: optional(pipe(number(), integer())),
 		coveredSeconds: nonNegative,
 		externalId: optionalString,
+		note: optionalString,
 		provider: optionalString,
+		reason: optionalString,
 		thumbnailUrl: optionalString,
 		url: optionalString,
 	}),
@@ -578,7 +580,7 @@ export const journalSchema = pipe(
 		reviewerNote: optionalString,
 		seconds: nonNegative,
 		text: optionalString,
-		timelapses: array(journalTimelapseSchema),
+		timelapses: optional(array(journalTimelapseSchema)),
 		title: optionalString,
 	}),
 	title("JournalEntry"),
@@ -943,7 +945,7 @@ export const stationAnswerResponseSchema = pipe(
 export const reviewBundleSchema = pipe(
 	object({
 		acknowledgements: array(string()),
-		adjustments: array(timeAdjustmentSchema),
+		adjustments: optional(array(timeAdjustmentSchema)),
 		bom: array(bomLineSchema),
 		checkRun: optional(checkRunSchema),
 		checks: array(checkResultSchema),

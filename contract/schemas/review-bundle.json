@@ -471,7 +471,13 @@
 								"externalId": {
 									"type": "string"
 								},
+								"note": {
+									"type": "string"
+								},
 								"provider": {
+									"type": "string"
+								},
+								"reason": {
 									"type": "string"
 								},
 								"thumbnailUrl": {
@@ -498,8 +504,7 @@
 					"id",
 					"media",
 					"mediaCount",
-					"seconds",
-					"timelapses"
+					"seconds"
 				],
 				"title": "JournalEntry"
 			}
@@ -1172,7 +1177,6 @@
 	},
 	"required": [
 		"acknowledgements",
-		"adjustments",
 		"bom",
 		"checks",
 		"events",

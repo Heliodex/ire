@@ -249,11 +249,14 @@ func TestTimelapseCutRequiresReasonAndKnownClip(t *testing.T) {
 
 // TestJournalTimelapsesExposed covers the clip list behind the timelapse grid.
 func TestJournalTimelapsesExposed(t *testing.T) {
+	adjustments := []contract.TimeAdjustment{
+		{ID: "t1", Kind: "cut", Seconds: 600, Reason: "idle", Source: "clip:entry_1:clip_a", CreatedAt: "2026-01-01T00:00:00Z"},
+	}
 	clips := journalTimelapses("entry_1", `[
 		{"provider":"lapse","externalId":"clip_a","url":"https://lapse.hackclub.com/clip_a","thumbnailUrl":"https://cdn.example.com/a.jpg","coveredSeconds":1800},
 		{"provider":"lapse","externalId":"clip_b","url":"javascript:alert(1)","coveredSeconds":900},
 		{"provider":"lapse","coveredSeconds":-5}
-	]`, map[string]int{"clip:entry_1:clip_a": 600})
+	]`, adjustments)
 
 	if len(clips) != 3 {
 		t.Fatalf("clips = %d, want 3", len(clips))
@@ -279,7 +282,7 @@ func TestJournalTimelapsesExposed(t *testing.T) {
 		t.Errorf("negative coverage = %d, want 0", clips[2].CoveredSeconds)
 	}
 
-	if got := journalTimelapses("entry_1", "not json", map[string]int{}); len(got) != 0 {
+	if got := journalTimelapses("entry_1", "not json", nil); len(got) != 0 {
 		t.Errorf("malformed = %d, want 0", len(got))
 	}
 }

@@ -2466,7 +2466,7 @@ type JournalEntry struct {
 	Text *string `json:"text,omitempty,omitzero" yaml:"text,omitempty" mapstructure:"text,omitempty"`
 
 	// Timelapses corresponds to the JSON schema field "timelapses".
-	Timelapses []JournalTimelapse `json:"timelapses" yaml:"timelapses" mapstructure:"timelapses"`
+	Timelapses []JournalTimelapse `json:"timelapses,omitempty,omitzero" yaml:"timelapses,omitempty" mapstructure:"timelapses,omitempty"`
 
 	// Title corresponds to the JSON schema field "title".
 	Title *string `json:"title,omitempty,omitzero" yaml:"title,omitempty" mapstructure:"title,omitempty"`
@@ -2498,9 +2498,6 @@ func (j *JournalEntry) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["seconds"]; raw != nil && !ok {
 		return fmt.Errorf("field seconds in JournalEntry: required")
-	}
-	if _, ok := raw["timelapses"]; raw != nil && !ok {
-		return fmt.Errorf("field timelapses in JournalEntry: required")
 	}
 	type Plain JournalEntry
 	var plain Plain
@@ -2618,8 +2615,14 @@ type JournalTimelapse struct {
 	// ExternalID corresponds to the JSON schema field "externalId".
 	ExternalID *string `json:"externalId,omitempty,omitzero" yaml:"externalId,omitempty" mapstructure:"externalId,omitempty"`
 
+	// Note corresponds to the JSON schema field "note".
+	Note *string `json:"note,omitempty,omitzero" yaml:"note,omitempty" mapstructure:"note,omitempty"`
+
 	// Provider corresponds to the JSON schema field "provider".
 	Provider *string `json:"provider,omitempty,omitzero" yaml:"provider,omitempty" mapstructure:"provider,omitempty"`
+
+	// Reason corresponds to the JSON schema field "reason".
+	Reason *string `json:"reason,omitempty,omitzero" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 
 	// ThumbnailURL corresponds to the JSON schema field "thumbnailUrl".
 	ThumbnailURL *string `json:"thumbnailUrl,omitempty,omitzero" yaml:"thumbnailUrl,omitempty" mapstructure:"thumbnailUrl,omitempty"`
@@ -4527,7 +4530,7 @@ type ReviewBundle struct {
 	Acknowledgements []string `json:"acknowledgements" yaml:"acknowledgements" mapstructure:"acknowledgements"`
 
 	// Adjustments corresponds to the JSON schema field "adjustments".
-	Adjustments []TimeAdjustment `json:"adjustments" yaml:"adjustments" mapstructure:"adjustments"`
+	Adjustments []TimeAdjustment `json:"adjustments,omitempty,omitzero" yaml:"adjustments,omitempty" mapstructure:"adjustments,omitempty"`
 
 	// Bom corresponds to the JSON schema field "bom".
 	Bom []BomLine `json:"bom" yaml:"bom" mapstructure:"bom"`
@@ -4595,9 +4598,6 @@ func (j *ReviewBundle) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["acknowledgements"]; raw != nil && !ok {
 		return fmt.Errorf("field acknowledgements in ReviewBundle: required")
-	}
-	if _, ok := raw["adjustments"]; raw != nil && !ok {
-		return fmt.Errorf("field adjustments in ReviewBundle: required")
 	}
 	if _, ok := raw["bom"]; raw != nil && !ok {
 		return fmt.Errorf("field bom in ReviewBundle: required")
