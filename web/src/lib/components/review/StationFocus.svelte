@@ -338,6 +338,8 @@ function canClaim(next: Bundle): boolean {
 // applyBundle seeds the draft fields from the server copy of the review draft.
 function applyBundle(next: Bundle): void {
 	bundle = next
+	// Journal entries start collapsed; the reviewer opens each one to read it.
+	for (const entry of next.journals) journalCollapsed.add(entry.id)
 	internalNote = next.draft?.internalNote ?? ""
 	const values = parseDraftValues(next.draft?.values)
 	technicalFeatures = values.technicalFeatures ?? ""
