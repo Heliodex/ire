@@ -38,11 +38,6 @@ interface NavItem {
 	label: string
 }
 
-// isQueueRoute keeps the review screen under the queue tab without catching /reviewed.
-function isQueueRoute(path: string): boolean {
-	return path.startsWith("/queue") || path === "/review" || path.startsWith("/review/")
-}
-
 function isReviewedRoute(path: string): boolean {
 	return path === "/reviewed" || path.startsWith("/reviewed/")
 }
@@ -52,7 +47,6 @@ const navItems = $derived.by((): NavItem[] => {
 	const sections: NavItem[] = [
 		{ active: path === "/overview", href: "/overview", label: "Overview" },
 		{ active: path.startsWith("/station"), href: "/stations", label: "Stations" },
-		{ active: isQueueRoute(path), href: "/queue", label: "Queue" },
 		{ active: isReviewedRoute(path), href: "/reviewed", label: "Reviewed" },
 		{ active: path.startsWith("/deliveries"), href: "/deliveries", label: "Deliveries" },
 	]

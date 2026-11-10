@@ -248,7 +248,7 @@ function clearFilters(): void {
 	<div class="ui-card ui-empty">
 		<strong>Admins and auditors only</strong>
 		<span>Your account can review ships, but the full audit log is limited to admins and auditors.</span>
-		<a class="ui-button" data-variant="outline" href="/queue">Back to the queue</a>
+		<a class="ui-button" data-variant="outline" href="/stations">Back to stations</a>
 	</div>
 {:else}
 	<div class="toolbar">

@@ -20,7 +20,7 @@ const detail = $derived(
 		<h1>{title}</h1>
 		<p>{detail}</p>
 		<div class="actions">
-			<a class="ui-button primary" href="/queue">Back to the queue</a>
+			<a class="ui-button primary" href="/stations">Back to stations</a>
 			<a class="ui-button ghost" href="/docs">Integration docs</a>
 		</div>
 	</div>

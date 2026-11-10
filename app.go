@@ -278,8 +278,13 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 		//nolint:gosec // The target is a fixed local path plus the request query.
 		http.Redirect(w, r, target, http.StatusFound)
-	case path == "/review" && r.URL.Query().Get("id") != "":
-		http.Redirect(w, r, "/review/"+url.PathEscape(r.URL.Query().Get("id")), http.StatusFound)
+	case path == "/queue" || path == "/review" || strings.HasPrefix(path, "/review/"):
+		target := "/stations"
+		if !signedIn {
+			target = "/"
+		}
+
+		http.Redirect(w, r, target, http.StatusFound)
 	case path == "/makers" && r.URL.Query().Get("email") != "":
 		http.Redirect(w, r, "/makers/"+url.PathEscape(r.URL.Query().Get("email")), http.StatusFound)
 	case protectedPage(path):
@@ -289,11 +294,6 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		page := path
-		if strings.HasPrefix(path, "/review/") {
-			// Every review id shares the prerendered loading shell; the client router hydrates the real id.
-			page = "/review/loading"
-		}
-
 		if strings.HasPrefix(path, "/station/") {
 			// Station keys are dynamic; every key shares the prerendered shell.
 			page = "/station/loading"
@@ -315,7 +315,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 
 // protectedPage reports the prerendered routes that need a session.
 func protectedPage(path string) bool {
-	for _, prefix := range []string{"/overview", "/queue", "/reviewed", "/review", "/reviewers", "/makers", "/deliveries", "/admin", "/stations", "/station"} {
+	for _, prefix := range []string{"/overview", "/reviewed", "/reviewers", "/makers", "/deliveries", "/admin", "/stations", "/station"} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}

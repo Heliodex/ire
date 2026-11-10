@@ -25,7 +25,7 @@ function emailFromURL(): string {
 $effect((): void => {
 	const next = emailFromURL().trim()
 	if (next === "") {
-		void goto("/queue")
+		void goto("/stations")
 		return
 	}
 
@@ -79,12 +79,12 @@ function decidedCount(submissions: MakerSubmission[], decision: string): number 
 	<div class="ui-card ui-empty">
 		<strong>Cannot open this maker</strong>
 		<span>{error || "This maker does not exist."}</span>
-		<a class="ui-button" data-variant="outline" href="/queue">Back to the queue</a>
+		<a class="ui-button" data-variant="outline" href="/stations">Back to stations</a>
 	</div>
 {:else}
 	<section class="profile-head">
 		<div>
-			<p class="crumbs"><a href="/queue">Queue</a> / Maker</p>
+			<p class="crumbs"><a href="/stations">Stations</a> / Maker</p>
 			<div class="identity-summary">
 				<Avatar email={profile.email} name={profile.name} size="lg" url={profile.avatarUrl} />
 				<div>
@@ -130,7 +130,12 @@ function decidedCount(submissions: MakerSubmission[], decision: string): number 
 				{#each profile.submissions as ship (ship.id)}
 					<li>
 						<div class="ship-head">
-							<a class="ship" href={`/review/${encodeURIComponent(ship.id)}`}>
+							<a
+								class="ship"
+								href={ship.stage === 2
+									? `/station/verify?id=${encodeURIComponent(ship.id)}&stage=2`
+									: `/station/synthesis?id=${encodeURIComponent(ship.id)}&stage=1`}
+							>
 								{ship.title}
 							</a>
 							<span class="ui-badge" data-tone={statusTone(ship.status)}>{humanStatus(ship.status)}</span>

@@ -310,7 +310,8 @@ function openResult(result: SearchResult): void {
 		version: result.version,
 		week: result.week,
 	})
-	void goto(`/review/${encodeURIComponent(result.id)}`)
+	const station = result.stage === 2 ? "verify" : "synthesis"
+	void goto(`/station/${station}?id=${encodeURIComponent(result.id)}&stage=${result.stage}`)
 }
 </script>
 

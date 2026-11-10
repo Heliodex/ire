@@ -39,7 +39,7 @@ $effect((): void => {
 		? decodeURIComponent(path.slice("/reviewers/".length)).replace(/\/$/, "")
 		: ""
 	if (next === "") {
-		void goto("/queue")
+		void goto("/stations")
 		return
 	}
 
@@ -107,12 +107,12 @@ function activeTone(active: boolean | undefined): string {
 	<div class="ui-card ui-empty">
 		<strong>Cannot open this reviewer</strong>
 		<span>{error || "This reviewer does not exist."}</span>
-		<a class="ui-button" data-variant="outline" href="/queue">Back to the queue</a>
+		<a class="ui-button" data-variant="outline" href="/stations">Back to stations</a>
 	</div>
 {:else}
 	<section class="profile-head">
 		<div>
-			<p class="crumbs"><a href="/queue">Queue</a> / Reviewer</p>
+			<p class="crumbs"><a href="/stations">Stations</a> / Reviewer</p>
 			<div class="identity-summary">
 				<Avatar email={profile.email} name={profile.name} size="lg" url={profile.avatarUrl} />
 				<div>
@@ -221,7 +221,12 @@ function activeTone(active: boolean | undefined): string {
 				{#each profile.reviews as review (review.id)}
 					<li class:invalidated={review.invalidatedAt}>
 						<div class="review-head">
-							<a class="ship" href={`/review/${encodeURIComponent(review.submissionId)}`}>
+							<a
+								class="ship"
+								href={review.stage === 2
+									? `/station/verify?id=${encodeURIComponent(review.submissionId)}&stage=2`
+									: `/station/synthesis?id=${encodeURIComponent(review.submissionId)}&stage=1`}
+							>
 								{review.submissionTitle}
 							</a>
 							<span class="ui-badge" data-tone={statusTone(review.decision)}>{review.decision}</span>

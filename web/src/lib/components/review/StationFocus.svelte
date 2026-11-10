@@ -14,6 +14,7 @@ import {
 	type Note,
 	program,
 	releaseShip,
+	rerunChecks,
 	saveDraft,
 	sendShipBack,
 } from "../../api"
@@ -114,6 +115,7 @@ let revertOpen = $state(false)
 let revertReason = $state("")
 let revertError = $state("")
 let reverting = $state(false)
+let rerunning = $state(false)
 const journalCollapsed = new SvelteSet<string>()
 const checksCollapsed = new SvelteSet<string>()
 
@@ -242,7 +244,6 @@ const synthesisHref = $derived(
 		? `/station/verify?id=${encodeURIComponent(shipId)}&stage=2`
 		: `/station/synthesis?id=${encodeURIComponent(shipId)}&stage=1`,
 )
-const fullReviewHref = $derived(`/review/${encodeURIComponent(shipId)}`)
 const nextKey = $derived(bundle?.currentStation ?? "")
 const nextStationKey = $derived(nextKey !== "" && nextKey !== stationKey ? nextKey : "")
 const nextLabel = $derived(stationDefs.find(item => item.key === nextStationKey)?.label ?? nextStationKey)
@@ -601,11 +602,6 @@ async function decide(decision: "approved" | "changes" | "rejected"): Promise<vo
 						? "Changes requested."
 						: "Rejected."
 
-		if (result.nextId !== undefined && result.nextId !== "") {
-			void goto(`/review/${encodeURIComponent(result.nextId)}`)
-			return
-		}
-
 		void goto("/stations")
 	} catch (err) {
 		decisionError =
@@ -774,6 +770,22 @@ async function submitRevertDecision(): Promise<void> {
 	}
 }
 
+// rerunRepositoryChecks queues a fresh repository check for an organiser.
+async function rerunRepositoryChecks(): Promise<void> {
+	if (bundle === undefined || rerunning) return
+
+	rerunning = true
+
+	try {
+		await rerunChecks(bundle.submission.id)
+		notice = "Repository checks queued."
+	} catch (err) {
+		actionError = err instanceof Error ? err.message : "Could not queue the checks."
+	} finally {
+		rerunning = false
+	}
+}
+
 // entrySaved keeps the approved total in step after an entry's time changes.
 function entrySaved(seconds: number): void {
 	if (bundle !== undefined) bundle.submission.hoursApprovedSeconds = seconds
@@ -863,11 +875,7 @@ async function persistDraft(): Promise<void> {
 {:else}
 	<header class="focus-head">
 		<div class="head-main">
-			<p class="crumbs">
-				<a href={queueHref}>← {stationLabel} queue</a>
-				<span aria-hidden="true">·</span>
-				<a href={fullReviewHref}>Full review</a>
-			</p>
+			<p class="crumbs"><a href={queueHref}>← {stationLabel} queue</a></p>
 			<div class="title-line">
 				<h1>{submission?.title ?? "Ship"}</h1>
 				{#if submission}
@@ -1154,7 +1162,19 @@ async function persistDraft(): Promise<void> {
 				</section>
 
 				<section class="ui-card padded stack">
-					<h2 class="card-title">Checks</h2>
+					<div class="card-head">
+						<h2 class="card-title">Checks</h2>
+						{#if canSecondPass}
+							<button
+								class="ui-button ghost sm"
+								disabled={rerunning}
+								onclick={(): Promise<void> => rerunRepositoryChecks()}
+								type="button"
+							>
+								{rerunning ? "Queueing…" : "Rerun checks"}
+							</button>
+						{/if}
+					</div>
 					<ChecksTab
 						{acknowledgements}
 						checks={bundle.checks}
@@ -1194,14 +1214,13 @@ async function persistDraft(): Promise<void> {
 				</details>
 
 				<p class="muted">
-					<a class="card-link" href={fullReviewHref}>Open the full record</a>
-					for evidence tabs and file previews.
+					Use the hardware or narrative station for file previews and the full evidence browser.
 				</p>
 			{:else}
 				<div class="ui-card padded stack">
 					<h2 class="card-title">No focused evidence for this station</h2>
 					<p class="description">Open the full review to see every section.</p>
-					<div><a class="ui-button primary" href={fullReviewHref}>Open full review</a></div>
+					<div><a class="ui-button primary" href="/stations">Back to stations</a></div>
 				</div>
 			{/if}
 		</div>

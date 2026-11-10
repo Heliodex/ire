@@ -65,7 +65,7 @@ const canCancel = $derived(session.me !== null)
 <div class="docs">
 	<section class="docs-head">
 		<div>
-			<p class="crumbs"><a href={canCancel ? "/queue" : "/"}>{canCancel ? "Queue" : "Sign in"}</a></p>
+			<p class="crumbs"><a href={canCancel ? "/stations" : "/"}>{canCancel ? "Stations" : "Sign in"}</a></p>
 			<h1>Integration docs</h1>
 			<p class="lead">
 				Ire accepts Ari-compatible ships, runs its own checks and shows the queue. Half Life can send a shadow

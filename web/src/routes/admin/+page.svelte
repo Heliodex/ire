@@ -260,7 +260,7 @@ async function removeRole(def: RoleDefinition): Promise<void> {
 	<div class="ui-card ui-empty">
 		<strong>Admins only</strong>
 		<span>Your account can review ships, but the roster and roles are limited to admins.</span>
-		<a class="ui-button" data-variant="outline" href="/queue">Back to the queue</a>
+		<a class="ui-button" data-variant="outline" href="/stations">Back to stations</a>
 	</div>
 {:else if loading}
 	<section aria-labelledby="roster-title" class="ui-card padded">

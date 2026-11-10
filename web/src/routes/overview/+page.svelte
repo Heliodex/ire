@@ -138,7 +138,7 @@ onMount((): (() => void) => {
 			{/each}
 		</div>
 		{#if overview.wait.oldestId && overview.wait.oldestTitle}
-			<a class="oldest" href={`/review/${encodeURIComponent(overview.wait.oldestId)}`}>
+			<a class="oldest" href={`/station/triage?id=${encodeURIComponent(overview.wait.oldestId)}&stage=1`}>
 				Longest waiting: {overview.wait.oldestTitle} · {formatWait(overview.wait.maxMs)}
 			</a>
 		{/if}

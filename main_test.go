@@ -1204,9 +1204,9 @@ func TestPageGate(t *testing.T) {
 		t.Fatalf("anonymous root = %d %q", anonymous.Code, anonymous.Header().Get(app.StaticPageHeader))
 	}
 
-	protected := do(t, application, http.MethodGet, "/queue", nil, nil, nil)
+	protected := do(t, application, http.MethodGet, "/station/triage", nil, nil, nil)
 	if protected.Code != http.StatusFound || protected.Header().Get("Location") != "/" {
-		t.Fatalf("anonymous queue = %d %q", protected.Code, protected.Header().Get("Location"))
+		t.Fatalf("anonymous station = %d %q", protected.Code, protected.Header().Get("Location"))
 	}
 
 	cookie := login(t, application, "reviewer@example.com")
@@ -1217,17 +1217,17 @@ func TestPageGate(t *testing.T) {
 	}
 
 	queue := do(t, application, http.MethodGet, "/queue", nil, cookie, nil)
-	if queue.Code != http.StatusOK || queue.Header().Get(app.StaticPageHeader) != "/queue" {
-		t.Fatalf("signed-in queue = %d %q", queue.Code, queue.Header().Get(app.StaticPageHeader))
+	if queue.Code != http.StatusFound || queue.Header().Get("Location") != "/stations" {
+		t.Fatalf("signed-in queue = %d %q", queue.Code, queue.Header().Get("Location"))
 	}
 
 	review := do(t, application, http.MethodGet, "/review/sub_fixture_1", nil, cookie, nil)
-	if review.Code != http.StatusOK || review.Header().Get(app.StaticPageHeader) != "/review/loading" {
-		t.Fatalf("signed-in review = %d %q", review.Code, review.Header().Get(app.StaticPageHeader))
+	if review.Code != http.StatusFound || review.Header().Get("Location") != "/stations" {
+		t.Fatalf("signed-in review = %d %q", review.Code, review.Header().Get("Location"))
 	}
 
 	oldReview := do(t, application, http.MethodGet, "/review?id=sub_fixture_1", nil, cookie, nil)
-	if oldReview.Code != http.StatusFound || oldReview.Header().Get("Location") != "/review/sub_fixture_1" {
+	if oldReview.Code != http.StatusFound || oldReview.Header().Get("Location") != "/stations" {
 		t.Fatalf("old review = %d %q", oldReview.Code, oldReview.Header().Get("Location"))
 	}
 

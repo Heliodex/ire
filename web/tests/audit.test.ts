@@ -165,7 +165,9 @@ describe("auditDetailRows", () => {
 
 describe("target links", () => {
 	test("links ships and members but not notes", () => {
-		expect(auditTargetHref(entryOf({ targetId: "sub_1", targetType: "submission" }))).toBe("/review/sub_1")
+		expect(auditTargetHref(entryOf({ targetId: "sub_1", targetType: "submission" }))).toBe(
+			"/station/synthesis?id=sub_1&stage=1",
+		)
 		expect(auditTargetHref(entryOf({ action: "member.update", targetId: "usr_1", targetType: "user" }))).toBe(
 			"/reviewers/usr_1",
 		)
