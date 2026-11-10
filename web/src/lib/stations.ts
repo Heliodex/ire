@@ -1,4 +1,5 @@
 import { type Bundle } from "./api"
+import { type IconName } from "./components/icon-paths"
 import { type Tone } from "./format"
 
 export type StationDefinition = Bundle["stations"][number]
@@ -33,6 +34,20 @@ export function stationStatusLabel(status: string): string {
 			return "Blocked"
 		default:
 			return "To do"
+	}
+}
+
+// stationIcon maps one station state to the progress glyph, so status reads as more than a colour.
+export function stationIcon(status: string): IconName {
+	switch (status) {
+		case "done":
+			return "checkCircle"
+		case "current":
+			return "clock"
+		case "blocked":
+			return "info"
+		default:
+			return "circle"
 	}
 }
 

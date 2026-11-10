@@ -4,6 +4,7 @@ export const iconPaths = {
 	check: ["M5 13l4 4L19 7"],
 	checkCircle: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", "M8.5 12l2.3 2.3L15.5 9.8"],
 	chevD: ["M6 9l6 6 6-6"],
+	circle: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"],
 	clock: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0", "M12 7.5V12l3 1.8"],
 	config: [
 		"M4 6h9M17 6h3M4 12h3M11 12h9M4 18h13M21 18h-1",

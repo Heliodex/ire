@@ -9,6 +9,7 @@ import {
 	type StationDefinition,
 	type StationState,
 	stationStatusLabel,
+	stationIcon,
 	stationTone,
 	upsertStationAnswer,
 	verdictLabel,
@@ -67,6 +68,16 @@ describe("stationTone", () => {
 		expect(stationTone("blocked")).toBe("changes")
 		expect(stationTone("todo")).toBe("neutral")
 		expect(stationTone("unknown")).toBe("neutral")
+	})
+})
+
+describe("stationIcon", () => {
+	test("maps every workflow status to a progress glyph", () => {
+		expect(stationIcon("done")).toBe("checkCircle")
+		expect(stationIcon("current")).toBe("clock")
+		expect(stationIcon("blocked")).toBe("info")
+		expect(stationIcon("todo")).toBe("circle")
+		expect(stationIcon("unknown")).toBe("circle")
 	})
 })
 

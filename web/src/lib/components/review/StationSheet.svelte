@@ -14,6 +14,7 @@ import {
 	type StationQuestion,
 	type StationState,
 	type StationVerdict,
+	stationIcon,
 	stationStatusLabel,
 	stationTone,
 	verdictLabel,
@@ -355,7 +356,11 @@ function onKeydown(event: KeyboardEvent): void {
 							class="progress-item static"
 							data-status={state?.status ?? "todo"}
 						>
-							<span aria-hidden="true" class="progress-dot"></span>
+							<Icon
+								class="progress-mark"
+								name={stationIcon(state?.status ?? "todo")}
+								size={14}
+							/>
 							<span class="progress-label">{station.label}</span>
 							{#if state}
 								<span class="progress-count">{state.answered}/{state.required}</span>
@@ -369,7 +374,11 @@ function onKeydown(event: KeyboardEvent): void {
 							onclick={(): void => selectStation(station.key)}
 							type="button"
 						>
-							<span aria-hidden="true" class="progress-dot"></span>
+							<Icon
+								class="progress-mark"
+								name={stationIcon(state?.status ?? "todo")}
+								size={14}
+							/>
 							<span class="progress-label">{station.label}</span>
 							{#if state}
 								<span class="progress-count">{state.answered}/{state.required}</span>
@@ -771,12 +780,9 @@ function onKeydown(event: KeyboardEvent): void {
 	--station-status: var(--status-neutral);
 }
 
-.progress-dot {
+.progress-mark {
 	flex: none;
-	width: 0.5rem;
-	height: 0.5rem;
-	background: var(--station-status, var(--text-3));
-	border-radius: 50%;
+	color: var(--station-status, var(--text-3));
 }
 
 .progress-count {
