@@ -226,9 +226,10 @@ function onKeydown(event: KeyboardEvent): void {
 	{#if orderedStations.length === 0}
 		<p class="hint">No station workflow is configured for this programme.</p>
 	{:else}
+		<!-- Per-row values use $derived: a plain const inside a runes-mode each block is captured once. -->
 		<ol aria-label="Station progress" class="progress">
 			{#each orderedStations as station (station.key)}
-				{const state = statesByKey.get(station.key)}
+				{const state = $derived(statesByKey.get(station.key))}
 				<li>
 					<button
 						aria-pressed={station.key === selected}
@@ -273,8 +274,8 @@ function onKeydown(event: KeyboardEvent): void {
 				{:else}
 					<ol class="questions">
 						{#each questions as question (question.key)}
-							{const answer = answerFor(answers, selectedStation.key, question.key)}
-							{const key = answerKey(selectedStation.key, question.key)}
+							{const answer = $derived(answerFor(answers, selectedStation.key, question.key))}
+							{const key = $derived(answerKey(selectedStation.key, question.key))}
 							<li
 								data-question={question.key}
 								class:next={editable && answer === undefined && nextKey === question.key}
