@@ -137,6 +137,13 @@ func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID str
 	item.ClipCount = jsonArrayLength(clipsJSON)
 	item.CoveredSeconds = jsonCoveredSeconds(clipsJSON)
 
+	cuts, err := a.loadAdjustments(ctx, submissionID)
+	if err != nil {
+		return contract.JournalEntry{}, err
+	}
+
+	item.Timelapses = journalTimelapses(item.ID, clipsJSON, adjustmentCuts(cuts))
+
 	if approvedSeconds >= 0 {
 		item.ApprovedSeconds = &approvedSeconds
 	}

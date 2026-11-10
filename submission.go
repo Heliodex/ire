@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
+	"strconv"
 	"strings"
 
 	"ire/contract"
@@ -106,6 +107,18 @@ func (a *ireApp) latestChecks(ctx context.Context, submissionID string, version 
 // maxJournalMedia caps the images exposed per journal entry for review display.
 const maxJournalMedia = 20
 
+// maxJournalTimelapses caps the clips exposed per journal entry for review display.
+const maxJournalTimelapses = 50
+
+// clipSource identifies the ledger source for one timelapse clip.
+func clipSource(entryID string, index int, externalID string) string {
+	if strings.TrimSpace(externalID) != "" {
+		return "clip:" + entryID + ":" + strings.TrimSpace(externalID)
+	}
+
+	return "clip:" + entryID + ":#" + strconv.Itoa(index)
+}
+
 // journalMediaURLs exposes an entry's image attachments for review display,
 // keeping only http(s) image URLs so maker-supplied metadata cannot inject
 // other schemes into the page.
@@ -151,6 +164,119 @@ func journalMediaURLs(raw string) []contract.JournalMedia {
 	return out
 }
 
+// journalTimelapses exposes an entry's clips for review display, keeping only
+// http(s) URLs and resolving each clip's approved time from the ledger cuts.
+func journalTimelapses(entryID, raw string, cuts map[string]int) []contract.JournalTimelapse {
+	var records []struct {
+		CoveredSeconds *int    `json:"coveredSeconds"`
+		ExternalID     *string `json:"externalId"`
+		Provider       *string `json:"provider"`
+		ThumbnailURL   *string `json:"thumbnailUrl"`
+		URL            *string `json:"url"`
+	}
+
+	if json.Unmarshal([]byte(raw), &records) != nil {
+		return []contract.JournalTimelapse{}
+	}
+
+	out := []contract.JournalTimelapse{}
+
+	for index, record := range records {
+		if len(out) >= maxJournalTimelapses {
+			break
+		}
+
+		covered := 0
+		if record.CoveredSeconds != nil && *record.CoveredSeconds > 0 {
+			covered = *record.CoveredSeconds
+		}
+
+		externalID := ""
+		if record.ExternalID != nil {
+			externalID = strings.TrimSpace(*record.ExternalID)
+		}
+
+		approved := covered
+		if cut, ok := cuts[clipSource(entryID, index, externalID)]; ok {
+			approved = max(0, covered-cut)
+		}
+
+		item := contract.JournalTimelapse{CoveredSeconds: covered}
+		if externalID != "" {
+			item.ExternalID = &externalID
+		}
+
+		if record.Provider != nil && strings.TrimSpace(*record.Provider) != "" {
+			provider := strings.TrimSpace(*record.Provider)
+			item.Provider = &provider
+		}
+
+		if record.URL != nil {
+			if url := strings.TrimSpace(*record.URL); strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://") {
+				item.URL = &url
+			}
+		}
+
+		if record.ThumbnailURL != nil {
+			if thumbnail := strings.TrimSpace(*record.ThumbnailURL); strings.HasPrefix(thumbnail, "https://") || strings.HasPrefix(thumbnail, "http://") {
+				item.ThumbnailURL = &thumbnail
+			}
+		}
+
+		if approved < covered {
+			item.ApprovedSeconds = &approved
+		}
+
+		out = append(out, item)
+	}
+
+	return out
+}
+
+// loadAdjustments returns the ledger cuts and bonuses behind the approved total.
+func (a *ireApp) loadAdjustments(ctx context.Context, submissionID string) ([]contract.TimeAdjustment, error) {
+	rows, err := a.store.Query(ctx, `select id, kind, seconds, reason, coalesce(note, ''), coalesce(reviewer_id, ''), created_at, coalesce(source, '')
+		from time_adjustment where submission_id = ? order by created_at`, submissionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []contract.TimeAdjustment{}
+
+	for rows.Next() {
+		var (
+			item                 contract.TimeAdjustment
+			note, reviewerID     string
+		)
+
+		if err := rows.Scan(&item.ID, &item.Kind, &item.Seconds, &item.Reason, &note, &reviewerID, &item.CreatedAt, &item.Source); err != nil {
+			return nil, err
+		}
+
+		item.Note = optionalText(note)
+		item.ReviewerID = optionalText(reviewerID)
+		out = append(out, item)
+	}
+
+	return out, rows.Err()
+}
+
+// adjustmentCuts indexes cut seconds by ledger source.
+func adjustmentCuts(adjustments []contract.TimeAdjustment) map[string]int {
+	cuts := map[string]int{}
+
+	for _, adjustment := range adjustments {
+		if adjustment.Kind != "cut" {
+			continue
+		}
+
+		cuts[adjustment.Source] += adjustment.Seconds
+	}
+
+	return cuts
+}
+
 // loadJournals returns journal entries with their media and clip counts.
 func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contract.JournalEntry, error) {
 	rows, err := a.store.Query(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
@@ -163,6 +289,13 @@ func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contr
 	defer rows.Close()
 
 	out := []contract.JournalEntry{}
+
+	adjustments, err := a.loadAdjustments(ctx, submissionID)
+	if err != nil {
+		return nil, err
+	}
+
+	cuts := adjustmentCuts(adjustments)
 
 	for rows.Next() {
 		var (
@@ -182,6 +315,7 @@ func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contr
 		item.MediaCount = jsonArrayLength(mediaJSON)
 		item.ClipCount = jsonArrayLength(clipsJSON)
 		item.CoveredSeconds = jsonCoveredSeconds(clipsJSON)
+		item.Timelapses = journalTimelapses(item.ID, clipsJSON, cuts)
 
 		if approvedSeconds >= 0 {
 			item.ApprovedSeconds = &approvedSeconds

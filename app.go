@@ -217,6 +217,8 @@ func (a *ireApp) routes() {
 	a.mux.HandleFunc("DELETE /api/v1/programs/{program}/submissions/{id}/claim", a.handleRelease)
 	a.mux.HandleFunc("PUT /api/v1/programs/{program}/submissions/{id}/draft", a.handleDraft)
 	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/submissions/{id}/journal/{entry}", a.handleJournalReview)
+	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/submissions/{id}/hackatime", a.handleHackatimeReview)
+	a.mux.HandleFunc("PATCH /api/v1/programs/{program}/submissions/{id}/journal/{entry}/timelapse/{clip}", a.handleTimelapseReview)
 	a.mux.HandleFunc("PUT /api/v1/programs/{program}/submissions/{id}/stations/{station}/answers/{question}", a.handleStationAnswer)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/submissions/{id}/stations/{station}/answers/{question}/resolve", a.handleStationConflictResolve)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/submissions/{id}/findings", a.handleFindings)

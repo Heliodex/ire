@@ -413,6 +413,7 @@ func schemaStatements() []storage.Statement {
 			reason text not null,
 			note text,
 			reviewer_id text,
+			source text not null default '',
 			created_at text not null
 		)`,
 
@@ -604,6 +605,11 @@ var lateColumns = []struct {
 		table:  "review",
 		column: "deflation_reason",
 		sql:    `alter table review add column deflation_reason text not null default ''`,
+	},
+	{
+		table:  "time_adjustment",
+		column: "source",
+		sql:    `alter table time_adjustment add column source text not null default ''`,
 	},
 }
 

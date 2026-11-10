@@ -114,6 +114,8 @@ The check job stores a snapshot in `repo_snapshot`: the README (capped at 200 KB
 | `DELETE` | `/api/v1/programs/{program}/submissions/{id}/claim` | Session |
 | `PUT` | `/api/v1/programs/{program}/submissions/{id}/draft` | Session |
 | `PATCH` | `/api/v1/programs/{program}/submissions/{id}/journal/{entry}` | Session with the claim |
+| `PATCH` | `/api/v1/programs/{program}/submissions/{id}/hackatime` | Session with the claim |
+| `PATCH` | `/api/v1/programs/{program}/submissions/{id}/journal/{entry}/timelapse/{clip}` | Session with the claim |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/notes` | Session |
 | `DELETE` | `/api/v1/programs/{program}/notes/{id}` | Author or admin |
 | `POST` | `/api/v1/programs/{program}/submissions/{id}/decision` | Session |
