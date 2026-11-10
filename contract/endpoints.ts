@@ -147,6 +147,17 @@ export const endpoints: Endpoint[] = Object.freeze([
 		response: { schema: stationQueueResponseSchema },
 	},
 	{
+		doc: "fetchStation returns one station and its questions.",
+		method: "GET",
+		name: "fetchStation",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "station", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/stations/{station}",
+		response: { schema: stationDefinitionSchema },
+	},
+	{
 		doc: "saveStation creates or replaces a station and its questions.",
 		method: "PUT",
 		name: "saveStation",

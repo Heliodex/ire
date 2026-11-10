@@ -2,7 +2,7 @@
 import { onMount } from "svelte"
 import { goto } from "$app/navigation"
 import { fetchMe, program } from "../../../lib/api"
-import { deleteStation, fetchStations, saveStation } from "../../../lib/api.gen"
+import { deleteStation, fetchStation, fetchStations, saveStation } from "../../../lib/api.gen"
 import { ApiError } from "../../../lib/api-error"
 import LoadingState from "../../../lib/components/LoadingState.svelte"
 import { hasPermission, permissionRosterManage, programPermissions } from "../../../lib/permissions"
@@ -77,10 +77,7 @@ async function edit(key: string): Promise<void> {
 	notice = ""
 
 	try {
-		const response = await fetch(`/api/v1/programs/${program}/stations/${encodeURIComponent(key)}`)
-		if (!response.ok) throw new Error("Could not load that station.")
-
-		const station = (await response.json()) as Definition
+		const station = await fetchStation(key)
 		originalKey = station.key
 		draft = {
 			active: station.active,

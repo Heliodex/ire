@@ -302,3 +302,45 @@ func TestStationAnswersArePerReviewerAndConflict(t *testing.T) {
 		}
 	}
 }
+
+// TestAdminAuthorsStations covers the station editor API: create, read and delete.
+func TestAdminAuthorsStations(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "admin@example.com")
+
+	station := contract.StationDefinition{
+		Active:      1,
+		Description: "A test station.",
+		Key:         "test_station",
+		Label:       "Test station",
+		Questions: []contract.StationQuestion{
+			{EvidenceKind: "text", Key: "first", Prompt: "Is the first thing right?", Required: 1, Sort: 0},
+		},
+		Sort:   90,
+		Stage:  1,
+		Themes: []string{},
+	}
+
+	body, _ := json.Marshal(station)
+	if saved := do(t, application, http.MethodPut, testBase+"/stations/test_station", body, cookie, nil); saved.Code != http.StatusOK {
+		t.Fatalf("save station = %d: %s", saved.Code, saved.Body.String())
+	}
+
+	loaded := decode[contract.StationDefinition](t, do(t, application, http.MethodGet, testBase+"/stations/test_station", nil, cookie, nil))
+	if loaded.Label != station.Label || len(loaded.Questions) != 1 || loaded.Questions[0].Key != "first" {
+		t.Fatalf("station = %+v", loaded)
+	}
+
+	if deleted := do(t, application, http.MethodDelete, testBase+"/stations/test_station", nil, cookie, nil); deleted.Code != http.StatusNoContent {
+		t.Fatalf("delete station = %d: %s", deleted.Code, deleted.Body.String())
+	}
+
+	if missing := do(t, application, http.MethodGet, testBase+"/stations/test_station", nil, cookie, nil); missing.Code != http.StatusNotFound {
+		t.Fatalf("station after delete = %d, want 404", missing.Code)
+	}
+
+	reviewer := login(t, application, "reviewer@example.com")
+	if denied := do(t, application, http.MethodPut, testBase+"/stations/test_station", body, reviewer, nil); denied.Code != http.StatusForbidden {
+		t.Fatalf("reviewer save station = %d, want 403", denied.Code)
+	}
+}

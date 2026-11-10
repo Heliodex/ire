@@ -92,6 +92,15 @@ export async function fetchStationQueue(
 	return parsed
 }
 
+// fetchStation returns one station and its questions.
+export async function fetchStation(
+	station: string,
+): Promise<InferOutput<typeof stationDefinitionSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/stations/${encodeURIComponent(station)}`)
+	const parsed = await parseJSON(response, stationDefinitionSchema)
+	return parsed
+}
+
 // saveStation creates or replaces a station and its questions.
 export async function saveStation(
 	station: string,

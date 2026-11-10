@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -10,6 +9,28 @@ import (
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
+
+// handleStation returns one station and its questions.
+func (a *ireApp) handleStation(w http.ResponseWriter, r *http.Request) {
+	person, ok := a.requireReviewer(w, r)
+	if !ok {
+		return
+	}
+
+	station, found, err := a.stationDefinition(r.Context(), person.ProgramID, r.PathValue("station"))
+	if err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	if !found {
+		app.WriteError(w, http.StatusNotFound, "unknown station")
+		return
+	}
+
+	app.WriteJSON(w, http.StatusOK, station)
+}
 
 // handleSaveStation creates or replaces one station and its questions.
 func (a *ireApp) handleSaveStation(w http.ResponseWriter, r *http.Request) {
@@ -143,9 +164,4 @@ func (a *ireApp) handleDeleteStation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// stationForEdit returns one station for the admin editor.
-func (a *ireApp) stationForEdit(ctx context.Context, programID, key string) (contract.StationDefinition, bool, error) {
-	return a.stationDefinition(ctx, programID, key)
 }

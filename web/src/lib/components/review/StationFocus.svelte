@@ -35,6 +35,7 @@ import { type StationVerdict, upsertStationAnswer } from "../../stations"
 import LoadingState from "../LoadingState.svelte"
 import BomTab from "./BomTab.svelte"
 import ChecksTab from "./ChecksTab.svelte"
+import EvidenceTab from "./EvidenceTab.svelte"
 import FindingsCard from "./FindingsCard.svelte"
 import HistoryTab from "./HistoryTab.svelte"
 import JournalList from "./JournalList.svelte"
@@ -181,7 +182,11 @@ function canDeleteNote(entry: Note): boolean {
 const stationLabel = $derived(station?.label ?? stationKey)
 const stage = $derived(station?.stage ?? 1)
 const queueHref = $derived(`/station/${encodeURIComponent(stationKey)}?stage=${stage}`)
-const reviewHref = $derived(`/review/${encodeURIComponent(shipId)}?station=synthesis`)
+const synthesisHref = $derived(
+	stage === 2
+		? `/station/verify?id=${encodeURIComponent(shipId)}&stage=2`
+		: `/station/synthesis?id=${encodeURIComponent(shipId)}&stage=1`,
+)
 const fullReviewHref = $derived(`/review/${encodeURIComponent(shipId)}`)
 const nextKey = $derived(bundle?.currentStation ?? "")
 const nextStationKey = $derived(nextKey !== "" && nextKey !== stationKey ? nextKey : "")
@@ -189,7 +194,7 @@ const nextLabel = $derived(stationDefs.find(item => item.key === nextStationKey)
 const nextStage = $derived(stationDefs.find(item => item.key === nextStationKey)?.stage ?? stage)
 const nextHref = $derived(
 	nextStationKey === ""
-		? reviewHref
+		? synthesisHref
 		: `/station/${encodeURIComponent(nextStationKey)}?id=${encodeURIComponent(shipId)}&stage=${nextStage}`,
 )
 const evidence = $derived(bundle?.evidence)
@@ -803,6 +808,25 @@ async function persistDraft(): Promise<void> {
 					<h2 class="section-title">BOM lines</h2>
 					<BomTab bom={bundle.bom} totalCents={submission?.bomTotalCents ?? 0} />
 				</div>
+
+				{#if evidence}
+					<details class="ui-card padded readme-card">
+						<summary>
+							<span class="card-title">Browse files and commits</span>
+							<span class="muted">Search and preview</span>
+						</summary>
+						<div class="readme-body scroll">
+							<EvidenceTab
+								canRefresh={false}
+								error=""
+								{evidence}
+								onRefresh={(): void => {}}
+								refreshing={false}
+								submissionId={shipId}
+							/>
+						</div>
+					</details>
+				{/if}
 			{:else if stationKey === "hardware"}
 				<div class="stack">
 					<h2 class="section-title">BOM</h2>
@@ -842,6 +866,25 @@ async function persistDraft(): Promise<void> {
 					<h2 class="card-title">Design checks</h2>
 					{@render checkRows(hardwareChecks)}
 				</section>
+
+				{#if evidence}
+					<details class="ui-card padded readme-card">
+						<summary>
+							<span class="card-title">Browse files and commits</span>
+							<span class="muted">Search and preview</span>
+						</summary>
+						<div class="readme-body scroll">
+							<EvidenceTab
+								canRefresh={false}
+								error=""
+								{evidence}
+								onRefresh={(): void => {}}
+								refreshing={false}
+								submissionId={shipId}
+							/>
+						</div>
+					</details>
+				{/if}
 			{:else if stationKey === "synthesis" || stationKey === "verify"}
 				{#if bundle.resubmission}
 					<ResubmissionDiff diff={bundle.resubmission} />
@@ -921,7 +964,7 @@ async function persistDraft(): Promise<void> {
 				<div class="ui-card padded stack">
 					<h2 class="card-title">No focused evidence for this station</h2>
 					<p class="description">Open the full review to see every section.</p>
-					<div><a class="ui-button primary" href={reviewHref}>Open full review</a></div>
+					<div><a class="ui-button primary" href={fullReviewHref}>Open full review</a></div>
 				</div>
 			{/if}
 		</div>
@@ -935,7 +978,7 @@ async function persistDraft(): Promise<void> {
 						on.
 					</p>
 					<div class="complete-actions">
-						<a class="ui-button ghost" href={reviewHref}>Open findings</a>
+						<a class="ui-button ghost" href={synthesisHref}>Open findings</a>
 					</div>
 				</section>
 			{:else if stationComplete}
@@ -947,10 +990,12 @@ async function persistDraft(): Promise<void> {
 							<a class="ui-button primary" href={nextHref}>Open {nextLabel}</a>
 							<kbd class="ui-kbd">Enter</kbd>
 						</div>
+					{:else if showDecision}
+						<p class="muted">Every station is answered. Record the decision below.</p>
 					{:else}
-						<p class="muted">Every station is answered. The decision is ready in the full review.</p>
+						<p class="muted">Every station is answered. The synthesis station holds the decision.</p>
 						<div class="complete-actions">
-							<a class="ui-button primary" href={reviewHref}>Open synthesis and decision</a>
+							<a class="ui-button primary" href={synthesisHref}>Open synthesis and decision</a>
 						</div>
 					{/if}
 				</section>

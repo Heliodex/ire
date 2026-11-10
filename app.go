@@ -204,6 +204,7 @@ func (a *ireApp) routes() {
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/queue", a.handleQueue)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/stations", a.handleStations)
 	a.mux.HandleFunc("GET /api/v1/programs/{program}/stations/{station}/queue", a.handleStationQueue)
+	a.mux.HandleFunc("GET /api/v1/programs/{program}/stations/{station}", a.handleStation)
 	a.mux.HandleFunc("PUT /api/v1/programs/{program}/stations/{station}", a.handleSaveStation)
 	a.mux.HandleFunc("DELETE /api/v1/programs/{program}/stations/{station}", a.handleDeleteStation)
 	a.mux.HandleFunc("POST /api/v1/programs/{program}/import-reviewed", a.handleImportReviewed)
