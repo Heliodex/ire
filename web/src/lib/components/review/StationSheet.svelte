@@ -28,8 +28,10 @@ interface Props {
 
 let { answers, currentStation, editable, focusStation, onAnswer, states, stations, version }: Props = $props()
 
-const orderedStations = $derived(stations.toSorted((a, b) => a.sort - b.sort))
 const statesByKey = $derived(new Map(states.map(state => [state.key, state])))
+const orderedStations = $derived(
+	stations.filter(station => statesByKey.has(station.key)).toSorted((a, b) => a.sort - b.sort),
+)
 
 let selected = $state(initialStationKey(orderedStations, states, focusStation, currentStation))
 let manualSelection = $state(false)
@@ -171,11 +173,38 @@ async function drain(): Promise<void> {
 function isQueued(key: string): boolean {
 	return queue.some(item => item.key === key)
 }
+
+// answerNext lets a reviewer answer the next unanswered question with 1, 2 or 3.
+function onKeydown(event: KeyboardEvent): void {
+	if (!editable || event.metaKey || event.ctrlKey || event.altKey) return
+
+	const { target } = event
+	if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']") !== null)
+		return
+
+	const verdicts: { [_: string]: StationVerdict } = { "1": "pass", "2": "fail", "3": "na" }
+	const verdict = verdicts[event.key]
+	if (verdict === undefined || nextKey === undefined) return
+
+	const question = questions.find(item => item.key === nextKey)
+	if (question === undefined) return
+
+	event.preventDefault()
+	submitAnswer(question, verdict)
+}
 </script>
+
+<svelte:window onkeydown={onKeydown} />
 
 <section aria-labelledby="station-sheet-title" class="ui-card padded station-sheet">
 	<div class="sheet-head">
 		<h2 id="station-sheet-title">Stations</h2>
+		{#if editable}
+			<p class="key-hint">
+				<kbd class="ui-kbd">1</kbd>
+				pass <kbd class="ui-kbd">2</kbd> fail <kbd class="ui-kbd">3</kbd> N/A
+			</p>
+		{/if}
 		{#if selectedState}
 			<span class="ui-badge" data-tone={stationTone(selectedState.status)}
 				>{stationStatusLabel(selectedState.status)}</span
@@ -341,6 +370,15 @@ function isQueued(key: string): boolean {
 .sheet-head h2 {
 	font-size: var(--text-md);
 	font-weight: 700;
+}
+
+.key-hint {
+	font-size: var(--text-xs);
+	color: var(--text-3);
+}
+
+.key-hint kbd {
+	margin: 0 2px;
 }
 
 .progress {
