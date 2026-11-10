@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json/v2"
 	"net/http"
 	"testing"
@@ -152,5 +153,101 @@ func TestReturnRecordsItsFindings(t *testing.T) {
 
 	if problem := decode[contract.ErrorResponse](t, bad); problem.Code != "invalid_finding" {
 		t.Fatalf("bad finding problem = %+v", problem)
+	}
+}
+
+// TestFindingSurvivesResubmission covers the ledger key: findings follow the external id, not the version row.
+func TestFindingSurvivesResubmission(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	first := ingestBody("starbie:design")
+
+	created := do(t, application, http.MethodPost, "/api/ingest/half-life", first, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", first),
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("first ingest = %d: %s", created.Code, created.Body.String())
+	}
+
+	v1 := decode[contract.IngestAccepted](t, created)
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/"+v1.ID+"/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim v1 = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle1 := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+v1.ID, nil, cookie, nil))
+
+	createBody, _ := json.Marshal(contract.FindingCreateRequest{
+		MakerAction: stringPtr("Add the Gerber ZIP."),
+		Severity:    "fixable",
+		Station:     "triage",
+		Summary:     "The Gerber ZIP is missing.",
+	})
+
+	made := do(t, application, http.MethodPost, testBase+"/submissions/"+v1.ID+"/findings", createBody, cookie, nil)
+	if made.Code != http.StatusOK {
+		t.Fatalf("finding v1 = %d: %s", made.Code, made.Body.String())
+	}
+
+	finding := decode[contract.FindingResponse](t, made).Finding
+
+	withdraw := []byte(`{"external_id":"starbie:design"}`)
+	if closed := do(t, application, http.MethodPost, "/api/ingest/half-life/withdraw", withdraw, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", withdraw),
+	}); closed.Code != http.StatusOK {
+		t.Fatalf("withdraw = %d: %s", closed.Code, closed.Body.String())
+	}
+
+	second := bytes.Replace(first, []byte("Line follower"), []byte("Line follower v2"), 1)
+
+	resubmitted := do(t, application, http.MethodPost, "/api/ingest/half-life", second, nil, map[string]string{
+		"X-Ari-Signature": hmacHex("test-ingest", second),
+	})
+	if resubmitted.Code != http.StatusCreated {
+		t.Fatalf("resubmit = %d: %s", resubmitted.Code, resubmitted.Body.String())
+	}
+
+	v2 := decode[contract.IngestAccepted](t, resubmitted)
+	if v2.Version != 2 {
+		t.Fatalf("version = %d, want 2", v2.Version)
+	}
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/"+v2.ID+"/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim v2 = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle2 := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+v2.ID, nil, cookie, nil))
+	if len(bundle2.Findings) != 1 || bundle2.Findings[0].ID != finding.ID {
+		t.Fatalf("v2 findings = %+v", bundle2.Findings)
+	}
+
+	if bundle2.Findings[0].OpenedVersion != 1 || bundle2.Findings[0].OpenedSubmissionID != bundle1.Submission.ID {
+		t.Fatalf("finding origin = %+v", bundle2.Findings[0])
+	}
+
+	fixBody, _ := json.Marshal(contract.FindingUpdateRequest{Resolution: stringPtr("Added the Gerber ZIP."), Status: "fixed"})
+
+	fixed := do(t, application, http.MethodPatch, testBase+"/submissions/"+v2.ID+"/findings/"+finding.ID, fixBody, cookie, nil)
+	if fixed.Code != http.StatusOK {
+		t.Fatalf("fix on v2 = %d: %s", fixed.Code, fixed.Body.String())
+	}
+
+	hours := max(
+		bundle2.Submission.HoursClaimedSeconds,
+		bundle2.Submission.HoursJournalSeconds+bundle2.Submission.HoursHackatimeSeconds,
+	)
+	approveBody, _ := json.Marshal(contract.DecisionRequest{
+		Acknowledgements:     warningKeys(bundle2.Checks),
+		Decision:             decisionApproved,
+		HoursApprovedSeconds: &hours,
+		IdempotencyKey:       "dec-resubmission-finding",
+		NoteToMaker:          "Thanks for the fix.",
+		Version:              bundle2.Submission.Version,
+	})
+
+	approved := do(t, application, http.MethodPost, testBase+"/submissions/"+v2.ID+"/decision", approveBody, cookie, nil)
+	if approved.Code != http.StatusOK {
+		t.Fatalf("approve v2 = %d: %s", approved.Code, approved.Body.String())
 	}
 }
