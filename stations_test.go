@@ -224,3 +224,81 @@ func TestStationAnswerGuards(t *testing.T) {
 		t.Fatalf("stale answer = %d: %s", stale.Code, stale.Body.String())
 	}
 }
+
+// TestStationAnswersArePerReviewerAndConflict covers the exception path: a second
+// reviewer can answer a station, and disagreement blocks it until the answers converge.
+func TestStationAnswersArePerReviewerAndConflict(t *testing.T) {
+	application := newTestApp(t)
+	firstReviewer := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, firstReviewer, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, firstReviewer, nil))
+	triage := stationByKey(bundle, "triage")
+	firstQuestion := triage.Questions[0]
+
+	for _, question := range triage.Questions {
+		if question.Required == 1 {
+			answerQuestion(t, application, firstReviewer, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
+		}
+	}
+
+	if after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, firstReviewer, nil)); after.CurrentStation == nil || *after.CurrentStation != "time" {
+		t.Fatalf("current after first reviewer = %v, want time", after.CurrentStation)
+	}
+
+	if release := do(t, application, http.MethodDelete, testBase+"/submissions/sub_fixture_1/claim", nil, firstReviewer, nil); release.Code != http.StatusNoContent {
+		t.Fatalf("release = %d: %s", release.Code, release.Body.String())
+	}
+
+	secondReviewer := login(t, application, "organiser@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, secondReviewer, nil); claim.Code != http.StatusOK {
+		t.Fatalf("second claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	failed := answerQuestion(t, application, secondReviewer, bundle.Submission.ID, "triage", firstQuestion.Key, "fail", bundle.Submission.Version)
+
+	var conflicted bool
+
+	for _, state := range failed.States {
+		if state.Key == "triage" && state.Status == "blocked" && state.Conflicts == 1 {
+			conflicted = true
+		}
+	}
+
+	if !conflicted {
+		t.Fatalf("states = %+v, want triage blocked with one conflict", failed.States)
+	}
+
+	if failed.CurrentStation == nil || *failed.CurrentStation != "triage" {
+		t.Fatalf("current after conflict = %v, want triage", failed.CurrentStation)
+	}
+
+	withAnswers := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, secondReviewer, nil))
+	competing := 0
+
+	for _, answer := range withAnswers.StationAnswers {
+		if answer.StationKey == "triage" && answer.QuestionKey == firstQuestion.Key {
+			competing++
+
+			if answer.ReviewerName == nil || *answer.ReviewerName == "" {
+				t.Fatalf("answer = %+v, want a reviewer name", answer)
+			}
+		}
+	}
+
+	if competing != 2 {
+		t.Fatalf("competing answers = %d, want 2", competing)
+	}
+
+	resolved := answerQuestion(t, application, secondReviewer, bundle.Submission.ID, "triage", firstQuestion.Key, "pass", bundle.Submission.Version)
+
+	for _, state := range resolved.States {
+		if state.Key == "triage" && (state.Status != "done" || state.Conflicts != 0) {
+			t.Fatalf("resolved triage = %+v, want done without conflicts", state)
+		}
+	}
+}

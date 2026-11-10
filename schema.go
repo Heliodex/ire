@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/outbox"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 // schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 15
+const schemaVersion = 16
 
 // stationSortHardware keeps the hardware station after the shared narrative station.
 const stationSortHardware = 40
@@ -349,10 +351,10 @@ func schemaStatements() []storage.Statement {
 			answer text not null check (answer in ('pass','fail','na')),
 			evidence text not null default '',
 			artifact_hash text,
-			reviewer_id text,
+			reviewer_id text not null,
 			created_at text not null,
 			updated_at text not null,
-			unique (submission_id, station_key, question_key)
+			unique (submission_id, station_key, question_key, reviewer_id)
 		)`,
 
 		`create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`,
@@ -661,11 +663,61 @@ func (a *ireApp) migrate(ctx context.Context) error {
 		return err
 	}
 
+	if err := a.ensureStationAnswerReviewers(ctx); err != nil {
+		return err
+	}
+
 	if err := a.ensureSubmittedAtColumn(ctx); err != nil {
 		return err
 	}
 
 	return a.seed(ctx)
+}
+
+// ensureStationAnswerReviewers rebuilds the answer table from the shared per-question
+// uniqueness to one answer per reviewer. The old table cannot express the new key, so
+// the migration copies it across instead of altering it.
+func (a *ireApp) ensureStationAnswerReviewers(ctx context.Context) error {
+	var definition string
+
+	err := a.store.QueryRow(ctx, `select sql from sqlite_master where type = 'table' and name = 'station_answer'`).Scan(&definition)
+	if errors.Is(err, storage.ErrNoRows) {
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if strings.Contains(definition, "unique (submission_id, station_key, question_key, reviewer_id)") {
+		return nil
+	}
+
+	statements := []storage.TransactionStatement{
+		{SQL: `create table station_answer_new (
+			id text primary key,
+			submission_id text not null references submission(id) on delete cascade,
+			station_key text not null,
+			question_key text not null,
+			answer text not null check (answer in ('pass','fail','na')),
+			evidence text not null default '',
+			artifact_hash text,
+			reviewer_id text not null,
+			created_at text not null,
+			updated_at text not null,
+			unique (submission_id, station_key, question_key, reviewer_id)
+		)`},
+		{SQL: `insert into station_answer_new (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
+			select id, submission_id, station_key, question_key, answer, evidence, artifact_hash, coalesce(nullif(reviewer_id, ''), 'legacy'), created_at, updated_at
+			from station_answer`},
+		{SQL: `drop table station_answer`},
+		{SQL: `alter table station_answer_new rename to station_answer`},
+		{SQL: `create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`},
+	}
+
+	_, err = a.store.Transaction(ctx, statements...)
+
+	return err
 }
 
 // ensureSubmittedAtColumn adds the upstream submission timestamp column when it is missing.

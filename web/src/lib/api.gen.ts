@@ -2,7 +2,7 @@
 // Excluded from lint and format; verified byte-for-byte by wt contract --check.
 import type { InferOutput } from "valibot"
 import { parseJSON, program, requestVoid } from "./api-runtime"
-import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, findingResponseSchema, findingsResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, stationAnswerResponseSchema, stationQueueResponseSchema, stationsResponseSchema, submissionFileResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type findingCreateRequestSchema, type findingUpdateRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type stationAnswerRequestSchema, type updateRoleSchema } from "./contract"
+import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, findingResponseSchema, findingsResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, stationAnswerResponseSchema, stationDefinitionSchema, stationQueueResponseSchema, stationsResponseSchema, submissionFileResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type findingCreateRequestSchema, type findingUpdateRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type stationAnswerRequestSchema, type updateRoleSchema } from "./contract"
 
 // fetchAuthConfig returns which sign-in methods are enabled.
 export async function fetchAuthConfig(): Promise<InferOutput<typeof authConfigSchema>> {
@@ -66,8 +66,14 @@ export async function fetchQueue(
 }
 
 // fetchStations lists the workflow stations and how many open ships are waiting in each.
-export async function fetchStations(): Promise<InferOutput<typeof stationsResponseSchema>> {
-	const response = await fetch(`/api/v1/programs/${program}/stations`)
+export async function fetchStations(
+	stage = 1,
+): Promise<InferOutput<typeof stationsResponseSchema>> {
+	const query = new URLSearchParams()
+	query.set("stage", String(stage))
+	let url = `/api/v1/programs/${program}/stations`
+	if (query.size > 0) url += `?${query}`
+	const response = await fetch(url)
 	const parsed = await parseJSON(response, stationsResponseSchema)
 	return parsed
 }
@@ -75,10 +81,38 @@ export async function fetchStations(): Promise<InferOutput<typeof stationsRespon
 // fetchStationQueue lists the open ships whose current station is this one.
 export async function fetchStationQueue(
 	station: string,
+	stage = 1,
 ): Promise<InferOutput<typeof stationQueueResponseSchema>> {
-	const response = await fetch(`/api/v1/programs/${program}/stations/${encodeURIComponent(station)}/queue`)
+	const query = new URLSearchParams()
+	query.set("stage", String(stage))
+	let url = `/api/v1/programs/${program}/stations/${encodeURIComponent(station)}/queue`
+	if (query.size > 0) url += `?${query}`
+	const response = await fetch(url)
 	const parsed = await parseJSON(response, stationQueueResponseSchema)
 	return parsed
+}
+
+// saveStation creates or replaces a station and its questions.
+export async function saveStation(
+	station: string,
+	request: InferOutput<typeof stationDefinitionSchema>,
+): Promise<InferOutput<typeof stationDefinitionSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/stations/${encodeURIComponent(station)}`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		method: "PUT",
+	})
+	const parsed = await parseJSON(response, stationDefinitionSchema)
+	return parsed
+}
+
+// deleteStation removes a station and its questions.
+export async function deleteStation(
+	station: string,
+): Promise<void> {
+	await requestVoid(`/api/v1/programs/${program}/stations/${encodeURIComponent(station)}`, {
+		method: "DELETE",
+	})
 }
 
 // saveStationAnswer records one station question's verdict and evidence.

@@ -839,6 +839,7 @@ export const stationDefinitionSchema = pipe(
 export const stationStateSchema = pipe(
 	object({
 		answered: nonNegative,
+		conflicts: nonNegative,
 		key: pipe(string(), minLength(1)),
 		label: pipe(string(), minLength(1)),
 		openFindings: nonNegative,
@@ -856,6 +857,7 @@ export const stationSummarySchema = pipe(
 		key: pipe(string(), minLength(1)),
 		label: pipe(string(), minLength(1)),
 		sort: nonNegative,
+		stage: nonNegative,
 	}),
 	title("StationSummary"),
 )
@@ -880,6 +882,7 @@ export const stationAnswerSchema = pipe(
 		id: pipe(string(), minLength(1)),
 		questionKey: pipe(string(), minLength(1)),
 		reviewerId: optionalString,
+		reviewerName: optionalString,
 		stationKey: pipe(string(), minLength(1)),
 		submissionId: pipe(string(), minLength(1)),
 		updatedAt: timestamp,

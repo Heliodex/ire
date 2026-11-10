@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test"
 import {
 	answerFor,
+	answersFor,
 	initialStationKey,
 	nextQuestionKey,
+	questionConflict,
 	type StationAnswer,
 	type StationDefinition,
 	type StationState,
@@ -34,6 +36,7 @@ function station(key: string, sort: number, overrides: Partial<StationDefinition
 function state(key: string, status: string, overrides: Partial<StationState> = {}): StationState {
 	return {
 		answered: 0,
+		conflicts: 0,
 		key,
 		label: key,
 		openFindings: 0,
@@ -120,6 +123,14 @@ describe("nextQuestionKey", () => {
 
 		expect(nextQuestionKey(item, answered)).toBeUndefined()
 	})
+
+	test("follows the current reviewer's own answers", () => {
+		const mine = { ...answer("triage", "first"), reviewerId: "me" }
+		const theirs = { ...answer("triage", "second"), reviewerId: "them" }
+
+		expect(nextQuestionKey(item, [mine, theirs], "me")).toBe("second")
+		expect(nextQuestionKey(item, [mine, theirs], "them")).toBe("first")
+	})
 })
 
 describe("answerFor and upsertStationAnswer", () => {
@@ -131,14 +142,28 @@ describe("answerFor and upsertStationAnswer", () => {
 		expect(answerFor([first], "time", "cover")).toBeUndefined()
 	})
 
-	test("appends a new answer and replaces an existing one without mutating the input", () => {
-		const appended = upsertStationAnswer([], first)
-		expect(appended).toHaveLength(1)
-		expect(appended[0]).toBe(first)
+	test("appends a new answer and replaces only the same reviewer's answer", () => {
+		const mine = { ...first, reviewerId: "me" }
+		const theirs = { ...second, reviewerId: "them" }
 
-		const replaced = upsertStationAnswer([first], second)
-		expect(replaced).toHaveLength(1)
-		expect(replaced[0]?.evidence).toBe("new")
-		expect(first.evidence).toBe("old")
+		const appended = upsertStationAnswer([], mine)
+		expect(appended).toHaveLength(1)
+		expect(appended[0]).toBe(mine)
+
+		const replaced = upsertStationAnswer([mine, theirs], { ...mine, evidence: "new" })
+		expect(replaced).toHaveLength(2)
+		expect(replaced.find(item => item.reviewerId === "me")?.evidence).toBe("new")
+		expect(replaced.find(item => item.reviewerId === "them")?.evidence).toBe("new")
+		expect(mine.evidence).toBe("old")
+	})
+
+	test("filters and flags competing answers", () => {
+		const mine = { ...answer("triage", "cover", { evidence: "mine" }), reviewerId: "me" }
+		const theirs = { ...answer("triage", "cover", { evidence: "theirs" }), reviewerId: "them" }
+
+		expect(answersFor([mine, theirs], "triage", "cover")).toHaveLength(2)
+		expect(answerFor([mine, theirs], "triage", "cover", "me")).toBe(mine)
+		expect(questionConflict([mine, theirs], "triage", "cover")).toBe(false)
+		expect(questionConflict([mine, { ...theirs, answer: "fail" }], "triage", "cover")).toBe(true)
 	})
 })

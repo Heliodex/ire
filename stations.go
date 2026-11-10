@@ -14,6 +14,15 @@ import (
 // stationQueuePageLimit is the page size for a focused station queue.
 const stationQueuePageLimit = 50
 
+// stationStage reads the optional stage filter, defaulting to the first pass.
+func stationStage(r *http.Request) int {
+	if r.URL.Query().Get("stage") == "2" {
+		return 2
+	}
+
+	return stageOne
+}
+
 // currentStationSQL returns the first unfinished station for the submission alias s.
 func currentStationSQL() string {
 	return `(select sd.key
@@ -25,10 +34,16 @@ func currentStationSQL() string {
 			exists (
 				select 1 from station_question sq
 				where sq.program_id = sd.program_id and sq.station_key = sd.key and sq.required = 1
-				  and not exists (
-					select 1 from station_answer sa
-					where sa.submission_id = s.id and sa.station_key = sd.key and sa.question_key = sq.key
-					  and sa.answer in ('pass','na')
+				  and (
+					not exists (
+						select 1 from station_answer sa
+						where sa.submission_id = s.id and sa.station_key = sd.key and sa.question_key = sq.key
+						  and sa.answer in ('pass','na')
+					)
+					or (
+						select count(distinct sa.answer) from station_answer sa
+						where sa.submission_id = s.id and sa.station_key = sd.key and sa.question_key = sq.key
+					) > 1
 				  )
 			)
 			or exists (
@@ -135,9 +150,10 @@ func stationApplies(station contract.StationDefinition, ship submissionRow) bool
 
 // stationAnswers loads every answer recorded for one version.
 func (a *ireApp) stationAnswers(ctx context.Context, submissionID string) ([]contract.StationAnswer, error) {
-	rows, err := a.store.Query(ctx, `select id, submission_id, station_key, question_key, answer, evidence, coalesce(artifact_hash, ''),
-			coalesce(reviewer_id, ''), updated_at
-		from station_answer where submission_id = ? order by station_key, question_key`, submissionID)
+	rows, err := a.store.Query(ctx, `select a.id, a.submission_id, a.station_key, a.question_key, a.answer, a.evidence,
+			coalesce(a.artifact_hash, ''), coalesce(a.reviewer_id, ''), coalesce(u.name, ''), coalesce(u.email, ''), a.updated_at
+		from station_answer a left join user u on u.id = a.reviewer_id
+		where a.submission_id = ? order by a.station_key, a.question_key, a.updated_at`, submissionID)
 	if err != nil {
 		return nil, err
 	}
@@ -147,17 +163,25 @@ func (a *ireApp) stationAnswers(ctx context.Context, submissionID string) ([]con
 
 	for rows.Next() {
 		var (
-			item                     contract.StationAnswer
-			artifactHash, reviewerID string
+			item                                  contract.StationAnswer
+			artifactHash, reviewerID, name, email string
 		)
 
 		if err := rows.Scan(&item.ID, &item.SubmissionID, &item.StationKey, &item.QuestionKey, &item.Answer, &item.Evidence, &artifactHash,
-			&reviewerID, &item.UpdatedAt); err != nil {
+			&reviewerID, &name, &email, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
 
 		item.ArtifactHash = optionalText(artifactHash)
 		item.ReviewerID = optionalText(reviewerID)
+
+		switch {
+		case name != "":
+			item.ReviewerName = stringPtr(name)
+		case email != "":
+			item.ReviewerName = stringPtr(email)
+		}
+
 		out = append(out, item)
 	}
 
@@ -166,10 +190,15 @@ func (a *ireApp) stationAnswers(ctx context.Context, submissionID string) ([]con
 
 // stationStates derives the progress for every applicable station and returns the first unfinished one.
 func stationStates(ship submissionRow, definitions []contract.StationDefinition, answers []contract.StationAnswer, findings []contract.Finding) ([]contract.StationState, *string) {
-	answerAt := map[string]string{}
+	answersAt := map[string]map[string]bool{}
 
 	for _, answer := range answers {
-		answerAt[answer.StationKey+"\x00"+answer.QuestionKey] = answer.Answer
+		key := answer.StationKey + "\x00" + answer.QuestionKey
+		if answersAt[key] == nil {
+			answersAt[key] = map[string]bool{}
+		}
+
+		answersAt[key][answer.Answer] = true
 	}
 
 	openAt := map[string]int{}
@@ -188,7 +217,7 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 			continue
 		}
 
-		var required, answered, resolved int
+		var required, answered, resolved, conflicts int
 
 		failed := false
 
@@ -199,16 +228,21 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 
 			required++
 
-			value, ok := answerAt[station.Key+"\x00"+question.Key]
-			if ok {
-				answered++
+			values := answersAt[station.Key+"\x00"+question.Key]
+			if len(values) == 0 {
+				continue
 			}
 
+			answered++
+
 			switch {
-			case ok && (value == "pass" || value == "na"):
-				resolved++
-			case ok && value == "fail":
+			case len(values) > 1:
+				conflicts++
 				failed = true
+			case values["fail"]:
+				failed = true
+			case values["pass"] || values["na"]:
+				resolved++
 			}
 		}
 
@@ -236,6 +270,7 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 			Status:       status,
 			Answered:     answered,
 			Required:     required,
+			Conflicts:    conflicts,
 			OpenFindings: openAt[station.Key],
 		})
 	}
@@ -302,14 +337,16 @@ func (a *ireApp) handleStations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	definitions, err := a.stationDefinitions(r.Context(), person.ProgramID, stageOne)
+	stage := stationStage(r)
+
+	definitions, err := a.stationDefinitions(r.Context(), person.ProgramID, stage)
 	if err != nil {
 		writeStorage(w, err)
 
 		return
 	}
 
-	counts, err := a.stationCounts(r.Context(), person.ProgramID, stageOne)
+	counts, err := a.stationCounts(r.Context(), person.ProgramID, stage)
 	if err != nil {
 		writeStorage(w, err)
 
@@ -324,6 +361,7 @@ func (a *ireApp) handleStations(w http.ResponseWriter, r *http.Request) {
 			Label:       station.Label,
 			Description: station.Description,
 			Sort:        station.Sort,
+			Stage:       station.Stage,
 			Count:       counts[station.Key],
 		})
 	}
@@ -345,19 +383,21 @@ func (a *ireApp) handleStationQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !found || station.Stage != stageOne {
+	stage := stationStage(r)
+
+	if !found || station.Stage != stage {
 		app.WriteError(w, http.StatusNotFound, "unknown station")
 		return
 	}
 
-	items, hasMore, err := a.stationQueueItems(r.Context(), person, stageOne, station.Key)
+	items, hasMore, err := a.stationQueueItems(r.Context(), person, stage, station.Key)
 	if err != nil {
 		writeStorage(w, err)
 
 		return
 	}
 
-	counts, err := a.stationCounts(r.Context(), person.ProgramID, stageOne)
+	counts, err := a.stationCounts(r.Context(), person.ProgramID, stage)
 	if err != nil {
 		writeStorage(w, err)
 
@@ -457,10 +497,18 @@ func (a *ireApp) handleStationAnswer(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := a.store.Exec(r.Context(), `insert into station_answer (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
 		values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		on conflict(submission_id, station_key, question_key) do update set
+		on conflict(submission_id, station_key, question_key, reviewer_id) do update set
 			answer = excluded.answer, evidence = excluded.evidence, artifact_hash = excluded.artifact_hash,
-			reviewer_id = excluded.reviewer_id, updated_at = excluded.updated_at`,
+			updated_at = excluded.updated_at`,
 		id, ship.ID, station.Key, questionKey, request.Answer, request.Evidence, nullString(stringValue(request.ArtifactHash)), person.ID, now, now); err != nil {
+		writeStorage(w, err)
+
+		return
+	}
+
+	if _, err := a.store.Exec(r.Context(), `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at) values (?, ?, 'station_answered', ?, ?, ?, ?)`,
+		newID("evt"), ship.ID, person.ID, person.Email,
+		marshalMap(map[string]any{"station": station.Key, "question": questionKey, "answer": request.Answer}), now); err != nil {
 		writeStorage(w, err)
 
 		return
@@ -489,7 +537,7 @@ func (a *ireApp) handleStationAnswer(w http.ResponseWriter, r *http.Request) {
 
 	states, current := stationStates(ship, definitions, answers, findings)
 
-	answer, found := answerAt(answers, station.Key, questionKey)
+	answer, found := answerAt(answers, station.Key, questionKey, person.ID)
 	if !found {
 		app.WriteError(w, http.StatusInternalServerError, "could not read the saved answer")
 		return
@@ -498,10 +546,10 @@ func (a *ireApp) handleStationAnswer(w http.ResponseWriter, r *http.Request) {
 	app.WriteJSON(w, http.StatusOK, contract.StationAnswerResult{Answer: answer, States: states, CurrentStation: current})
 }
 
-// answerAt finds one saved answer.
-func answerAt(answers []contract.StationAnswer, stationKey, questionKey string) (contract.StationAnswer, bool) {
+// answerAt finds the reviewer's own saved answer.
+func answerAt(answers []contract.StationAnswer, stationKey, questionKey, reviewerID string) (contract.StationAnswer, bool) {
 	for _, answer := range answers {
-		if answer.StationKey == stationKey && answer.QuestionKey == questionKey {
+		if answer.StationKey == stationKey && answer.QuestionKey == questionKey && stringValue(answer.ReviewerID) == reviewerID {
 			return answer, true
 		}
 	}

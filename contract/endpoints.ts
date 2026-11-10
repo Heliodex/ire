@@ -26,6 +26,7 @@ import {
 	searchResponseSchema,
 	sendBackResultSchema,
 	stationAnswerResponseSchema,
+	stationDefinitionSchema,
 	stationQueueResponseSchema,
 	stationsResponseSchema,
 	submissionFileResponseSchema,
@@ -126,8 +127,11 @@ export const endpoints: Endpoint[] = Object.freeze([
 		doc: "fetchStations lists the workflow stations and how many open ships are waiting in each.",
 		method: "GET",
 		name: "fetchStations",
-		params: [{ in: "path", name: "program", type: "string", value: "program" }],
 		path: "/api/v1/programs/{program}/stations",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ default: "1", in: "query", name: "stage", type: "number" },
+		],
 		response: { schema: stationsResponseSchema },
 	},
 	{
@@ -137,9 +141,37 @@ export const endpoints: Endpoint[] = Object.freeze([
 		params: [
 			{ in: "path", name: "program", type: "string", value: "program" },
 			{ in: "path", name: "station", type: "string" },
+			{ default: "1", in: "query", name: "stage", type: "number" },
 		],
 		path: "/api/v1/programs/{program}/stations/{station}/queue",
 		response: { schema: stationQueueResponseSchema },
+	},
+	{
+		doc: "saveStation creates or replaces a station and its questions.",
+		method: "PUT",
+		name: "saveStation",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "station", type: "string" },
+			{
+				in: "body",
+				name: "request",
+				type: "InferOutput<typeof stationDefinitionSchema>",
+			},
+		],
+		path: "/api/v1/programs/{program}/stations/{station}",
+		response: { schema: stationDefinitionSchema },
+	},
+	{
+		doc: "deleteStation removes a station and its questions.",
+		method: "DELETE",
+		name: "deleteStation",
+		params: [
+			{ in: "path", name: "program", type: "string", value: "program" },
+			{ in: "path", name: "station", type: "string" },
+		],
+		path: "/api/v1/programs/{program}/stations/{station}",
+		response: "void",
 	},
 	{
 		doc: "saveStationAnswer records one station question's verdict and evidence.",

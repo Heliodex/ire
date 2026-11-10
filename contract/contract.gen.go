@@ -5660,6 +5660,9 @@ type StationAnswer struct {
 	// ReviewerID corresponds to the JSON schema field "reviewerId".
 	ReviewerID *string `json:"reviewerId,omitempty,omitzero" yaml:"reviewerId,omitempty" mapstructure:"reviewerId,omitempty"`
 
+	// ReviewerName corresponds to the JSON schema field "reviewerName".
+	ReviewerName *string `json:"reviewerName,omitempty,omitzero" yaml:"reviewerName,omitempty" mapstructure:"reviewerName,omitempty"`
+
 	// StationKey corresponds to the JSON schema field "stationKey".
 	StationKey string `json:"stationKey" yaml:"stationKey" mapstructure:"stationKey"`
 
@@ -6002,6 +6005,9 @@ type StationState struct {
 	// Answered corresponds to the JSON schema field "answered".
 	Answered int `json:"answered" yaml:"answered" mapstructure:"answered"`
 
+	// Conflicts corresponds to the JSON schema field "conflicts".
+	Conflicts int `json:"conflicts" yaml:"conflicts" mapstructure:"conflicts"`
+
 	// Key corresponds to the JSON schema field "key".
 	Key string `json:"key" yaml:"key" mapstructure:"key"`
 
@@ -6030,6 +6036,9 @@ func (j *StationState) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["answered"]; raw != nil && !ok {
 		return fmt.Errorf("field answered in StationState: required")
 	}
+	if _, ok := raw["conflicts"]; raw != nil && !ok {
+		return fmt.Errorf("field conflicts in StationState: required")
+	}
 	if _, ok := raw["key"]; raw != nil && !ok {
 		return fmt.Errorf("field key in StationState: required")
 	}
@@ -6055,6 +6064,9 @@ func (j *StationState) UnmarshalJSON(value []byte) error {
 	}
 	if 0 > plain.Answered {
 		return fmt.Errorf("field %s: must be >= %v", "answered", 0)
+	}
+	if 0 > plain.Conflicts {
+		return fmt.Errorf("field %s: must be >= %v", "conflicts", 0)
 	}
 	if utf8.RuneCountInString(string(plain.Key)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
@@ -6093,6 +6105,9 @@ type StationSummary struct {
 
 	// Sort corresponds to the JSON schema field "sort".
 	Sort int `json:"sort" yaml:"sort" mapstructure:"sort"`
+
+	// Stage corresponds to the JSON schema field "stage".
+	Stage int `json:"stage" yaml:"stage" mapstructure:"stage"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -6116,6 +6131,9 @@ func (j *StationSummary) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["sort"]; raw != nil && !ok {
 		return fmt.Errorf("field sort in StationSummary: required")
 	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in StationSummary: required")
+	}
 	type Plain StationSummary
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
@@ -6132,6 +6150,9 @@ func (j *StationSummary) UnmarshalJSON(value []byte) error {
 	}
 	if 0 > plain.Sort {
 		return fmt.Errorf("field %s: must be >= %v", "sort", 0)
+	}
+	if 0 > plain.Stage {
+		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 	*j = StationSummary(plain)
 	return nil
