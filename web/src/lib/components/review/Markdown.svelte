@@ -1,9 +1,9 @@
 <script lang="ts">
-import { parseMarkdown } from "../../markdown"
+	import { parseMarkdown } from "../../markdown"
 
-let { text }: { text: string } = $props()
+	let { imageBase = "", text }: { imageBase?: string; text: string } = $props()
 
-const blocks = $derived(parseMarkdown(text))
+	const blocks = $derived(parseMarkdown(text, imageBase))
 </script>
 
 <div class="markdown">
