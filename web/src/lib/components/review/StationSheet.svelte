@@ -1,4 +1,5 @@
 <script lang="ts">
+import { tick } from "svelte"
 import { maxNote } from "../../contract"
 import {
 	answerFor,
@@ -76,7 +77,7 @@ $effect((): void => {
 	if (current === seenCurrent) return
 
 	seenCurrent = current
-	if (current === "" || manualSelection) return
+	if (current === "" || manualSelection || (focusStation ?? "") !== "") return
 
 	selected = current
 })
@@ -161,6 +162,7 @@ async function drain(): Promise<void> {
 
 	try {
 		await onAnswer(task.stationKey, task.questionKey, task.verdict, task.evidence)
+		if (task.stationKey === selectedStation?.key) void scrollToNext()
 	} catch (err) {
 		errors[task.key] = err instanceof Error ? err.message : "Could not save this answer."
 	} finally {
@@ -172,6 +174,15 @@ async function drain(): Promise<void> {
 
 function isQueued(key: string): boolean {
 	return queue.some(item => item.key === key)
+}
+
+// scrollToNext keeps the next unanswered question in view after a verdict.
+async function scrollToNext(): Promise<void> {
+	await tick()
+	if (nextKey === undefined) return
+
+	const node = document.querySelector(`[data-question="${nextKey}"]`)
+	if (node instanceof HTMLElement) node.scrollIntoView({ behavior: "smooth", block: "nearest" })
 }
 
 // answerNext lets a reviewer answer the next unanswered question with 1, 2 or 3.
@@ -264,7 +275,10 @@ function onKeydown(event: KeyboardEvent): void {
 						{#each questions as question (question.key)}
 							{const answer = answerFor(answers, selectedStation.key, question.key)}
 							{const key = answerKey(selectedStation.key, question.key)}
-							<li class:next={editable && answer === undefined && nextKey === question.key}>
+							<li
+								data-question={question.key}
+								class:next={editable && answer === undefined && nextKey === question.key}
+							>
 								<div class="question-head">
 									<p class="prompt">
 										{question.prompt}

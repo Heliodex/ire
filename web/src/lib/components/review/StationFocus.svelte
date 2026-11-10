@@ -211,6 +211,10 @@ function applyBundle(next: Bundle): void {
 	holding = next.claim?.isMine === 1
 	coverFailed = false
 	error = ""
+	notice =
+		next.claim !== undefined && next.claim.isMine !== 1
+			? `Held by ${next.claim.reviewerName || next.claim.reviewerEmail}. You can read the evidence but not answer until it is free.`
+			: ""
 }
 
 // isUnauthorized sends a dead session back to sign-in and reports whether it handled the error.
@@ -651,19 +655,6 @@ async function persistDraft(): Promise<void> {
 				</section>
 			{/if}
 
-			{#if stationDefs.length > 0}
-				<StationSheet
-					answers={bundle.stationAnswers}
-					currentStation={bundle.currentStation}
-					{editable}
-					focusStation={stationKey}
-					onAnswer={answerStation}
-					states={bundle.stationStates}
-					stations={bundle.stations}
-					version={bundle.submission.version}
-				/>
-			{/if}
-
 			{#if stationKey === "time" || stationKey === "narrative"}
 				<StationFields
 					{bundle}
@@ -674,6 +665,19 @@ async function persistDraft(): Promise<void> {
 					onChange={onFieldChange}
 					{stationKey}
 					{technicalFeatures}
+				/>
+			{/if}
+
+			{#if stationDefs.length > 0}
+				<StationSheet
+					answers={bundle.stationAnswers}
+					currentStation={bundle.currentStation}
+					{editable}
+					focusStation={stationKey}
+					onAnswer={answerStation}
+					states={bundle.stationStates}
+					stations={bundle.stations}
+					version={bundle.submission.version}
 				/>
 			{/if}
 

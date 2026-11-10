@@ -174,7 +174,7 @@ export function suggestDeflationReason(bundle: Bundle, capturedSeconds: number):
 		})
 		.join(", ")
 
-	return `Cut ${formatHours(total)} from ${formatHours(capturedSeconds)}: ${cuts}. An intermediate maker would take about `
+	return `Cut ${formatHours(total)} from ${formatHours(capturedSeconds)}: ${cuts}. Compare with what an intermediate maker would take for the same scope.`
 }
 
 // suggestInternalNote collects the findings and station evidence a synthesis reviewer needs.
