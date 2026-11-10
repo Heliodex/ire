@@ -419,6 +419,8 @@ function onKeydown(event: KeyboardEvent): void {
 							{const key = $derived(answerKey(selectedStation.key, question.key))}
 							<li
 								data-question={question.key}
+								class:needs-finding={answer?.answer === "fail"
+									&& !questionHasFinding(selectedStation.key, question.prompt)}
 								class:next={editable && answer === undefined && nextKey === question.key}
 							>
 								<details
@@ -829,6 +831,11 @@ function onKeydown(event: KeyboardEvent): void {
 
 .questions li.next {
 	border-left-color: var(--primary);
+}
+
+.questions li.needs-finding {
+	background: color-mix(in srgb, var(--status-changes) 7%, transparent);
+	border-left-color: var(--status-changes);
 }
 
 .question-head {
