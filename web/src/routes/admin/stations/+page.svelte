@@ -163,6 +163,8 @@ async function save(): Promise<void> {
 }
 
 async function remove(key: string): Promise<void> {
+	if (!window.confirm(`Delete ${key} and its answers?`)) return
+
 	saving = true
 	error = ""
 	notice = ""

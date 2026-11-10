@@ -115,9 +115,7 @@ async function load(target: string): Promise<void> {
 			{#each data.items as item (item.id)}
 				<a
 					class="row"
-					href={key === "synthesis"
-						? `/review/${encodeURIComponent(item.id)}?station=synthesis`
-						: `/station/${encodeURIComponent(key)}?id=${encodeURIComponent(item.id)}&stage=${stage}`}
+					href={`/station/${encodeURIComponent(key)}?id=${encodeURIComponent(item.id)}&stage=${stage}`}
 				>
 					<span class="row-main">
 						<span class="row-title">{item.title}</span>

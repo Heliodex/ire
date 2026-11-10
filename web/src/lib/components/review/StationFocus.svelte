@@ -288,6 +288,12 @@ function applyBundle(next: Bundle): void {
 	)
 	if (deflationReason === "" && hasCuts) deflationReason = suggestDeflationReason(next, captured)
 
+	if (next.submission.stage === 2 || next.submission.status === "stage2_hold") {
+		const held = next.reviews.find(review => review.held === 1)
+		technicalFeatures = held?.technicalFeatures ?? technicalFeatures
+		deflationReason = held?.deflationReason ?? deflationReason
+	}
+
 	hourInit(next)
 	holding = next.claim?.isMine === 1
 	coverFailed = false
