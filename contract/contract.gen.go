@@ -1631,6 +1631,86 @@ func (j *FindingsResponse) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type HackatimeAdjustment struct {
+	// Adjustment corresponds to the JSON schema field "adjustment".
+	Adjustment *TimeAdjustment `json:"adjustment,omitempty,omitzero" yaml:"adjustment,omitempty" mapstructure:"adjustment,omitempty"`
+
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hoursApprovedSeconds".
+	HoursApprovedSeconds int `json:"hoursApprovedSeconds" yaml:"hoursApprovedSeconds" mapstructure:"hoursApprovedSeconds"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *HackatimeAdjustment) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["hoursApprovedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursApprovedSeconds in HackatimeAdjustment: required")
+	}
+	type Plain HackatimeAdjustment
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.HoursApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursApprovedSeconds", 0)
+	}
+	*j = HackatimeAdjustment(plain)
+	return nil
+}
+
+type HackatimeReviewRequest struct {
+	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
+	ApprovedSeconds int `json:"approvedSeconds" yaml:"approvedSeconds" mapstructure:"approvedSeconds"`
+
+	// DeflationReason corresponds to the JSON schema field "deflationReason".
+	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
+
+	// ReviewerNote corresponds to the JSON schema field "reviewerNote".
+	ReviewerNote string `json:"reviewerNote" yaml:"reviewerNote" mapstructure:"reviewerNote"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *HackatimeReviewRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["approvedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field approvedSeconds in HackatimeReviewRequest: required")
+	}
+	if _, ok := raw["reviewerNote"]; raw != nil && !ok {
+		return fmt.Errorf("field reviewerNote in HackatimeReviewRequest: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in HackatimeReviewRequest: required")
+	}
+	type Plain HackatimeReviewRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.ApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
+	}
+	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
+	}
+	if utf8.RuneCountInString(string(plain.ReviewerNote)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "reviewerNote", 4000)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = HackatimeReviewRequest(plain)
+	return nil
+}
+
 type ImportResult struct {
 	// Failed corresponds to the JSON schema field "failed".
 	Failed []ImportResultFailedElem `json:"failed" yaml:"failed" mapstructure:"failed"`
@@ -2385,6 +2465,9 @@ type JournalEntry struct {
 	// Text corresponds to the JSON schema field "text".
 	Text *string `json:"text,omitempty,omitzero" yaml:"text,omitempty" mapstructure:"text,omitempty"`
 
+	// Timelapses corresponds to the JSON schema field "timelapses".
+	Timelapses []JournalTimelapse `json:"timelapses" yaml:"timelapses" mapstructure:"timelapses"`
+
 	// Title corresponds to the JSON schema field "title".
 	Title *string `json:"title,omitempty,omitzero" yaml:"title,omitempty" mapstructure:"title,omitempty"`
 }
@@ -2415,6 +2498,9 @@ func (j *JournalEntry) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["seconds"]; raw != nil && !ok {
 		return fmt.Errorf("field seconds in JournalEntry: required")
+	}
+	if _, ok := raw["timelapses"]; raw != nil && !ok {
+		return fmt.Errorf("field timelapses in JournalEntry: required")
 	}
 	type Plain JournalEntry
 	var plain Plain
@@ -2519,6 +2605,47 @@ func (j *JournalReviewRequest) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "version", 0)
 	}
 	*j = JournalReviewRequest(plain)
+	return nil
+}
+
+type JournalTimelapse struct {
+	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
+	ApprovedSeconds *int `json:"approvedSeconds,omitempty,omitzero" yaml:"approvedSeconds,omitempty" mapstructure:"approvedSeconds,omitempty"`
+
+	// CoveredSeconds corresponds to the JSON schema field "coveredSeconds".
+	CoveredSeconds int `json:"coveredSeconds" yaml:"coveredSeconds" mapstructure:"coveredSeconds"`
+
+	// ExternalID corresponds to the JSON schema field "externalId".
+	ExternalID *string `json:"externalId,omitempty,omitzero" yaml:"externalId,omitempty" mapstructure:"externalId,omitempty"`
+
+	// Provider corresponds to the JSON schema field "provider".
+	Provider *string `json:"provider,omitempty,omitzero" yaml:"provider,omitempty" mapstructure:"provider,omitempty"`
+
+	// ThumbnailURL corresponds to the JSON schema field "thumbnailUrl".
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty,omitzero" yaml:"thumbnailUrl,omitempty" mapstructure:"thumbnailUrl,omitempty"`
+
+	// URL corresponds to the JSON schema field "url".
+	URL *string `json:"url,omitempty,omitzero" yaml:"url,omitempty" mapstructure:"url,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *JournalTimelapse) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["coveredSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field coveredSeconds in JournalTimelapse: required")
+	}
+	type Plain JournalTimelapse
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.CoveredSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "coveredSeconds", 0)
+	}
+	*j = JournalTimelapse(plain)
 	return nil
 }
 
@@ -4399,6 +4526,9 @@ type ReviewBundle struct {
 	// Acknowledgements corresponds to the JSON schema field "acknowledgements".
 	Acknowledgements []string `json:"acknowledgements" yaml:"acknowledgements" mapstructure:"acknowledgements"`
 
+	// Adjustments corresponds to the JSON schema field "adjustments".
+	Adjustments []TimeAdjustment `json:"adjustments" yaml:"adjustments" mapstructure:"adjustments"`
+
 	// Bom corresponds to the JSON schema field "bom".
 	Bom []BomLine `json:"bom" yaml:"bom" mapstructure:"bom"`
 
@@ -4465,6 +4595,9 @@ func (j *ReviewBundle) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["acknowledgements"]; raw != nil && !ok {
 		return fmt.Errorf("field acknowledgements in ReviewBundle: required")
+	}
+	if _, ok := raw["adjustments"]; raw != nil && !ok {
+		return fmt.Errorf("field adjustments in ReviewBundle: required")
 	}
 	if _, ok := raw["bom"]; raw != nil && !ok {
 		return fmt.Errorf("field bom in ReviewBundle: required")
@@ -6933,6 +7066,169 @@ func (j *Submission) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "version", 0)
 	}
 	*j = Submission(plain)
+	return nil
+}
+
+type TimeAdjustment struct {
+	// CreatedAt corresponds to the JSON schema field "createdAt".
+	CreatedAt string `json:"createdAt" yaml:"createdAt" mapstructure:"createdAt"`
+
+	// ID corresponds to the JSON schema field "id".
+	ID string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind" yaml:"kind" mapstructure:"kind"`
+
+	// Note corresponds to the JSON schema field "note".
+	Note *string `json:"note,omitempty,omitzero" yaml:"note,omitempty" mapstructure:"note,omitempty"`
+
+	// Reason corresponds to the JSON schema field "reason".
+	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
+
+	// ReviewerID corresponds to the JSON schema field "reviewerId".
+	ReviewerID *string `json:"reviewerId,omitempty,omitzero" yaml:"reviewerId,omitempty" mapstructure:"reviewerId,omitempty"`
+
+	// Seconds corresponds to the JSON schema field "seconds".
+	Seconds int `json:"seconds" yaml:"seconds" mapstructure:"seconds"`
+
+	// Source corresponds to the JSON schema field "source".
+	Source string `json:"source" yaml:"source" mapstructure:"source"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *TimeAdjustment) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["createdAt"]; raw != nil && !ok {
+		return fmt.Errorf("field createdAt in TimeAdjustment: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in TimeAdjustment: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in TimeAdjustment: required")
+	}
+	if _, ok := raw["reason"]; raw != nil && !ok {
+		return fmt.Errorf("field reason in TimeAdjustment: required")
+	}
+	if _, ok := raw["seconds"]; raw != nil && !ok {
+		return fmt.Errorf("field seconds in TimeAdjustment: required")
+	}
+	if _, ok := raw["source"]; raw != nil && !ok {
+		return fmt.Errorf("field source in TimeAdjustment: required")
+	}
+	type Plain TimeAdjustment
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
+	}
+	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Kind)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "kind", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Reason)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
+	}
+	if 0 > plain.Seconds {
+		return fmt.Errorf("field %s: must be >= %v", "seconds", 0)
+	}
+	if utf8.RuneCountInString(string(plain.Source)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "source", 1)
+	}
+	*j = TimeAdjustment(plain)
+	return nil
+}
+
+type TimelapseAdjustment struct {
+	// Adjustment corresponds to the JSON schema field "adjustment".
+	Adjustment *TimeAdjustment `json:"adjustment,omitempty,omitzero" yaml:"adjustment,omitempty" mapstructure:"adjustment,omitempty"`
+
+	// HoursApprovedSeconds corresponds to the JSON schema field
+	// "hoursApprovedSeconds".
+	HoursApprovedSeconds int `json:"hoursApprovedSeconds" yaml:"hoursApprovedSeconds" mapstructure:"hoursApprovedSeconds"`
+
+	// Journal corresponds to the JSON schema field "journal".
+	Journal JournalEntry `json:"journal" yaml:"journal" mapstructure:"journal"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *TimelapseAdjustment) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["hoursApprovedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field hoursApprovedSeconds in TimelapseAdjustment: required")
+	}
+	if _, ok := raw["journal"]; raw != nil && !ok {
+		return fmt.Errorf("field journal in TimelapseAdjustment: required")
+	}
+	type Plain TimelapseAdjustment
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.HoursApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "hoursApprovedSeconds", 0)
+	}
+	*j = TimelapseAdjustment(plain)
+	return nil
+}
+
+type TimelapseReviewRequest struct {
+	// ApprovedSeconds corresponds to the JSON schema field "approvedSeconds".
+	ApprovedSeconds int `json:"approvedSeconds" yaml:"approvedSeconds" mapstructure:"approvedSeconds"`
+
+	// DeflationReason corresponds to the JSON schema field "deflationReason".
+	DeflationReason *string `json:"deflationReason,omitempty,omitzero" yaml:"deflationReason,omitempty" mapstructure:"deflationReason,omitempty"`
+
+	// ReviewerNote corresponds to the JSON schema field "reviewerNote".
+	ReviewerNote string `json:"reviewerNote" yaml:"reviewerNote" mapstructure:"reviewerNote"`
+
+	// Version corresponds to the JSON schema field "version".
+	Version int `json:"version" yaml:"version" mapstructure:"version"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *TimelapseReviewRequest) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["approvedSeconds"]; raw != nil && !ok {
+		return fmt.Errorf("field approvedSeconds in TimelapseReviewRequest: required")
+	}
+	if _, ok := raw["reviewerNote"]; raw != nil && !ok {
+		return fmt.Errorf("field reviewerNote in TimelapseReviewRequest: required")
+	}
+	if _, ok := raw["version"]; raw != nil && !ok {
+		return fmt.Errorf("field version in TimelapseReviewRequest: required")
+	}
+	type Plain TimelapseReviewRequest
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if 0 > plain.ApprovedSeconds {
+		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
+	}
+	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
+	}
+	if utf8.RuneCountInString(string(plain.ReviewerNote)) > 4000 {
+		return fmt.Errorf("field %s length: must be <= %d", "reviewerNote", 4000)
+	}
+	if 0 > plain.Version {
+		return fmt.Errorf("field %s: must be >= %v", "version", 0)
+	}
+	*j = TimelapseReviewRequest(plain)
 	return nil
 }
 

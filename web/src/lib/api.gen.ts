@@ -2,7 +2,7 @@
 // Excluded from lint and format; verified byte-for-byte by wt contract --check.
 import type { InferOutput } from "valibot"
 import { parseJSON, program, requestVoid } from "./api-runtime"
-import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, findingResponseSchema, findingsResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, stationAnswerResponseSchema, stationDefinitionSchema, stationQueueResponseSchema, stationsResponseSchema, submissionFileResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type findingCreateRequestSchema, type findingUpdateRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type stationAnswerRequestSchema, type updateRoleSchema } from "./contract"
+import { authConfigSchema, checkHeadSchema, checkRunSchema, claimResponseSchema, decisionResultSchema, evidenceSchema, fakeDeliveriesResponseSchema, findingResponseSchema, findingsResponseSchema, hackatimeReviewResponseSchema, journalReviewResponseSchema, makerProfileSchema, meResponseSchema, memberSchema, membersResponseSchema, noteCreatedSchema, outboxResponseSchema, overviewResponseSchema, queueResponseSchema, revertDecisionResultSchema, reviewBundleSchema, reviewedResponseSchema, reviewerProfileSchema, roleDefinitionSchema, rolesResponseSchema, searchResponseSchema, sendBackResultSchema, stationAnswerResponseSchema, stationDefinitionSchema, stationQueueResponseSchema, stationsResponseSchema, submissionFileResponseSchema, timelapseReviewResponseSchema, type amendDecisionRequestSchema, type createRoleSchema, type decisionRequestSchema, type findingCreateRequestSchema, type findingUpdateRequestSchema, type hackatimeReviewRequestSchema, type journalReviewRequestSchema, type noteRequestSchema, type revertDecisionRequestSchema, type sendBackRequestSchema, type stationAnswerRequestSchema, type timelapseReviewRequestSchema, type updateRoleSchema } from "./contract"
 
 // fetchAuthConfig returns which sign-in methods are enabled.
 export async function fetchAuthConfig(): Promise<InferOutput<typeof authConfigSchema>> {
@@ -261,6 +261,40 @@ export async function reviewJournal(
 		method: "PATCH",
 	})
 	const parsed = await parseJSON(response, journalReviewResponseSchema)
+	return parsed
+}
+
+// reviewHackatime records the approved Hackatime time and deflation note.
+export async function reviewHackatime(
+	id: string,
+	request: InferOutput<typeof hackatimeReviewRequestSchema>,
+	keepalive = false,
+): Promise<InferOutput<typeof hackatimeReviewResponseSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/hackatime`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		keepalive,
+		method: "PATCH",
+	})
+	const parsed = await parseJSON(response, hackatimeReviewResponseSchema)
+	return parsed
+}
+
+// reviewTimelapse records one clip's approved time and deflation note.
+export async function reviewTimelapse(
+	id: string,
+	entry: string,
+	clip: string,
+	request: InferOutput<typeof timelapseReviewRequestSchema>,
+	keepalive = false,
+): Promise<InferOutput<typeof timelapseReviewResponseSchema>> {
+	const response = await fetch(`/api/v1/programs/${program}/submissions/${encodeURIComponent(id)}/journal/${encodeURIComponent(entry)}/timelapse/${encodeURIComponent(clip)}`, {
+		body: JSON.stringify(request),
+		headers: { "content-type": "application/json" },
+		keepalive,
+		method: "PATCH",
+	})
+	const parsed = await parseJSON(response, timelapseReviewResponseSchema)
 	return parsed
 }
 

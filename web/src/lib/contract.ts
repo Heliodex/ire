@@ -552,6 +552,18 @@ export const journalMediaSchema = pipe(
 	title("JournalMedia"),
 )
 
+export const journalTimelapseSchema = pipe(
+	object({
+		approvedSeconds: optional(pipe(number(), integer())),
+		coveredSeconds: nonNegative,
+		externalId: optionalString,
+		provider: optionalString,
+		thumbnailUrl: optionalString,
+		url: optionalString,
+	}),
+	title("JournalTimelapse"),
+)
+
 export const journalSchema = pipe(
 	object({
 		approvedSeconds: optional(pipe(number(), integer())),
@@ -566,6 +578,7 @@ export const journalSchema = pipe(
 		reviewerNote: optionalString,
 		seconds: nonNegative,
 		text: optionalString,
+		timelapses: array(journalTimelapseSchema),
 		title: optionalString,
 	}),
 	title("JournalEntry"),
@@ -581,6 +594,21 @@ export const bomLineSchema = pipe(
 		vendor: optionalString,
 	}),
 	title("BomLine"),
+)
+
+// timeAdjustmentSchema is one per-source ledger cut or bonus behind the approved total.
+export const timeAdjustmentSchema = pipe(
+	object({
+		createdAt: timestamp,
+		id: pipe(string(), minLength(1)),
+		kind: pipe(string(), minLength(1)),
+		note: optionalString,
+		reason: pipe(string(), minLength(1)),
+		reviewerId: optionalString,
+		seconds: nonNegative,
+		source: pipe(string(), minLength(1)),
+	}),
+	title("TimeAdjustment"),
 )
 
 export const findingSchema = pipe(
@@ -915,6 +943,7 @@ export const stationAnswerResponseSchema = pipe(
 export const reviewBundleSchema = pipe(
 	object({
 		acknowledgements: array(string()),
+		adjustments: array(timeAdjustmentSchema),
 		bom: array(bomLineSchema),
 		checkRun: optional(checkRunSchema),
 		checks: array(checkResultSchema),
@@ -1042,6 +1071,43 @@ export const journalReviewResponseSchema = pipe(
 		journal: journalSchema,
 	}),
 	title("JournalAdjustment"),
+)
+
+export const hackatimeReviewRequestSchema = pipe(
+	object({
+		approvedSeconds: nonNegative,
+		deflationReason: optional(pipe(string(), maxLength(maxNote))),
+		reviewerNote: pipe(string(), maxLength(maxNote)),
+		version: nonNegative,
+	}),
+	title("HackatimeReviewRequest"),
+)
+
+export const hackatimeReviewResponseSchema = pipe(
+	object({
+		adjustment: optional(timeAdjustmentSchema),
+		hoursApprovedSeconds: nonNegative,
+	}),
+	title("HackatimeAdjustment"),
+)
+
+export const timelapseReviewRequestSchema = pipe(
+	object({
+		approvedSeconds: nonNegative,
+		deflationReason: optional(pipe(string(), maxLength(maxNote))),
+		reviewerNote: pipe(string(), maxLength(maxNote)),
+		version: nonNegative,
+	}),
+	title("TimelapseReviewRequest"),
+)
+
+export const timelapseReviewResponseSchema = pipe(
+	object({
+		adjustment: optional(timeAdjustmentSchema),
+		hoursApprovedSeconds: nonNegative,
+		journal: journalSchema,
+	}),
+	title("TimelapseAdjustment"),
 )
 
 export const noteRequestSchema = pipe(
@@ -1407,6 +1473,8 @@ export const requestSchemas = Object.freeze([
 	journalReviewRequestSchema,
 	stationAnswerRequestSchema,
 	noteRequestSchema,
+	hackatimeReviewRequestSchema,
+	timelapseReviewRequestSchema,
 	ingestRequestSchema,
 	importReviewedRequestSchema,
 	inviteMemberSchema,
@@ -1434,6 +1502,8 @@ export const responseSchemas = Object.freeze([
 	ingestResponseSchema,
 	journalReviewResponseSchema,
 	makerProfileSchema,
+	hackatimeReviewResponseSchema,
+	timelapseReviewResponseSchema,
 	meResponseSchema,
 	membersResponseSchema,
 	noteCreatedSchema,

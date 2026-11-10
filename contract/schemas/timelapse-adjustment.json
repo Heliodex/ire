@@ -1,0 +1,168 @@
+{
+	"type": "object",
+	"properties": {
+		"adjustment": {
+			"type": "object",
+			"properties": {
+				"createdAt": {
+					"type": "string",
+					"minLength": 1
+				},
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"kind": {
+					"type": "string",
+					"minLength": 1
+				},
+				"note": {
+					"type": "string"
+				},
+				"reason": {
+					"type": "string",
+					"minLength": 1
+				},
+				"reviewerId": {
+					"type": "string"
+				},
+				"seconds": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"source": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"required": [
+				"createdAt",
+				"id",
+				"kind",
+				"reason",
+				"seconds",
+				"source"
+			],
+			"title": "TimeAdjustment"
+		},
+		"hoursApprovedSeconds": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"journal": {
+			"type": "object",
+			"properties": {
+				"approvedSeconds": {
+					"type": "integer"
+				},
+				"at": {
+					"type": "string",
+					"minLength": 1
+				},
+				"clipCount": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"coveredSeconds": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"deflationReason": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"markdown": {
+					"type": "string"
+				},
+				"media": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"alt": {
+								"type": "string"
+							},
+							"url": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"required": [
+							"url"
+						],
+						"title": "JournalMedia"
+					}
+				},
+				"mediaCount": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"reviewerNote": {
+					"type": "string"
+				},
+				"seconds": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"text": {
+					"type": "string"
+				},
+				"timelapses": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"approvedSeconds": {
+								"type": "integer"
+							},
+							"coveredSeconds": {
+								"type": "integer",
+								"minimum": 0
+							},
+							"externalId": {
+								"type": "string"
+							},
+							"provider": {
+								"type": "string"
+							},
+							"thumbnailUrl": {
+								"type": "string"
+							},
+							"url": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"coveredSeconds"
+						],
+						"title": "JournalTimelapse"
+					}
+				},
+				"title": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"at",
+				"clipCount",
+				"coveredSeconds",
+				"id",
+				"media",
+				"mediaCount",
+				"seconds",
+				"timelapses"
+			],
+			"title": "JournalEntry"
+		}
+	},
+	"required": [
+		"hoursApprovedSeconds",
+		"journal"
+	],
+	"title": "TimelapseAdjustment",
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://wt.example/ire/timelapse-adjustment.json"
+}

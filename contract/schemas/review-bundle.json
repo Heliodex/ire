@@ -7,6 +7,53 @@
 				"type": "string"
 			}
 		},
+		"adjustments": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"createdAt": {
+						"type": "string",
+						"minLength": 1
+					},
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"kind": {
+						"type": "string",
+						"minLength": 1
+					},
+					"note": {
+						"type": "string"
+					},
+					"reason": {
+						"type": "string",
+						"minLength": 1
+					},
+					"reviewerId": {
+						"type": "string"
+					},
+					"seconds": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"source": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"createdAt",
+					"id",
+					"kind",
+					"reason",
+					"seconds",
+					"source"
+				],
+				"title": "TimeAdjustment"
+			}
+		},
 		"bom": {
 			"type": "array",
 			"items": {
@@ -409,6 +456,37 @@
 					"text": {
 						"type": "string"
 					},
+					"timelapses": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"approvedSeconds": {
+									"type": "integer"
+								},
+								"coveredSeconds": {
+									"type": "integer",
+									"minimum": 0
+								},
+								"externalId": {
+									"type": "string"
+								},
+								"provider": {
+									"type": "string"
+								},
+								"thumbnailUrl": {
+									"type": "string"
+								},
+								"url": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"coveredSeconds"
+							],
+							"title": "JournalTimelapse"
+						}
+					},
 					"title": {
 						"type": "string"
 					}
@@ -420,7 +498,8 @@
 					"id",
 					"media",
 					"mediaCount",
-					"seconds"
+					"seconds",
+					"timelapses"
 				],
 				"title": "JournalEntry"
 			}
@@ -1093,6 +1172,7 @@
 	},
 	"required": [
 		"acknowledgements",
+		"adjustments",
 		"bom",
 		"checks",
 		"events",
