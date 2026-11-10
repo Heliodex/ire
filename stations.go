@@ -426,7 +426,7 @@ func (a *ireApp) handleStationQueue(w http.ResponseWriter, r *http.Request) {
 
 	params.station = station.Key
 
-	items, hasMore, err := a.stationQueueItems(r.Context(), person, params)
+	items, hasMore, filtered, err := a.stationQueueItems(r.Context(), person, params)
 	if err != nil {
 		writeStorage(w, err)
 
@@ -440,16 +440,16 @@ func (a *ireApp) handleStationQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.WriteJSON(w, http.StatusOK, contract.StationQueueResponse{Station: station, Items: items, HasMore: hasMore, Total: counts[station.Key]})
+	app.WriteJSON(w, http.StatusOK, contract.StationQueueResponse{Station: station, Items: items, HasMore: hasMore, Total: counts[station.Key], FilteredTotal: filtered})
 }
 
 // stationQueueItems returns one page of ships whose current station is the requested one.
-func (a *ireApp) stationQueueItems(ctx context.Context, person reviewer, params queueParams) ([]contract.QueueItem, bool, error) {
+func (a *ireApp) stationQueueItems(ctx context.Context, person reviewer, params queueParams) ([]contract.QueueItem, bool, int, error) {
 	query, args := a.queueListQuery(queueParams{stage: params.stage, filter: params.filter, sortColumn: params.sortColumn, sortDir: params.sortDir, search: params.search, station: params.station}, person, stationQueuePageLimit+1, 0)
 
 	rows, err := a.store.Query(ctx, query, args...)
 	if err != nil {
-		return nil, false, err
+		return nil, false, 0, err
 	}
 	defer rows.Close()
 
@@ -458,7 +458,7 @@ func (a *ireApp) stationQueueItems(ctx context.Context, person reviewer, params 
 	for rows.Next() {
 		item, err := scanQueueItem(rows)
 		if err != nil {
-			return nil, false, err
+			return nil, false, 0, err
 		}
 
 		out = append(out, item)
@@ -469,7 +469,12 @@ func (a *ireApp) stationQueueItems(ctx context.Context, person reviewer, params 
 		out = out[:stationQueuePageLimit]
 	}
 
-	return out, hasMore, rows.Err()
+	filtered, err := a.queueFilteredCount(ctx, person, params)
+	if err != nil {
+		return nil, false, 0, err
+	}
+
+	return out, hasMore, filtered, rows.Err()
 }
 
 // handleStationAnswer records one station question for the current version.

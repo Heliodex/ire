@@ -214,6 +214,10 @@ func TestStationQueueSearchAndSort(t *testing.T) {
 		t.Fatalf("filtered queue = %d items, want 0", len(miss.Items))
 	}
 
+	if miss.FilteredTotal != 0 || miss.Total != 3 {
+		t.Fatalf("filtered total = %d of %d, want 0 of 3", miss.FilteredTotal, miss.Total)
+	}
+
 	sorted := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue?sort=maker&dir=desc", nil, cookie, nil))
 	if len(sorted.Items) != 3 {
 		t.Fatalf("sorted queue = %d items, want 3", len(sorted.Items))

@@ -18,11 +18,10 @@ let loading = $state(true)
 let error = $state("")
 let loadedKey = ""
 let query = $state("")
-let appliedQuery = $state("")
 let sort = $state("")
 let dir = $state<1 | -1>(1)
 let seededKey = ""
-let searchTimer: ReturnType<typeof setTimeout> | undefined
+let requestId = 0
 
 const sortOptions = [
 	{ label: "Default order", value: "" },
@@ -52,7 +51,7 @@ $effect((): void => {
 	if (target === "") return
 
 	if (target !== key) key = target
-	const keyed = `${stage}:${target}:${appliedQuery}:${sort}:${dir}`
+	const keyed = `${stage}:${target}:${query.trim()}:${sort}:${dir}`
 	if (focusId !== "" || keyed === loadedKey) return
 
 	loadedKey = keyed
@@ -68,7 +67,6 @@ $effect((): void => {
 
 	seededKey = scoped
 	query = page.url.searchParams.get("q") ?? ""
-	appliedQuery = query
 	sort = page.url.searchParams.get("sort") ?? ""
 	dir = page.url.searchParams.get("dir") === "-1" ? -1 : 1
 })
@@ -78,7 +76,7 @@ function refresh(): void {
 	if (!browser) return
 	const params = new URLSearchParams()
 	params.set("stage", String(stage))
-	if (appliedQuery !== "") params.set("q", appliedQuery)
+	if (query.trim() !== "") params.set("q", query.trim())
 	if (sort !== "") {
 		params.set("sort", sort)
 		params.set("dir", String(dir))
@@ -86,20 +84,12 @@ function refresh(): void {
 	void goto(`${page.url.pathname}?${params}`, { replaceState: true })
 }
 
-// scheduleSearch waits for a pause in typing before reloading the queue.
-function scheduleSearch(): void {
-	if (searchTimer !== undefined) clearTimeout(searchTimer)
-	searchTimer = setTimeout((): void => {
-		searchTimer = undefined
-		appliedQuery = query.trim()
-		refresh()
-	}, 300)
-}
-
 async function load(target: string): Promise<void> {
-	loading = true
+	// Reloads keep the current list on screen; only the first load shows a skeleton.
+	const first = data === undefined
+	if (first) loading = true
 	error = ""
-	data = undefined
+	const mine = ++requestId
 
 	try {
 		session.me ??= await fetchMe()
@@ -109,8 +99,8 @@ async function load(target: string): Promise<void> {
 	}
 
 	try {
-		const next = await fetchStationQueue(target, stage, sort, dir, appliedQuery)
-		if (target !== key) return
+		const next = await fetchStationQueue(target, stage, sort, dir, query.trim())
+		if (mine !== requestId || target !== key) return
 
 		data = next
 	} catch (err) {
@@ -120,11 +110,11 @@ async function load(target: string): Promise<void> {
 			return
 		}
 
-		if (target !== key) return
+		if (mine !== requestId || target !== key) return
 
 		error = err instanceof Error ? err.message : "Could not load this station."
 	} finally {
-		if (target === key) loading = false
+		if (first && target === key) loading = false
 	}
 }
 </script>
@@ -147,7 +137,10 @@ async function load(target: string): Promise<void> {
 
 		{#if data}
 			<div class="stats ui-card">
-				<div><strong>{data.total}</strong><span>waiting</span></div>
+				<div>
+					<strong>{data.filteredTotal}</strong>
+					<span>{data.filteredTotal === data.total ? "waiting" : `of ${data.total} waiting`}</span>
+				</div>
 			</div>
 		{/if}
 	</section>
@@ -160,10 +153,13 @@ async function load(target: string): Promise<void> {
 		<input
 			aria-label="Filter this station queue"
 			class="ui-input"
-			oninput={scheduleSearch}
+			oninput={(event): void => {
+				query = event.currentTarget.value
+				refresh()
+			}}
 			placeholder="Filter ships — try status:ready, checks:fail>0, journals:>=2"
 			type="search"
-			bind:value={query}
+			value={query}
 		>
 		<select
 			aria-label="Sort this station queue"
@@ -196,9 +192,9 @@ async function load(target: string): Promise<void> {
 		</div>
 	{:else if data && data.items.length === 0}
 		<div class="ui-card ui-empty">
-			<strong>{appliedQuery === "" ? "Nothing waiting here" : "No ships match"}</strong>
+			<strong>{query.trim() === "" ? "Nothing waiting here" : "No ships match"}</strong>
 			<span
-				>{appliedQuery === ""
+				>{query.trim() === ""
 					? "Ships arrive when the previous station is done."
 					: "Try a different filter for this station."}</span
 			>

@@ -1,6 +1,10 @@
 {
 	"type": "object",
 	"properties": {
+		"filteredTotal": {
+			"type": "integer",
+			"minimum": 0
+		},
 		"hasMore": {
 			"type": "boolean"
 		},
@@ -293,6 +297,7 @@
 		}
 	},
 	"required": [
+		"filteredTotal",
 		"hasMore",
 		"items",
 		"station",

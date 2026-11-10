@@ -6140,6 +6140,9 @@ func (j *StationQuestion) UnmarshalJSON(value []byte) error {
 }
 
 type StationQueueResponse struct {
+	// FilteredTotal corresponds to the JSON schema field "filteredTotal".
+	FilteredTotal int `json:"filteredTotal" yaml:"filteredTotal" mapstructure:"filteredTotal"`
+
 	// HasMore corresponds to the JSON schema field "hasMore".
 	HasMore bool `json:"hasMore" yaml:"hasMore" mapstructure:"hasMore"`
 
@@ -6159,6 +6162,9 @@ func (j *StationQueueResponse) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return err
 	}
+	if _, ok := raw["filteredTotal"]; raw != nil && !ok {
+		return fmt.Errorf("field filteredTotal in StationQueueResponse: required")
+	}
 	if _, ok := raw["hasMore"]; raw != nil && !ok {
 		return fmt.Errorf("field hasMore in StationQueueResponse: required")
 	}
@@ -6175,6 +6181,9 @@ func (j *StationQueueResponse) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
+	}
+	if 0 > plain.FilteredTotal {
+		return fmt.Errorf("field %s: must be >= %v", "filteredTotal", 0)
 	}
 	if 0 > plain.Total {
 		return fmt.Errorf("field %s: must be >= %v", "total", 0)

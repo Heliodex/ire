@@ -107,15 +107,11 @@ func (a *ireApp) parseQueueParams(w http.ResponseWriter, r *http.Request, person
 }
 
 // queueListQuery builds the listing query for one page, keeping the resubmission ordering for stage 1.
-func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offset int) (string, []any) {
+// queueListWhere builds the shared from/where fragment behind queue listings and
+// their filtered totals, so both count the same ships.
+func (a *ireApp) queueListWhere(params queueParams, person reviewer) (string, []any) {
 	now := a.nowText()
-	query := `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
-			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, ''), s.hours_claimed_seconds,
-			s.hours_journal_seconds, s.hours_hackatime_seconds, ` + queueJournalCountSQL + `, ` + queueJournalImageSQL + `, ` + queueJournalTextLenSQL + `, s.bom_total_cents,
-			coalesce(s.check_summary, ''), s.ingested_at, coalesce(s.submitted_at, s.created_at), coalesce(u.email, ''),
-			coalesce(r.status, ''), coalesce(r.attempts, 0), coalesce(r.started_at, ''), coalesce(r.finished_at, ''),
-			coalesce(r.error, ''), coalesce(r.runner_version, ''), coalesce(prev_review.reviewer_email, '')
-		from submission s
+	query := `from submission s
 		left join claim c on c.submission_id = s.id and c.expires_at > ?
 		left join user u on u.id = c.reviewer_id
 		left join check_run r on r.submission_id = s.id and r.version = s.version
@@ -153,7 +149,18 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 	case queueFilterAll:
 	}
 
-	query, args = params.search.apply(query, args)
+	return params.search.apply(query, args)
+}
+
+func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offset int) (string, []any) {
+	query, args := a.queueListWhere(params, person)
+	query = `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
+			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, ''), s.hours_claimed_seconds,
+			s.hours_journal_seconds, s.hours_hackatime_seconds, ` + queueJournalCountSQL + `, ` + queueJournalImageSQL + `, ` + queueJournalTextLenSQL + `, s.bom_total_cents,
+			coalesce(s.check_summary, ''), s.ingested_at, coalesce(s.submitted_at, s.created_at), coalesce(u.email, ''),
+			coalesce(r.status, ''), coalesce(r.attempts, 0), coalesce(r.started_at, ''), coalesce(r.finished_at, ''),
+			coalesce(r.error, ''), coalesce(r.runner_version, ''), coalesce(prev_review.reviewer_email, '')
+		` + query
 
 	order := ` order by s.priority desc, coalesce(s.submitted_at, s.created_at) asc, s.id asc`
 	if params.stage == stageOne && params.sortColumn == "" {
@@ -178,6 +185,19 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 	args = append(args, limit+1, offset)
 
 	return query, args
+}
+
+// queueFilteredCount counts the ships one listing query would return, so a
+// filtered queue can show its share of the whole queue.
+func (a *ireApp) queueFilteredCount(ctx context.Context, person reviewer, params queueParams) (int, error) {
+	where, args := a.queueListWhere(params, person)
+
+	var total int
+	if err := a.store.QueryRow(ctx, `select count(*) `+where, args...).Scan(&total); err != nil {
+		return 0, err
+	}
+
+	return total, nil
 }
 
 // scanQueueItem reads one listing row into a queue item.

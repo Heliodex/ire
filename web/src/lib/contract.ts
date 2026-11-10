@@ -899,6 +899,7 @@ export const stationsResponseSchema = pipe(object({ stations: array(stationSumma
 
 export const stationQueueResponseSchema = pipe(
 	object({
+		filteredTotal: nonNegative,
 		hasMore: boolean(),
 		items: array(queueItemSchema),
 		station: stationDefinitionSchema,
