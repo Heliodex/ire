@@ -1,5 +1,5 @@
 <script lang="ts">
-import { type AuditEntry } from "../../api"
+import type { AuditEntry } from "../../api"
 import {
 	auditChanges,
 	auditDetailRows,

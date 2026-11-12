@@ -1,4 +1,4 @@
-import { type Bundle } from "./api"
+import type { Bundle } from "./api"
 import { reasonLabels } from "./deflation"
 import { formatHours } from "./format"
 

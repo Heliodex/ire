@@ -1,5 +1,5 @@
 <script lang="ts">
-import { type Bundle } from "../../api"
+import type { Bundle } from "../../api"
 import { isReturnable, severityTone } from "../../findings"
 
 type Finding = Bundle["findings"][number]

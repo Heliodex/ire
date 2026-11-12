@@ -210,12 +210,7 @@
 				"useExportsLast": "off",
 				"useFilenamingConvention": "off",
 				"useGlobalThis": "off",
-				"useImportType": {
-					"level": "on",
-					"options": {
-						"style": "inlineType"
-					}
-				},
+				"useImportType": "on",
 				"useNamedCaptureGroup": "off",
 				"useNamingConvention": "off",
 				"useNumericSeparators": "off",

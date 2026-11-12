@@ -1,5 +1,5 @@
 <script lang="ts">
-import { type Bundle } from "../../api"
+import type { Bundle } from "../../api"
 import { decisionLabel, formatDateTime, statusTone } from "../../format"
 import { reviewerHref } from "../../reviewer"
 

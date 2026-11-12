@@ -1,6 +1,6 @@
 <script lang="ts">
 import { tick } from "svelte"
-import { type InferOutput } from "valibot"
+import type { InferOutput } from "valibot"
 import { type findingUpdateRequestSchema, maxNote } from "../../contract"
 import { type Finding, isActive, isReturnable, severityTone } from "../../findings"
 import {

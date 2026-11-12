@@ -1,4 +1,4 @@
-import { type SearchResult } from "./api"
+import type { SearchResult } from "./api"
 
 export interface SearchCache {
 	get(query: string): SearchResult[] | undefined

@@ -1,4 +1,4 @@
-import { type AuditEntry } from "./api"
+import type { AuditEntry } from "./api"
 
 export interface AuditFilters {
 	action: string

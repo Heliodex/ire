@@ -1,5 +1,5 @@
-import { type Bundle } from "./api"
-import { type Tone } from "./format"
+import type { Bundle } from "./api"
+import type { Tone } from "./format"
 
 export type Finding = Bundle["findings"][number]
 export type FindingSeverity = Finding["severity"]

@@ -1,6 +1,6 @@
 <script lang="ts">
-import { type SvelteSet } from "svelte/reactivity"
-import { type Journal } from "../../api"
+import type { SvelteSet } from "svelte/reactivity"
+import type { Journal } from "../../api"
 import { formatDateTime, formatHours } from "../../format"
 import JournalTime from "./JournalTime.svelte"
 import Markdown from "./Markdown.svelte"

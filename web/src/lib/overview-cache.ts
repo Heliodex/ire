@@ -1,4 +1,4 @@
-import { type Overview } from "./api"
+import type { Overview } from "./api"
 
 export interface CachedOverview {
 	overview: Overview

@@ -1,5 +1,5 @@
 <script lang="ts">
-import { type Member } from "../../api"
+import type { Member } from "../../api"
 
 interface Props {
 	busy: boolean

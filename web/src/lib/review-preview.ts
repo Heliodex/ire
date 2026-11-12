@@ -1,6 +1,6 @@
 // ReviewPreview is the part of a row the queue or search already knows, so the review page can show it while the
 // full bundle loads. It mirrors the fields the loaded header shows.
-import { type QueueItem } from "./api"
+import type { QueueItem } from "./api"
 
 // ReviewPreview is the part of a row the queue or search already knows, so the review page can show it while the
 // full bundle loads. It mirrors the fields the loaded header and rail show.

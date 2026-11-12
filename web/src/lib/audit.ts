@@ -1,5 +1,5 @@
-import { type AuditEntry } from "./api"
-import { type IconName } from "./components/icon-paths"
+import type { AuditEntry } from "./api"
+import type { IconName } from "./components/icon-paths"
 import { decisionLabel, formatDateTime, formatHours, humanEvent, humanStatus, type Tone } from "./format"
 import { reviewerHref } from "./reviewer"
 

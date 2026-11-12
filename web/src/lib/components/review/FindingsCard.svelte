@@ -1,7 +1,7 @@
 <script lang="ts">
 import { tick } from "svelte"
-import { type InferOutput } from "valibot"
-import { type Bundle } from "../../api"
+import type { InferOutput } from "valibot"
+import type { Bundle } from "../../api"
 import { type findingCreateRequestSchema, type findingUpdateRequestSchema, maxNote } from "../../contract"
 import { findingSeverities, findingStations, isActive, severityTone, statusLabel } from "../../findings"
 import { formatDateTime } from "../../format"

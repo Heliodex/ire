@@ -1,4 +1,4 @@
-import { type BaseIssue, type InferOutput } from "valibot"
+import type { BaseIssue, InferOutput } from "valibot"
 import { parseJSON, program } from "./api-runtime"
 import {
 	auditResponseSchema,

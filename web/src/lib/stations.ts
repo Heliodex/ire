@@ -1,6 +1,6 @@
-import { type Bundle } from "./api"
-import { type IconName } from "./components/icon-paths"
-import { type Tone } from "./format"
+import type { Bundle } from "./api"
+import type { IconName } from "./components/icon-paths"
+import type { Tone } from "./format"
 
 export type StationDefinition = Bundle["stations"][number]
 export type StationQuestion = StationDefinition["questions"][number]

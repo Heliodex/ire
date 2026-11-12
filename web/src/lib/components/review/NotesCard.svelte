@@ -1,5 +1,5 @@
 <script lang="ts">
-import { type Note } from "../../api"
+import type { Note } from "../../api"
 import { maxNote } from "../../contract"
 import { formatDateTime } from "../../format"
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test"
-import { type AuditEntry } from "../src/lib/api"
+import type { AuditEntry } from "../src/lib/api"
 import {
 	type AuditCacheStore,
 	type AuditFilters,
