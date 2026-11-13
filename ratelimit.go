@@ -2,11 +2,12 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
+	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
 const (
@@ -15,42 +16,15 @@ const (
 	rateLimitWindow  = time.Minute
 )
 
-// rateLimiter keeps a sliding window of request times per key. The app runs one instance, and the mutex keeps tests and future parallel handlers safe.
-type rateLimiter struct {
-	mu    sync.Mutex
-	limit int
-	now   func() time.Time
-	hits  map[string][]time.Time
-}
+// The limits live in the supervisor's key-value store: wasm instances are per request and share no memory, so an in-process window would reset on every instance.
+var (
+	browserLimit = storage.RateLimit{Prefix: "rl:browser:", Limit: browserRateLimit, Window: rateLimitWindow}
+	machineLimit = storage.RateLimit{Prefix: "rl:machine:", Limit: machineRateLimit, Window: rateLimitWindow}
+)
 
-// newRateLimiter builds a limiter with the shared one-minute window.
-func newRateLimiter(limit int, now func() time.Time) *rateLimiter {
-	return &rateLimiter{limit: limit, now: now, hits: map[string][]time.Time{}}
-}
-
-// allow records a hit and reports whether the key is still inside its limit.
-func (l *rateLimiter) allow(key string) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	now := l.now()
-	cutoff := now.Add(-rateLimitWindow)
-	recent := make([]time.Time, 0, len(l.hits[key]))
-
-	for _, hit := range l.hits[key] {
-		if hit.After(cutoff) {
-			recent = append(recent, hit)
-		}
-	}
-
-	if len(recent) >= l.limit {
-		l.hits[key] = recent
-		return false
-	}
-
-	l.hits[key] = append(recent, now)
-
-	return true
+// retryAfterSeconds rounds the wait up to whole seconds, at least one, for the Retry-After header.
+func retryAfterSeconds(wait time.Duration) string {
+	return strconv.Itoa(max(1, int((wait+time.Second-1)/time.Second)))
 }
 
 // withRateLimit rejects a burst of mutations before it reaches storage. Reads and the supervised job endpoints stay unlimited.
@@ -62,9 +36,14 @@ func (a *ireApp) withRateLimit(next http.Handler) http.Handler {
 			return
 		}
 
-		key, limiter := a.rateKey(r)
-		if limiter != nil && !limiter.allow(key) {
-			w.Header().Set("Retry-After", "60")
+		key, limit := a.rateKey(r)
+
+		decision, err := limit.Allow(r.Context(), a.store, key)
+		if err != nil {
+			// A storage outage must not lock every user out, so the request goes through unlimited.
+			app.Errorf("rate limit: %v", err)
+		} else if !decision.Allowed {
+			w.Header().Set("Retry-After", retryAfterSeconds(decision.RetryAfter))
 			app.WriteError(w, http.StatusTooManyRequests, "too many requests; try again shortly")
 
 			return
@@ -75,16 +54,16 @@ func (a *ireApp) withRateLimit(next http.Handler) http.Handler {
 }
 
 // rateKey picks the machine or browser bucket and a key that does not retain a raw session token.
-func (a *ireApp) rateKey(r *http.Request) (string, *rateLimiter) {
+func (a *ireApp) rateKey(r *http.Request) (string, storage.RateLimit) {
 	if strings.HasPrefix(r.URL.Path, "/api/ingest/") || strings.HasPrefix(r.URL.Path, "/api/v1/ingest/") || strings.HasPrefix(r.URL.Path, "/api/v1/withdraw/") {
-		return remoteHost(r), a.machineLimiter
+		return remoteHost(r), a.machineLimit
 	}
 
 	if token, ok := reviewSessions.Token(r); ok && token != "" {
-		return sha256Hex([]byte(token)), a.browserLimiter
+		return sha256Hex([]byte(token)), a.browserLimit
 	}
 
-	return remoteHost(r), a.browserLimiter
+	return remoteHost(r), a.browserLimit
 }
 
 // remoteHost is the address the runtime reports; wasm deployments terminate the browser connection at the supervisor.

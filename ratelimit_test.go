@@ -2,42 +2,24 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 )
 
-// TestRateLimiterWindow covers the sliding window and the reset after it.
-func TestRateLimiterWindow(t *testing.T) {
-	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
-	limiter := newRateLimiter(2, func() time.Time { return now })
-
-	if !limiter.allow("key") {
-		t.Fatal("first request was rejected")
-	}
-
-	if !limiter.allow("key") {
-		t.Fatal("second request was rejected")
-	}
-
-	if limiter.allow("key") {
-		t.Fatal("third request was allowed")
-	}
-
-	if !limiter.allow("other") {
-		t.Fatal("another key was rejected")
-	}
-
-	now = now.Add(61 * time.Second)
-
-	if !limiter.allow("key") {
-		t.Fatal("request after the window was rejected")
+// TestRetryAfterSeconds rounds a partial second up and never asks for zero.
+func TestRetryAfterSeconds(t *testing.T) {
+	for wait, want := range map[time.Duration]string{0: "1", 1500 * time.Millisecond: "2", time.Minute: "60"} {
+		if got := retryAfterSeconds(wait); got != want {
+			t.Errorf("retryAfterSeconds(%v) = %s, want %s", wait, got, want)
+		}
 	}
 }
 
 // TestBrowserMutationLimit covers the handler-level rejection and the machine bucket.
 func TestBrowserMutationLimit(t *testing.T) {
 	application := newTestApp(t)
-	application.browserLimiter = newRateLimiter(2, application.now)
+	application.browserLimit.Limit = 2
 
 	cookie := login(t, application, "reviewer@example.com")
 	body := []byte(`{"email":"reviewer@example.com"}`)
@@ -49,7 +31,7 @@ func TestBrowserMutationLimit(t *testing.T) {
 	}
 
 	limited := do(t, application, http.MethodPost, "/api/v1/dev/login", body, cookie, nil)
-	if limited.Code != http.StatusTooManyRequests || limited.Header().Get("Retry-After") != "60" {
+	if retry, _ := strconv.Atoi(limited.Header().Get("Retry-After")); limited.Code != http.StatusTooManyRequests || retry < 1 || retry > 60 {
 		t.Fatalf("limited = %d %q", limited.Code, limited.Header().Get("Retry-After"))
 	}
 
@@ -57,7 +39,7 @@ func TestBrowserMutationLimit(t *testing.T) {
 		t.Fatalf("read = %d: %s", read.Code, read.Body.String())
 	}
 
-	application.machineLimiter = newRateLimiter(1, application.now)
+	application.machineLimit.Limit = 1
 
 	first := do(t, application, http.MethodPost, "/api/ingest/half-life", ingestBody("rate-limit-a"), nil, map[string]string{
 		"X-Ari-Signature": hmacHex("test-ingest", ingestBody("rate-limit-a")),

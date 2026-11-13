@@ -128,13 +128,13 @@ type config struct {
 
 // ireApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.
 type ireApp struct {
-	store                          *storage.Client
-	client                         *http.Client
-	mux                            *http.ServeMux
-	config                         config
-	clock                          func() time.Time
-	browserLimiter, machineLimiter *rateLimiter
-	forgeCache                     *forgeCache
+	store                      *storage.Client
+	client                     *http.Client
+	mux                        *http.ServeMux
+	config                     config
+	clock                      func() time.Time
+	browserLimit, machineLimit storage.RateLimit
+	forgeCache                 *forgeCache
 }
 
 // newIreApp builds the routes around one store and outbound client.
@@ -151,8 +151,8 @@ func newIreApp(store *storage.Client, client *http.Client, cfg config) *ireApp {
 	}
 
 	a := &ireApp{store: store, client: client, mux: http.NewServeMux(), config: cfg, clock: time.Now}
-	a.browserLimiter = newRateLimiter(browserRateLimit, a.now)
-	a.machineLimiter = newRateLimiter(machineRateLimit, a.now)
+	a.browserLimit = browserLimit
+	a.machineLimit = machineLimit
 	a.forgeCache = newForgeCache()
 	a.routes()
 
