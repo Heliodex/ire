@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/outbox"
@@ -575,129 +575,42 @@ func schemaStatements() []storage.Statement {
 	return out
 }
 
-// lateColumns are columns added to a table after it first shipped. Their create statement carries them, which keeps a replay safe, but `create table if not exists` cannot add them to a database that already has the table. migrate asks the live schema which are missing and appends one alter for each, so an older database upgrades and a current one is left alone.
-//
-// Warning: an alter runs exactly once per database, so the versioned statement set changes after the first apply. The supervisor checksums the set per version, and any redeploy of that version afterwards mismatches. Prefer the ensure* fixups below (outside the versioned checksum) for additive columns, and follow a late-column deploy with another version bump to re-stabilise the set.
+// lateColumns are columns added to a table after it first shipped. `create table if not exists` cannot add them to a database that already has the table, so migrate adds each missing one after the versioned migration. They stay out of the versioned statement set: an alter that appears only on databases that need it would change that version's checksum between databases and deploys. A fresh database gets them from the create statement, except submitted_at, which only ever arrives this way.
 var lateColumns = []struct {
-	table  string
-	column string
-	sql    string
+	table, column, definition string
 }{
-	{
-		table:  "journal_entry",
-		column: "approved_seconds",
-		sql:    `alter table journal_entry add column approved_seconds integer`,
-	},
-	{
-		table:  "journal_entry",
-		column: "reviewer_note",
-		sql:    `alter table journal_entry add column reviewer_note text`,
-	},
-	{
-		table:  "journal_entry",
-		column: "deflation_reason",
-		sql:    `alter table journal_entry add column deflation_reason text`,
-	},
-	{
-		table:  "review",
-		column: "technical_features",
-		sql:    `alter table review add column technical_features text not null default ''`,
-	},
-	{
-		table:  "review",
-		column: "deflation_reason",
-		sql:    `alter table review add column deflation_reason text not null default ''`,
-	},
+	{table: "journal_entry", column: "approved_seconds", definition: "integer"},
+	{table: "journal_entry", column: "reviewer_note", definition: "text"},
+	{table: "journal_entry", column: "deflation_reason", definition: "text"},
+	{table: "review", column: "technical_features", definition: "text not null default ''"},
+	{table: "review", column: "deflation_reason", definition: "text not null default ''"},
+	{table: "submission", column: "submitted_at", definition: "text"},
 }
 
-// lateColumnStatements returns the alters the live database still needs. A table that is not there yet is skipped: its create statement already holds every column, and adding them again would fail.
-func lateColumnStatements(ctx context.Context, store *storage.Client) ([]storage.Statement, error) {
-	known := map[string]map[string]bool{}
-	out := make([]storage.Statement, 0, len(lateColumns))
-
+// addLateColumns adds every late column the live database is missing.
+func addLateColumns(ctx context.Context, store *storage.Client) error {
 	for _, late := range lateColumns {
-		columns, seen := known[late.table]
-		if !seen {
-			rows, err := store.Query(ctx, `select name from pragma_table_info(?)`, late.table)
-			if err != nil {
-				return nil, err
-			}
-
-			columns = map[string]bool{}
-
-			for rows.Next() {
-				var name string
-				if err := rows.Scan(&name); err != nil {
-					_ = rows.Close()
-					return nil, err
-				}
-
-				columns[name] = true
-			}
-
-			err = rows.Err()
-			_ = rows.Close()
-
-			if err != nil {
-				return nil, err
-			}
-
-			known[late.table] = columns
-		}
-
-		if len(columns) > 0 && !columns[late.column] {
-			out = append(out, storage.Statement{SQL: late.sql})
+		if _, err := store.AddColumnIfMissing(ctx, late.table, late.column, late.definition); err != nil {
+			return fmt.Errorf("add %s.%s: %w", late.table, late.column, err)
 		}
 	}
 
-	return out, nil
+	return nil
 }
 
-// migrate applies the prototype schema and then seeds the programme and demo ships.
-func (a *ireApp) migrate(ctx context.Context) error {
-	statements := schemaStatements()
+// stationAnswerReviewerKey is the per-reviewer uniqueness the answer table moved to from a shared answer per question.
+const stationAnswerReviewerKey = "unique (submission_id, station_key, question_key, reviewer_id)"
 
-	late, err := lateColumnStatements(ctx, a.store)
-	if err != nil {
-		return err
-	}
-
-	if err := a.store.Migrate(ctx, schemaVersion, append(statements, late...)...); err != nil {
-		return err
-	}
-
-	if err := a.ensureStationAnswerReviewers(ctx); err != nil {
-		return err
-	}
-
-	if err := a.ensureSubmittedAtColumn(ctx); err != nil {
-		return err
-	}
-
-	return a.seed(ctx)
-}
-
-// ensureStationAnswerReviewers rebuilds the answer table from the shared per-question
-// uniqueness to one answer per reviewer. The old table cannot express the new key, so
-// the migration copies it across instead of altering it.
+// ensureStationAnswerReviewers rebuilds the answer table from the shared per-question uniqueness to one answer per reviewer. The old table cannot express the new key, so the rows are copied across instead of altered.
 func (a *ireApp) ensureStationAnswerReviewers(ctx context.Context) error {
-	var definition string
-
-	err := a.store.QueryRow(ctx, `select sql from sqlite_master where type = 'table' and name = 'station_answer'`).Scan(&definition)
-	if errors.Is(err, storage.ErrNoRows) {
-		return nil
-	}
-
-	if err != nil {
+	definition, ok, err := a.store.TableSQL(ctx, "station_answer")
+	if err != nil || !ok || strings.Contains(definition, stationAnswerReviewerKey) {
 		return err
 	}
 
-	if strings.Contains(definition, "unique (submission_id, station_key, question_key, reviewer_id)") {
-		return nil
-	}
-
-	statements := []storage.TransactionStatement{
-		{SQL: `create table station_answer_new (
+	return a.store.RebuildTable(ctx, storage.TableRebuild{
+		Table: "station_answer",
+		Create: `create table station_answer_new (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
 			station_key text not null,
@@ -708,41 +621,30 @@ func (a *ireApp) ensureStationAnswerReviewers(ctx context.Context) error {
 			reviewer_id text not null,
 			created_at text not null,
 			updated_at text not null,
-			unique (submission_id, station_key, question_key, reviewer_id)
-		)`},
-		{SQL: `insert into station_answer_new (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
+			` + stationAnswerReviewerKey + `
+		)`,
+		Copy: `insert into station_answer_new (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
 			select id, submission_id, station_key, question_key, answer, evidence, artifact_hash, coalesce(nullif(reviewer_id, ''), 'legacy'), created_at, updated_at
-			from station_answer`},
-		{SQL: `drop table station_answer`},
-		{SQL: `alter table station_answer_new rename to station_answer`},
-		{SQL: `create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`},
-	}
-
-	_, err = a.store.Transaction(ctx, statements...)
-
-	return err
+			from station_answer`,
+		After: []string{`create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`},
+	})
 }
 
-// ensureSubmittedAtColumn adds the upstream submission timestamp column when it is missing.
-// It runs outside the versioned migration checksum so existing deployments can pick it up safely.
-func (a *ireApp) ensureSubmittedAtColumn(ctx context.Context) error {
-	rows, err := a.store.Query(ctx, `select name from pragma_table_info('submission') where name = 'submitted_at'`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		return rows.Err()
-	}
-
-	if err := rows.Err(); err != nil {
+// migrate applies the prototype schema, upgrades tables older databases created in an earlier shape, and then seeds the programme and demo ships.
+func (a *ireApp) migrate(ctx context.Context) error {
+	if err := a.store.Migrate(ctx, schemaVersion, schemaStatements()...); err != nil {
 		return err
 	}
 
-	_, err = a.store.Exec(ctx, `alter table submission add column submitted_at text`)
+	if err := addLateColumns(ctx, a.store); err != nil {
+		return err
+	}
 
-	return err
+	if err := a.ensureStationAnswerReviewers(ctx); err != nil {
+		return err
+	}
+
+	return a.seed(ctx)
 }
 
 // seed creates the Half Life programme and, when explicitly enabled, its dev reviewers and fixture ships. Every write is idempotent, so a partial seed is repaired on the next start. When dev accounts or fixtures are disabled, any leftover placeholder rows are removed so a production copy holds only invited reviewers and real Half Life ingests.
