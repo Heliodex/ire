@@ -2,7 +2,7 @@ module ire
 
 go 1.27.1
 
-require github.com/heliodex/better-deploy/wt/packages/v2 v2.0.1
+require github.com/heliodex/better-deploy/wt/packages/v2 v2.0.2
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
@@ -35,5 +35,3 @@ tool (
 	github.com/atombender/go-jsonschema
 	github.com/bytecodealliance/componentize-go
 )
-
-replace github.com/heliodex/better-deploy/wt/packages/v2 => ../better-deploy/wt/packages
