@@ -35,3 +35,5 @@ tool (
 	github.com/atombender/go-jsonschema
 	github.com/bytecodealliance/componentize-go
 )
+
+replace github.com/heliodex/better-deploy/wt/packages/v2 => ../better-deploy/wt/packages
