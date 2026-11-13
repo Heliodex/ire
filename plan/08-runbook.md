@@ -92,7 +92,7 @@ WT_TOKEN="$(cat <token-file>)" wt deploy --dir . \
   --app-host ire.k.hackclub.dev
 ```
 
-Pass the supervisor token via `WT_TOKEN`: the `--token` flag 401s on the deploy preflight even for a valid token. `wt build` only hashes `component_inputs`, so after Go changes wipe `main.wasm main.cwasm static .wt-build.json web/build` and rebuild, or the deploy ships a stale component. `IRE_INGEST_SECRET` must exist before deploying (`wt secrets ire set IRE_INGEST_SECRET` reads the value from stdin) and must match Half Life's `IRE_SIGNING_SECRET`; when rotating, set both sides together.
+Pass the supervisor token via `WT_TOKEN` or `--token`; both send the same bearer header, and `WT_TOKEN` keeps it out of shell history. The component hash covers the Go sources, `go.mod`, `go.sum`, `component_inputs` and the local SDK checkout. `go.mod` points `github.com/heliodex/better-deploy/wt/packages/v2` at `../better-deploy/wt/packages` until the KV store, rate limiter and schema helpers are tagged, so deploy from a machine with that sibling checkout on a matching wt commit, and deploy the matching supervisor first: the rate limiter needs `/v1/kv`. If a deploy still looks stale, wipe `main.wasm main.cwasm static .wt-build.json web/build` and rebuild. `IRE_INGEST_SECRET` must exist before deploying (`wt secrets ire set IRE_INGEST_SECRET` reads the value from stdin) and must match Half Life's `IRE_SIGNING_SECRET`; when rotating, set both sides together.
 
 The first deploy needed `--skip-route-check` because the ingress existed before the app did; later deploys do not. `wt route check ire` and `wt doctor ire` should both pass.
 
