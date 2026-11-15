@@ -57,6 +57,15 @@ var (
 		"stage2_hold": true,
 		"withdrawn": true,
 	}
+	queueCheckCounts = map[string]bool{
+		"error": true,
+		"fail": true,
+		"pass": true,
+		"running": true,
+		"total": true,
+		"warn": true,
+	}
+	queueChecksRE = regexp.MustCompile(`^(error|fail|pass|running|total|warn)?(>=|<=|!=|>|<|=)?(\d+)$`)
 )
 
 func escapeLike(value string) string {
@@ -127,18 +136,6 @@ func parseQueueChecks(value string) *queueChecksFilter {
 		value: number,
 	}
 }
-
-var (
-	queueCheckCounts = map[string]bool{
-		"error": true,
-		"fail": true,
-		"pass": true,
-		"running": true,
-		"total": true,
-		"warn": true,
-	}
-	queueChecksRE = regexp.MustCompile(`^(error|fail|pass|running|total|warn)?(>=|<=|!=|>|<|=)?(\d+)$`)
-)
 
 func parseQueueComparison(value string) *queueCompare {
 	body := value

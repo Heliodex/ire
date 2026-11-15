@@ -26,6 +26,9 @@ const (
 	oauthTimeout = 15 * time.Second
 )
 
+// errIdentityConflict means an account is already bound to a different Hack Club identity.
+var errIdentityConflict = errors.New("identity is already linked")
+
 // bindIdentity links a stable subject once and refuses a second subject for the same account.
 func (a *ireApp) bindIdentity(ctx context.Context, userID, provider, subject string) error {
 	if strings.TrimSpace(subject) == "" {
@@ -231,9 +234,6 @@ func (a *ireApp) redirectAuthError(w http.ResponseWriter, r *http.Request, reaso
 	session.Clear(w, r, oauthStateCookie)
 	http.Redirect(w, r, "/?error="+url.QueryEscape(reason), http.StatusFound)
 }
-
-// errIdentityConflict means an account is already bound to a different Hack Club identity.
-var errIdentityConflict = errors.New("identity is already linked")
 
 // redirectURI prefers the registered callback and falls back to the browser-facing origin.
 func (a *ireApp) redirectURI(r *http.Request) string {

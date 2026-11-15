@@ -20,19 +20,22 @@ type roleDefinition struct {
 	Locked bool
 }
 
-// permissionCatalog lists every permission an admin can grant to a role. The
-// wildcard is reserved for the locked admin role and is never grantable.
-var permissionCatalog = []string{
-	permReview,
-	permSecondPass,
-	permChecksManage,
-	permViewPII,
-	permNoteManage,
-	permRosterManage,
-	permAuditRead,
-	permSessionRevoke,
-	permRoleManage,
-}
+var (
+	// permissionCatalog lists every permission an admin can grant to a role. The
+	// wildcard is reserved for the locked admin role and is never grantable.
+	permissionCatalog = []string{
+		permReview,
+		permSecondPass,
+		permChecksManage,
+		permViewPII,
+		permNoteManage,
+		permRosterManage,
+		permAuditRead,
+		permSessionRevoke,
+		permRoleManage,
+	}
+	roleNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{1,31}$`)
+)
 
 // defaultRolePermissions seeds the built-in roles. The sets mirror the role
 // comparisons they replace, so the migration changes no behaviour.
@@ -44,8 +47,6 @@ func defaultRolePermissions() map[string][]string {
 		roleAuditor: {permAuditRead, permViewPII},
 	}
 }
-
-var roleNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{1,31}$`)
 
 // listRoleDefinitions reads the programme roles with locked roles first.
 func (a *ireApp) listRoleDefinitions(ctx context.Context, programID string) ([]roleDefinition, error) {

@@ -45,6 +45,9 @@ const (
 	maxJournalTimelapses = 50
 )
 
+// errNotFound is the sentinel a loader returns when the row does not exist.
+var errNotFound = errors.New("not found")
+
 // boolInt returns 1 for true and 0 for false, the storage convention.
 func boolInt(value bool) int {
 	if value {
@@ -725,6 +728,3 @@ func redactEmail(email string) string {
 
 	return email[:1] + "***" + email[at:]
 }
-
-// errNotFound is the sentinel a loader returns when the row does not exist.
-var errNotFound = errors.New("not found")

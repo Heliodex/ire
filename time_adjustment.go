@@ -15,6 +15,14 @@ import (
 // adjustmentSourceHackatime is the ledger source for Hackatime cuts.
 const adjustmentSourceHackatime = "hackatime"
 
+var (
+	// errLedgerCutAboveClaim reports an approved figure above the source claim.
+	errLedgerCutAboveClaim = errors.New("approved time must not exceed the claimed time")
+
+	// errLedgerCutNeedsReason reports a cut without its required reason.
+	errLedgerCutNeedsReason = errors.New("explain why this time counts for less")
+)
+
 // ledgerBaseTotal sums each entry's approved time plus every ledger cut and
 // bonus except the source being replaced, so the new row cannot double-count.
 func (a *ireApp) ledgerBaseTotal(ctx context.Context, submissionID, excludeSource string) (int, error) {
@@ -147,9 +155,6 @@ func (a *ireApp) saveLedgerCut(ctx context.Context, ship submissionRow, person r
 	return adjustment, total, nil
 }
 
-// errLedgerCutAboveClaim reports an approved figure above the source claim.
-var errLedgerCutAboveClaim = errors.New("approved time must not exceed the claimed time")
-
 // writeLedgerCutError maps a ledger validation failure to its field error.
 func writeLedgerCutError(w http.ResponseWriter, err error) {
 	if errors.Is(err, errLedgerCutNeedsReason) {
@@ -163,9 +168,6 @@ func writeLedgerCutError(w http.ResponseWriter, err error) {
 	}
 	writeStorage(w, err)
 }
-
-// errLedgerCutNeedsReason reports a cut without its required reason.
-var errLedgerCutNeedsReason = errors.New("explain why this time counts for less")
 
 // handleHackatimeReview records the approved Hackatime time and deflation note.
 func (a *ireApp) handleHackatimeReview(w http.ResponseWriter, r *http.Request) {
