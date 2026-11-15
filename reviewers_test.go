@@ -24,11 +24,11 @@ func TestReviewerProfile(t *testing.T) {
 	hours := 5 * 3600
 
 	decision, _ := json.Marshal(contract.DecisionRequest{
-		Decision:             decisionApproved,
+		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		IdempotencyKey:       "profile-decision",
-		NoteToMaker:          "Clean board.",
-		Version:              1,
+		IdempotencyKey: "profile-decision",
+		NoteToMaker: "Clean board.",
+		Version: 1,
 	})
 
 	if made := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", decision, reviewer, nil); made.Code != http.StatusOK {

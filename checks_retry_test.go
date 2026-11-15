@@ -18,7 +18,7 @@ import (
 
 // flakyGitHub serves one repository whose metadata and commit endpoints can fail on demand.
 type flakyGitHub struct {
-	server                *httptest.Server
+	server *httptest.Server
 	failMeta, failCommits atomic.Bool
 }
 
@@ -157,7 +157,9 @@ func TestTickRetriesErroredRepoAccess(t *testing.T) {
 		t.Fatalf("retries before backoff = %d, want 0", count)
 	}
 
-	application.clock = func() time.Time { return base.Add(6 * time.Minute) }
+	application.clock = func() time.Time {
+		return base.Add(6 * time.Minute)
+	}
 
 	postTick(t, application)
 
@@ -180,7 +182,9 @@ func TestTickRetriesErroredRepoAccess(t *testing.T) {
 		t.Fatalf("status after recovery = %q, want ready", status)
 	}
 
-	application.clock = func() time.Time { return base.Add(48 * time.Hour) }
+	application.clock = func() time.Time {
+		return base.Add(48 * time.Hour)
+	}
 
 	postTick(t, application)
 
@@ -215,7 +219,9 @@ func TestTickRetriesErroredCommitsOnReadyShip(t *testing.T) {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
-	application.clock = func() time.Time { return base.Add(6 * time.Minute) }
+	application.clock = func() time.Time {
+		return base.Add(6 * time.Minute)
+	}
 
 	postTick(t, application)
 
@@ -258,7 +264,9 @@ func TestTickSkipsDeterministicFailures(t *testing.T) {
 		t.Fatalf("status = %q, want needs_attention", status)
 	}
 
-	application.clock = func() time.Time { return base.Add(48 * time.Hour) }
+	application.clock = func() time.Time {
+		return base.Add(48 * time.Hour)
+	}
 
 	postTick(t, application)
 
@@ -289,7 +297,9 @@ func TestTickCapsAutomaticRetries(t *testing.T) {
 	runCheckJob(t, application, id)
 
 	for attempt := 1; attempt <= checkRetryMaxAttempts; attempt++ {
-		application.clock = func() time.Time { return base.Add(time.Duration(attempt) * 4 * time.Hour) }
+		application.clock = func() time.Time {
+			return base.Add(time.Duration(attempt) * 4 * time.Hour)
+		}
 
 		postTick(t, application)
 
@@ -300,7 +310,9 @@ func TestTickCapsAutomaticRetries(t *testing.T) {
 		runCheckJob(t, application, id)
 	}
 
-	application.clock = func() time.Time { return base.Add(30 * 24 * time.Hour) }
+	application.clock = func() time.Time {
+		return base.Add(30 * 24 * time.Hour)
+	}
 
 	postTick(t, application)
 

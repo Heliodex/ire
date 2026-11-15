@@ -16,14 +16,14 @@ import (
 // finalReviewRow is the current final, non-invalidated decision for a ship.
 type finalReviewRow struct {
 	ID, ReviewerID, ReviewerEmail, ReviewerName string
-	Stage                                       int
-	Decision                                    string
-	Hours                                       int
-	NoteToMaker                                 string
-	TechnicalFeatures                           string
-	DeflationReason                             string
-	SupersedesID                                string
-	HeldReason                                  string
+	Stage int
+	Decision string
+	Hours int
+	NoteToMaker string
+	TechnicalFeatures string
+	DeflationReason string
+	SupersedesID string
+	HeldReason string
 }
 
 // loadFinalReview returns the ship's current final review.
@@ -311,17 +311,17 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	decisionReq := contract.DecisionRequest{
-		Acknowledgements:     request.Acknowledgements,
-		Decision:             request.Decision,
-		DeflationReason:      &deflationReason,
-		FindingIds:           request.FindingIds,
+		Acknowledgements: request.Acknowledgements,
+		Decision: request.Decision,
+		DeflationReason: &deflationReason,
+		FindingIds: request.FindingIds,
 		HoursApprovedSeconds: request.HoursApprovedSeconds,
-		IdempotencyKey:       request.IdempotencyKey,
-		InternalNote:         request.InternalNote,
-		NoteToMaker:          request.NoteToMaker,
-		OverrideReason:       &reason,
-		TechnicalFeatures:    &technicalFeatures,
-		Version:              request.Version,
+		IdempotencyKey: request.IdempotencyKey,
+		InternalNote: request.InternalNote,
+		NoteToMaker: request.NoteToMaker,
+		OverrideReason: &reason,
+		TechnicalFeatures: &technicalFeatures,
+		Version: request.Version,
 	}
 
 	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, decisionReq, hours, note, technicalFeatures, deflationReason, reason, stage, now)
@@ -362,12 +362,12 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
-		ID:             reviewID,
-		Status:         statusDecided,
-		Held:           0,
-		OutboxID:       optionalID(outboxID),
+		ID: reviewID,
+		Status: statusDecided,
+		Held: 0,
+		OutboxID: optionalID(outboxID),
 		DeliveryStatus: stringPtr(deliveryStatus),
-		NextID:         nil,
+		NextID: nil,
 	})
 }
 
@@ -432,14 +432,14 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 
 	if record.overrideReason != "" {
 		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
+			SQL: `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
 			Args: []any{record.reviewID, record.overrideReason, record.now},
 		})
 	}
 
 	for _, findingID := range record.findingIDs {
 		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
+			SQL: `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
 			Args: []any{record.reviewID, findingID, record.ship.ID, record.ship.Version, record.now},
 		})
 	}
@@ -458,11 +458,11 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 
 	if a.outboundEnabled(ctx, record.ship.ProgramID) {
 		message, statement, err := a.outboxStore().PrepareTransaction(outbox.Message{
-			Event:     record.event,
+			Event: record.event,
 			DedupeKey: "decision:" + record.reviewID,
-			Payload:   record.payload,
-			URL:       a.outboundURL(record.ship.ProgramID),
-			Metadata:  map[string]string{"program_id": record.ship.ProgramID, "submission_id": record.ship.ID},
+			Payload: record.payload,
+			URL: a.outboundURL(record.ship.ProgramID),
+			Metadata: map[string]string{"program_id": record.ship.ProgramID, "submission_id": record.ship.ID},
 		})
 		if err != nil {
 			return nil, "", &decisionProblem{status: http.StatusInternalServerError, message: "could not queue the delivery"}

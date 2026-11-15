@@ -18,35 +18,35 @@ import (
 const makerAvatarBase = "https://cachet.dunkirk.sh/users"
 
 const (
-	queueJournalCountSQL   = `(select count(*) from journal_entry je where je.submission_id = s.id)`
+	queueJournalCountSQL = `(select count(*) from journal_entry je where je.submission_id = s.id)`
 	queueJournalTextLenSQL = `(select coalesce(sum(length(coalesce(text, '')) + length(coalesce(markdown, ''))), 0) from journal_entry je where je.submission_id = s.id)`
-	queueJournalImageSQL   = `(select coalesce(sum(json_array_length(coalesce(media, '[]'))), 0) from journal_entry je where je.submission_id = s.id)`
-	queueCheckFailsSQL     = `(coalesce(json_extract(s.check_summary, '$.fail'), 0) + coalesce(json_extract(s.check_summary, '$.error'), 0))`
-	queueEasySQL           = `s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass' and coalesce(s.thumbnail_url, '') <> '' and ` + queueJournalCountSQL + ` >= 2 and (s.hours_journal_seconds >= 900 or ` + queueJournalTextLenSQL + ` >= 400) and (` + queueJournalImageSQL + ` >= 1 or ` + queueJournalCountSQL + ` >= 3 or s.hours_journal_seconds >= 3600 or ` + queueJournalTextLenSQL + ` >= 1500)`
-	queueHardSQL           = `(s.status = 'needs_attention' or ` + queueJournalCountSQL + ` = 0 or (` + queueJournalCountSQL + ` <= 1 and ` + queueJournalTextLenSQL + ` < 120) or ` + queueCheckFailsSQL + ` >= 4)`
-	queueMediumSQL         = `not (` + queueHardSQL + `) and not (` + queueEasySQL + `)`
+	queueJournalImageSQL = `(select coalesce(sum(json_array_length(coalesce(media, '[]'))), 0) from journal_entry je where je.submission_id = s.id)`
+	queueCheckFailsSQL = `(coalesce(json_extract(s.check_summary, '$.fail'), 0) + coalesce(json_extract(s.check_summary, '$.error'), 0))`
+	queueEasySQL = `s.status = 'ready' and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass' and coalesce(s.thumbnail_url, '') <> '' and ` + queueJournalCountSQL + ` >= 2 and (s.hours_journal_seconds >= 900 or ` + queueJournalTextLenSQL + ` >= 400) and (` + queueJournalImageSQL + ` >= 1 or ` + queueJournalCountSQL + ` >= 3 or s.hours_journal_seconds >= 3600 or ` + queueJournalTextLenSQL + ` >= 1500)`
+	queueHardSQL = `(s.status = 'needs_attention' or ` + queueJournalCountSQL + ` = 0 or (` + queueJournalCountSQL + ` <= 1 and ` + queueJournalTextLenSQL + ` < 120) or ` + queueCheckFailsSQL + ` >= 4)`
+	queueMediumSQL = `not (` + queueHardSQL + `) and not (` + queueEasySQL + `)`
 )
 
 // queueSortColumns maps the queue's sortable headers to their ordering, so the sort parameter only selects a key. The checks score mirrors the client's old badness order: blocking results first, then warnings, then clean ships.
 var queueSortColumns = map[string]string{
-	"ship":    "s.title collate nocase",
-	"maker":   "coalesce(s.maker_name, '') collate nocase",
-	"status":  "s.status",
-	"type":    "coalesce(s.theme, '') collate nocase",
+	"ship": "s.title collate nocase",
+	"maker": "coalesce(s.maker_name, '') collate nocase",
+	"status": "s.status",
+	"type": "coalesce(s.theme, '') collate nocase",
 	"version": "s.version",
 	"claimed": "s.hours_claimed_seconds",
-	"age":     "coalesce(s.submitted_at, s.created_at)",
-	"checks":  "(coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.fail'), 0) + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.error'), 0)) * 100 + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.warn'), 0) * 10 - coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.pass'), 0)",
+	"age": "coalesce(s.submitted_at, s.created_at)",
+	"checks": "(coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.fail'), 0) + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.error'), 0)) * 100 + coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.warn'), 0) * 10 - coalesce(json_extract(nullif(coalesce(s.check_summary, ''), ''), '$.pass'), 0)",
 }
 
 // queueParams is the validated queue listing request.
 type queueParams struct {
-	stage      int
-	filter     string
+	stage int
+	filter string
 	sortColumn string
-	sortDir    string
-	search     queueSearch
-	station    string
+	sortDir string
+	search queueSearch
+	station string
 }
 
 // parseQueueParams validates the listing query, writing the error for a bad stage, sort or role.
@@ -203,12 +203,12 @@ func (a *ireApp) queueFilteredCount(ctx context.Context, person reviewer, params
 // scanQueueItem reads one listing row into a queue item.
 func scanQueueItem(rows *storage.Rows) (contract.QueueItem, error) {
 	var (
-		item                                                     contract.QueueItem
-		theme, thumbnail, makerName, makerSlack, tier            string
-		summaryJSON, claimedBy                                   string
+		item contract.QueueItem
+		theme, thumbnail, makerName, makerSlack, tier string
+		summaryJSON, claimedBy string
 		runStatus, runStarted, runFinished, runError, runVersion string
-		previousReviewer                                         string
-		week, runAttempts                                        int
+		previousReviewer string
+		week, runAttempts int
 	)
 	if err := rows.Scan(&item.ID, &item.ExternalID, &item.Version, &item.Status, &item.Stage, &item.Priority,
 		&item.Title, &theme, &thumbnail, &week, &makerName, &item.MakerEmail, &makerSlack, &tier, &item.HoursClaimedSeconds,
@@ -258,11 +258,11 @@ func scanQueueItem(rows *storage.Rows) (contract.QueueItem, error) {
 
 	if runStatus != "" {
 		item.CheckRun = &contract.CheckRun{
-			Status:        runStatus,
-			Attempts:      runAttempts,
-			StartedAt:     runStarted,
-			FinishedAt:    optionalText(runFinished),
-			Error:         optionalText(runError),
+			Status: runStatus,
+			Attempts: runAttempts,
+			StartedAt: runStarted,
+			FinishedAt: optionalText(runFinished),
+			Error: optionalText(runError),
 			RunnerVersion: runVersion,
 		}
 	}
@@ -281,10 +281,10 @@ func queueCheckSummary(checks []contract.QueueCheck) contract.CheckSummary {
 
 	return contract.CheckSummary{
 		Overall: counts.Overall,
-		Pass:    counts.Pass,
-		Warn:    counts.Warn,
-		Fail:    counts.Fail,
-		Error:   counts.Error,
+		Pass: counts.Pass,
+		Warn: counts.Warn,
+		Fail: counts.Fail,
+		Error: counts.Error,
 		Running: counts.Running,
 	}
 }
@@ -320,9 +320,9 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	response := contract.QueueResponse{
-		Counts:  contract.QueueCounts{Checking: 0, Ready: 0, Claimed: 0, NeedsAttention: 0, Stage2Hold: 0},
+		Counts: contract.QueueCounts{Checking: 0, Ready: 0, Claimed: 0, NeedsAttention: 0, Stage2Hold: 0},
 		HasMore: false,
-		Items:   []contract.QueueItem{},
+		Items: []contract.QueueItem{},
 	}
 
 	for rows.Next() {
@@ -395,7 +395,7 @@ func (a *ireApp) queueChecks(ctx context.Context, items []contract.QueueItem) (m
 	for rows.Next() {
 		var (
 			submissionID string
-			check        contract.QueueCheck
+			check contract.QueueCheck
 		)
 
 		if err := rows.Scan(&submissionID, &check.Key, &check.Label, &check.Group, &check.Status, &check.Severity); err != nil {
@@ -442,10 +442,10 @@ func parseCheckSummary(summary string) contract.CheckSummary {
 
 	return contract.CheckSummary{
 		Overall: counts.Overall,
-		Pass:    counts.Pass,
-		Warn:    counts.Warn,
-		Fail:    counts.Fail,
-		Error:   counts.Error,
+		Pass: counts.Pass,
+		Warn: counts.Warn,
+		Fail: counts.Fail,
+		Error: counts.Error,
 		Running: counts.Running,
 	}
 }

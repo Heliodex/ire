@@ -40,7 +40,7 @@ func localChecks(request contract.IngestRequest, now time.Time) []contract.Check
 
 	var (
 		shortEntries, wordless, clips, clipLinks, coveredSeconds, journalTime int
-		invalidClips                                                          []string
+		invalidClips []string
 	)
 
 	for _, entry := range request.Journals {
@@ -226,13 +226,13 @@ func pluralCount(count int, singular, plural string) string {
 // check builds one check result.
 func check(key, label, group, status, severity, summary, detail, checkedAt string) contract.CheckResult {
 	return contract.CheckResult{
-		Key:       key,
-		Label:     label,
-		Group:     group,
-		Status:    status,
-		Severity:  severity,
-		Summary:   summary,
-		Detail:    stringPtr(detail),
+		Key: key,
+		Label: label,
+		Group: group,
+		Status: status,
+		Severity: severity,
+		Summary: summary,
+		Detail: stringPtr(detail),
 		CheckedAt: checkedAt,
 	}
 }

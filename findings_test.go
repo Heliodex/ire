@@ -22,10 +22,10 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 
 	createBody, _ := json.Marshal(contract.FindingCreateRequest{
 		MakerAction: stringPtr("Write a README that explains the build."),
-		Question:    stringPtr("Is the README real?"),
-		Severity:    "fixable",
-		Station:     "narrative",
-		Summary:     "The README is a placeholder.",
+		Question: stringPtr("Is the README real?"),
+		Severity: "fixable",
+		Station: "narrative",
+		Summary: "The README is a placeholder.",
 	})
 
 	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, cookie, nil)
@@ -45,9 +45,9 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 
 	editBody, _ := json.Marshal(contract.FindingUpdateRequest{
 		MakerAction: stringPtr("Add the missing build steps to the README."),
-		Severity:    stringPtr("block"),
-		Status:      "open",
-		Summary:     stringPtr("The README is a placeholder with no build steps."),
+		Severity: stringPtr("block"),
+		Status: "open",
+		Summary: stringPtr("The README is a placeholder with no build steps."),
 	})
 
 	edited := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/findings/"+finding.ID, editBody, cookie, nil)
@@ -66,13 +66,13 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 		bundle.Submission.HoursJournalSeconds+bundle.Submission.HoursHackatimeSeconds,
 	)
 	approveBody, _ := json.Marshal(contract.DecisionRequest{
-		Acknowledgements:     warningKeys(bundle.Checks),
-		Decision:             decisionApproved,
+		Acknowledgements: warningKeys(bundle.Checks),
+		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		IdempotencyKey:       "dec-open-finding-1",
-		InternalNote:         "Checked.",
-		NoteToMaker:          "Nice.",
-		Version:              bundle.Submission.Version,
+		IdempotencyKey: "dec-open-finding-1",
+		InternalNote: "Checked.",
+		NoteToMaker: "Nice.",
+		Version: bundle.Submission.Version,
 	})
 
 	blocked := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", approveBody, cookie, nil)
@@ -114,9 +114,9 @@ func TestApprovalBlockedByDisputedFinding(t *testing.T) {
 
 	createBody, _ := json.Marshal(contract.FindingCreateRequest{
 		MakerAction: stringPtr("Add the Gerber ZIP."),
-		Severity:    "block",
-		Station:     "hardware",
-		Summary:     "The Gerber ZIP is missing.",
+		Severity: "block",
+		Station: "hardware",
+		Summary: "The Gerber ZIP is missing.",
 	})
 
 	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, cookie, nil)
@@ -137,13 +137,13 @@ func TestApprovalBlockedByDisputedFinding(t *testing.T) {
 		bundle.Submission.HoursJournalSeconds+bundle.Submission.HoursHackatimeSeconds,
 	)
 	approveBody, _ := json.Marshal(contract.DecisionRequest{
-		Acknowledgements:     warningKeys(bundle.Checks),
-		Decision:             decisionApproved,
+		Acknowledgements: warningKeys(bundle.Checks),
+		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		IdempotencyKey:       "dec-disputed-finding-1",
-		InternalNote:         "Checked.",
-		NoteToMaker:          "Nice.",
-		Version:              bundle.Submission.Version,
+		IdempotencyKey: "dec-disputed-finding-1",
+		InternalNote: "Checked.",
+		NoteToMaker: "Nice.",
+		Version: bundle.Submission.Version,
 	})
 
 	blocked := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", approveBody, cookie, nil)
@@ -169,10 +169,10 @@ func TestReturnRecordsItsFindings(t *testing.T) {
 
 	createBody, _ := json.Marshal(contract.FindingCreateRequest{
 		MakerAction: stringPtr("Add the Gerber ZIP."),
-		Question:    stringPtr("Are the fabrication files present?"),
-		Severity:    "fixable",
-		Station:     "triage",
-		Summary:     "The Gerber ZIP is missing.",
+		Question: stringPtr("Are the fabrication files present?"),
+		Severity: "fixable",
+		Station: "triage",
+		Summary: "The Gerber ZIP is missing.",
 	})
 
 	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, cookie, nil)
@@ -183,12 +183,12 @@ func TestReturnRecordsItsFindings(t *testing.T) {
 	finding := decode[contract.FindingResponse](t, created).Finding
 
 	returnBody, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionChanges,
-		FindingIds:     []string{finding.ID},
+		Decision: decisionChanges,
+		FindingIds: []string{finding.ID},
 		IdempotencyKey: "dec-return-finding-1",
-		InternalNote:   "Returning with the complete list.",
-		NoteToMaker:    "Please add the Gerber ZIP and resubmit.",
-		Version:        bundle.Submission.Version,
+		InternalNote: "Returning with the complete list.",
+		NoteToMaker: "Please add the Gerber ZIP and resubmit.",
+		Version: bundle.Submission.Version,
 	})
 
 	returned := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", returnBody, cookie, nil)
@@ -208,11 +208,11 @@ func TestReturnRecordsItsFindings(t *testing.T) {
 	}
 
 	badBody, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionChanges,
-		FindingIds:     []string{"fnd_missing"},
+		Decision: decisionChanges,
+		FindingIds: []string{"fnd_missing"},
 		IdempotencyKey: "dec-return-missing-finding",
-		NoteToMaker:    "Please fix this.",
-		Version:        1,
+		NoteToMaker: "Please fix this.",
+		Version: 1,
 	})
 
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, cookie, nil); claim.Code != http.StatusOK {
@@ -253,9 +253,9 @@ func TestFindingSurvivesResubmission(t *testing.T) {
 
 	createBody, _ := json.Marshal(contract.FindingCreateRequest{
 		MakerAction: stringPtr("Add the Gerber ZIP."),
-		Severity:    "fixable",
-		Station:     "triage",
-		Summary:     "The Gerber ZIP is missing.",
+		Severity: "fixable",
+		Station: "triage",
+		Summary: "The Gerber ZIP is missing.",
 	})
 
 	made := do(t, application, http.MethodPost, testBase+"/submissions/"+v1.ID+"/findings", createBody, cookie, nil)
@@ -311,12 +311,12 @@ func TestFindingSurvivesResubmission(t *testing.T) {
 		bundle2.Submission.HoursJournalSeconds+bundle2.Submission.HoursHackatimeSeconds,
 	)
 	approveBody, _ := json.Marshal(contract.DecisionRequest{
-		Acknowledgements:     warningKeys(bundle2.Checks),
-		Decision:             decisionApproved,
+		Acknowledgements: warningKeys(bundle2.Checks),
+		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		IdempotencyKey:       "dec-resubmission-finding",
-		NoteToMaker:          "Thanks for the fix.",
-		Version:              bundle2.Submission.Version,
+		IdempotencyKey: "dec-resubmission-finding",
+		NoteToMaker: "Thanks for the fix.",
+		Version: bundle2.Submission.Version,
 	})
 
 	approved := do(t, application, http.MethodPost, testBase+"/submissions/"+v2.ID+"/decision", approveBody, cookie, nil)

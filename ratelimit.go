@@ -13,7 +13,7 @@ import (
 const (
 	browserRateLimit = 120
 	machineRateLimit = 240
-	rateLimitWindow  = time.Minute
+	rateLimitWindow = time.Minute
 )
 
 // The limits live in the supervisor's key-value store: wasm instances are per request and share no memory, so an in-process window would reset on every instance.

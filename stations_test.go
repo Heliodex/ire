@@ -92,10 +92,10 @@ func TestStationFlowMovesThroughTheQueue(t *testing.T) {
 	// A recorded finding lets the failed station advance with its flag.
 	findingBody, _ := json.Marshal(contract.FindingCreateRequest{
 		MakerAction: stringPtr("Count only the productive journal time."),
-		Question:    stringPtr(first.Prompt),
-		Severity:    "fixable",
-		Station:     "time",
-		Summary:     "Tutorial consumption in the journals.",
+		Question: stringPtr(first.Prompt),
+		Severity: "fixable",
+		Station: "time",
+		Summary: "Tutorial consumption in the journals.",
 	})
 
 	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", findingBody, cookie, nil); created.Code != http.StatusOK {
@@ -293,10 +293,10 @@ func TestStationStatusReflectsEachSection(t *testing.T) {
 
 	recordBody, _ := json.Marshal(contract.FindingCreateRequest{
 		MakerAction: stringPtr("Record one decision with its justification."),
-		Question:    stringPtr(synthesis.Questions[0].Prompt),
-		Severity:    "fixable",
-		Station:     "synthesis",
-		Summary:     "The synthesis record is missing.",
+		Question: stringPtr(synthesis.Questions[0].Prompt),
+		Severity: "fixable",
+		Station: "synthesis",
+		Summary: "The synthesis record is missing.",
 	})
 
 	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", recordBody, cookie, nil); created.Code != http.StatusOK {
@@ -337,10 +337,10 @@ func TestOpenFindingsDoNotPinStations(t *testing.T) {
 
 	flagBody, _ := json.Marshal(contract.FindingCreateRequest{
 		MakerAction: stringPtr("Add a real cover screenshot."),
-		Question:    stringPtr(triage.Questions[0].Prompt),
-		Severity:    "fixable",
-		Station:     "triage",
-		Summary:     "The cover looks like a template.",
+		Question: stringPtr(triage.Questions[0].Prompt),
+		Severity: "fixable",
+		Station: "triage",
+		Summary: "The cover looks like a template.",
 	})
 
 	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", flagBody, cookie, nil); created.Code != http.StatusOK {
@@ -472,15 +472,15 @@ func TestAdminAuthorsStations(t *testing.T) {
 	cookie := login(t, application, "admin@example.com")
 
 	station := contract.StationDefinition{
-		Active:      1,
+		Active: 1,
 		Description: "A test station.",
-		Key:         "test_station",
-		Label:       "Test station",
+		Key: "test_station",
+		Label: "Test station",
 		Questions: []contract.StationQuestion{
 			{EvidenceKind: "text", Key: "first", Prompt: "Is the first thing right?", Required: 1, Sort: 0},
 		},
-		Sort:   90,
-		Stage:  1,
+		Sort: 90,
+		Stage: 1,
 		Themes: []string{},
 	}
 

@@ -73,14 +73,14 @@ func TestLocalEvidenceChecks(t *testing.T) {
 	clip := "http://example.com/clip.mp4"
 
 	request := contract.IngestRequest{
-		Title:       "Evidence",
+		Title: "Evidence",
 		Description: strings.Repeat("A detailed board and firmware description. ", 5),
 		Journals: []contract.IngestJournal{{
-			At:   "2026-11-01T10:00:00Z",
+			At: "2026-11-01T10:00:00Z",
 			Text: "Built it.",
 			Timelapses: []contract.IngestRequestJournalsElemTimelapsesElem{{
 				CoveredSeconds: &seconds,
-				URL:            &clip,
+				URL: &clip,
 			}},
 		}},
 		Meta: &contract.IngestMeta{Hours: &contract.IngestHours{ClaimedSeconds: 3600}},

@@ -51,9 +51,9 @@ func TestOutboundRetriesAfterReceiverError(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Retry this delivery.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Retry this delivery.",
 		IdempotencyKey: "retry-delivery",
 	})
 
@@ -72,7 +72,9 @@ func TestOutboundRetriesAfterReceiverError(t *testing.T) {
 	}
 
 	base := application.now()
-	application.clock = func() time.Time { return base.Add(time.Minute) }
+	application.clock = func() time.Time {
+		return base.Add(time.Minute)
+	}
 
 	if tick := do(t, application, http.MethodPost, "/jobs/tick", nil, nil, nil); tick.Code != http.StatusOK {
 		t.Fatalf("tick = %d: %s", tick.Code, tick.Body.String())
@@ -111,16 +113,18 @@ func TestOutboundFailsPermanentlyOn4xx(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Reject this delivery permanently.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Reject this delivery permanently.",
 		IdempotencyKey: "permanent-delivery",
 	})
 
 	decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil))
 
 	base := application.now()
-	application.clock = func() time.Time { return base.Add(time.Minute) }
+	application.clock = func() time.Time {
+		return base.Add(time.Minute)
+	}
 
 	if tick := do(t, application, http.MethodPost, "/jobs/tick", nil, nil, nil); tick.Code != http.StatusOK {
 		t.Fatalf("tick = %d: %s", tick.Code, tick.Body.String())
@@ -131,7 +135,9 @@ func TestOutboundFailsPermanentlyOn4xx(t *testing.T) {
 		t.Fatalf("outbox = %+v", outbox.Deliveries)
 	}
 
-	application.clock = func() time.Time { return base.Add(10 * time.Minute) }
+	application.clock = func() time.Time {
+		return base.Add(10 * time.Minute)
+	}
 
 	if tick := do(t, application, http.MethodPost, "/jobs/tick", nil, nil, nil); tick.Code != http.StatusOK {
 		t.Fatalf("second tick = %d: %s", tick.Code, tick.Body.String())
@@ -181,9 +187,9 @@ func TestOutboundRetriesOnTransportError(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Retry the dropped connection.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Retry the dropped connection.",
 		IdempotencyKey: "dropped-delivery",
 	})
 
@@ -195,7 +201,9 @@ func TestOutboundRetriesOnTransportError(t *testing.T) {
 	}
 
 	base := application.now()
-	application.clock = func() time.Time { return base.Add(10 * time.Minute) }
+	application.clock = func() time.Time {
+		return base.Add(10 * time.Minute)
+	}
 
 	if tick := do(t, application, http.MethodPost, "/jobs/tick", nil, nil, nil); tick.Code != http.StatusOK {
 		t.Fatalf("second tick = %d: %s", tick.Code, tick.Body.String())
@@ -231,9 +239,9 @@ func TestOutboundDryRun(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Dry run this delivery.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Dry run this delivery.",
 		IdempotencyKey: "dry-run-delivery",
 	})
 

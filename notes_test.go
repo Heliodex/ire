@@ -68,9 +68,9 @@ func TestClosedShipsRefuseNotesAndFindingUpdates(t *testing.T) {
 
 	createBody, _ := json.Marshal(contract.FindingCreateRequest{
 		MakerAction: stringPtr("Add the Gerber ZIP."),
-		Severity:    "fixable",
-		Station:     "triage",
-		Summary:     "The Gerber ZIP is missing.",
+		Severity: "fixable",
+		Station: "triage",
+		Summary: "The Gerber ZIP is missing.",
 	})
 
 	made := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, reviewer, nil)

@@ -79,11 +79,11 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := a.store.Transaction(r.Context(),
 		storage.TransactionStatement{
-			SQL:  `update journal_entry set approved_seconds = ?, reviewer_note = ?, deflation_reason = ? where id = ? and submission_id = ?`,
+			SQL: `update journal_entry set approved_seconds = ?, reviewer_note = ?, deflation_reason = ? where id = ? and submission_id = ?`,
 			Args: []any{request.ApprovedSeconds, nullString(note), nullString(reason), entry.ID, ship.ID},
 		},
 		storage.TransactionStatement{
-			SQL:  `update submission set hours_approved_seconds = ?, updated_at = ? where id = ?`,
+			SQL: `update submission set hours_approved_seconds = ?, updated_at = ? where id = ?`,
 			Args: []any{total, now, ship.ID},
 		},
 		storage.TransactionStatement{
@@ -114,10 +114,10 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 // loadJournalEntry reads one journal entry for a ship.
 func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID string) (contract.JournalEntry, error) {
 	var (
-		item                                        contract.JournalEntry
+		item contract.JournalEntry
 		title, text, markdown, mediaJSON, clipsJSON string
-		approvedSeconds                             int
-		reviewerNote, deflationReason               string
+		approvedSeconds int
+		reviewerNote, deflationReason string
 	)
 
 	err := a.store.QueryRow(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
@@ -166,7 +166,7 @@ func (a *ireApp) journalApprovedTotal(ctx context.Context, submissionID, entryID
 
 	for rows.Next() {
 		var (
-			id                string
+			id string
 			seconds, existing int
 		)
 

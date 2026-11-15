@@ -35,7 +35,7 @@ func retryableCheckClause() (string, []any) {
 // erroredCheck is one open ship with error-status GitHub checks on its current version.
 type erroredCheck struct {
 	submissionID, status, repoURL, errorAt string
-	version                                int
+	version int
 }
 
 // retryErroredChecks requeues ships whose GitHub checks errored, with exponential backoff and a bounded number of attempts. It runs on the schedule tick; deterministic failures (fail, not error) and closed ships are never touched.
@@ -141,11 +141,11 @@ func (a *ireApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck) {
 
 	if _, err := a.store.Transaction(ctx,
 		storage.TransactionStatement{
-			SQL:  `insert or replace into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version) values (?, ?, 'queued', 0, ?, null, null, ?)`,
+			SQL: `insert or replace into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version) values (?, ?, 'queued', 0, ?, null, null, ?)`,
 			Args: []any{candidate.submissionID, candidate.version, now, checkRunnerVersion},
 		},
 		storage.TransactionStatement{
-			SQL:  `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'checks_retry', ?, ?)`,
+			SQL: `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'checks_retry', ?, ?)`,
 			Args: []any{newID("evt"), candidate.submissionID, marshalMap(map[string]any{"version": candidate.version, "retry": count + 1, "keys": keys}), now},
 		},
 	); err != nil {

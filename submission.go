@@ -14,15 +14,15 @@ import (
 
 // submissionRow is the flattened ship row every handler reads. Nullable columns are coalesced to zero values.
 type submissionRow struct {
-	ID, ProgramID, ExternalID                                                                             string
-	Version                                                                                               int
-	PreviousID, Status                                                                                    string
-	Stage, Priority                                                                                       int
-	HeldReason, Title, Description, Track, Theme, Phase                                                   string
-	Week                                                                                                  int
-	MakerEmail, MakerName, MakerSlack, MakerHackatim, RepoURL, DemoURL, ThumbnailURL                      string
+	ID, ProgramID, ExternalID string
+	Version int
+	PreviousID, Status string
+	Stage, Priority int
+	HeldReason, Title, Description, Track, Theme, Phase string
+	Week int
+	MakerEmail, MakerName, MakerSlack, MakerHackatim, RepoURL, DemoURL, ThumbnailURL string
 	RequestedTier, GrantCapCents, BomTotalCents, HoursClaimed, HoursJournal, HoursHackatim, HoursApproved int
-	CheckSummary, IngestedAt, FirstOpenedAt, DecidedAt, CreatedAt, UpdatedAt                              string
+	CheckSummary, IngestedAt, FirstOpenedAt, DecidedAt, CreatedAt, UpdatedAt string
 }
 
 // loadSubmission reads one ship by id.
@@ -89,7 +89,7 @@ func (a *ireApp) latestChecks(ctx context.Context, submissionID string, version 
 
 	for rows.Next() {
 		var (
-			item         contract.CheckResult
+			item contract.CheckResult
 			detail, data string
 		)
 		if err := rows.Scan(&item.Key, &item.Label, &item.Group, &item.Status, &item.Severity, &item.Summary, &detail, &data, &item.CheckedAt); err != nil {
@@ -125,8 +125,8 @@ func clipSource(entryID string, index int, externalID string) string {
 func journalMediaURLs(raw string) []contract.JournalMedia {
 	var records []struct {
 		Type *string `json:"type"`
-		URL  *string `json:"url"`
-		Alt  *string `json:"alt"`
+		URL *string `json:"url"`
+		Alt *string `json:"alt"`
 	}
 
 	if json.Unmarshal([]byte(raw), &records) != nil {
@@ -168,11 +168,11 @@ func journalMediaURLs(raw string) []contract.JournalMedia {
 // http(s) URLs and resolving each clip's approved time from the ledger cuts.
 func journalTimelapses(entryID, raw string, adjustments []contract.TimeAdjustment) []contract.JournalTimelapse {
 	var records []struct {
-		CoveredSeconds *int    `json:"coveredSeconds"`
-		ExternalID     *string `json:"externalId"`
-		Provider       *string `json:"provider"`
-		ThumbnailURL   *string `json:"thumbnailUrl"`
-		URL            *string `json:"url"`
+		CoveredSeconds *int `json:"coveredSeconds"`
+		ExternalID *string `json:"externalId"`
+		Provider *string `json:"provider"`
+		ThumbnailURL *string `json:"thumbnailUrl"`
+		URL *string `json:"url"`
 	}
 
 	if json.Unmarshal([]byte(raw), &records) != nil {
@@ -265,7 +265,7 @@ func (a *ireApp) loadAdjustments(ctx context.Context, submissionID string) ([]co
 
 	for rows.Next() {
 		var (
-			item             contract.TimeAdjustment
+			item contract.TimeAdjustment
 			note, reviewerID string
 		)
 
@@ -301,10 +301,10 @@ func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contr
 
 	for rows.Next() {
 		var (
-			item                                        contract.JournalEntry
+			item contract.JournalEntry
 			title, text, markdown, mediaJSON, clipsJSON string
-			approvedSeconds                             int
-			reviewerNote, deflationReason               string
+			approvedSeconds int
+			reviewerNote, deflationReason string
 		)
 		if err := rows.Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON, &approvedSeconds, &reviewerNote, &deflationReason); err != nil {
 			return nil, err
@@ -344,7 +344,7 @@ func (a *ireApp) loadBom(ctx context.Context, submissionID string) ([]contract.B
 
 	for rows.Next() {
 		var (
-			item                  contract.BomLine
+			item contract.BomLine
 			purpose, vendor, link string
 		)
 		if err := rows.Scan(&item.Name, &purpose, &item.Quantity, &item.UnitCostCents, &vendor, &link); err != nil {
@@ -379,11 +379,11 @@ func (a *ireApp) loadReviews(ctx context.Context, submissionID string) ([]contra
 
 	for rows.Next() {
 		var (
-			item                                               contract.Review
-			internalNote, technicalFeatures, deflationReason   string
+			item contract.Review
+			internalNote, technicalFeatures, deflationReason string
 			reviewerName, heldReason, overrideReason, acksJSON string
-			invalidatedAt                                      string
-			hours                                              int
+			invalidatedAt string
+			hours int
 		)
 		if err := rows.Scan(&item.ID, &item.Stage, &item.Decision, &item.NoteToMaker, &internalNote,
 			&technicalFeatures, &deflationReason, &hours,
@@ -424,7 +424,7 @@ func (a *ireApp) loadEvents(ctx context.Context, submissionID string) ([]contrac
 
 	for rows.Next() {
 		var (
-			item        contract.SubmissionEvent
+			item contract.SubmissionEvent
 			actor, data string
 		)
 		if err := rows.Scan(&item.ID, &item.Kind, &actor, &data, &item.CreatedAt); err != nil {
@@ -498,25 +498,25 @@ func (a *ireApp) policyFor(ctx context.Context, programID string) reviewPolicy {
 
 // reviewPolicy is the stage 1 policy the prototype enforces. Stage 2 fraud is always out of scope for stage 1.
 type reviewPolicy struct {
-	HoldOnWarn               bool  `json:"holdOnWarn"`
-	HoldMinApprovedSeconds   int   `json:"holdMinApprovedSeconds"`
-	HoldTiers                []int `json:"holdTiers"`
-	NoteRequiredForChanges   bool  `json:"noteRequiredForChanges"`
-	FraudMinStage            int   `json:"fraudMinStage"`
-	RequireTechnicalFeatures bool  `json:"requireTechnicalFeatures"`
-	RequireDeflationReason   bool  `json:"requireDeflationReason"`
+	HoldOnWarn bool `json:"holdOnWarn"`
+	HoldMinApprovedSeconds int `json:"holdMinApprovedSeconds"`
+	HoldTiers []int `json:"holdTiers"`
+	NoteRequiredForChanges bool `json:"noteRequiredForChanges"`
+	FraudMinStage int `json:"fraudMinStage"`
+	RequireTechnicalFeatures bool `json:"requireTechnicalFeatures"`
+	RequireDeflationReason bool `json:"requireDeflationReason"`
 }
 
 // defaultPolicy is the seeded policy when the setting is missing.
 func defaultPolicy() reviewPolicy {
 	return reviewPolicy{
-		HoldOnWarn:               true,
-		HoldMinApprovedSeconds:   0,
-		HoldTiers:                []int{2, 3},
-		NoteRequiredForChanges:   true,
-		FraudMinStage:            2,
+		HoldOnWarn: true,
+		HoldMinApprovedSeconds: 0,
+		HoldTiers: []int{2, 3},
+		NoteRequiredForChanges: true,
+		FraudMinStage: 2,
 		RequireTechnicalFeatures: false,
-		RequireDeflationReason:   true,
+		RequireDeflationReason: true,
 	}
 }
 
@@ -526,12 +526,12 @@ func contractPolicy(policy reviewPolicy) contract.ReviewPolicy {
 	copy(tiers, policy.HoldTiers)
 
 	return contract.ReviewPolicy{
-		HoldOnWarn:               boolInt(policy.HoldOnWarn),
-		HoldMinApprovedSeconds:   policy.HoldMinApprovedSeconds,
-		HoldTiers:                tiers,
-		NoteRequiredForChanges:   boolInt(policy.NoteRequiredForChanges),
-		FraudMinStage:            policy.FraudMinStage,
-		RequireDeflationReason:   boolInt(policy.RequireDeflationReason),
+		HoldOnWarn: boolInt(policy.HoldOnWarn),
+		HoldMinApprovedSeconds: policy.HoldMinApprovedSeconds,
+		HoldTiers: tiers,
+		NoteRequiredForChanges: boolInt(policy.NoteRequiredForChanges),
+		FraudMinStage: policy.FraudMinStage,
+		RequireDeflationReason: boolInt(policy.RequireDeflationReason),
 		RequireTechnicalFeatures: boolInt(policy.RequireTechnicalFeatures),
 	}
 }

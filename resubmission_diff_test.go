@@ -29,7 +29,7 @@ func TestResubmissionDiffShowsWhatChanged(t *testing.T) {
 	}
 
 	statements := []struct {
-		sql  string
+		sql string
 		args []any
 	}{
 		{`insert or replace into repo_snapshot (submission_id, version, forge, full_name, head_sha, files, commits, fetched_at)

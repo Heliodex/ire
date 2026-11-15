@@ -23,13 +23,13 @@ func TestApprovalRequiresJustification(t *testing.T) {
 	hours := 5 * secondsPerHour
 	note := "Thanks for the detailed journal."
 	request := contract.DecisionRequest{
-		Acknowledgements:     warningKeys(bundle.Checks),
-		Decision:             decisionApproved,
+		Acknowledgements: warningKeys(bundle.Checks),
+		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		IdempotencyKey:       "dec-justification-1",
-		InternalNote:         "Checked the board and firmware.",
-		NoteToMaker:          note,
-		Version:              bundle.Submission.Version,
+		IdempotencyKey: "dec-justification-1",
+		InternalNote: "Checked the board and firmware.",
+		NoteToMaker: note,
+		Version: bundle.Submission.Version,
 	}
 
 	enc, _ := json.Marshal(request)
@@ -93,7 +93,7 @@ func TestApprovalRequiresJustification(t *testing.T) {
 		Review struct {
 			Justification struct {
 				TechnicalFeatures string `json:"technical_features"`
-				DeflationReason   string `json:"deflation_reason"`
+				DeflationReason string `json:"deflation_reason"`
 			} `json:"justification"`
 		} `json:"review"`
 	}
@@ -129,14 +129,14 @@ func TestApprovalWithoutCutDoesNotNeedDeflationReason(t *testing.T) {
 	)
 	features := "Firmware, board and enclosure as described in the README."
 	request := contract.DecisionRequest{
-		Acknowledgements:     warningKeys(bundle.Checks),
-		Decision:             decisionApproved,
+		Acknowledgements: warningKeys(bundle.Checks),
+		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		IdempotencyKey:       "dec-no-cut-1",
-		InternalNote:         "Checked.",
-		NoteToMaker:          "Nice work.",
-		TechnicalFeatures:    &features,
-		Version:              bundle.Submission.Version,
+		IdempotencyKey: "dec-no-cut-1",
+		InternalNote: "Checked.",
+		NoteToMaker: "Nice work.",
+		TechnicalFeatures: &features,
+		Version: bundle.Submission.Version,
 	}
 
 	enc, _ := json.Marshal(request)

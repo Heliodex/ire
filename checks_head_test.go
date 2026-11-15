@@ -20,7 +20,7 @@ func TestChecksHead(t *testing.T) {
 		}
 
 		commits := []map[string]any{{"sha": head, "commit": map[string]any{
-			"author":  map[string]string{"name": "Maker", "date": "2026-11-01T10:00:00Z"},
+			"author": map[string]string{"name": "Maker", "date": "2026-11-01T10:00:00Z"},
 			"message": "First",
 		}}}
 

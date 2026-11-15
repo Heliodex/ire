@@ -33,16 +33,18 @@ func newTestApp(t *testing.T) *ireApp {
 	t.Cleanup(server.Close)
 
 	cfg := config{
-		IngestSecret:      "test-ingest",
-		OutboundSecret:    "test-outbound",
-		OutboundURL:       "fake://receiver",
-		SeedFixtures:      true,
-		AllowDevAccounts:  true,
+		IngestSecret: "test-ingest",
+		OutboundSecret: "test-outbound",
+		OutboundURL: "fake://receiver",
+		SeedFixtures: true,
+		AllowDevAccounts: true,
 		DisableRepoChecks: true,
 	}
 
 	application := newIreApp(server.NewClient(server.Client()), server.Client(), cfg)
-	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC) }
+	application.clock = func() time.Time {
+		return time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
+	}
 
 	if err := application.migrate(context.Background()); err != nil {
 		t.Fatal(err)
@@ -142,24 +144,24 @@ func decode[T any](t *testing.T, recorder *httptest.ResponseRecorder) T {
 func ingestBody(externalID string) []byte {
 	hours := &contract.IngestHours{ClaimedSeconds: 7 * 3600, JournalSeconds: 7 * 3600, HackatimeSeconds: 0}
 	request := contract.IngestRequest{
-		ExternalID:        externalID,
-		Title:             "Line follower",
-		Description:       "A line-following robot with a custom RP2040 board, an array of reflective sensors, a motor driver and a small OLED. The board is routed on two layers, the firmware is a 1st pass and the BOM prices every part.",
-		RepoURL:           stringPtr("https://github.com/example/line-follower"),
-		ThumbnailURL:      stringPtr("https://example.com/cover.jpg"),
-		Track:             stringPtr("hardware"),
-		Maker:             contract.IngestMaker{Email: "maker@example.com", Name: "Maker"},
+		ExternalID: externalID,
+		Title: "Line follower",
+		Description: "A line-following robot with a custom RP2040 board, an array of reflective sensors, a motor driver and a small OLED. The board is routed on two layers, the firmware is a 1st pass and the BOM prices every part.",
+		RepoURL: stringPtr("https://github.com/example/line-follower"),
+		ThumbnailURL: stringPtr("https://example.com/cover.jpg"),
+		Track: stringPtr("hardware"),
+		Maker: contract.IngestMaker{Email: "maker@example.com", Name: "Maker"},
 		HackatimeProjects: []string{"line-follower"},
 		Journals: []contract.IngestJournal{
 			{At: "2026-11-02T10:00:00Z", Seconds: new(3 * 3600), Text: "Placed the RP2040, the sensor array and the motor driver. Routed the board and fixed the clearance errors the DRC found near the USB pads.", Media: []contract.IngestRequestJournalsElemMediaElem{{URL: "https://example.com/board.jpg"}}},
 			{At: "2026-11-02T15:00:00Z", Seconds: new(4 * 3600), Text: "Wrote the first firmware pass and sampled the sensor array over serial. The PID loop still needs tuning, but the board boots and the display works."},
 		},
 		Meta: &contract.IngestMeta{
-			Phase:         stringPtr("design"),
-			Theme:         stringPtr("pcb"),
-			Week:          new(1),
+			Phase: stringPtr("design"),
+			Theme: stringPtr("pcb"),
+			Week: new(1),
 			RequestedTier: new(1),
-			Hours:         hours,
+			Hours: hours,
 			Bom: []contract.IngestBomLine{
 				{Name: "RP2040", Qty: new(1), UnitUsd: new(1.20)},
 				{Name: "PCB fabrication", Qty: new(5), UnitUsd: new(4.20)},
@@ -239,9 +241,9 @@ func TestIngestWritesLargeShipsInBatches(t *testing.T) {
 
 	for i := range 45 {
 		request.Journals = append(request.Journals, contract.IngestJournal{
-			At:      "2026-11-02T10:00:00Z",
+			At: "2026-11-02T10:00:00Z",
 			Seconds: new(3600),
-			Text:    "Work session number " + strconv.Itoa(i) + " with enough words to read as a real entry about routing the board and testing the firmware.",
+			Text: "Work session number " + strconv.Itoa(i) + " with enough words to read as a real entry about routing the board and testing the firmware.",
 		})
 	}
 
@@ -526,12 +528,12 @@ func TestApprovalRequiresAcknowledgementAndHolds(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          bundle.Submission.Version,
-		NoteToMaker:      "Nice board.",
-		InternalNote:     "Checked the routing.",
+		Decision: decisionApproved,
+		Version: bundle.Submission.Version,
+		NoteToMaker: "Nice board.",
+		InternalNote: "Checked the routing.",
 		Acknowledgements: []string{},
-		IdempotencyKey:   "dec-warned-1",
+		IdempotencyKey: "dec-warned-1",
 	})
 
 	refused := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", body, cookie, nil)
@@ -540,12 +542,12 @@ func TestApprovalRequiresAcknowledgementAndHolds(t *testing.T) {
 	}
 
 	body, _ = json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          bundle.Submission.Version,
-		NoteToMaker:      "Nice board.",
-		InternalNote:     "Checked the routing.",
+		Decision: decisionApproved,
+		Version: bundle.Submission.Version,
+		NoteToMaker: "Nice board.",
+		InternalNote: "Checked the routing.",
 		Acknowledgements: warnings,
-		IdempotencyKey:   "dec-warned-1",
+		IdempotencyKey: "dec-warned-1",
 	})
 
 	heldRecorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", body, cookie, nil)
@@ -586,12 +588,12 @@ func TestCleanApprovalDeliversSignedPayload(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          1,
-		NoteToMaker:      "Clean board, clear BOM. Approved.",
-		InternalNote:     "Routing and gerbers checked.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Clean board, clear BOM. Approved.",
+		InternalNote: "Routing and gerbers checked.",
 		Acknowledgements: []string{},
-		IdempotencyKey:   "dec-clean-1",
+		IdempotencyKey: "dec-clean-1",
 	})
 
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil)
@@ -691,10 +693,10 @@ func TestBlockingCheckRefusesApproval(t *testing.T) {
 	}
 
 	approve, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Approved.",
-		InternalNote:   "",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Approved.",
+		InternalNote: "",
 		IdempotencyKey: "dec-blocked-1",
 	})
 
@@ -704,8 +706,8 @@ func TestBlockingCheckRefusesApproval(t *testing.T) {
 	}
 
 	noNote, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionRejected,
-		Version:        1,
+		Decision: decisionRejected,
+		Version: 1,
 		IdempotencyKey: "dec-blocked-2",
 	})
 
@@ -715,9 +717,9 @@ func TestBlockingCheckRefusesApproval(t *testing.T) {
 	}
 
 	reject, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionRejected,
-		Version:        1,
-		NoteToMaker:    "The repository is private, so the board cannot be reviewed. Make it public and resubmit.",
+		Decision: decisionRejected,
+		Version: 1,
+		NoteToMaker: "The repository is private, so the board cannot be reviewed. Make it public and resubmit.",
 		IdempotencyKey: "dec-blocked-3",
 	})
 
@@ -875,9 +877,9 @@ func TestChangesOnWarnedShipIsFinal(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionChanges,
-		Version:        1,
-		NoteToMaker:    "Add the BOM to the repository and replace the generic journal entry.",
+		Decision: decisionChanges,
+		Version: 1,
+		NoteToMaker: "Add the BOM to the repository and replace the generic journal entry.",
 		IdempotencyKey: "changes-warned-1",
 	})
 
@@ -907,11 +909,11 @@ func TestHeldShipCannotBeDecidedAtStageOne(t *testing.T) {
 	}
 
 	approve, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          1,
-		NoteToMaker:      "Nice board.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Nice board.",
 		Acknowledgements: []string{"repo.readme.images", "repo.bom", "evidence.journals"},
-		IdempotencyKey:   "held-once",
+		IdempotencyKey: "held-once",
 	})
 
 	held := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, cookie, nil)
@@ -920,9 +922,9 @@ func TestHeldShipCannotBeDecidedAtStageOne(t *testing.T) {
 	}
 
 	again, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Approved again with fewer hours.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Approved again with fewer hours.",
 		IdempotencyKey: "held-twice",
 	})
 
@@ -955,11 +957,11 @@ func TestStageTwoConfirmsHeldApproval(t *testing.T) {
 	}
 
 	approve, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          1,
-		NoteToMaker:      "1st pass approves the hours.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "1st pass approves the hours.",
 		Acknowledgements: warnings,
-		IdempotencyKey:   "stage1-hold",
+		IdempotencyKey: "stage1-hold",
 	})
 
 	held := decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, reviewer, nil))
@@ -992,10 +994,10 @@ func TestStageTwoConfirmsHeldApproval(t *testing.T) {
 	}
 
 	confirm, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "2nd pass confirms the approval.",
-		InternalNote:   "Checked the held warnings.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "2nd pass confirms the approval.",
+		InternalNote: "Checked the held warnings.",
 		IdempotencyKey: "stage2-1",
 	})
 
@@ -1025,15 +1027,15 @@ func TestStageTwoConfirmsHeldApproval(t *testing.T) {
 	}
 
 	var event struct {
-		Event        string `json:"event"`
-		Stage        int    `json:"stage"`
+		Event string `json:"event"`
+		Stage int `json:"stage"`
 		StageHistory []struct {
-			Stage    int    `json:"stage"`
+			Stage int `json:"stage"`
 			Decision string `json:"decision"`
 		} `json:"stage_history"`
 		Review struct {
-			ApprovedSeconds int    `json:"approved_seconds"`
-			NoteToMaker     string `json:"note_to_maker"`
+			ApprovedSeconds int `json:"approved_seconds"`
+			NoteToMaker string `json:"note_to_maker"`
 		} `json:"review"`
 	}
 	if err := json.Unmarshal([]byte(received.Deliveries[0].Body), &event); err != nil {
@@ -1075,11 +1077,11 @@ func TestStageTwoRejectsOwnDecision(t *testing.T) {
 
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, organiser, nil))
 	approve, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          1,
-		NoteToMaker:      "Held by the organiser.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Held by the organiser.",
 		Acknowledgements: warningKeys(bundle.Checks),
-		IdempotencyKey:   "own-hold",
+		IdempotencyKey: "own-hold",
 	})
 
 	held := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, organiser, nil)
@@ -1092,9 +1094,9 @@ func TestStageTwoRejectsOwnDecision(t *testing.T) {
 	}
 
 	confirm, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Confirm my own decision.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Confirm my own decision.",
 		IdempotencyKey: "own-confirm",
 	})
 
@@ -1135,7 +1137,7 @@ func TestAuthConfigReportsMethods(t *testing.T) {
 // TestHTTPOutboundDelivery covers a real receiver checking the signature.
 func TestHTTPOutboundDelivery(t *testing.T) {
 	var (
-		received  string
+		received string
 		forwarded bool
 	)
 
@@ -1168,9 +1170,9 @@ func TestHTTPOutboundDelivery(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Sent over HTTP.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Sent over HTTP.",
 		IdempotencyKey: "http-delivery",
 	})
 
@@ -1303,9 +1305,9 @@ func TestOutboxRedactsMakerEmail(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Clean.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Clean.",
 		IdempotencyKey: "redact-1",
 	})
 

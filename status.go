@@ -57,7 +57,7 @@ func (a *ireApp) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		ship submissionRow
-		err  error
+		err error
 	)
 
 	switch {
@@ -141,26 +141,26 @@ func (a *ireApp) statusResponse(ctx context.Context, ship submissionRow) (contra
 	}
 
 	response := contract.StatusResponse{
-		CheckRun:     checkRun,
-		ID:           ship.ID,
-		ExternalID:   ship.ExternalID,
-		Version:      ship.Version,
-		Phase:        ariPhase(ship.Status),
-		Stage:        ship.Stage,
+		CheckRun: checkRun,
+		ID: ship.ID,
+		ExternalID: ship.ExternalID,
+		Version: ship.Version,
+		Phase: ariPhase(ship.Status),
+		Stage: ship.Stage,
 		StageHistory: []contract.StatusResponseStageHistoryElem{},
 		Checks: contract.StatusResponseChecks{
 			Overall: summaryOverall(ship.CheckSummary),
 			Results: []contract.StatusResponseChecksResultsElem{},
 		},
-		Timeline:  []contract.StatusResponseTimelineElem{},
+		Timeline: []contract.StatusResponseTimelineElem{},
 		UpdatedAt: ship.UpdatedAt,
 	}
 
 	for _, check := range checks {
 		response.Checks.Results = append(response.Checks.Results, contract.StatusResponseChecksResultsElem{
-			Key:       check.Key,
-			Status:    check.Status,
-			Summary:   check.Summary,
+			Key: check.Key,
+			Status: check.Status,
+			Summary: check.Summary,
 			CheckedAt: check.CheckedAt,
 		})
 	}
@@ -171,10 +171,10 @@ func (a *ireApp) statusResponse(ctx context.Context, ship submissionRow) (contra
 		}
 
 		response.StageHistory = append(response.StageHistory, contract.StatusResponseStageHistoryElem{
-			Stage:    review.Stage,
+			Stage: review.Stage,
 			Decision: review.Decision,
 			Reviewer: stringPtr(review.ReviewerEmail),
-			At:       review.CreatedAt,
+			At: review.CreatedAt,
 		})
 	}
 
@@ -217,16 +217,16 @@ func (a *ireApp) statusReview(ship submissionRow, review contract.Review) *contr
 	return &contract.StatusResponseReview{
 		ApprovedSeconds: approved,
 		ApprovedMinutes: minutes,
-		ApprovedHours:   hours,
+		ApprovedHours: hours,
 		SecondsBreakdown: contract.StatusResponseReviewSecondsBreakdown{
 			Hackatime: ship.HoursHackatim,
-			Journals:  ship.HoursJournal,
-			Lapse:     0,
-			Program:   0,
+			Journals: ship.HoursJournal,
+			Lapse: 0,
+			Program: 0,
 		},
-		NoteToMaker:   review.NoteToMaker,
-		AuditNote:     review.InternalNote,
-		Reviewer:      &contract.StatusResponseReviewReviewer{Email: stringPtr(review.ReviewerEmail)},
+		NoteToMaker: review.NoteToMaker,
+		AuditNote: review.InternalNote,
+		Reviewer: &contract.StatusResponseReviewReviewer{Email: stringPtr(review.ReviewerEmail)},
 		Justification: justification,
 	}
 }
@@ -354,7 +354,7 @@ func (a *ireApp) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			item        contract.EventsResponseEventsElem
+			item contract.EventsResponseEventsElem
 			actor, data string
 		)
 		if err := rows.Scan(&item.ID, &item.SubmissionID, &item.Kind, &actor, &data, &item.CreatedAt); err != nil {

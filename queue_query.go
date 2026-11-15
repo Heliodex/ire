@@ -7,35 +7,35 @@ import (
 )
 
 type queueCompare struct {
-	op    string
+	op string
 	value int64
 }
 
 type queueChecksFilter struct {
 	overallPass bool
-	count       string
-	op          string
-	value       int64
+	count string
+	op string
+	value int64
 }
 
 type queueCheckFilter struct {
-	key    string
+	key string
 	status string
 }
 
 type queueSearch struct {
-	raw       string
+	raw string
 	supported bool
-	age       *queueCompare
-	check     *queueCheckFilter
-	checks    *queueChecksFilter
-	journals  *queueCompare
-	status    string
-	text      []string
-	time      *queueCompare
-	kind      string
-	version   *queueCompare
-	week      *queueCompare
+	age *queueCompare
+	check *queueCheckFilter
+	checks *queueChecksFilter
+	journals *queueCompare
+	status string
+	text []string
+	time *queueCompare
+	kind string
+	version *queueCompare
+	week *queueCompare
 }
 
 var queueDurationPart = regexp.MustCompile(`(\d+(?:\.\d+)?)([smhdw])`)
@@ -132,7 +132,7 @@ func parseQueueSearch(raw string) queueSearch {
 		case "check":
 			if key, status, ok := strings.Cut(value, "="); ok {
 				query.check = &queueCheckFilter{
-					key:    strings.ToLower(key),
+					key: strings.ToLower(key),
 					status: strings.ToLower(status),
 				}
 			} else {

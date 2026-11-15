@@ -11,6 +11,6 @@ func (a *ireApp) signer(secret string) sign.Signer {
 	return sign.Signer{
 		Secret: []byte(secret),
 		Window: time.Duration(signatureWindow) * time.Second,
-		Now:    a.now,
+		Now: a.now,
 	}
 }

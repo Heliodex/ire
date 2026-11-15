@@ -91,10 +91,10 @@ func (a *ireApp) makerProfile(ctx context.Context, programID, email string) (con
 
 	for rows.Next() {
 		var (
-			item                        contract.MakerSubmission
+			item contract.MakerSubmission
 			decidedAt, theme, thumbnail string
-			decision                    string
-			hoursApproved               int
+			decision string
+			hoursApproved int
 		)
 
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &item.Status, &item.Stage, &item.Version,

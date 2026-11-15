@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	searchLimit     = 8
-	maxSearchLimit  = 20
+	searchLimit = 8
+	maxSearchLimit = 20
 	maxSearchLength = 120
 )
 
@@ -83,11 +83,11 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			item                         contract.SearchResult
-			theme, thumb, makerName      string
+			item contract.SearchResult
+			theme, thumb, makerName string
 			makerEmail, makerSlack, tier string
-			claimedBy                    string
-			week                         int
+			claimedBy string
+			week int
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &makerName,
 			&item.Status, &item.Stage, &theme, &thumb, &week,

@@ -31,10 +31,10 @@ func (a *ireApp) handleOutbox(w http.ResponseWriter, r *http.Request) {
 		}
 
 		item := contract.OutboxRow{
-			ID:        record.ID,
-			Event:     record.Event,
-			Status:    normalizeOutboxStatus(record.Status),
-			Attempts:  record.Attempts,
+			ID: record.ID,
+			Event: record.Event,
+			Status: normalizeOutboxStatus(record.Status),
+			Attempts: record.Attempts,
 			CreatedAt: record.CreatedAt.Format(timestampFormat),
 		}
 

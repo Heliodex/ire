@@ -12,10 +12,10 @@ import (
 
 // submissionFields is the ingest payload flattened for the submission row.
 type submissionFields struct {
-	track                                                        string
+	track string
 	phase, theme, makerSlack, makerHackatime, demoURL, thumbnail *string
-	week, requestedTier, priority, grantCap                      *int
-	bomTotal, hoursClaimed, hoursJournal, hoursHackatime         int
+	week, requestedTier, priority, grantCap *int
+	bomTotal, hoursClaimed, hoursJournal, hoursHackatime int
 }
 
 // buildSubmissionFields maps the optional ingest blocks onto the submission row.
@@ -97,7 +97,7 @@ func journalStatements(id string, entries []contract.IngestJournal) []storage.Tr
 		}
 
 		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert into journal_entry (id, submission_id, at, seconds, title, text, markdown, media, timelapses, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			SQL: `insert into journal_entry (id, submission_id, at, seconds, title, text, markdown, media, timelapses, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{newID("jrn"), id, entry.At, journalSeconds(entry), title, entry.Text, stringValue(entry.Markdown), string(mediaJSON), string(timelapseJSON), i},
 		})
 	}
@@ -123,7 +123,7 @@ func hackatimeStatements(id string, projects []string) []storage.TransactionStat
 		seen[project] = struct{}{}
 
 		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert into hackatime_link (submission_id, project) values (?, ?)`,
+			SQL: `insert into hackatime_link (submission_id, project) values (?, ?)`,
 			Args: []any{id, project},
 		})
 	}
@@ -151,7 +151,7 @@ func bomStatements(id string, meta *contract.IngestMeta) []storage.TransactionSt
 		}
 
 		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert into bom_line (id, submission_id, name, quantity, unit_cost_cents, vendor, link, sort) values (?, ?, ?, ?, ?, ?, ?, ?)`,
+			SQL: `insert into bom_line (id, submission_id, name, quantity, unit_cost_cents, vendor, link, sort) values (?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{newID("bom"), id, line.Name, quantity, unit, stringValue(line.Vendor), stringValue(line.Link), i},
 		})
 	}

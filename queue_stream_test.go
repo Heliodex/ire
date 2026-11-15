@@ -36,7 +36,7 @@ func TestQueueStreamBatches(t *testing.T) {
 
 	var (
 		batches int
-		items   []contract.QueueItem
+		items []contract.QueueItem
 	)
 
 	scanner := bufio.NewScanner(bytes.NewReader(recorder.Body.Bytes()))
@@ -93,10 +93,10 @@ func TestQueueStream(t *testing.T) {
 	}
 
 	var (
-		meta     bool
-		hasMore  bool
-		items    []contract.QueueItem
-		counts   *contract.QueueCounts
+		meta bool
+		hasMore bool
+		items []contract.QueueItem
+		counts *contract.QueueCounts
 		finished bool
 	)
 

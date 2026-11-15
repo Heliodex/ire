@@ -23,7 +23,7 @@ func TestShadowModeIsReadOnly(t *testing.T) {
 
 	paths := []struct {
 		method, path string
-		body         []byte
+		body []byte
 	}{
 		{http.MethodPost, testBase + "/submissions/sub_fixture_1/claim", nil},
 		{http.MethodPost, testBase + "/submissions/sub_fixture_1/heartbeat", nil},
@@ -50,9 +50,9 @@ func TestShadowModeIsReadOnly(t *testing.T) {
 	}
 
 	decision, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "This must not be recorded.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "This must not be recorded.",
 		IdempotencyKey: "shadow-decision",
 	})
 
@@ -95,9 +95,9 @@ func TestOutboundDisabledSuppressesDelivery(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Do not deliver this.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Do not deliver this.",
 		IdempotencyKey: "disabled-outbound",
 	})
 
@@ -162,10 +162,10 @@ func TestNestedMetaRoundTrip(t *testing.T) {
 
 	request.Meta.GrantCapCents = new(7500)
 	request.Meta.PriorReviews = []contract.IngestPriorReview{{
-		Result:   "changes",
+		Result: "changes",
 		Feedback: stringPtr("Add the board render."),
 		Reviewer: stringPtr("Ari Reviewer"),
-		At:       stringPtr("2026-10-30T10:00:00Z"),
+		At: stringPtr("2026-10-30T10:00:00Z"),
 	}}
 
 	body, _ := json.Marshal(request)
@@ -214,9 +214,9 @@ func TestAuditorIsReadOnly(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Auditors cannot decide.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Auditors cannot decide.",
 		IdempotencyKey: "auditor-decision",
 	})
 

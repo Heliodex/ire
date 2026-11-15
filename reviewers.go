@@ -52,7 +52,7 @@ func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (co
 
 	var (
 		id, email, name, avatar, role, tracks, permissions, joined, lastLogin string
-		active                                                                int
+		active int
 	)
 
 	err := a.store.QueryRow(ctx, `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''),
@@ -111,7 +111,7 @@ func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (co
 
 	var (
 		total, approved, changes, rejected, held, invalidated, firstPass, secondPass, hours int
-		lastReview                                                                          string
+		lastReview string
 	)
 
 	if err := a.store.QueryRow(ctx, `select count(*),
@@ -136,16 +136,16 @@ func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (co
 
 	profile.ReviewTotal = total
 	profile.Stats = contract.ReviewerStats{
-		Approved:             approved,
-		Changes:              changes,
-		FirstPass:            firstPass,
-		Held:                 held,
+		Approved: approved,
+		Changes: changes,
+		FirstPass: firstPass,
+		Held: held,
 		HoursApprovedSeconds: hours,
-		Invalidated:          invalidated,
-		LastReviewAt:         optionalText(lastReview),
-		Rejected:             rejected,
-		SecondPass:           secondPass,
-		Total:                total,
+		Invalidated: invalidated,
+		LastReviewAt: optionalText(lastReview),
+		Rejected: rejected,
+		SecondPass: secondPass,
+		Total: total,
 	}
 
 	rows, err := a.store.Query(ctx, `select r.id, r.submission_id, coalesce(s.title, ''), r.decision, r.stage,
@@ -160,9 +160,9 @@ func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (co
 
 	for rows.Next() {
 		var (
-			item            contract.ReviewerReview
+			item contract.ReviewerReview
 			approvedSeconds int
-			invalidatedAt   string
+			invalidatedAt string
 		)
 
 		if err := rows.Scan(&item.ID, &item.SubmissionID, &item.SubmissionTitle, &item.Decision, &item.Stage,

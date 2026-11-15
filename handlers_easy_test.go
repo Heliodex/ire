@@ -119,17 +119,31 @@ func TestValidateIngestBranches(t *testing.T) {
 	}
 
 	cases := []struct {
-		name   string
+		name string
 		mutate func(*contract.IngestRequest)
-		field  string
+		field string
 	}{
-		{name: "external", mutate: func(r *contract.IngestRequest) { r.ExternalID = " " }, field: "external_id"},
-		{name: "title", mutate: func(r *contract.IngestRequest) { r.Title = "" }, field: "title"},
-		{name: "email", mutate: func(r *contract.IngestRequest) { r.Maker.Email = "" }, field: "maker.email"},
-		{name: "repo", mutate: func(r *contract.IngestRequest) { r.RepoURL = stringPtr("ftp://example.com") }, field: "repo_url"},
-		{name: "demo", mutate: func(r *contract.IngestRequest) { r.DemoURL = stringPtr("notaurl") }, field: "demo_url"},
-		{name: "thumb", mutate: func(r *contract.IngestRequest) { r.ThumbnailURL = stringPtr("notaurl") }, field: "thumbnail_url"},
-		{name: "hours", mutate: func(r *contract.IngestRequest) { r.Meta.Hours.ClaimedSeconds = -1 }, field: "meta.hours"},
+		{name: "external", mutate: func(r *contract.IngestRequest) {
+			r.ExternalID = " "
+		}, field: "external_id"},
+		{name: "title", mutate: func(r *contract.IngestRequest) {
+			r.Title = ""
+		}, field: "title"},
+		{name: "email", mutate: func(r *contract.IngestRequest) {
+			r.Maker.Email = ""
+		}, field: "maker.email"},
+		{name: "repo", mutate: func(r *contract.IngestRequest) {
+			r.RepoURL = stringPtr("ftp://example.com")
+		}, field: "repo_url"},
+		{name: "demo", mutate: func(r *contract.IngestRequest) {
+			r.DemoURL = stringPtr("notaurl")
+		}, field: "demo_url"},
+		{name: "thumb", mutate: func(r *contract.IngestRequest) {
+			r.ThumbnailURL = stringPtr("notaurl")
+		}, field: "thumbnail_url"},
+		{name: "hours", mutate: func(r *contract.IngestRequest) {
+			r.Meta.Hours.ClaimedSeconds = -1
+		}, field: "meta.hours"},
 	}
 
 	for _, test := range cases {

@@ -14,8 +14,8 @@ import (
 
 const (
 	noteSubjectSubmission = "submission"
-	noteSubjectProject    = "project"
-	noteSubjectMaker      = "maker"
+	noteSubjectProject = "project"
+	noteSubjectMaker = "maker"
 )
 
 // handleNoteCreate stores an internal note on a ship, its project or its maker.
@@ -78,13 +78,13 @@ func (a *ireApp) handleNoteCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.WriteJSON(w, http.StatusCreated, contract.NoteCreated{Note: contract.Note{
-		ID:          id,
+		ID: id,
 		SubjectType: request.SubjectType,
-		SubjectID:   subjectID,
+		SubjectID: subjectID,
 		AuthorEmail: person.Email,
-		AuthorName:  optionalText(person.Name),
-		Body:        body,
-		CreatedAt:   now,
+		AuthorName: optionalText(person.Name),
+		Body: body,
+		CreatedAt: now,
 	}})
 }
 
@@ -124,7 +124,7 @@ func (a *ireApp) handleNoteDelete(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := a.store.Transaction(r.Context(),
 		storage.TransactionStatement{
-			SQL:  `delete from review_note where id = ?`,
+			SQL: `delete from review_note where id = ?`,
 			Args: []any{r.PathValue("id")},
 		},
 		storage.TransactionStatement{
@@ -160,7 +160,7 @@ func (a *ireApp) loadNotes(ctx context.Context, ship submissionRow) ([]contract.
 
 	for rows.Next() {
 		var (
-			note       contract.Note
+			note contract.Note
 			authorName string
 		)
 

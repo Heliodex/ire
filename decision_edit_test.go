@@ -17,11 +17,11 @@ func decideFixture1(t *testing.T, application *ireApp, cookie *http.Cookie, key 
 
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          bundle.Submission.Version,
-		NoteToMaker:      "Approved in tests.",
+		Decision: decisionApproved,
+		Version: bundle.Submission.Version,
+		NoteToMaker: "Approved in tests.",
 		Acknowledgements: warningKeys(bundle.Checks),
-		IdempotencyKey:   key,
+		IdempotencyKey: key,
 	})
 
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil)
@@ -115,13 +115,13 @@ func TestAmendDecision(t *testing.T) {
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, admin, nil))
 	hours := bundle.Submission.HoursClaimedSeconds
 	body, _ := json.Marshal(contract.AmendDecisionRequest{
-		Decision:             decisionChanges,
+		Decision: decisionChanges,
 		HoursApprovedSeconds: &hours,
-		Version:              bundle.Submission.Version,
-		NoteToMaker:          "Please clarify the README.",
-		Reason:               "Should have asked for changes.",
-		IdempotencyKey:       "amend-1",
-		Acknowledgements:     []string{},
+		Version: bundle.Submission.Version,
+		NoteToMaker: "Please clarify the README.",
+		Reason: "Should have asked for changes.",
+		IdempotencyKey: "amend-1",
+		Acknowledgements: []string{},
 	})
 
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision/amend", body, admin, nil)
@@ -169,13 +169,13 @@ func TestOriginalReviewerCanAmendOwnDecision(t *testing.T) {
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
 	hours := bundle.Submission.HoursClaimedSeconds
 	body, _ := json.Marshal(contract.AmendDecisionRequest{
-		Decision:             decisionChanges,
+		Decision: decisionChanges,
 		HoursApprovedSeconds: &hours,
-		Version:              bundle.Submission.Version,
-		NoteToMaker:          "Needs a small fix.",
-		Reason:               "I missed an issue.",
-		IdempotencyKey:       "amend-own-1",
-		Acknowledgements:     []string{},
+		Version: bundle.Submission.Version,
+		NoteToMaker: "Needs a small fix.",
+		Reason: "I missed an issue.",
+		IdempotencyKey: "amend-own-1",
+		Acknowledgements: []string{},
 	})
 
 	denied := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision/amend", body, other, nil)

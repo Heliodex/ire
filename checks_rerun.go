@@ -43,7 +43,7 @@ func (a *ireApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := a.store.Transaction(r.Context(),
 		storage.TransactionStatement{
-			SQL:  `update submission set status = 'checking', updated_at = ? where id = ?`,
+			SQL: `update submission set status = 'checking', updated_at = ? where id = ?`,
 			Args: []any{now, ship.ID},
 		},
 		storage.TransactionStatement{

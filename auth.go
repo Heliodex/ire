@@ -20,7 +20,7 @@ var reviewSessions = session.New(cookieName, sessionTTL)
 // reviewer is the signed-in person and the membership the request acts through.
 type reviewer struct {
 	ID, Email, Name, AvatarURL, Role, ProgramID string
-	Permissions                                []string
+	Permissions []string
 }
 
 // Has reports whether the membership grants the permission. The wildcard grants everything.
@@ -49,7 +49,7 @@ func (a *ireApp) currentReviewer(w http.ResponseWriter, r *http.Request) (review
 		limit 1`, sessionID, a.nowText())
 
 	var (
-		person      reviewer
+		person reviewer
 		permissions string
 	)
 	if err := row.Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID, &permissions); err != nil {
@@ -122,9 +122,9 @@ func (a *ireApp) meResponse(ctx context.Context, person reviewer) contract.MeRes
 	response := contract.MeResponse{
 		ReadOnly: a.config.Shadow,
 		User: contract.MeResponseUser{
-			ID:        person.ID,
-			Email:     person.Email,
-			Name:      stringPtr(person.Name),
+			ID: person.ID,
+			Email: person.Email,
+			Name: stringPtr(person.Name),
 			AvatarURL: optionalText(person.AvatarURL),
 		},
 		Programs: []contract.Membership{},

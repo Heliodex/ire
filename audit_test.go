@@ -53,10 +53,10 @@ func TestAuditLogPage(t *testing.T) {
 	}
 
 	decision, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
+		Decision: decisionApproved,
 		IdempotencyKey: "audit-page-decision",
-		NoteToMaker:    "Clean board.",
-		Version:        1,
+		NoteToMaker: "Clean board.",
+		Version: 1,
 	})
 
 	if decided := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", decision, reviewer, nil); decided.Code != http.StatusOK {

@@ -15,10 +15,10 @@ const outboxTable = "webhook_outbox"
 // outboxStore builds the signed delivery queue around the app clock, HTTP client and fake receiver.
 func (a *ireApp) outboxStore() outbox.Outbox {
 	return outbox.Outbox{
-		Table:  outboxTable,
+		Table: outboxTable,
 		Signer: a.signer(a.config.OutboundSecret),
-		HTTP:   &http.Client{Transport: a.client.Transport, Timeout: outboundTimeout},
-		Now:    a.now,
+		HTTP: &http.Client{Transport: a.client.Transport, Timeout: outboundTimeout},
+		Now: a.now,
 		Sender: reviewSender{app: a},
 	}
 }
@@ -41,11 +41,11 @@ func (s reviewSender) Send(ctx context.Context, delivery outbox.Delivery) (int, 
 	}
 
 	sender := outbox.HTTPSender{
-		Client:          s.app.outboxStore().HTTP,
+		Client: s.app.outboxStore().HTTP,
 		TimestampHeader: "X-Ari-Timestamp",
-		DeliveryHeader:  "X-Ari-Delivery-Id",
+		DeliveryHeader: "X-Ari-Delivery-Id",
 		SignatureHeader: "X-Ari-Signature",
-		UserAgent:       "half-life-ire",
+		UserAgent: "half-life-ire",
 	}
 
 	return sender.Send(ctx, delivery)

@@ -47,8 +47,8 @@ func (a *ireApp) handleChecksHead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.WriteJSON(w, http.StatusOK, contract.CheckHead{
-		HeadSha:     optionalText(headSha),
-		Outdated:    headSha != "" && snapshotSha != "" && headSha != snapshotSha,
+		HeadSha: optionalText(headSha),
+		Outdated: headSha != "" && snapshotSha != "" && headSha != snapshotSha,
 		SnapshotSha: optionalText(snapshotSha),
 	})
 }

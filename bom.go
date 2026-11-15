@@ -20,17 +20,17 @@ var bomLinkPattern = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
 
 // bomSummary is the parsed shape of the repository's bill of materials.
 type bomSummary struct {
-	Path                string
-	Rows, TotalCents    int
+	Path string
+	Rows, TotalCents int
 	HasPrice, HasVendor bool
-	Parts               []string
-	Items               []bomItem
-	Err                 error
+	Parts []string
+	Items []bomItem
+	Err error
 }
 
 // bomItem is one parsed repository BOM row with the values compared against the submitted BOM.
 type bomItem struct {
-	Name                string
+	Name string
 	Quantity, UnitCents int
 }
 
@@ -111,7 +111,7 @@ func bomMatchCheck(bom bomSummary, maker []contract.BomLine, checkedAt string) c
 	}
 
 	var (
-		matched    int
+		matched int
 		mismatches []string
 	)
 
@@ -418,11 +418,11 @@ func submittedBom(meta *contract.IngestMeta) []contract.BomLine {
 		}
 
 		lines = append(lines, contract.BomLine{
-			Name:          line.Name,
-			Quantity:      quantity,
+			Name: line.Name,
+			Quantity: quantity,
 			UnitCostCents: unit,
-			Vendor:        line.Vendor,
-			Link:          line.Link,
+			Vendor: line.Vendor,
+			Link: line.Link,
 		})
 	}
 

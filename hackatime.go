@@ -16,16 +16,16 @@ import (
 
 const (
 	hackatimeDefaultAPI = "https://hackatime.hackclub.com"
-	hackatimeTimeout    = 10 * time.Second
-	hackatimeCacheTTL   = 5 * time.Minute
-	maxHackatimeBody    = 1 << 20
+	hackatimeTimeout = 10 * time.Second
+	hackatimeCacheTTL = 5 * time.Minute
+	maxHackatimeBody = 1 << 20
 )
 
 // hackatimeStats is the project list return shape of the public stats endpoint.
 type hackatimeStats struct {
 	Data struct {
 		Projects []struct {
-			Name         string  `json:"name"`
+			Name string `json:"name"`
 			TotalSeconds float64 `json:"total_seconds"`
 		} `json:"projects"`
 	} `json:"data"`
@@ -33,10 +33,10 @@ type hackatimeStats struct {
 
 // hackatimeLink is one project linked to a ship and its cached seconds.
 type hackatimeLink struct {
-	Project   string
-	Seconds   int
+	Project string
+	Seconds int
 	FetchedAt string
-	Error     string
+	Error string
 }
 
 // hackatimeChecks reads the linked projects from Hackatime and reports what it could verify.
@@ -120,8 +120,8 @@ func (a *ireApp) loadHackatimeLinks(ctx context.Context, submissionID string) ([
 // refreshHackatimeLinks refreshes each project, returning the total, stale projects and their errors.
 func (a *ireApp) refreshHackatimeLinks(ctx context.Context, ship submissionRow, links []hackatimeLink) (int, []string, []string) {
 	var (
-		total    int
-		stale    []string
+		total int
+		stale []string
 		failures []string
 	)
 

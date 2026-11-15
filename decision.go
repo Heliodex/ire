@@ -71,7 +71,7 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		supersedes, heldDecision string
-		heldHours                int
+		heldHours int
 	)
 
 	if secondPass {
@@ -161,30 +161,30 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	nextID := a.nextQueueID(r.Context(), ship.ProgramID, ship.ID, nextStage)
 
 	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
-		ID:             reviewID,
-		Status:         status,
-		Held:           boolInt(held),
-		HeldReason:     stringPtr(reason),
-		OutboxID:       optionalID(outboxID),
+		ID: reviewID,
+		Status: status,
+		Held: boolInt(held),
+		HeldReason: stringPtr(reason),
+		OutboxID: optionalID(outboxID),
 		DeliveryStatus: stringPtr(deliveryStatus),
-		NextID:         optionalID(nextID),
+		NextID: optionalID(nextID),
 	})
 }
 
 // decisionRecord is one decision's inputs and stored values.
 type decisionRecord struct {
-	ship                                     submissionRow
-	person                                   reviewer
-	request                                  contract.DecisionRequest
-	reviewID, status                         string
-	stage, submissionStage, hours            int
+	ship submissionRow
+	person reviewer
+	request contract.DecisionRequest
+	reviewID, status string
+	stage, submissionStage, hours int
 	note, technicalFeatures, deflationReason string
-	reason, overrideReason, supersedes       string
-	findingIDs                               []string
-	held, secondPass                         bool
-	event                                    string
-	payload                                  []byte
-	now                                      string
+	reason, overrideReason, supersedes string
+	findingIDs []string
+	held, secondPass bool
+	event string
+	payload []byte
+	now string
 }
 
 // decisionStatements builds the review, submission update, audit, acknowledgement and outbox writes.
@@ -214,14 +214,14 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 
 	if record.overrideReason != "" {
 		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
+			SQL: `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
 			Args: []any{record.reviewID, record.overrideReason, record.now},
 		})
 	}
 
 	for _, findingID := range record.findingIDs {
 		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
+			SQL: `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
 			Args: []any{record.reviewID, findingID, record.ship.ID, record.ship.Version, record.now},
 		})
 	}
@@ -240,11 +240,11 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 
 	if !record.held && a.outboundEnabled(ctx, record.ship.ProgramID) {
 		message, statement, err := a.outboxStore().PrepareTransaction(outbox.Message{
-			Event:     record.event,
+			Event: record.event,
 			DedupeKey: "decision:" + record.reviewID,
-			Payload:   record.payload,
-			URL:       a.outboundURL(record.ship.ProgramID),
-			Metadata:  map[string]string{"program_id": record.ship.ProgramID, "submission_id": record.ship.ID},
+			Payload: record.payload,
+			URL: a.outboundURL(record.ship.ProgramID),
+			Metadata: map[string]string{"program_id": record.ship.ProgramID, "submission_id": record.ship.ID},
 		})
 		if err != nil {
 			return nil, "", &decisionProblem{status: http.StatusInternalServerError, message: "could not queue the delivery"}
@@ -286,9 +286,9 @@ func (a *ireApp) decisionPayloadJSON(ctx context.Context, ship submissionRow, pe
 
 // decisionProblem is a validation failure with the response shape the handler would write.
 type decisionProblem struct {
-	status      int
+	status int
 	code, field string
-	message     string
+	message string
 }
 
 // write sends the problem with the most specific error shape.
@@ -436,8 +436,8 @@ func resolveHours(request contract.DecisionRequest, hours int, secondPass bool, 
 
 // secondPassBase is the first-pass decision a 2nd pass starts from.
 type secondPassBase struct {
-	hours, heldHours                   int
-	note, supersedes, heldDecision     string
+	hours, heldHours int
+	note, supersedes, heldDecision string
 	technicalFeatures, deflationReason string
 }
 
@@ -480,32 +480,32 @@ func (a *ireApp) writeDecisionAgain(w http.ResponseWriter, r *http.Request, ship
 	nextID := a.nextQueueID(r.Context(), ship.ProgramID, ship.ID, nextStage)
 
 	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
-		ID:             review.ID,
-		Status:         ship.Status,
-		Held:           review.Held,
-		HeldReason:     optionalString(review.HeldReason),
-		OutboxID:       optionalID(outboxID),
+		ID: review.ID,
+		Status: ship.Status,
+		Held: review.Held,
+		HeldReason: optionalString(review.HeldReason),
+		OutboxID: optionalID(outboxID),
 		DeliveryStatus: stringPtr(status),
-		NextID:         optionalID(nextID),
+		NextID: optionalID(nextID),
 	})
 }
 
 // reviewRow is the subset of a stored decision needed to replay a response.
 type reviewRow struct {
-	ID                                   string
-	Held                                 int
-	HeldReason, Decision                 string
-	Hours                                int
+	ID string
+	Held int
+	HeldReason, Decision string
+	Hours int
 	NoteToMaker, ReviewerName, CreatedAt string
 }
 
 // heldReview is the stage 1 review waiting for a 2nd pass.
 type heldReview struct {
 	ID, ReviewerID, Decision string
-	Hours                    int
-	NoteToMaker              string
-	TechnicalFeatures        string
-	DeflationReason          string
+	Hours int
+	NoteToMaker string
+	TechnicalFeatures string
+	DeflationReason string
 }
 
 // heldReview reads the latest held, non-invalidated first-pass review for a ship.
@@ -583,7 +583,7 @@ func holdFor(ship submissionRow, policy reviewPolicy, checks []contract.CheckRes
 // nextQueueID finds the next open ship for auto-advance in the current stage.
 func (a *ireApp) nextQueueID(ctx context.Context, programID, currentID string, stage int) string {
 	var (
-		id  string
+		id string
 		err error
 	)
 

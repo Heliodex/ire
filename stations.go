@@ -90,7 +90,7 @@ func (a *ireApp) stationDefinitionsWith(ctx context.Context, programID string, s
 
 	for rows.Next() {
 		var (
-			item       contract.StationDefinition
+			item contract.StationDefinition
 			themesJSON string
 		)
 
@@ -117,7 +117,7 @@ func (a *ireApp) stationDefinitionsWith(ctx context.Context, programID string, s
 	for questionRows.Next() {
 		var (
 			stationKey string
-			question   contract.StationQuestion
+			question contract.StationQuestion
 		)
 
 		if err := questionRows.Scan(&stationKey, &question.Key, &question.Prompt, &question.EvidenceKind, &question.Required, &question.Sort); err != nil {
@@ -183,7 +183,7 @@ func (a *ireApp) stationAnswers(ctx context.Context, submissionID string) ([]con
 
 	for rows.Next() {
 		var (
-			item                                  contract.StationAnswer
+			item contract.StationAnswer
 			artifactHash, reviewerID, name, email string
 		)
 
@@ -295,13 +295,13 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 		}
 
 		out = append(out, contract.StationState{
-			Key:          station.Key,
-			Label:        station.Label,
-			Sort:         station.Sort,
-			Status:       status,
-			Answered:     answered,
-			Required:     required,
-			Conflicts:    conflicts,
+			Key: station.Key,
+			Label: station.Label,
+			Sort: station.Sort,
+			Status: status,
+			Answered: answered,
+			Required: required,
+			Conflicts: conflicts,
 			OpenFindings: openAt[station.Key],
 		})
 	}
@@ -347,7 +347,7 @@ func (a *ireApp) stationCounts(ctx context.Context, programID string, stage int)
 
 	for rows.Next() {
 		var (
-			key   string
+			key string
 			count int
 		)
 
@@ -388,12 +388,12 @@ func (a *ireApp) handleStations(w http.ResponseWriter, r *http.Request) {
 
 	for _, station := range definitions {
 		out = append(out, contract.StationSummary{
-			Key:         station.Key,
-			Label:       station.Label,
+			Key: station.Key,
+			Label: station.Label,
 			Description: station.Description,
-			Sort:        station.Sort,
-			Stage:       station.Stage,
-			Count:       counts[station.Key],
+			Sort: station.Sort,
+			Stage: station.Stage,
+			Count: counts[station.Key],
 		})
 	}
 
@@ -518,7 +518,9 @@ func (a *ireApp) handleStationAnswer(w http.ResponseWriter, r *http.Request) {
 
 	questionKey := r.PathValue("question")
 
-	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool { return question.Key == questionKey }) {
+	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool {
+		return question.Key == questionKey
+	}) {
 		app.WriteError(w, http.StatusNotFound, "unknown station question")
 		return
 	}
@@ -629,7 +631,9 @@ func (a *ireApp) handleStationAnswerDelete(w http.ResponseWriter, r *http.Reques
 
 	questionKey := r.PathValue("question")
 
-	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool { return question.Key == questionKey }) {
+	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool {
+		return question.Key == questionKey
+	}) {
 		app.WriteError(w, http.StatusNotFound, "unknown station question")
 		return
 	}
@@ -730,7 +734,9 @@ func (a *ireApp) handleStationConflictResolve(w http.ResponseWriter, r *http.Req
 
 	questionKey := r.PathValue("question")
 
-	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool { return question.Key == questionKey }) {
+	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool {
+		return question.Key == questionKey
+	}) {
 		app.WriteError(w, http.StatusNotFound, "unknown station question")
 		return
 	}

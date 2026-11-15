@@ -16,9 +16,9 @@ import (
 // loadEvidence returns the cached repository snapshot for a submission version and whether one was stored.
 func (a *ireApp) loadEvidence(ctx context.Context, submissionID string, version int) (contract.Evidence, bool, error) {
 	var (
-		evidence                                                        contract.Evidence
+		evidence contract.Evidence
 		defaultBranch, headSha, readme, failure, filesJSON, commitsJSON string
-		truncated                                                       int
+		truncated int
 	)
 
 	err := a.store.QueryRow(ctx, `select forge, full_name, coalesce(default_branch, ''), coalesce(head_sha, ''),

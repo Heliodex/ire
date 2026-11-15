@@ -32,10 +32,10 @@ var permissionCatalog = []string{
 // comparisons they replace, so the migration changes no behaviour.
 func defaultRolePermissions() map[string][]string {
 	return map[string][]string{
-		roleAdmin:     {permWildcard},
+		roleAdmin: {permWildcard},
 		roleOrganizer: {permReview, permSecondPass, permChecksManage, permViewPII},
-		roleReviewer:  {permReview},
-		roleAuditor:   {permAuditRead, permViewPII},
+		roleReviewer: {permReview},
+		roleAuditor: {permAuditRead, permViewPII},
 	}
 }
 
@@ -43,9 +43,9 @@ var roleNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{1,31}$`)
 
 // roleDefinition is one programme role and the permissions it grants.
 type roleDefinition struct {
-	Name        string
+	Name string
 	Permissions []string
-	Locked      bool
+	Locked bool
 }
 
 // grantsWildcard reports whether the role allows everything.
@@ -72,8 +72,8 @@ func (a *ireApp) listRoleDefinitions(ctx context.Context, programID string) ([]r
 	for rows.Next() {
 		var (
 			definition roleDefinition
-			raw        string
-			locked     int
+			raw string
+			locked int
 		)
 
 		if err := rows.Scan(&definition.Name, &raw, &locked); err != nil {
@@ -92,8 +92,8 @@ func (a *ireApp) listRoleDefinitions(ctx context.Context, programID string) ([]r
 func (a *ireApp) roleDefinitionByName(ctx context.Context, programID, name string) (roleDefinition, bool, error) {
 	var (
 		definition roleDefinition
-		raw        string
-		locked     int
+		raw string
+		locked int
 	)
 
 	err := a.store.QueryRow(ctx, `select name, permissions, locked from role_definition
@@ -189,8 +189,8 @@ func (a *ireApp) handleListRoles(w http.ResponseWriter, r *http.Request) {
 
 	for _, definition := range definitions {
 		roles = append(roles, contract.RoleDefinition{
-			Locked:      definition.Locked,
-			Name:        definition.Name,
+			Locked: definition.Locked,
+			Name: definition.Name,
 			Permissions: definition.Permissions,
 		})
 	}

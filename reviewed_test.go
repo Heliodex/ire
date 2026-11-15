@@ -19,11 +19,11 @@ func TestReviewedListsDecidedShips(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          1,
-		NoteToMaker:      "Clean board, clear BOM. Approved.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Clean board, clear BOM. Approved.",
 		Acknowledgements: []string{},
-		IdempotencyKey:   "dec-reviewed-1",
+		IdempotencyKey: "dec-reviewed-1",
 	})
 
 	decided := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil)

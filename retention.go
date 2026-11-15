@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	loginFlowRetention    = 24 * time.Hour
-	ingestRetention       = 90 * 24 * time.Hour
-	snapshotRetention     = 180 * 24 * time.Hour
-	auditRetention        = 400 * 24 * time.Hour
+	loginFlowRetention = 24 * time.Hour
+	ingestRetention = 90 * 24 * time.Hour
+	snapshotRetention = 180 * 24 * time.Hour
+	auditRetention = 400 * 24 * time.Hour
 	fakeDeliveryRetention = 30 * 24 * time.Hour
 )
 
@@ -24,7 +24,7 @@ func (a *ireApp) pruneRetention(ctx context.Context) (retentionResult, error) {
 	result := retentionResult{}
 
 	statements := []struct {
-		SQL  string
+		SQL string
 		Args []any
 		Dest *int
 	}{

@@ -15,18 +15,18 @@ const queueStreamBatch = 10
 // queueStreamMeta opens the stream with the page size hint. Counts follow after the ships so the badge query
 // never holds the first rows back.
 type queueStreamMeta struct {
-	Type    string `json:"type"`
-	HasMore bool   `json:"hasMore"`
-	Items   int    `json:"items"`
+	Type string `json:"type"`
+	HasMore bool `json:"hasMore"`
+	Items int `json:"items"`
 }
 
 type queueStreamShips struct {
-	Type  string               `json:"type"`
+	Type string `json:"type"`
 	Items []contract.QueueItem `json:"items"`
 }
 
 type queueStreamCounts struct {
-	Type   string               `json:"type"`
+	Type string `json:"type"`
 	Counts contract.QueueCounts `json:"counts"`
 }
 
@@ -35,7 +35,7 @@ type queueStreamDone struct {
 }
 
 type queueStreamFailure struct {
-	Type  string `json:"type"`
+	Type string `json:"type"`
 	Error string `json:"error"`
 }
 

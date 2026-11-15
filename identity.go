@@ -29,10 +29,10 @@ func (a *ireApp) duplicateChecks(ctx context.Context, programID string, request 
 	defer rows.Close()
 
 	var (
-		repoMatches    []string
-		demoMatches    []string
+		repoMatches []string
+		demoMatches []string
 		hackatimeReuse []string
-		slackReuse     []string
+		slackReuse []string
 	)
 
 	for rows.Next() {

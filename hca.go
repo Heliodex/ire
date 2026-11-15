@@ -18,8 +18,8 @@ import (
 
 const (
 	oauthStateCookie = "review_oauth_state"
-	oauthStateTTL    = 10 * time.Minute
-	oauthTimeout     = 15 * time.Second
+	oauthStateTTL = 10 * time.Minute
+	oauthTimeout = 15 * time.Second
 )
 
 // loginFlow is the server-side half of one authorisation attempt: PKCE, nonce and the exact redirect used.
@@ -45,12 +45,12 @@ func (a *ireApp) hcaIssuer() string {
 // oauthClient builds a client for one flow. The package caches discovery and keys for the request.
 func (a *ireApp) oauthClient() (*oauth.Client, error) {
 	return oauth.New(oauth.Config{
-		Issuer:       a.hcaIssuer(),
-		ClientID:     strings.TrimSpace(a.config.HCClientID),
+		Issuer: a.hcaIssuer(),
+		ClientID: strings.TrimSpace(a.config.HCClientID),
 		ClientSecret: strings.TrimSpace(a.config.HCClientSecret),
-		HTTPClient:   a.client,
-		Scopes:       strings.Fields("openid profile email"),
-		Timeout:      oauthTimeout,
+		HTTPClient: a.client,
+		Scopes: strings.Fields("openid profile email"),
+		Timeout: oauthTimeout,
 	})
 }
 
@@ -266,11 +266,11 @@ func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 func (a *ireApp) saveLoginFlow(ctx context.Context, state string, flow loginFlow) error {
 	_, err := a.store.Transaction(ctx,
 		storage.TransactionStatement{
-			SQL:  `delete from login_flow where created_at < ?`,
+			SQL: `delete from login_flow where created_at < ?`,
 			Args: []any{a.later(-oauthStateTTL)},
 		},
 		storage.TransactionStatement{
-			SQL:  `insert into login_flow (state, verifier, nonce, redirect_uri, created_at) values (?, ?, ?, ?, ?)`,
+			SQL: `insert into login_flow (state, verifier, nonce, redirect_uri, created_at) values (?, ?, ?, ?, ?)`,
 			Args: []any{state, flow.Verifier, flow.Nonce, flow.RedirectURI, a.nowText()},
 		},
 	)
@@ -281,7 +281,7 @@ func (a *ireApp) saveLoginFlow(ctx context.Context, state string, flow loginFlow
 // takeLoginFlow consumes an attempt so a callback code cannot be replayed.
 func (a *ireApp) takeLoginFlow(ctx context.Context, state string) (loginFlow, bool, error) {
 	var (
-		flow      loginFlow
+		flow loginFlow
 		createdAt string
 	)
 
@@ -446,7 +446,7 @@ func (a *ireApp) bootstrapMember(ctx context.Context, email, name string) (revie
 
 	var (
 		membershipID string
-		active       int
+		active int
 	)
 
 	err = a.store.QueryRow(ctx, `select id, active from membership where program_id = ? and user_id = ?`, programID, userID).

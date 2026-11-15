@@ -681,7 +681,7 @@ func (a *ireApp) seed(ctx context.Context) error {
 	}
 
 	settings := map[string]string{
-		"review_policy":          `{"holdOnWarn":true,"holdMinApprovedSeconds":0,"holdTiers":[2,3],"noteRequiredForChanges":true,"fraudMinStage":2}`,
+		"review_policy": `{"holdOnWarn":true,"holdMinApprovedSeconds":0,"holdTiers":[2,3],"noteRequiredForChanges":true,"fraudMinStage":2}`,
 		"allow_legacy_signature": "true",
 	}
 	for key, value := range settings {
@@ -768,10 +768,10 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 
 	stations := []struct {
 		key, label, description, themes string
-		stage, sort                     int
-		questions                       []struct {
+		stage, sort int
+		questions []struct {
 			key, prompt, evidence string
-			required              int
+			required int
 		}
 	}{
 		{
@@ -779,7 +779,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			description: "Cheap completeness checks before the deeper review.",
 			questions: []struct {
 				key, prompt, evidence string
-				required              int
+				required int
 			}{
 				{"cover_screenshot", "Is the cover a screenshot of this project?", "image", 1},
 				{"description_real", "Does the description describe the project, not the template?", evidenceText, 1},
@@ -793,7 +793,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			description: "Read each entry once and decide what time is productive.",
 			questions: []struct {
 				key, prompt, evidence string
-				required              int
+				required int
 			}{
 				{"entries_descriptive", "Does every journal entry describe what was worked on?", evidenceText, 1},
 				{"time_productive", "Is the logged time productive work, not tutorial consumption?", evidenceText, 1},
@@ -805,7 +805,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			description: "One reading of the README, commits and claims.",
 			questions: []struct {
 				key, prompt, evidence string
-				required              int
+				required int
 			}{
 				{"readme_explains", "Does the README explain the build, problems and solutions?", evidenceText, 1},
 				{"commits_authored", "Do the commits belong to the maker, with sync commits ignored?", evidenceText, 1},
@@ -818,7 +818,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			description: "A plausible design and firmware, with note-only issues.",
 			questions: []struct {
 				key, prompt, evidence string
-				required              int
+				required int
 			}{
 				{"design_plausible", "Is the design plausible, and are issues noted for the maker?", evidenceText, 1},
 				{"bom_matches", "Does the BOM match the design and the parts list?", evidenceText, 1},
@@ -830,7 +830,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			description: "Turn the answers into one record and one decision.",
 			questions: []struct {
 				key, prompt, evidence string
-				required              int
+				required int
 			}{
 				{"findings_resolved", "Are all open findings resolved or included in the return?", evidenceText, 1},
 				{"hours_reasonable", "Are the approved hours and deflation reason defensible?", evidenceText, 1},
@@ -842,7 +842,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			description: "Stage 2 checks the record and samples the evidence.",
 			questions: []struct {
 				key, prompt, evidence string
-				required              int
+				required int
 			}{
 				{"record_complete", "Are the answers, evidence and time ledger complete?", evidenceText, 1},
 				{"evidence_sample", "Does a sample of the evidence support the answers?", evidenceText, 1},

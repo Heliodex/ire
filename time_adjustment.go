@@ -158,7 +158,7 @@ func (a *ireApp) saveLedgerCut(ctx context.Context, ship submissionRow, person r
 
 	statements := []storage.TransactionStatement{
 		{
-			SQL:  `delete from time_adjustment where submission_id = ? and source = ?`,
+			SQL: `delete from time_adjustment where submission_id = ? and source = ?`,
 			Args: []any{ship.ID, source},
 		},
 	}
@@ -168,16 +168,16 @@ func (a *ireApp) saveLedgerCut(ctx context.Context, ship submissionRow, person r
 	if cut > 0 {
 		id := newID("tadj")
 		statements = append(statements, storage.TransactionStatement{
-			SQL:  `insert into time_adjustment (id, submission_id, kind, seconds, reason, note, reviewer_id, source, created_at) values (?, ?, 'cut', ?, ?, ?, ?, ?, ?)`,
+			SQL: `insert into time_adjustment (id, submission_id, kind, seconds, reason, note, reviewer_id, source, created_at) values (?, ?, 'cut', ?, ?, ?, ?, ?, ?)`,
 			Args: []any{id, ship.ID, cut, strings.TrimSpace(reason), nullString(note), person.ID, source, now},
 		})
 		adjustment = &contract.TimeAdjustment{
 			CreatedAt: now,
-			ID:        id,
-			Kind:      "cut",
-			Reason:    strings.TrimSpace(reason),
-			Seconds:   cut,
-			Source:    source,
+			ID: id,
+			Kind: "cut",
+			Reason: strings.TrimSpace(reason),
+			Seconds: cut,
+			Source: source,
 		}
 		adjustment.Note = optionalText(note)
 		adjustment.ReviewerID = optionalText(person.ID)
@@ -192,7 +192,7 @@ func (a *ireApp) saveLedgerCut(ctx context.Context, ship submissionRow, person r
 
 	statements = append(statements,
 		storage.TransactionStatement{
-			SQL:  `update submission set hours_approved_seconds = ?, updated_at = ? where id = ?`,
+			SQL: `update submission set hours_approved_seconds = ?, updated_at = ? where id = ?`,
 			Args: []any{total, now, ship.ID},
 		},
 		storage.TransactionStatement{

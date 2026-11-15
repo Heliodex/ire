@@ -30,8 +30,8 @@ func TestJournalAdjustmentSavesDeflation(t *testing.T) {
 	body, _ := json.Marshal(contract.JournalReviewRequest{
 		ApprovedSeconds: approved,
 		DeflationReason: &reason,
-		ReviewerNote:    "Schematic work, the layout is not finished.",
-		Version:         1,
+		ReviewerNote: "Schematic work, the layout is not finished.",
+		Version: 1,
 	})
 
 	adjusted := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/journal/"+entry.ID, body, reviewer, nil)

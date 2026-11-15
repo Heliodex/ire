@@ -264,10 +264,10 @@ type findingScanner interface {
 // scanFinding turns one row into the wire shape.
 func scanFinding(row findingScanner) (contract.Finding, error) {
 	var (
-		item                                    contract.Finding
+		item contract.Finding
 		question, detail, makerAction, evidence string
-		openedBy, resolvedBy, resolution        string
-		resolvedVersion                         int
+		openedBy, resolvedBy, resolution string
+		resolvedVersion int
 	)
 
 	if err := row.Scan(&item.ID, &item.ExternalID, &item.OpenedSubmissionID, &item.OpenedVersion, &item.Station, &question,

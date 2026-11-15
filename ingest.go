@@ -188,9 +188,9 @@ func (a *ireApp) ingestShip(ctx context.Context, program programRow, request con
 	now := a.nowText()
 
 	var (
-		existingID      string
+		existingID string
 		existingVersion int
-		existingHTTP    int
+		existingHTTP int
 	)
 
 	err := a.store.QueryRow(ctx, `select coalesce(submission_id, ''), coalesce(version, 0), http_status from ingest_delivery where delivery_id = ?`, deliveryID).
@@ -233,7 +233,7 @@ func (a *ireApp) ingestShip(ctx context.Context, program programRow, request con
 	checks = append(checks, a.duplicateChecks(ctx, program.ID, request, nowTime)...)
 
 	var (
-		evidence     *contract.Evidence
+		evidence *contract.Evidence
 		queuedChecks bool
 	)
 
@@ -322,7 +322,7 @@ func (a *ireApp) ingestShip(ctx context.Context, program programRow, request con
 func (a *ireApp) nextSubmissionVersion(ctx context.Context, programID, externalID string) (int, string, error) {
 	var (
 		lastID, lastStatus string
-		lastVersion        int
+		lastVersion int
 	)
 
 	err := a.store.QueryRow(ctx, `select id, version, status from submission
@@ -342,7 +342,7 @@ func (a *ireApp) nextSubmissionVersion(ctx context.Context, programID, externalI
 // openShip returns the open ship for an external id.
 func (a *ireApp) openShip(ctx context.Context, programID, externalID string) (string, int, error) {
 	var (
-		id      string
+		id string
 		version int
 	)
 

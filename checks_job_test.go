@@ -231,7 +231,9 @@ func TestChecksLandAfterStaleSweep(t *testing.T) {
 	application.config.DisableRepoChecks = false
 	application.config.GitHubAPIBase = github.URL
 	application.config.EnableJobs = true
-	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) { return true, nil }
+	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) {
+		return true, nil
+	}
 
 	body := ingestBody("queued:design")
 	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
@@ -240,7 +242,9 @@ func TestChecksLandAfterStaleSweep(t *testing.T) {
 		"X-Ari-Signature": hmacHex("test-ingest", body),
 	}))
 
-	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 11, 0, 0, time.UTC) }
+	application.clock = func() time.Time {
+		return time.Date(2026, 11, 3, 12, 11, 0, 0, time.UTC)
+	}
 	postTick(t, application)
 
 	if status := shipStatus(t, application, created.ID); status != statusNeedsAttention {
@@ -271,7 +275,9 @@ func TestChecksSettleAfterSweepWithoutClobberingClaim(t *testing.T) {
 	application.config.DisableRepoChecks = false
 	application.config.GitHubAPIBase = github.URL
 	application.config.EnableJobs = true
-	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) { return true, nil }
+	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) {
+		return true, nil
+	}
 
 	body := ingestBody("queued:design")
 	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
@@ -280,7 +286,9 @@ func TestChecksSettleAfterSweepWithoutClobberingClaim(t *testing.T) {
 		"X-Ari-Signature": hmacHex("test-ingest", body),
 	}))
 
-	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 11, 0, 0, time.UTC) }
+	application.clock = func() time.Time {
+		return time.Date(2026, 11, 3, 12, 11, 0, 0, time.UTC)
+	}
 	postTick(t, application)
 
 	cookie := login(t, application, "reviewer@example.com")
@@ -316,7 +324,9 @@ func TestCheckSummaryIgnoresSupersededRows(t *testing.T) {
 	application.config.DisableRepoChecks = false
 	application.config.GitHubAPIBase = github.URL
 	application.config.EnableJobs = true
-	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) { return true, nil }
+	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) {
+		return true, nil
+	}
 
 	body := ingestBody("queued:design")
 	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
@@ -354,14 +364,18 @@ func TestTickKeepsFreshCheckRun(t *testing.T) {
 		t.Fatalf("status after the failed run = %q, want needs_attention", status)
 	}
 
-	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 6, 0, 0, time.UTC) }
+	application.clock = func() time.Time {
+		return time.Date(2026, 11, 3, 12, 6, 0, 0, time.UTC)
+	}
 	postTick(t, application)
 
 	if status := shipStatus(t, application, id); status != statusChecking {
 		t.Fatalf("status after the retry = %q, want checking", status)
 	}
 
-	application.clock = func() time.Time { return time.Date(2026, 11, 3, 12, 7, 0, 0, time.UTC) }
+	application.clock = func() time.Time {
+		return time.Date(2026, 11, 3, 12, 7, 0, 0, time.UTC)
+	}
 	postTick(t, application)
 
 	if status := shipStatus(t, application, id); status != statusChecking {
@@ -377,7 +391,9 @@ func TestQueueCountsFollowChecks(t *testing.T) {
 	application.config.DisableRepoChecks = false
 	application.config.GitHubAPIBase = github.URL
 	application.config.EnableJobs = true
-	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) { return true, nil }
+	application.config.Enqueue = func(context.Context, app.JobRequest) (bool, error) {
+		return true, nil
+	}
 
 	body := ingestBody("queued:design")
 	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))

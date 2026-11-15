@@ -30,13 +30,13 @@ func (a *ireApp) resubmissionDiff(ctx context.Context, ship submissionRow, curre
 
 	diff := &contract.Resubmission{
 		PreviousVersion: previous.Version,
-		Commits:         []contract.EvidenceCommit{},
-		AddedFiles:      []string{},
-		RemovedFiles:    []string{},
-		NewEntries:      []contract.ResubmissionEntry{},
-		ChangedEntries:  []contract.ResubmissionEntry{},
-		BomAdded:        []string{},
-		BomRemoved:      []string{},
+		Commits: []contract.EvidenceCommit{},
+		AddedFiles: []string{},
+		RemovedFiles: []string{},
+		NewEntries: []contract.ResubmissionEntry{},
+		ChangedEntries: []contract.ResubmissionEntry{},
+		BomAdded: []string{},
+		BomRemoved: []string{},
 		BomPriceChanges: []contract.ResubmissionPrice{},
 	}
 

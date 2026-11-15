@@ -56,7 +56,7 @@ func (a *ireApp) handleImportReviewed(w http.ResponseWriter, r *http.Request) {
 		imported, err := a.importReviewedShip(r.Context(), program, entry)
 		if err != nil {
 			response.Failed = append(response.Failed, contract.ImportResultFailedElem{
-				Error:      err.Error(),
+				Error: err.Error(),
 				ExternalID: externalID,
 			})
 
@@ -89,9 +89,9 @@ func (a *ireApp) importReviewedShip(ctx context.Context, program programRow, ent
 	final := reviews[len(reviews)-1]
 
 	var (
-		existingID      string
+		existingID string
 		existingVersion int
-		existingStatus  string
+		existingStatus string
 	)
 
 	err := a.store.QueryRow(ctx, `select id, version, status from submission

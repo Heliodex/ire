@@ -21,9 +21,9 @@ import (
 // fakeHCA is a minimal OpenID provider: discovery, token, JWKS and userinfo.
 type fakeHCA struct {
 	server *httptest.Server
-	key    *rsa.PrivateKey
+	key *rsa.PrivateKey
 
-	mu                                          sync.Mutex
+	mu sync.Mutex
 	nonce, email, subject, displayName, picture string
 }
 
@@ -37,11 +37,11 @@ func newFakeHCA(t *testing.T) *fakeHCA {
 	}
 
 	provider := &fakeHCA{
-		key:         key,
-		email:       "reviewer@example.com",
-		subject:     "ident!reviewer",
+		key: key,
+		email: "reviewer@example.com",
+		subject: "ident!reviewer",
 		displayName: "Rae Reviewer",
-		picture:     "https://cdn.example.com/rae.png",
+		picture: "https://cdn.example.com/rae.png",
 	}
 	provider.server = httptest.NewServer(http.HandlerFunc(provider.handle))
 	t.Cleanup(provider.server.Close)
@@ -70,11 +70,11 @@ func (f *fakeHCA) handle(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/.well-known/openid-configuration":
 		writeTestJSON(w, map[string]string{
-			"issuer":                 f.server.URL,
+			"issuer": f.server.URL,
 			"authorization_endpoint": f.server.URL + "/oauth/authorize",
-			"token_endpoint":         f.server.URL + "/oauth/token",
-			"userinfo_endpoint":      f.server.URL + "/oauth/userinfo",
-			"jwks_uri":               f.server.URL + "/oauth/keys",
+			"token_endpoint": f.server.URL + "/oauth/token",
+			"userinfo_endpoint": f.server.URL + "/oauth/userinfo",
+			"jwks_uri": f.server.URL + "/oauth/keys",
 		})
 	case "/oauth/token":
 		if err := r.ParseForm(); err != nil || r.Form.Get("code") != "good" {
@@ -84,16 +84,16 @@ func (f *fakeHCA) handle(w http.ResponseWriter, r *http.Request) {
 
 		writeTestJSON(w, map[string]any{
 			"access_token": "hca-token",
-			"expires_in":   300,
-			"id_token":     f.idToken(),
-			"token_type":   "Bearer",
+			"expires_in": 300,
+			"id_token": f.idToken(),
+			"token_type": "Bearer",
 		})
 	case "/oauth/keys":
 		writeTestJSON(w, map[string]any{"keys": []map[string]string{{
 			"kty": "RSA",
 			"kid": "k1",
-			"n":   base64.RawURLEncoding.EncodeToString(f.key.N.Bytes()),
-			"e":   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(f.key.E)).Bytes()),
+			"n": base64.RawURLEncoding.EncodeToString(f.key.N.Bytes()),
+			"e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(f.key.E)).Bytes()),
 		}}})
 	case "/oauth/userinfo":
 		if r.Header.Get("Authorization") != "Bearer hca-token" {
@@ -102,9 +102,9 @@ func (f *fakeHCA) handle(w http.ResponseWriter, r *http.Request) {
 		}
 
 		writeTestJSON(w, map[string]string{
-			"sub":     f.subject,
-			"email":   f.email,
-			"name":    f.displayName,
+			"sub": f.subject,
+			"email": f.email,
+			"name": f.displayName,
 			"picture": f.picture,
 		})
 	default:
@@ -122,13 +122,13 @@ func (f *fakeHCA) idToken() string {
 	now := time.Now()
 	header := segment(map[string]string{"alg": "RS256", "kid": "k1", "typ": "JWT"})
 	claims := segment(map[string]any{
-		"iss":   f.server.URL,
-		"aud":   "client",
-		"exp":   now.Add(5 * time.Minute).Unix(),
-		"iat":   now.Unix(),
-		"sub":   f.subject,
+		"iss": f.server.URL,
+		"aud": "client",
+		"exp": now.Add(5 * time.Minute).Unix(),
+		"iat": now.Unix(),
+		"sub": f.subject,
 		"email": f.email,
-		"name":  f.displayName,
+		"name": f.displayName,
 		"nonce": f.currentNonce(),
 	})
 

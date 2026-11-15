@@ -13,7 +13,7 @@ func TestPruneRetention(t *testing.T) {
 	fresh := application.nowText()
 
 	statements := []struct {
-		SQL  string
+		SQL string
 		Args []any
 	}{
 		{`insert into login_flow (state, verifier, nonce, redirect_uri, created_at) values ('old', 'v', 'n', 'http://x', ?)`, []any{old}},

@@ -9,24 +9,24 @@ import (
 )
 
 const (
-	forgeCacheTTL       = 5 * time.Minute
-	forgeCommitTTL      = 30 * time.Second
-	forgeTreeTTL        = 2 * time.Minute
+	forgeCacheTTL = 5 * time.Minute
+	forgeCommitTTL = 30 * time.Second
+	forgeTreeTTL = 2 * time.Minute
 	forgeUnavailableTTL = 30 * time.Second
 )
 
 // forgeCacheEntry is one bounded GitHub response. A negative entry stores a failure for a short window so a broken forge is not hammered.
 type forgeCacheEntry struct {
-	body    []byte
-	status  int
-	etag    string
-	err     error
+	body []byte
+	status int
+	etag string
+	err error
 	expires time.Time
 }
 
 // forgeCache keeps responses for one app instance. The key includes the request path and Accept header.
 type forgeCache struct {
-	mu      sync.Mutex
+	mu sync.Mutex
 	entries map[string]forgeCacheEntry
 }
 

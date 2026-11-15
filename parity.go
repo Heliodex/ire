@@ -38,8 +38,8 @@ func (a *ireApp) handleParity(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			ship          contract.ParityShip
-			summary       string
+			ship contract.ParityShip
+			summary string
 			approvedHours sql.NullInt64
 		)
 

@@ -35,13 +35,13 @@ func TestImportReviewedCreatesDecidedShip(t *testing.T) {
 
 	note := "Lovely board."
 	request := importShipRequest(t, ingestBody("unused"), "import:reviewed", []contract.ImportReview{{
-		DecidedAt:            "2026-10-20T10:00:00Z",
-		Decision:             "approved",
+		DecidedAt: "2026-10-20T10:00:00Z",
+		Decision: "approved",
 		HoursApprovedSeconds: 6 * 3600,
-		NoteToMaker:          &note,
-		ReviewerEmail:        "ari@example.com",
-		ReviewerName:         stringPtr("Ari Reviewer"),
-		Stage:                1,
+		NoteToMaker: &note,
+		ReviewerEmail: "ari@example.com",
+		ReviewerName: stringPtr("Ari Reviewer"),
+		Stage: 1,
 	}})
 
 	body, _ := json.Marshal(request)
@@ -150,10 +150,10 @@ func TestImportReviewedDecidesOpenShip(t *testing.T) {
 	}
 
 	ship := contract.IngestRequest{
-		ExternalID:  open.ExternalID,
-		Title:       open.Title,
+		ExternalID: open.ExternalID,
+		Title: open.Title,
 		Description: "historical import",
-		Maker:       contract.IngestMaker{Email: "maker@example.com", Name: "Maker"},
+		Maker: contract.IngestMaker{Email: "maker@example.com", Name: "Maker"},
 	}
 
 	request := contract.ImportShipsRequest{Ships: []contract.ImportShip{{

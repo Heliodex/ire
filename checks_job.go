@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	checkRunnerVersion  = "review-checks-v1"
+	checkRunnerVersion = "review-checks-v1"
 	checkRunMaxAttempts = 5
 )
 
 // checkJob is the durable job payload for the repository checks.
 type checkJob struct {
 	SubmissionID string `json:"submission_id"`
-	Version      int    `json:"version"`
+	Version int `json:"version"`
 }
 
 // queueRepositoryChecks enqueues the forge work and falls back to running it inline if the queue is unavailable, so a ship never waits in checking forever.
@@ -50,11 +50,11 @@ func (a *ireApp) enqueueCheckJob(ctx context.Context, submissionID string, versi
 	}
 
 	_, err = a.config.Enqueue(ctx, app.JobRequest{
-		Path:           "/jobs/checks",
-		Method:         http.MethodPost,
-		Body:           string(payload),
-		Headers:        map[string]string{"Content-Type": "application/json"},
-		MaxAttempts:    5,
+		Path: "/jobs/checks",
+		Method: http.MethodPost,
+		Body: string(payload),
+		Headers: map[string]string{"Content-Type": "application/json"},
+		MaxAttempts: 5,
 		IdempotencyKey: idempotencyKey,
 	})
 
@@ -188,7 +188,7 @@ func (a *ireApp) collectRepositoryChecks(ctx context.Context, ship submissionRow
 	for _, check := range remote {
 		statements = append(statements,
 			storage.TransactionStatement{
-				SQL:  `delete from check_result where submission_id = ? and version = ? and check_key = ?`,
+				SQL: `delete from check_result where submission_id = ? and version = ? and check_key = ?`,
 				Args: []any{ship.ID, ship.Version, check.Key},
 			},
 			storage.TransactionStatement{
@@ -249,7 +249,7 @@ func (a *ireApp) collectRepositoryChecks(ctx context.Context, ship submissionRow
 // loadCheckRun returns the run row for one submission version and whether it exists.
 func (a *ireApp) loadCheckRun(ctx context.Context, submissionID string, version int) (contract.CheckRun, bool, error) {
 	var (
-		run                 contract.CheckRun
+		run contract.CheckRun
 		finishedAt, failure string
 	)
 

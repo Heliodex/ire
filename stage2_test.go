@@ -19,11 +19,11 @@ func holdSecondPass(t *testing.T, application *ireApp, reviewer *http.Cookie, ke
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, reviewer, nil))
 
 	approve, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          1,
-		NoteToMaker:      "1st pass approves the hours.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "1st pass approves the hours.",
 		Acknowledgements: warningKeys(bundle.Checks),
-		IdempotencyKey:   key,
+		IdempotencyKey: key,
 	})
 
 	held := decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, reviewer, nil))
@@ -57,11 +57,11 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 	hours := 3000
 
 	missing, _ := json.Marshal(contract.DecisionRequest{
-		Decision:             decisionApproved,
+		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		Version:              1,
-		NoteToMaker:          "Reduce the approved hours.",
-		IdempotencyKey:       "override-missing",
+		Version: 1,
+		NoteToMaker: "Reduce the approved hours.",
+		IdempotencyKey: "override-missing",
 	})
 
 	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", missing, organiser, nil)
@@ -80,12 +80,12 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 
 	reason := "The 1st pass was too generous on the firmware hours."
 	confirm, _ := json.Marshal(contract.DecisionRequest{
-		Decision:             decisionApproved,
+		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		Version:              1,
-		NoteToMaker:          "Reduce the approved hours.",
-		OverrideReason:       &reason,
-		IdempotencyKey:       "override-good",
+		Version: 1,
+		NoteToMaker: "Reduce the approved hours.",
+		OverrideReason: &reason,
+		IdempotencyKey: "override-good",
 	})
 
 	confirmed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
@@ -119,8 +119,8 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 
 	var event struct {
 		Review struct {
-			ApprovedSeconds int    `json:"approved_seconds"`
-			OverrideReason  string `json:"override_reason"`
+			ApprovedSeconds int `json:"approved_seconds"`
+			OverrideReason string `json:"override_reason"`
 		} `json:"review"`
 	}
 	if err := json.Unmarshal([]byte(received.Deliveries[0].Body), &event); err != nil {
@@ -145,9 +145,9 @@ func TestStageTwoRejectsStaleVersion(t *testing.T) {
 	}
 
 	confirm, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        2,
-		NoteToMaker:    "Confirm a stale version.",
+		Decision: decisionApproved,
+		Version: 2,
+		NoteToMaker: "Confirm a stale version.",
 		IdempotencyKey: "stale-confirm",
 	})
 
@@ -248,11 +248,11 @@ func TestStageTwoSendBack(t *testing.T) {
 	bundle = decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, reviewer, nil))
 
 	approve, _ := json.Marshal(contract.DecisionRequest{
-		Decision:         decisionApproved,
-		Version:          1,
-		NoteToMaker:      "Second look approves the hours.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Second look approves the hours.",
 		Acknowledgements: warningKeys(bundle.Checks),
-		IdempotencyKey:   "send-back-rehold",
+		IdempotencyKey: "send-back-rehold",
 	})
 
 	if held := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, reviewer, nil); held.Code != http.StatusOK {
@@ -264,9 +264,9 @@ func TestStageTwoSendBack(t *testing.T) {
 	}
 
 	confirm, _ := json.Marshal(contract.DecisionRequest{
-		Decision:       decisionApproved,
-		Version:        1,
-		NoteToMaker:    "Confirmed after the send-back.",
+		Decision: decisionApproved,
+		Version: 1,
+		NoteToMaker: "Confirmed after the send-back.",
 		IdempotencyKey: "send-back-confirm",
 	})
 

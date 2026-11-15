@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	programID   = "prg_halflife"
+	programID = "prg_halflife"
 	programSlug = "half-life"
 	programName = "Half Life"
 
@@ -26,11 +26,11 @@ const (
 	maxNote = 4000
 
 	maxIngestBody = 16 << 20
-	maxAPIBody    = 64 << 10
+	maxAPIBody = 64 << 10
 
 	defaultLimit = 50
-	maxLimit     = 100
-	maxOffset    = 10000
+	maxLimit = 100
+	maxOffset = 10000
 
 	claimTTL = 30 * time.Minute
 
@@ -42,58 +42,58 @@ const (
 	outboundTimeout = 15 * time.Second
 
 	minDescriptionLength = 160
-	minJournalText       = 80
-	minClipCoverage      = 0.2
+	minJournalText = 80
+	minClipCoverage = 0.2
 
 	signatureWindow = 300
 
 	secondsPerHour = 3600
-	secondsPerDay  = 24 * secondsPerHour
-	maxHours       = 30 * secondsPerDay
+	secondsPerDay = 24 * secondsPerHour
+	maxHours = 30 * secondsPerDay
 
 	sessionTTL = 7 * 24 * time.Hour
 
-	statusChecking       = "checking"
+	statusChecking = "checking"
 	statusNeedsAttention = "needs_attention"
-	statusReady          = "ready"
-	statusClaimed        = "claimed"
-	statusInReview       = "in_review"
-	statusStage2Hold     = "stage2_hold"
-	statusDecided        = "decided"
-	statusWithdrawn      = "withdrawn"
+	statusReady = "ready"
+	statusClaimed = "claimed"
+	statusInReview = "in_review"
+	statusStage2Hold = "stage2_hold"
+	statusDecided = "decided"
+	statusWithdrawn = "withdrawn"
 
 	stageOne = 1
 
 	decisionApproved = "approved"
-	decisionChanges  = "changes"
+	decisionChanges = "changes"
 	decisionRejected = "rejected"
 
-	statusPass  = "pass"
-	statusWarn  = "warn"
-	statusFail  = "fail"
+	statusPass = "pass"
+	statusWarn = "warn"
+	statusFail = "fail"
 	statusError = "error"
-	statusSkip  = "skip"
+	statusSkip = "skip"
 
-	severityInfo  = "info"
-	severityWarn  = "warn"
+	severityInfo = "info"
+	severityWarn = "warn"
 	severityBlock = "block"
 
 	checkOverallPass = "pass"
 	checkOverallWarn = "warn"
 	checkOverallFail = "fail"
 
-	queueFilterAll       = "all"
-	queueFilterEasy      = "easy"
-	queueFilterFast      = "fast"
-	queueFilterHard      = "hard"
-	queueFilterMedium    = "medium"
+	queueFilterAll = "all"
+	queueFilterEasy = "easy"
+	queueFilterFast = "fast"
+	queueFilterHard = "hard"
+	queueFilterMedium = "medium"
 	queueFilterAttention = "attention"
-	queueFilterMine      = "mine"
+	queueFilterMine = "mine"
 
-	roleReviewer  = "reviewer"
+	roleReviewer = "reviewer"
 	roleOrganizer = "organizer"
-	roleAdmin     = "admin"
-	roleAuditor   = "auditor"
+	roleAdmin = "admin"
+	roleAuditor = "auditor"
 
 	// permWildcard grants every permission. Only the locked admin role holds it.
 	permWildcard = "*"
@@ -122,19 +122,19 @@ const (
 // config is the process-level configuration that never belongs in SQLite: the shared secrets and the delivery mode.
 type config struct {
 	IngestSecret, OutboundSecret, OutboundURL, GitHubToken, GitHubAPIBase, HackatimeAPIBase, HCClientID, HCClientSecret, HCRedirectURI, HCAuthBase, BootstrapEmail, BootstrapRole string
-	SeedFixtures, AllowDevAccounts, DisableRepoChecks, EnableJobs, OutboundDryRun, Shadow                                                                                         bool
-	Enqueue                                                                                                                                                                       func(context.Context, app.JobRequest) (bool, error)
+	SeedFixtures, AllowDevAccounts, DisableRepoChecks, EnableJobs, OutboundDryRun, Shadow bool
+	Enqueue func(context.Context, app.JobRequest) (bool, error)
 }
 
 // ireApp owns the store, HTTP client and routes. Tests build it around an in-memory storage service and a fake clock.
 type ireApp struct {
-	store                      *storage.Client
-	client                     *http.Client
-	mux                        *http.ServeMux
-	config                     config
-	clock                      func() time.Time
+	store *storage.Client
+	client *http.Client
+	mux *http.ServeMux
+	config config
+	clock func() time.Time
 	browserLimit, machineLimit storage.RateLimit
-	forgeCache                 *forgeCache
+	forgeCache *forgeCache
 }
 
 // newIreApp builds the routes around one store and outbound client.
@@ -435,5 +435,5 @@ func writeStorage(w http.ResponseWriter, err error) {
 // programRow is the subset of a programme the prototype reads.
 type programRow struct {
 	ID, Slug, Name, OutboundURL, CreatedAt string
-	PolicyVersion                          int
+	PolicyVersion int
 }

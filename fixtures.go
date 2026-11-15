@@ -17,24 +17,24 @@ import (
 // A fixture is a real half-life project row reduced to the fields a reviewer needs: the repo and description, the evidence, the claimed hours and a prescribed check outcome. The fixture suite stands in for the network checks until they are ported.
 type fixture struct {
 	externalID, title, description, repoURL, readme, thumbnailURL, theme, makerEmail, makerName, makerSlack string
-	tier, hoursClaimed, hoursJournal, priority                                                              int
-	journals                                                                                                []fixtureJournal
-	bom                                                                                                     []fixtureBom
-	checks                                                                                                  []fixtureCheck
-	priorReview                                                                                             *fixturePriorReview
+	tier, hoursClaimed, hoursJournal, priority int
+	journals []fixtureJournal
+	bom []fixtureBom
+	checks []fixtureCheck
+	priorReview *fixturePriorReview
 }
 
 type fixtureJournal struct {
-	at                   string
-	hours                int
-	title, text          string
+	at string
+	hours int
+	title, text string
 	clips, media, coverS int
 }
 
 type fixtureBom struct {
 	name, purpose string
-	qty, cents    int
-	vendor, link  string
+	qty, cents int
+	vendor, link string
 }
 
 type fixtureCheck struct {
@@ -47,11 +47,11 @@ type fixturePriorReview struct {
 
 type checkCounts struct {
 	Overall string `json:"overall"`
-	Pass    int    `json:"pass"`
-	Warn    int    `json:"warn"`
-	Fail    int    `json:"fail"`
-	Error   int    `json:"error"`
-	Running int    `json:"running"`
+	Pass int `json:"pass"`
+	Warn int `json:"warn"`
+	Fail int `json:"fail"`
+	Error int `json:"error"`
+	Running int `json:"running"`
 }
 
 // checkCountsFor summarises a list of checks. A blocking failure outranks a warning, and a warning outranks a pass. The result does not depend on check order, so checks sharing a timestamp cannot flip the outcome.
@@ -97,21 +97,21 @@ func checkCountsFor(checks []contract.CheckResult) checkCounts {
 func demoFixtures(base time.Time) []fixture {
 	return []fixture{
 		{
-			externalID:   "fix-clean:design",
-			title:        "Starbie",
-			description:  "A tiny motion-controlled digital pet on a custom star-shaped PCB. The board carries a XIAO ESP32-C3, a 0.96-inch OLED, an MPU6050, a DHT11 and two Cherry MX switches. I drew my own panel art and added an angry expression when the pet's stats run out.",
-			repoURL:      "https://github.com/C6-H/Starbie",
+			externalID: "fix-clean:design",
+			title: "Starbie",
+			description: "A tiny motion-controlled digital pet on a custom star-shaped PCB. The board carries a XIAO ESP32-C3, a 0.96-inch OLED, an MPU6050, a DHT11 and two Cherry MX switches. I drew my own panel art and added an angry expression when the pet's stats run out.",
+			repoURL: "https://github.com/C6-H/Starbie",
 			thumbnailURL: "/projects/starbie.png",
-			readme:       "# Starbie\n\nA motion-controlled digital pet on a star-shaped PCB.\n\n## Build\n\n1. Order the board from the gerbers in `fabrication/`.\n2. Flash the XIAO ESP32-C3 with `firmware/starbie.ino`.\n3. Solder the OLED, the MPU6050 and the two Cherry MX switches.\n\n## Notes\n\n- The USB port faces the edge of the star.\n- Panel art lives in `art/`.\n\n![board](https://example.com/board.jpg)\n\n```\nmake flash\n```\n",
-			theme:        "starbie",
-			makerEmail:   "c6h@example.com",
-			makerName:    "C6-H",
-			makerSlack:   "U0C6HSTAR",
-			tier:         1,
+			readme: "# Starbie\n\nA motion-controlled digital pet on a star-shaped PCB.\n\n## Build\n\n1. Order the board from the gerbers in `fabrication/`.\n2. Flash the XIAO ESP32-C3 with `firmware/starbie.ino`.\n3. Solder the OLED, the MPU6050 and the two Cherry MX switches.\n\n## Notes\n\n- The USB port faces the edge of the star.\n- Panel art lives in `art/`.\n\n![board](https://example.com/board.jpg)\n\n```\nmake flash\n```\n",
+			theme: "starbie",
+			makerEmail: "c6h@example.com",
+			makerName: "C6-H",
+			makerSlack: "U0C6HSTAR",
+			tier: 1,
 			// 6.4 hours, matching the approved row in .projects.csv.
 			hoursClaimed: 23040,
 			hoursJournal: 23040,
-			priority:     30,
+			priority: 30,
 			journals: []fixtureJournal{
 				{at: base.Add(2 * time.Hour).Format(timestampFormat), hours: 3, media: 1, title: "Schematic and layout", text: "Placed the XIAO, the OLED header, the MPU6050 header, the DHT11 and the two switches. Routed the board on two layers and filled the back copper with GND. The DRC was clean after fixing one stray track.", clips: 2, coverS: 9000},
 				{at: base.Add(5 * time.Hour).Format(timestampFormat), hours: 3, title: "Firmware and panel art", text: "Added the angry face for an empty stat, drew the star trail, exported the gerbers and wrote the BOM. The board is 96 by 92 mm and the XIAO's USB port faces the edge.", clips: 1, coverS: 5400},
@@ -136,20 +136,20 @@ func demoFixtures(base time.Time) []fixture {
 			},
 		},
 		{
-			externalID:   "fix-warned:design",
-			title:        "OpenTrace",
-			description:  "An 8-channel USB logic analyzer built around an RP2350A. The board has USB-C, a 16 Mbit QSPI flash, an eight-channel buffer and a four-layer stackup. It is my first board with a proper ground plane and a differential USB pair.",
-			repoURL:      "https://github.com/Shubhayu-Banerjee/Open-Trace",
+			externalID: "fix-warned:design",
+			title: "OpenTrace",
+			description: "An 8-channel USB logic analyzer built around an RP2350A. The board has USB-C, a 16 Mbit QSPI flash, an eight-channel buffer and a four-layer stackup. It is my first board with a proper ground plane and a differential USB pair.",
+			repoURL: "https://github.com/Shubhayu-Banerjee/Open-Trace",
 			thumbnailURL: "/projects/opentrace.jpg",
-			readme:       "# OpenTrace\n\nAn open hardware PCB for tracing signals.\n\n## Status\n\nThe board is routed. BOM prices are estimates.\n",
-			theme:        "pcb",
-			makerEmail:   "opentrace@example.com",
-			makerName:    "Shubhayu-Banerjee",
-			makerSlack:   "U0OPENTRACE",
-			tier:         1,
+			readme: "# OpenTrace\n\nAn open hardware PCB for tracing signals.\n\n## Status\n\nThe board is routed. BOM prices are estimates.\n",
+			theme: "pcb",
+			makerEmail: "opentrace@example.com",
+			makerName: "Shubhayu-Banerjee",
+			makerSlack: "U0OPENTRACE",
+			tier: 1,
 			hoursClaimed: 37800,
 			hoursJournal: 37800,
-			priority:     20,
+			priority: 20,
 			journals: []fixtureJournal{
 				{at: base.Add(90 * time.Minute).Format(timestampFormat), hours: 5, title: "Schematic and QSPI flash", text: "Wired the RP2350A, the 16 Mbit flash and the USB-C port. I read the RP2350 datasheet for the QSPI pin mapping and checked the boot pins against the reference design.", clips: 1, coverS: 9000},
 				{at: base.Add(4 * time.Hour).Format(timestampFormat), hours: 5, title: "Routing and firmware", text: "Routed the USB pair, the buffers and the probe inputs. The firmware is a 1st pass that samples one channel and prints over USB serial. I still need to add the trigger logic.", clips: 0, coverS: 0},
@@ -174,20 +174,20 @@ func demoFixtures(base time.Time) []fixture {
 			priorReview: &fixturePriorReview{result: "CHANGES_REQUESTED", feedback: "Organise the repo into PCB, firmware and production folders. Add the BOM to the README.", reviewer: "reviewer@example.com", at: base.Add(-36 * time.Hour).Format(timestampFormat)},
 		},
 		{
-			externalID:   "fix-blocked:design",
-			title:        "Smart Alarm Clock",
-			description:  "An ESP32 alarm clock that shows the weather and wakes you with a buzzer. The board has an ESP32 module, a 1.8-inch SPI display, a DS3231 RTC, a TP4056 charger and four buttons.",
-			repoURL:      "https://github.com/SBdevz/Smart-Alarm-Clock",
+			externalID: "fix-blocked:design",
+			title: "Smart Alarm Clock",
+			description: "An ESP32 alarm clock that shows the weather and wakes you with a buzzer. The board has an ESP32 module, a 1.8-inch SPI display, a DS3231 RTC, a TP4056 charger and four buttons.",
+			repoURL: "https://github.com/SBdevz/Smart-Alarm-Clock",
 			thumbnailURL: "/projects/smart-alarm-clock.png",
-			readme:       "# Smart Alarm Clock\n\nA seven-segment alarm clock. The README is still a stub.\n",
-			theme:        "pcb",
-			makerEmail:   "sbdevz@example.com",
-			makerName:    "SBdevz",
-			makerSlack:   "U0SMARTCLOCK",
-			tier:         1,
+			readme: "# Smart Alarm Clock\n\nA seven-segment alarm clock. The README is still a stub.\n",
+			theme: "pcb",
+			makerEmail: "sbdevz@example.com",
+			makerName: "SBdevz",
+			makerSlack: "U0SMARTCLOCK",
+			tier: 1,
 			hoursClaimed: 40320,
 			hoursJournal: 40320,
-			priority:     10,
+			priority: 10,
 			journals: []fixtureJournal{
 				{at: base.Add(time.Hour).Format(timestampFormat), hours: 6, title: "Schematic and Wokwi model", text: "Built the ESP32 circuit in Wokwi with the display, the RTC and the buzzer, then moved it to KiCad. The alarm logic is written but the board files still need work.", clips: 0, coverS: 0},
 				{at: base.Add(4 * time.Hour).Format(timestampFormat), hours: 5, title: "Board layout", text: "Started the layout and routed the display and USB-C. The repo is still private while I clean up the README.", clips: 0, coverS: 0},
@@ -283,13 +283,13 @@ func (a *ireApp) insertFixture(ctx context.Context, index int, f fixture, now ti
 	checks := make([]contract.CheckResult, 0, len(f.checks))
 	for _, check := range f.checks {
 		checks = append(checks, contract.CheckResult{
-			Key:       check.key,
-			Label:     check.label,
-			Group:     check.group,
-			Status:    check.status,
-			Severity:  check.severity,
-			Summary:   check.summary,
-			Detail:    stringPtr(check.detail),
+			Key: check.key,
+			Label: check.label,
+			Group: check.group,
+			Status: check.status,
+			Severity: check.severity,
+			Summary: check.summary,
+			Detail: stringPtr(check.detail),
 			CheckedAt: ingested.Add(time.Minute).Format(timestampFormat),
 		})
 	}
@@ -307,36 +307,36 @@ func (a *ireApp) insertFixture(ctx context.Context, index int, f fixture, now ti
 	}
 
 	request := contract.IngestRequest{
-		ExternalID:   f.externalID,
-		Title:        f.title,
-		Description:  f.description,
-		RepoURL:      stringPtr(f.repoURL),
+		ExternalID: f.externalID,
+		Title: f.title,
+		Description: f.description,
+		RepoURL: stringPtr(f.repoURL),
 		ThumbnailURL: stringPtr(f.thumbnailURL),
-		Track:        stringPtr("hardware"),
+		Track: stringPtr("hardware"),
 		Maker: contract.IngestMaker{
-			Email:   f.makerEmail,
-			Name:    f.makerName,
+			Email: f.makerEmail,
+			Name: f.makerName,
 			SlackID: stringPtr(f.makerSlack),
 		},
 		Meta: &contract.IngestMeta{
-			Phase:         stringPtr("design"),
-			Theme:         stringPtr(f.theme),
-			Week:          new(1),
+			Phase: stringPtr("design"),
+			Theme: stringPtr(f.theme),
+			Week: new(1),
 			RequestedTier: new(f.tier),
 			GrantCapCents: new(3000),
 			Hours: &contract.IngestHours{
-				ClaimedSeconds:   f.hoursClaimed,
-				JournalSeconds:   f.hoursJournal,
+				ClaimedSeconds: f.hoursClaimed,
+				JournalSeconds: f.hoursJournal,
 				HackatimeSeconds: 0,
 			},
 		},
 	}
 	if f.priorReview != nil {
 		request.Meta.PriorReviews = []contract.IngestPriorReview{{
-			Result:   f.priorReview.result,
+			Result: f.priorReview.result,
 			Feedback: stringPtr(f.priorReview.feedback),
 			Reviewer: stringPtr(f.priorReview.reviewer),
-			At:       stringPtr(f.priorReview.at),
+			At: stringPtr(f.priorReview.at),
 		}}
 	}
 
@@ -378,14 +378,14 @@ func (a *ireApp) insertFixture(ctx context.Context, index int, f fixture, now ti
 		clipsJSON, _ := json.Marshal(timelapses)
 
 		tx = append(tx, storage.TransactionStatement{
-			SQL:  `insert into journal_entry (id, submission_id, at, seconds, title, text, media, timelapses, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			SQL: `insert into journal_entry (id, submission_id, at, seconds, title, text, media, timelapses, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{newID("jrn"), id, entry.at, entry.hours * 3600, entry.title, entry.text, string(mediaJSON), string(clipsJSON), i},
 		})
 	}
 
 	for i, line := range f.bom {
 		tx = append(tx, storage.TransactionStatement{
-			SQL:  `insert into bom_line (id, submission_id, name, purpose, quantity, unit_cost_cents, vendor, link, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			SQL: `insert into bom_line (id, submission_id, name, purpose, quantity, unit_cost_cents, vendor, link, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			Args: []any{newID("bom"), id, line.name, line.purpose, line.qty, line.cents, line.vendor, line.link, i},
 		})
 	}

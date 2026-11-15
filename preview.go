@@ -123,9 +123,9 @@ func (a *ireApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
 
 	app.WriteJSON(w, http.StatusOK, contract.SubmissionFileResponse{
 		File: contract.SubmissionFile{
-			Path:      trimmed,
+			Path: trimmed,
 			SizeBytes: len(body),
-			Text:      string(body),
+			Text: string(body),
 			Truncated: false,
 		},
 	})

@@ -53,8 +53,8 @@ func TestHackatimeCutSavesLedger(t *testing.T) {
 	body, _ := json.Marshal(contract.HackatimeReviewRequest{
 		ApprovedSeconds: 1800,
 		DeflationReason: &reason,
-		ReviewerNote:    "Half the Hackatime window was a video left playing.",
-		Version:         1,
+		ReviewerNote: "Half the Hackatime window was a video left playing.",
+		Version: 1,
 	})
 
 	adjusted := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/hackatime", body, reviewer, nil)
@@ -188,8 +188,8 @@ func TestTimelapseCutSavesLedger(t *testing.T) {
 	body, _ := json.Marshal(contract.TimelapseReviewRequest{
 		ApprovedSeconds: approved,
 		DeflationReason: &reason,
-		ReviewerNote:    "The clip shows another screen.",
-		Version:         1,
+		ReviewerNote: "The clip shows another screen.",
+		Version: 1,
 	})
 
 	adjusted := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/journal/"+entry.ID+"/timelapse/0", body, reviewer, nil)

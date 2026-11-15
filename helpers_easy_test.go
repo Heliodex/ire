@@ -158,7 +158,7 @@ func TestCheckSmallHelpers(t *testing.T) {
 func TestParseSearchLimit(t *testing.T) {
 	cases := []struct {
 		query string
-		want  int
+		want int
 	}{
 		{query: "", want: searchLimit},
 		{query: "not-a-number", want: searchLimit},

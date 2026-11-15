@@ -13,13 +13,13 @@ import (
 
 const (
 	// openStatuses is the queue membership shared by the list and the overview readout.
-	openStatuses               = "'checking','ready','claimed','in_review','needs_attention','stage2_hold'"
-	overviewPercentileScale    = 100
-	overviewP50                = 50
-	overviewP95                = 95
-	overviewLeaderLimit        = 10
-	overviewDailyDays          = 14
-	overviewRecentMonthDays    = 30
+	openStatuses = "'checking','ready','claimed','in_review','needs_attention','stage2_hold'"
+	overviewPercentileScale = 100
+	overviewP50 = 50
+	overviewP95 = 95
+	overviewLeaderLimit = 10
+	overviewDailyDays = 14
+	overviewRecentMonthDays = 30
 	overviewRecentTwoWeeksDays = 14
 )
 
@@ -176,7 +176,7 @@ func (a *ireApp) overviewLeaderboard(ctx context.Context, programID, monthAgo st
 		leaders = append(leaders, contract.OverviewLeader{
 			Count: count,
 			Email: optionalText(email),
-			Name:  optionalText(name),
+			Name: optionalText(name),
 		})
 	}
 
@@ -306,9 +306,9 @@ func (a *ireApp) overviewTurnaround(ctx context.Context, programID, monthAgo str
 	slices.Sort(decisionGaps)
 
 	return contract.OverviewTurnaround{
-		Decisions:        len(decisionGaps),
+		Decisions: len(decisionGaps),
 		MedianDecisionMS: int(overviewMedian(decisionGaps)),
-		MedianFirstMS:    int(overviewMedian(firstGaps)),
+		MedianFirstMS: int(overviewMedian(firstGaps)),
 	}, nil
 }
 
@@ -346,10 +346,10 @@ func (a *ireApp) overviewResponse(ctx context.Context, programID string) (contra
 	twoWeeksAgo := a.later(-overviewRecentTwoWeeksDays * 24 * time.Hour)
 
 	response := contract.OverviewResponse{
-		ByStatus:    []contract.OverviewStatus{},
-		Daily:       []contract.OverviewDay{},
+		ByStatus: []contract.OverviewStatus{},
+		Daily: []contract.OverviewDay{},
 		Leaderboard: []contract.OverviewLeader{},
-		Outcomes:    []contract.OverviewOutcome{},
+		Outcomes: []contract.OverviewOutcome{},
 	}
 
 	wait, err := a.overviewWait(ctx, programID, now)

@@ -20,13 +20,13 @@ import (
 const (
 	githubDefaultAPI = "https://api.github.com"
 
-	repositoryTimeout  = 12 * time.Second
-	maxCheckBody       = 8 << 20
-	minReadmeLength    = 200
-	maxCommitPages     = 100
-	maxSnapshotFiles   = 2000
+	repositoryTimeout = 12 * time.Second
+	maxCheckBody = 8 << 20
+	minReadmeLength = 200
+	maxCommitPages = 100
+	maxSnapshotFiles = 2000
 	maxSnapshotCommits = 200
-	maxReadmeText      = 200 << 10
+	maxReadmeText = 200 << 10
 )
 
 var readmeImagePattern = regexp.MustCompile(`!\[[^\]]*\]\((https?://[^)\s]+)\)|<img[^>]+src=["'](https?://[^"']+)["']`)
@@ -34,10 +34,10 @@ var readmeImagePattern = regexp.MustCompile(`!\[[^\]]*\]\((https?://[^)\s]+)\)|<
 // githubRepo is the subset of the repository metadata the checks need.
 type githubRepo struct {
 	DefaultBranch string `json:"default_branch"`
-	FullName      string `json:"full_name"`
-	Private       bool   `json:"private"`
-	Archived      bool   `json:"archived"`
-	Message       string `json:"message"`
+	FullName string `json:"full_name"`
+	Private bool `json:"private"`
+	Archived bool `json:"archived"`
+	Message string `json:"message"`
 }
 
 // githubTreeEntry is one path in the recursive tree.
@@ -45,20 +45,20 @@ type githubTreeEntry struct {
 	Path string `json:"path"`
 	Type string `json:"type"`
 	Mode string `json:"mode"`
-	Size *int   `json:"size"`
+	Size *int `json:"size"`
 }
 
 // githubTree is the recursive tree response.
 type githubTree struct {
-	Sha       string            `json:"sha"`
-	Tree      []githubTreeEntry `json:"tree"`
-	Truncated bool              `json:"truncated"`
-	Message   string            `json:"message"`
+	Sha string `json:"sha"`
+	Tree []githubTreeEntry `json:"tree"`
+	Truncated bool `json:"truncated"`
+	Message string `json:"message"`
 }
 
 // githubCommit is one commit in the list response.
 type githubCommit struct {
-	Sha    string `json:"sha"`
+	Sha string `json:"sha"`
 	Commit struct {
 		Author struct {
 			Name string `json:"name"`
@@ -70,10 +70,10 @@ type githubCommit struct {
 
 // githubClient calls the GitHub REST API with the configured token.
 type githubClient struct {
-	http        *http.Client
+	http *http.Client
 	base, token string
-	cache       *forgeCache
-	clock       func() time.Time
+	cache *forgeCache
+	clock func() time.Time
 }
 
 // now returns the client's clock, falling back to wall time when a test did not set one.
@@ -193,11 +193,11 @@ func repositoryEvidence(owner, name string, meta githubRepo, readme []byte, read
 	}
 
 	evidence := contract.Evidence{
-		Commits:   []contract.EvidenceCommit{},
+		Commits: []contract.EvidenceCommit{},
 		FetchedAt: now.Format(timestampFormat),
-		Files:     []contract.EvidenceFile{},
-		Forge:     "github",
-		FullName:  fullName,
+		Files: []contract.EvidenceFile{},
+		Forge: "github",
+		FullName: fullName,
 	}
 
 	if meta.DefaultBranch != "" {
@@ -252,10 +252,10 @@ func repositoryEvidence(owner, name string, meta githubRepo, readme []byte, read
 			}
 
 			evidence.Commits = append(evidence.Commits, contract.EvidenceCommit{
-				Author:  commit.Commit.Author.Name,
-				Date:    commit.Commit.Author.Date,
+				Author: commit.Commit.Author.Name,
+				Date: commit.Commit.Author.Date,
 				Message: message,
-				Sha:     commit.Sha,
+				Sha: commit.Sha,
 			})
 		}
 	}

@@ -61,7 +61,7 @@ func (a *ireApp) handleReviewed(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			item                    contract.ReviewedItem
+			item contract.ReviewedItem
 			theme, thumb, makerName string
 		)
 		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &makerName,

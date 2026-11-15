@@ -14,7 +14,7 @@ import (
 func TestHackatimeChecks(t *testing.T) {
 	var (
 		calls atomic.Int32
-		fail  atomic.Bool
+		fail atomic.Bool
 	)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -66,7 +66,9 @@ func TestHackatimeChecks(t *testing.T) {
 
 	// After the window, a failure keeps the cached value and reports it as stale.
 	base := application.now()
-	application.clock = func() time.Time { return base.Add(6 * time.Minute) }
+	application.clock = func() time.Time {
+		return base.Add(6 * time.Minute)
+	}
 
 	fail.Store(true)
 
