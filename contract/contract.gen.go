@@ -2629,43 +2629,43 @@ func (j *AmendDecisionRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, plain.Decision); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
 	}
 
-	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+	if plain.DeflationReason != nil && utf8.RuneCountInString(*plain.DeflationReason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.IdempotencyKey)) < 1 {
+	if utf8.RuneCountInString(plain.IdempotencyKey) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "idempotencyKey", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.IdempotencyKey)) > 120 {
+	if utf8.RuneCountInString(plain.IdempotencyKey) > 120 {
 		return fmt.Errorf("field %s length: must be <= %d", "idempotencyKey", 120)
 	}
 
-	if utf8.RuneCountInString(string(plain.InternalNote)) > 4000 {
+	if utf8.RuneCountInString(plain.InternalNote) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "internalNote", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.NoteToMaker)) > 4000 {
+	if utf8.RuneCountInString(plain.NoteToMaker) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "noteToMaker", 4000)
 	}
 
-	if matched, _ := regexp.MatchString(`\S`, string(plain.Reason)); !matched {
+	if matched, _ := regexp.MatchString(`\S`, plain.Reason); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Reason", `\S`)
 	}
 
-	if utf8.RuneCountInString(string(plain.Reason)) < 1 {
+	if utf8.RuneCountInString(plain.Reason) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Reason)) > 4000 {
+	if utf8.RuneCountInString(plain.Reason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "reason", 4000)
 	}
 
-	if plain.TechnicalFeatures != nil && utf8.RuneCountInString(string(*plain.TechnicalFeatures)) > 4000 {
+	if plain.TechnicalFeatures != nil && utf8.RuneCountInString(*plain.TechnicalFeatures) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "technicalFeatures", 4000)
 	}
 
@@ -2705,15 +2705,15 @@ func (j *AuditEntry) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Action)) < 1 {
+	if utf8.RuneCountInString(plain.Action) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "action", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
@@ -2805,7 +2805,7 @@ func (j *BomLine) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Name)) < 1 {
+	if utf8.RuneCountInString(plain.Name) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "name", 1)
 	}
 
@@ -2889,31 +2889,31 @@ func (j *CheckResult) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CheckedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CheckedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "checkedAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Group)) < 1 {
+	if utf8.RuneCountInString(plain.Group) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "group", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+	if utf8.RuneCountInString(plain.Key) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+	if utf8.RuneCountInString(plain.Label) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Severity)) < 1 {
+	if utf8.RuneCountInString(plain.Severity) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "severity", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Summary)) < 1 {
+	if utf8.RuneCountInString(plain.Summary) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "summary", 1)
 	}
 
@@ -2957,15 +2957,15 @@ func (j *CheckRun) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "attempts", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.RunnerVersion)) < 1 {
+	if utf8.RuneCountInString(plain.RunnerVersion) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "runnerVersion", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.StartedAt)) < 1 {
+	if utf8.RuneCountInString(plain.StartedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "startedAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -3021,7 +3021,7 @@ func (j *CheckSummary) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "fail", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Overall)) < 1 {
+	if utf8.RuneCountInString(plain.Overall) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "overall", 1)
 	}
 
@@ -3093,7 +3093,7 @@ func (j *ClaimState) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ExpiresAt)) < 1 {
+	if utf8.RuneCountInString(plain.ExpiresAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "expiresAt", 1)
 	}
 
@@ -3105,7 +3105,7 @@ func (j *ClaimState) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "isMine", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ReviewerEmail)) < 1 {
+	if utf8.RuneCountInString(plain.ReviewerEmail) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "reviewerEmail", 1)
 	}
 
@@ -3137,7 +3137,7 @@ func (j *CreateRole) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Name)) < 1 {
+	if utf8.RuneCountInString(plain.Name) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "name", 1)
 	}
 
@@ -3181,11 +3181,11 @@ func (j *DecisionOutcome) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "held", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -3233,35 +3233,35 @@ func (j *DecisionRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, plain.Decision); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
 	}
 
-	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+	if plain.DeflationReason != nil && utf8.RuneCountInString(*plain.DeflationReason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.IdempotencyKey)) < 1 {
+	if utf8.RuneCountInString(plain.IdempotencyKey) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "idempotencyKey", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.IdempotencyKey)) > 120 {
+	if utf8.RuneCountInString(plain.IdempotencyKey) > 120 {
 		return fmt.Errorf("field %s length: must be <= %d", "idempotencyKey", 120)
 	}
 
-	if utf8.RuneCountInString(string(plain.InternalNote)) > 4000 {
+	if utf8.RuneCountInString(plain.InternalNote) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "internalNote", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.NoteToMaker)) > 4000 {
+	if utf8.RuneCountInString(plain.NoteToMaker) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "noteToMaker", 4000)
 	}
 
-	if plain.OverrideReason != nil && utf8.RuneCountInString(string(*plain.OverrideReason)) > 4000 {
+	if plain.OverrideReason != nil && utf8.RuneCountInString(*plain.OverrideReason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "overrideReason", 4000)
 	}
 
-	if plain.TechnicalFeatures != nil && utf8.RuneCountInString(string(*plain.TechnicalFeatures)) > 4000 {
+	if plain.TechnicalFeatures != nil && utf8.RuneCountInString(*plain.TechnicalFeatures) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "technicalFeatures", 4000)
 	}
 
@@ -3309,11 +3309,11 @@ func (j *DraftRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.InternalNote)) > 4000 {
+	if utf8.RuneCountInString(plain.InternalNote) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "internalNote", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.Note)) > 4000 {
+	if utf8.RuneCountInString(plain.Note) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "note", 4000)
 	}
 
@@ -3353,7 +3353,7 @@ func (j *DraftSaved) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "saved", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.UpdatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
 	}
 
@@ -3393,7 +3393,7 @@ func (j *DraftState) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.UpdatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
 	}
 
@@ -3425,11 +3425,11 @@ func (j *ErrorResponse) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Code)) < 1 {
+	if utf8.RuneCountInString(plain.Code) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "code", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Error)) < 1 {
+	if utf8.RuneCountInString(plain.Error) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "error", 1)
 	}
 
@@ -3493,7 +3493,7 @@ func (j *EventsResponseEventsElem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
@@ -3541,15 +3541,15 @@ func (j *Evidence) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.FetchedAt)) < 1 {
+	if utf8.RuneCountInString(plain.FetchedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "fetchedAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Forge)) < 1 {
+	if utf8.RuneCountInString(plain.Forge) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "forge", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.FullName)) < 1 {
+	if utf8.RuneCountInString(plain.FullName) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "fullName", 1)
 	}
 
@@ -3589,7 +3589,7 @@ func (j *EvidenceCommit) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Sha)) < 1 {
+	if utf8.RuneCountInString(plain.Sha) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "sha", 1)
 	}
 
@@ -3621,11 +3621,11 @@ func (j *EvidenceFile) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Kind)) < 1 {
+	if utf8.RuneCountInString(plain.Kind) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "kind", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Path)) < 1 {
+	if utf8.RuneCountInString(plain.Path) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "path", 1)
 	}
 
@@ -3705,31 +3705,31 @@ func (j *FakeDelivery) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Body)) < 1 {
+	if utf8.RuneCountInString(plain.Body) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "body", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.DeliveryID)) < 1 {
+	if utf8.RuneCountInString(plain.DeliveryID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "deliveryId", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Event)) < 1 {
+	if utf8.RuneCountInString(plain.Event) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "event", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ReceivedAt)) < 1 {
+	if utf8.RuneCountInString(plain.ReceivedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "receivedAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Signature)) < 1 {
+	if utf8.RuneCountInString(plain.Signature) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "signature", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Timestamp)) < 1 {
+	if utf8.RuneCountInString(plain.Timestamp) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "timestamp", 1)
 	}
 
@@ -3801,19 +3801,19 @@ func (j *Finding) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.OpenedSubmissionID)) < 1 {
+	if utf8.RuneCountInString(plain.OpenedSubmissionID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "openedSubmissionId", 1)
 	}
 
@@ -3825,27 +3825,27 @@ func (j *Finding) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "resolvedVersion", 0)
 	}
 
-	if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, string(plain.Severity)); !matched {
+	if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, plain.Severity); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Severity", `^(block|fixable|note|hold)$`)
 	}
 
-	if utf8.RuneCountInString(string(plain.Station)) < 1 {
+	if utf8.RuneCountInString(plain.Station) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "station", 1)
 	}
 
-	if matched, _ := regexp.MatchString(`^(open|fixed|accepted|disputed|withdrawn)$`, string(plain.Status)); !matched {
+	if matched, _ := regexp.MatchString(`^(open|fixed|accepted|disputed|withdrawn)$`, plain.Status); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Status", `^(open|fixed|accepted|disputed|withdrawn)$`)
 	}
 
-	if utf8.RuneCountInString(string(plain.Summary)) < 1 {
+	if utf8.RuneCountInString(plain.Summary) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "summary", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Summary)) > 4000 {
+	if utf8.RuneCountInString(plain.Summary) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "summary", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.UpdatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
 	}
 
@@ -3881,47 +3881,47 @@ func (j *FindingCreateRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if plain.Detail != nil && utf8.RuneCountInString(string(*plain.Detail)) > 4000 {
+	if plain.Detail != nil && utf8.RuneCountInString(*plain.Detail) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "detail", 4000)
 	}
 
-	if plain.Evidence != nil && utf8.RuneCountInString(string(*plain.Evidence)) > 4000 {
+	if plain.Evidence != nil && utf8.RuneCountInString(*plain.Evidence) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "evidence", 4000)
 	}
 
-	if plain.MakerAction != nil && utf8.RuneCountInString(string(*plain.MakerAction)) > 4000 {
+	if plain.MakerAction != nil && utf8.RuneCountInString(*plain.MakerAction) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "makerAction", 4000)
 	}
 
-	if plain.Question != nil && utf8.RuneCountInString(string(*plain.Question)) > 200 {
+	if plain.Question != nil && utf8.RuneCountInString(*plain.Question) > 200 {
 		return fmt.Errorf("field %s length: must be <= %d", "question", 200)
 	}
 
-	if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, string(plain.Severity)); !matched {
+	if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, plain.Severity); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Severity", `^(block|fixable|note|hold)$`)
 	}
 
-	if matched, _ := regexp.MatchString(`\S`, string(plain.Station)); !matched {
+	if matched, _ := regexp.MatchString(`\S`, plain.Station); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Station", `\S`)
 	}
 
-	if utf8.RuneCountInString(string(plain.Station)) < 1 {
+	if utf8.RuneCountInString(plain.Station) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "station", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Station)) > 120 {
+	if utf8.RuneCountInString(plain.Station) > 120 {
 		return fmt.Errorf("field %s length: must be <= %d", "station", 120)
 	}
 
-	if matched, _ := regexp.MatchString(`\S`, string(plain.Summary)); !matched {
+	if matched, _ := regexp.MatchString(`\S`, plain.Summary); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Summary", `\S`)
 	}
 
-	if utf8.RuneCountInString(string(plain.Summary)) < 1 {
+	if utf8.RuneCountInString(plain.Summary) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "summary", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Summary)) > 500 {
+	if utf8.RuneCountInString(plain.Summary) > 500 {
 		return fmt.Errorf("field %s length: must be <= %d", "summary", 500)
 	}
 
@@ -3973,29 +3973,29 @@ func (j *FindingUpdateRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if plain.MakerAction != nil && utf8.RuneCountInString(string(*plain.MakerAction)) > 4000 {
+	if plain.MakerAction != nil && utf8.RuneCountInString(*plain.MakerAction) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "makerAction", 4000)
 	}
 
-	if plain.Resolution != nil && utf8.RuneCountInString(string(*plain.Resolution)) > 4000 {
+	if plain.Resolution != nil && utf8.RuneCountInString(*plain.Resolution) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "resolution", 4000)
 	}
 
 	if plain.Severity != nil {
-		if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, string(*plain.Severity)); !matched {
+		if matched, _ := regexp.MatchString(`^(block|fixable|note|hold)$`, *plain.Severity); !matched {
 			return fmt.Errorf("field %s pattern match: must match %s", "Severity", `^(block|fixable|note|hold)$`)
 		}
 	}
 
-	if matched, _ := regexp.MatchString(`^(open|fixed|accepted|disputed|withdrawn)$`, string(plain.Status)); !matched {
+	if matched, _ := regexp.MatchString(`^(open|fixed|accepted|disputed|withdrawn)$`, plain.Status); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Status", `^(open|fixed|accepted|disputed|withdrawn)$`)
 	}
 
-	if plain.Summary != nil && utf8.RuneCountInString(string(*plain.Summary)) < 1 {
+	if plain.Summary != nil && utf8.RuneCountInString(*plain.Summary) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "summary", 1)
 	}
 
-	if plain.Summary != nil && utf8.RuneCountInString(string(*plain.Summary)) > 500 {
+	if plain.Summary != nil && utf8.RuneCountInString(*plain.Summary) > 500 {
 		return fmt.Errorf("field %s length: must be <= %d", "summary", 500)
 	}
 
@@ -4087,11 +4087,11 @@ func (j *HackatimeReviewRequest) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
 	}
 
-	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+	if plain.DeflationReason != nil && utf8.RuneCountInString(*plain.DeflationReason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.ReviewerNote)) > 4000 {
+	if utf8.RuneCountInString(plain.ReviewerNote) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "reviewerNote", 4000)
 	}
 
@@ -4167,7 +4167,7 @@ func (j *ImportResultFailedElem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Error)) < 1 {
+	if utf8.RuneCountInString(plain.Error) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "error", 1)
 	}
 
@@ -4211,11 +4211,11 @@ func (j *ImportReview) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.DecidedAt)) < 1 {
+	if utf8.RuneCountInString(plain.DecidedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "decided_at", 1)
 	}
 
-	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, plain.Decision); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
 	}
 
@@ -4223,7 +4223,7 @@ func (j *ImportReview) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "hours_approved_seconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ReviewerEmail)) < 1 {
+	if utf8.RuneCountInString(plain.ReviewerEmail) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "reviewer_email", 1)
 	}
 
@@ -4323,11 +4323,11 @@ func (j *IngestAccepted) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -4359,7 +4359,7 @@ func (j *IngestBomLine) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Name)) < 1 {
+	if utf8.RuneCountInString(plain.Name) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "name", 1)
 	}
 
@@ -4435,11 +4435,11 @@ func (j *IngestJournal) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.At)) < 1 {
+	if utf8.RuneCountInString(plain.At) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "at", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Text)) < 1 {
+	if utf8.RuneCountInString(plain.Text) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "text", 1)
 	}
 
@@ -4471,11 +4471,11 @@ func (j *IngestMaker) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) < 1 {
+	if utf8.RuneCountInString(plain.Email) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "email", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Name)) < 1 {
+	if utf8.RuneCountInString(plain.Name) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "name", 1)
 	}
 
@@ -4503,7 +4503,7 @@ func (j *IngestPriorReview) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Result)) < 1 {
+	if utf8.RuneCountInString(plain.Result) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "result", 1)
 	}
 
@@ -4543,31 +4543,31 @@ func (j *IngestRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Description)) < 1 {
+	if utf8.RuneCountInString(plain.Description) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "description", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Description)) > 20000 {
+	if utf8.RuneCountInString(plain.Description) > 20000 {
 		return fmt.Errorf("field %s length: must be <= %d", "description", 20000)
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "external_id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) > 200 {
+	if utf8.RuneCountInString(plain.ExternalID) > 200 {
 		return fmt.Errorf("field %s length: must be <= %d", "external_id", 200)
 	}
 
-	if plain.SubmittedAt != nil && utf8.RuneCountInString(string(*plain.SubmittedAt)) < 1 {
+	if plain.SubmittedAt != nil && utf8.RuneCountInString(*plain.SubmittedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "submitted_at", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+	if utf8.RuneCountInString(plain.Title) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Title)) > 200 {
+	if utf8.RuneCountInString(plain.Title) > 200 {
 		return fmt.Errorf("field %s length: must be <= %d", "title", 200)
 	}
 
@@ -4595,7 +4595,7 @@ func (j *IngestRequestJournalsElemMediaElem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.URL)) < 1 {
+	if utf8.RuneCountInString(plain.URL) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "url", 1)
 	}
 
@@ -4627,19 +4627,19 @@ func (j *InviteMember) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if matched, _ := regexp.MatchString(`\S`, string(plain.Email)); !matched {
+	if matched, _ := regexp.MatchString(`\S`, plain.Email); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Email", `\S`)
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) < 3 {
+	if utf8.RuneCountInString(plain.Email) < 3 {
 		return fmt.Errorf("field %s length: must be >= %d", "email", 3)
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) > 320 {
+	if utf8.RuneCountInString(plain.Email) > 320 {
 		return fmt.Errorf("field %s length: must be <= %d", "email", 320)
 	}
 
-	if utf8.RuneCountInString(string(plain.Role)) < 1 {
+	if utf8.RuneCountInString(plain.Role) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "role", 1)
 	}
 
@@ -4723,7 +4723,7 @@ func (j *JournalEntry) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.At)) < 1 {
+	if utf8.RuneCountInString(plain.At) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "at", 1)
 	}
 
@@ -4735,7 +4735,7 @@ func (j *JournalEntry) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "coveredSeconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
@@ -4771,7 +4771,7 @@ func (j *JournalMedia) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.URL)) < 1 {
+	if utf8.RuneCountInString(plain.URL) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "url", 1)
 	}
 
@@ -4811,11 +4811,11 @@ func (j *JournalReviewRequest) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
 	}
 
-	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+	if plain.DeflationReason != nil && utf8.RuneCountInString(*plain.DeflationReason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.ReviewerNote)) > 4000 {
+	if utf8.RuneCountInString(plain.ReviewerNote) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "reviewerNote", 4000)
 	}
 
@@ -4875,15 +4875,15 @@ func (j *LoginRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if matched, _ := regexp.MatchString(`\S`, string(plain.Email)); !matched {
+	if matched, _ := regexp.MatchString(`\S`, plain.Email); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Email", `\S`)
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) < 1 {
+	if utf8.RuneCountInString(plain.Email) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "email", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) > 320 {
+	if utf8.RuneCountInString(plain.Email) > 320 {
 		return fmt.Errorf("field %s length: must be <= %d", "email", 320)
 	}
 
@@ -4915,7 +4915,7 @@ func (j *MakerProfile) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) < 1 {
+	if utf8.RuneCountInString(plain.Email) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "email", 1)
 	}
 
@@ -4971,7 +4971,7 @@ func (j *MakerSubmission) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 
@@ -4979,7 +4979,7 @@ func (j *MakerSubmission) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
@@ -4987,15 +4987,15 @@ func (j *MakerSubmission) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+	if utf8.RuneCountInString(plain.Title) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.UpdatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
 	}
 
@@ -5063,11 +5063,11 @@ func (j *MeResponseUser) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) < 1 {
+	if utf8.RuneCountInString(plain.Email) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "email", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
@@ -5111,19 +5111,19 @@ func (j *Member) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) < 1 {
+	if utf8.RuneCountInString(plain.Email) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "email", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Role)) < 1 {
+	if utf8.RuneCountInString(plain.Role) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "role", 1)
 	}
 
@@ -5191,19 +5191,19 @@ func (j *Membership) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ProgramID)) < 1 {
+	if utf8.RuneCountInString(plain.ProgramID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "programId", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ProgramName)) < 1 {
+	if utf8.RuneCountInString(plain.ProgramName) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "programName", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ProgramSlug)) < 1 {
+	if utf8.RuneCountInString(plain.ProgramSlug) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "programSlug", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Role)) < 1 {
+	if utf8.RuneCountInString(plain.Role) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "role", 1)
 	}
 
@@ -5251,27 +5251,27 @@ func (j *Note) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.AuthorEmail)) < 1 {
+	if utf8.RuneCountInString(plain.AuthorEmail) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "authorEmail", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Body)) < 1 {
+	if utf8.RuneCountInString(plain.Body) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "body", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.SubjectID)) < 1 {
+	if utf8.RuneCountInString(plain.SubjectID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "subjectId", 1)
 	}
 
-	if matched, _ := regexp.MatchString(`^(submission|project|maker)$`, string(plain.SubjectType)); !matched {
+	if matched, _ := regexp.MatchString(`^(submission|project|maker)$`, plain.SubjectType); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "SubjectType", `^(submission|project|maker)$`)
 	}
 
@@ -5327,15 +5327,15 @@ func (j *NoteRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Body)) < 1 {
+	if utf8.RuneCountInString(plain.Body) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "body", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Body)) > 4000 {
+	if utf8.RuneCountInString(plain.Body) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "body", 4000)
 	}
 
-	if matched, _ := regexp.MatchString(`^(submission|project|maker)$`, string(plain.SubjectType)); !matched {
+	if matched, _ := regexp.MatchString(`^(submission|project|maker)$`, plain.SubjectType); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "SubjectType", `^(submission|project|maker)$`)
 	}
 
@@ -5407,19 +5407,19 @@ func (j *OutboxRow) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "attempts", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Event)) < 1 {
+	if utf8.RuneCountInString(plain.Event) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "event", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -5455,7 +5455,7 @@ func (j *OverviewDay) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Date)) < 1 {
+	if utf8.RuneCountInString(plain.Date) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "date", 1)
 	}
 
@@ -5527,7 +5527,7 @@ func (j *OverviewOutcome) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "count", 0)
 	}
 
-	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, plain.Decision); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
 	}
 
@@ -5631,7 +5631,7 @@ func (j *OverviewStatus) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "count", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -5759,7 +5759,7 @@ func (j *ParityResponse) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.GeneratedAt)) < 1 {
+	if utf8.RuneCountInString(plain.GeneratedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "generatedAt", 1)
 	}
 
@@ -5827,7 +5827,7 @@ func (j *ParityShip) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "bomTotalCents", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 
@@ -5835,11 +5835,11 @@ func (j *ParityShip) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Phase)) < 1 {
+	if utf8.RuneCountInString(plain.Phase) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "phase", 1)
 	}
 
@@ -5847,11 +5847,11 @@ func (j *ParityShip) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.UpdatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
 	}
 
@@ -5883,7 +5883,7 @@ func (j *PriorReview) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Result)) < 1 {
+	if utf8.RuneCountInString(plain.Result) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "result", 1)
 	}
 
@@ -5927,23 +5927,23 @@ func (j *QueueCheck) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Group)) < 1 {
+	if utf8.RuneCountInString(plain.Group) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "group", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+	if utf8.RuneCountInString(plain.Key) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+	if utf8.RuneCountInString(plain.Label) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Severity)) < 1 {
+	if utf8.RuneCountInString(plain.Severity) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "severity", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -6151,7 +6151,7 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "bomTotalCents", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 
@@ -6167,11 +6167,11 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "hoursJournalSeconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.IngestedAt)) < 1 {
+	if utf8.RuneCountInString(plain.IngestedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "ingestedAt", 1)
 	}
 
@@ -6187,11 +6187,11 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "journalTextLength", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.MakerEmail)) < 1 {
+	if utf8.RuneCountInString(plain.MakerEmail) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerEmail", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.MakerName)) < 1 {
+	if utf8.RuneCountInString(plain.MakerName) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerName", 1)
 	}
 
@@ -6203,15 +6203,15 @@ func (j *QueueItem) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.SubmittedAt)) < 1 {
+	if utf8.RuneCountInString(plain.SubmittedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "submittedAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+	if utf8.RuneCountInString(plain.Title) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
 	}
 
@@ -6339,7 +6339,7 @@ func (j *ResubmissionEntry) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.At)) < 1 {
+	if utf8.RuneCountInString(plain.At) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "at", 1)
 	}
 
@@ -6387,7 +6387,7 @@ func (j *ResubmissionPrice) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "beforeCents", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Name)) < 1 {
+	if utf8.RuneCountInString(plain.Name) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "name", 1)
 	}
 
@@ -6419,15 +6419,15 @@ func (j *RevertDecisionRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if matched, _ := regexp.MatchString(`\S`, string(plain.Reason)); !matched {
+	if matched, _ := regexp.MatchString(`\S`, plain.Reason); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Reason", `\S`)
 	}
 
-	if utf8.RuneCountInString(string(plain.Reason)) < 1 {
+	if utf8.RuneCountInString(plain.Reason) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Reason)) > 4000 {
+	if utf8.RuneCountInString(plain.Reason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "reason", 4000)
 	}
 
@@ -6467,7 +6467,7 @@ func (j *RevertDecisionResult) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
@@ -6475,7 +6475,7 @@ func (j *RevertDecisionResult) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -6531,11 +6531,11 @@ func (j *Review) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Decision)) < 1 {
+	if utf8.RuneCountInString(plain.Decision) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "decision", 1)
 	}
 
@@ -6543,11 +6543,11 @@ func (j *Review) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "held", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ReviewerEmail)) < 1 {
+	if utf8.RuneCountInString(plain.ReviewerEmail) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "reviewerEmail", 1)
 	}
 
@@ -6679,23 +6679,23 @@ func (j *ReviewEvent) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Decision)) < 1 {
+	if utf8.RuneCountInString(plain.Decision) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "decision", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Event)) < 1 {
+	if utf8.RuneCountInString(plain.Event) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "event", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "external_id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
@@ -6835,7 +6835,7 @@ func (j *ReviewEventStageHistoryElem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.At)) < 1 {
+	if utf8.RuneCountInString(plain.At) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "at", 1)
 	}
 
@@ -6987,15 +6987,15 @@ func (j *ReviewedItem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.DecidedAt)) < 1 {
+	if utf8.RuneCountInString(plain.DecidedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "decidedAt", 1)
 	}
 
-	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, string(plain.Decision)); !matched {
+	if matched, _ := regexp.MatchString(`^(approved|changes|rejected)$`, plain.Decision); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Decision", `^(approved|changes|rejected)$`)
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 
@@ -7007,11 +7007,11 @@ func (j *ReviewedItem) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "hoursClaimedSeconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.MakerName)) < 1 {
+	if utf8.RuneCountInString(plain.MakerName) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerName", 1)
 	}
 
@@ -7019,7 +7019,7 @@ func (j *ReviewedItem) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+	if utf8.RuneCountInString(plain.Title) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
 	}
 
@@ -7095,7 +7095,7 @@ func (j *ReviewerProfile) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Email)) < 1 {
+	if utf8.RuneCountInString(plain.Email) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "email", 1)
 	}
 
@@ -7151,11 +7151,11 @@ func (j *ReviewerReview) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Decision)) < 1 {
+	if utf8.RuneCountInString(plain.Decision) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "decision", 1)
 	}
 
@@ -7163,7 +7163,7 @@ func (j *ReviewerReview) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "held", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
@@ -7171,11 +7171,11 @@ func (j *ReviewerReview) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.SubmissionID)) < 1 {
+	if utf8.RuneCountInString(plain.SubmissionID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "submissionId", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.SubmissionTitle)) < 1 {
+	if utf8.RuneCountInString(plain.SubmissionTitle) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "submissionTitle", 1)
 	}
 
@@ -7327,7 +7327,7 @@ func (j *RoleDefinition) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Name)) < 1 {
+	if utf8.RuneCountInString(plain.Name) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "name", 1)
 	}
 
@@ -7451,7 +7451,7 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "bomTotalCents", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 
@@ -7467,15 +7467,15 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "hoursJournalSeconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.IngestedAt)) < 1 {
+	if utf8.RuneCountInString(plain.IngestedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "ingestedAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.MakerName)) < 1 {
+	if utf8.RuneCountInString(plain.MakerName) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerName", 1)
 	}
 
@@ -7483,11 +7483,11 @@ func (j *SearchResult) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+	if utf8.RuneCountInString(plain.Title) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
 	}
 
@@ -7523,7 +7523,7 @@ func (j *SendBackRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Reason)) > 4000 {
+	if utf8.RuneCountInString(plain.Reason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "reason", 4000)
 	}
 
@@ -7563,7 +7563,7 @@ func (j *SendBackResult) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
@@ -7571,7 +7571,7 @@ func (j *SendBackResult) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -7623,27 +7623,27 @@ func (j *StationAnswer) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if matched, _ := regexp.MatchString(`^(pass|fail|na)$`, string(plain.Answer)); !matched {
+	if matched, _ := regexp.MatchString(`^(pass|fail|na)$`, plain.Answer); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Answer", `^(pass|fail|na)$`)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.QuestionKey)) < 1 {
+	if utf8.RuneCountInString(plain.QuestionKey) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "questionKey", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.StationKey)) < 1 {
+	if utf8.RuneCountInString(plain.StationKey) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "stationKey", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.SubmissionID)) < 1 {
+	if utf8.RuneCountInString(plain.SubmissionID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "submissionId", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.UpdatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
 	}
 
@@ -7703,15 +7703,15 @@ func (j *StationAnswerRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if matched, _ := regexp.MatchString(`^(pass|fail|na)$`, string(plain.Answer)); !matched {
+	if matched, _ := regexp.MatchString(`^(pass|fail|na)$`, plain.Answer); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Answer", `^(pass|fail|na)$`)
 	}
 
-	if plain.ArtifactHash != nil && utf8.RuneCountInString(string(*plain.ArtifactHash)) > 200 {
+	if plain.ArtifactHash != nil && utf8.RuneCountInString(*plain.ArtifactHash) > 200 {
 		return fmt.Errorf("field %s length: must be <= %d", "artifactHash", 200)
 	}
 
-	if utf8.RuneCountInString(string(plain.Evidence)) > 4000 {
+	if utf8.RuneCountInString(plain.Evidence) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "evidence", 4000)
 	}
 
@@ -7807,11 +7807,11 @@ func (j *StationDefinition) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "active", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+	if utf8.RuneCountInString(plain.Key) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+	if utf8.RuneCountInString(plain.Label) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
 	}
 
@@ -7863,15 +7863,15 @@ func (j *StationQuestion) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.EvidenceKind)) < 1 {
+	if utf8.RuneCountInString(plain.EvidenceKind) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "evidenceKind", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+	if utf8.RuneCountInString(plain.Key) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Prompt)) < 1 {
+	if utf8.RuneCountInString(plain.Prompt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "prompt", 1)
 	}
 
@@ -7995,11 +7995,11 @@ func (j *StationState) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "conflicts", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+	if utf8.RuneCountInString(plain.Key) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+	if utf8.RuneCountInString(plain.Label) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
 	}
 
@@ -8015,7 +8015,7 @@ func (j *StationState) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "sort", 0)
 	}
 
-	if matched, _ := regexp.MatchString(`^(todo|current|done|blocked)$`, string(plain.Status)); !matched {
+	if matched, _ := regexp.MatchString(`^(todo|current|done|blocked)$`, plain.Status); !matched {
 		return fmt.Errorf("field %s pattern match: must match %s", "Status", `^(todo|current|done|blocked)$`)
 	}
 
@@ -8067,11 +8067,11 @@ func (j *StationSummary) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "count", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+	if utf8.RuneCountInString(plain.Key) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Label)) < 1 {
+	if utf8.RuneCountInString(plain.Label) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "label", 1)
 	}
 
@@ -8163,15 +8163,15 @@ func (j *StatusResponse) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "external_id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Phase)) < 1 {
+	if utf8.RuneCountInString(plain.Phase) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "phase", 1)
 	}
 
@@ -8179,7 +8179,7 @@ func (j *StatusResponse) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.UpdatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "updated_at", 1)
 	}
 
@@ -8215,7 +8215,7 @@ func (j *StatusResponseChecks) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Overall)) < 1 {
+	if utf8.RuneCountInString(plain.Overall) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "overall", 1)
 	}
 
@@ -8255,19 +8255,19 @@ func (j *StatusResponseChecksResultsElem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CheckedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CheckedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "checked_at", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Key)) < 1 {
+	if utf8.RuneCountInString(plain.Key) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "key", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Summary)) < 1 {
+	if utf8.RuneCountInString(plain.Summary) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "summary", 1)
 	}
 
@@ -8427,11 +8427,11 @@ func (j *StatusResponseStageHistoryElem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.At)) < 1 {
+	if utf8.RuneCountInString(plain.At) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "at", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Decision)) < 1 {
+	if utf8.RuneCountInString(plain.Decision) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "decision", 1)
 	}
 
@@ -8467,11 +8467,11 @@ func (j *StatusResponseTimelineElem) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.At)) < 1 {
+	if utf8.RuneCountInString(plain.At) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "at", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Kind)) < 1 {
+	if utf8.RuneCountInString(plain.Kind) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "kind", 1)
 	}
 
@@ -8547,7 +8547,7 @@ func (j *Submission) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "externalId", 1)
 	}
 
@@ -8563,15 +8563,15 @@ func (j *Submission) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "hoursJournalSeconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.IngestedAt)) < 1 {
+	if utf8.RuneCountInString(plain.IngestedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "ingestedAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.MakerEmail)) < 1 {
+	if utf8.RuneCountInString(plain.MakerEmail) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "makerEmail", 1)
 	}
 
@@ -8579,19 +8579,19 @@ func (j *Submission) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "stage", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Title)) < 1 {
+	if utf8.RuneCountInString(plain.Title) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "title", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Track)) < 1 {
+	if utf8.RuneCountInString(plain.Track) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "track", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.UpdatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.UpdatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "updatedAt", 1)
 	}
 
@@ -8631,15 +8631,15 @@ func (j *SubmissionEvent) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Kind)) < 1 {
+	if utf8.RuneCountInString(plain.Kind) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "kind", 1)
 	}
 
@@ -8679,7 +8679,7 @@ func (j *SubmissionFile) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Path)) < 1 {
+	if utf8.RuneCountInString(plain.Path) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "path", 1)
 	}
 
@@ -8755,19 +8755,19 @@ func (j *TimeAdjustment) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.CreatedAt)) < 1 {
+	if utf8.RuneCountInString(plain.CreatedAt) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "createdAt", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Kind)) < 1 {
+	if utf8.RuneCountInString(plain.Kind) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "kind", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Reason)) < 1 {
+	if utf8.RuneCountInString(plain.Reason) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
 	}
 
@@ -8775,7 +8775,7 @@ func (j *TimeAdjustment) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "seconds", 0)
 	}
 
-	if utf8.RuneCountInString(string(plain.Source)) < 1 {
+	if utf8.RuneCountInString(plain.Source) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "source", 1)
 	}
 
@@ -8847,11 +8847,11 @@ func (j *TimelapseReviewRequest) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "approvedSeconds", 0)
 	}
 
-	if plain.DeflationReason != nil && utf8.RuneCountInString(string(*plain.DeflationReason)) > 4000 {
+	if plain.DeflationReason != nil && utf8.RuneCountInString(*plain.DeflationReason) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "deflationReason", 4000)
 	}
 
-	if utf8.RuneCountInString(string(plain.ReviewerNote)) > 4000 {
+	if utf8.RuneCountInString(plain.ReviewerNote) > 4000 {
 		return fmt.Errorf("field %s length: must be <= %d", "reviewerNote", 4000)
 	}
 
@@ -8887,7 +8887,7 @@ func (j *UpdateMember) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.Role)) < 1 {
+	if utf8.RuneCountInString(plain.Role) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "role", 1)
 	}
 
@@ -8943,11 +8943,11 @@ func (j *WithdrawOutcome) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ID)) < 1 {
+	if utf8.RuneCountInString(plain.ID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 
-	if utf8.RuneCountInString(string(plain.Status)) < 1 {
+	if utf8.RuneCountInString(plain.Status) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "status", 1)
 	}
 
@@ -8975,7 +8975,7 @@ func (j *WithdrawRequest) UnmarshalJSON(value []byte) error {
 		return err
 	}
 
-	if utf8.RuneCountInString(string(plain.ExternalID)) < 1 {
+	if utf8.RuneCountInString(plain.ExternalID) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "external_id", 1)
 	}
 
