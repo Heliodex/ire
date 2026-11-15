@@ -2,12 +2,41 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"strings"
 	"testing"
-
-	"ire/contract"
 )
+
+// TestJournalAdjustmentRequiresClaimAndVersion covers the guards on the per-entry edit.
+func TestJournalAdjustmentRequiresClaimAndVersion(t *testing.T) {
+	application := newTestApp(t)
+	reviewer := login(t, application, "reviewer@example.com")
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
+	entry := bundle.Journals[0]
+	body, _ := json.Marshal(contract.JournalReviewRequest{
+		ApprovedSeconds: entry.Seconds,
+		Version: 1,
+	})
+	path := testBase + "/submissions/sub_fixture_1/journal/" + entry.ID
+
+	if unclaimed := do(t, application, http.MethodPatch, path, body, reviewer, nil); unclaimed.Code != http.StatusConflict {
+		t.Fatalf("unclaimed = %d: %s", unclaimed.Code, unclaimed.Body.String())
+	}
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	staleBody, _ := json.Marshal(contract.JournalReviewRequest{
+		ApprovedSeconds: entry.Seconds,
+		Version: 99,
+	})
+
+	if stale := do(t, application, http.MethodPatch, path, staleBody, reviewer, nil); stale.Code != http.StatusConflict || !strings.Contains(stale.Body.String(), "stale_version") {
+		t.Fatalf("stale = %d: %s", stale.Code, stale.Body.String())
+	}
+}
 
 // TestJournalAdjustmentSavesDeflation covers the per-entry approved time, its note and the ship total it feeds.
 func TestJournalAdjustmentSavesDeflation(t *testing.T) {
@@ -26,21 +55,18 @@ func TestJournalAdjustmentSavesDeflation(t *testing.T) {
 	entry := bundle.Journals[0]
 	approved := entry.Seconds / 2
 	reason := "idle"
-
 	body, _ := json.Marshal(contract.JournalReviewRequest{
 		ApprovedSeconds: approved,
 		DeflationReason: &reason,
 		ReviewerNote: "Schematic work, the layout is not finished.",
 		Version: 1,
 	})
-
 	adjusted := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/journal/"+entry.ID, body, reviewer, nil)
 	if adjusted.Code != http.StatusOK {
 		t.Fatalf("journal adjustment = %d: %s", adjusted.Code, adjusted.Body.String())
 	}
 
 	result := decode[contract.JournalAdjustment](t, adjusted)
-
 	if result.Journal.ApprovedSeconds == nil || *result.Journal.ApprovedSeconds != approved {
 		t.Errorf("approved seconds = %v, want %d", result.Journal.ApprovedSeconds, approved)
 	}
@@ -54,6 +80,7 @@ func TestJournalAdjustmentSavesDeflation(t *testing.T) {
 	}
 
 	expected := approved
+
 	for _, other := range bundle.Journals[1:] {
 		expected += other.Seconds
 	}
@@ -63,7 +90,6 @@ func TestJournalAdjustmentSavesDeflation(t *testing.T) {
 	}
 
 	reloaded := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
-
 	if reloaded.Submission.HoursApprovedSeconds == nil || *reloaded.Submission.HoursApprovedSeconds != expected {
 		t.Errorf("submission hours = %v, want %d", reloaded.Submission.HoursApprovedSeconds, expected)
 	}
@@ -85,9 +111,10 @@ func TestJournalCutRequiresReason(t *testing.T) {
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
 	entry := bundle.Journals[0]
 	path := testBase + "/submissions/sub_fixture_1/journal/" + entry.ID
-
-	body, _ := json.Marshal(contract.JournalReviewRequest{ApprovedSeconds: entry.Seconds / 2, Version: 1})
-
+	body, _ := json.Marshal(contract.JournalReviewRequest{
+		ApprovedSeconds: entry.Seconds / 2,
+		Version: 1,
+	})
 	refused := do(t, application, http.MethodPatch, path, body, reviewer, nil)
 	if refused.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("cut without reason = %d: %s", refused.Code, refused.Body.String())
@@ -98,38 +125,35 @@ func TestJournalCutRequiresReason(t *testing.T) {
 	}
 
 	reason := "tutorial"
-	body, _ = json.Marshal(contract.JournalReviewRequest{ApprovedSeconds: entry.Seconds / 2, DeflationReason: &reason, Version: 1})
+	body, _ = json.Marshal(contract.JournalReviewRequest{
+		ApprovedSeconds: entry.Seconds / 2,
+		DeflationReason: &reason,
+		Version: 1,
+	})
 
-	accepted := do(t, application, http.MethodPatch, path, body, reviewer, nil)
-	if accepted.Code != http.StatusOK {
+	if accepted := do(t, application, http.MethodPatch, path, body, reviewer, nil); accepted.Code != http.StatusOK {
 		t.Fatalf("cut with reason = %d: %s", accepted.Code, accepted.Body.String())
 	}
 }
 
-// TestJournalAdjustmentRequiresClaimAndVersion covers the guards on the per-entry edit.
-func TestJournalAdjustmentRequiresClaimAndVersion(t *testing.T) {
+// TestJournalMediaReachesTheBundle loads the seeded attachments through the bundle path.
+func TestJournalMediaReachesTheBundle(t *testing.T) {
 	application := newTestApp(t)
-	reviewer := login(t, application, "reviewer@example.com")
-	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
-	entry := bundle.Journals[0]
-
-	body, _ := json.Marshal(contract.JournalReviewRequest{ApprovedSeconds: entry.Seconds, Version: 1})
-	path := testBase + "/submissions/sub_fixture_1/journal/" + entry.ID
-
-	if unclaimed := do(t, application, http.MethodPatch, path, body, reviewer, nil); unclaimed.Code != http.StatusConflict {
-		t.Fatalf("unclaimed = %d: %s", unclaimed.Code, unclaimed.Body.String())
+	journals, err := application.loadJournals(t.Context(), "sub_fixture_1")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
-		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
-	}
+	for _, entry := range journals {
+		if len(entry.Media) > 0 {
+			if entry.Media[0].URL != "https://example.com/journal.jpg" {
+				t.Fatalf("media = %+v", entry.Media)
+			}
 
-	staleBody, _ := json.Marshal(contract.JournalReviewRequest{ApprovedSeconds: entry.Seconds, Version: 99})
-
-	stale := do(t, application, http.MethodPatch, path, staleBody, reviewer, nil)
-	if stale.Code != http.StatusConflict || !strings.Contains(stale.Body.String(), "stale_version") {
-		t.Fatalf("stale = %d: %s", stale.Code, stale.Body.String())
+			return
+		}
 	}
+	t.Fatal("fixture journals carry no media")
 }
 
 // TestJournalMediaURLs exposes only safe image attachments for review display.
@@ -141,7 +165,6 @@ func TestJournalMediaURLs(t *testing.T) {
 		{"type":"image","url":"ftp://example.com/d.jpg"},
 		{"type":"image"},
 		{"type":"image","url":"  "}]`)
-
 	if len(media) != 2 || media[0].URL != "https://example.com/a.jpg" {
 		t.Fatalf("media = %+v", media)
 	}
@@ -168,26 +191,4 @@ func TestJournalMediaURLs(t *testing.T) {
 	if got := journalMediaURLs(strings.Join(images, ",") + "]"); len(got) != maxJournalMedia {
 		t.Fatalf("capped = %d", len(got))
 	}
-}
-
-// TestJournalMediaReachesTheBundle loads the seeded attachments through the bundle path.
-func TestJournalMediaReachesTheBundle(t *testing.T) {
-	application := newTestApp(t)
-
-	journals, err := application.loadJournals(t.Context(), "sub_fixture_1")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for _, entry := range journals {
-		if len(entry.Media) > 0 {
-			if entry.Media[0].URL != "https://example.com/journal.jpg" {
-				t.Fatalf("media = %+v", entry.Media)
-			}
-
-			return
-		}
-	}
-
-	t.Fatal("fixture journals carry no media")
 }

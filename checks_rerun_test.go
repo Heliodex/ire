@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json/v2"
 	"io"
+	"ire/contract"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
@@ -18,7 +17,6 @@ import (
 func TestChecksRerun(t *testing.T) {
 	github := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/readme"):
 			_, _ = io.WriteString(w, strings.Repeat("Build notes and wiring details. ", 12)+`\n![board](https://example.com/board.jpg)\n![schematic](https://example.com/schematic.png)`)
@@ -32,6 +30,7 @@ func TestChecksRerun(t *testing.T) {
 			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"C6-H/Starbie","private":false}`)
 		}
 	}))
+
 	t.Cleanup(github.Close)
 
 	application := newTestApp(t)
@@ -43,9 +42,9 @@ func TestChecksRerun(t *testing.T) {
 
 	application.config.Enqueue = func(_ context.Context, request app.JobRequest) (bool, error) {
 		jobs = append(jobs, request)
+
 		return true, nil
 	}
-
 	reviewer := login(t, application, "reviewer@example.com")
 	organiser := login(t, application, "organiser@example.com")
 
@@ -58,8 +57,7 @@ func TestChecksRerun(t *testing.T) {
 		t.Fatalf("rerun = %d: %s", recorder.Code, recorder.Body.String())
 	}
 
-	run := decode[contract.CheckRun](t, recorder)
-	if run.Status != "queued" || run.Attempts != 0 {
+	if run := decode[contract.CheckRun](t, recorder); run.Status != "queued" || run.Attempts != 0 {
 		t.Fatalf("run = %+v", run)
 	}
 
@@ -77,6 +75,7 @@ func TestChecksRerun(t *testing.T) {
 	}
 
 	var job checkJob
+
 	if err := json.Unmarshal([]byte(jobs[0].Body), &job); err != nil {
 		t.Fatal(err)
 	}
@@ -88,6 +87,7 @@ func TestChecksRerun(t *testing.T) {
 	}
 
 	bundle = decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, organiser, nil))
+
 	if bundle.Submission.Status != statusReady || bundle.CheckRun == nil || bundle.CheckRun.Status != "succeeded" {
 		t.Fatalf("after rerun = %+v run = %+v", bundle.Submission, bundle.CheckRun)
 	}

@@ -2,11 +2,10 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"strings"
 	"testing"
-
-	"ire/contract"
 )
 
 // TestMemberAdministration covers the roster, invite, update, audit and last-admin guard.
@@ -19,16 +18,15 @@ func TestMemberAdministration(t *testing.T) {
 		t.Fatalf("reviewer list = %d: %s", denied.Code, denied.Body.String())
 	}
 
-	roster := decode[contract.MembersResponse](t, do(t, application, http.MethodGet, testBase+"/members", nil, admin, nil))
-	if len(roster.Members) != 3 {
+	if roster := decode[contract.MembersResponse](t, do(t, application, http.MethodGet, testBase+"/members", nil, admin, nil)); len(roster.Members) != 3 {
 		t.Fatalf("members = %+v", roster.Members)
 	}
 
-	invite, _ := json.Marshal(contract.InviteMember{Email: "New@Example.com", Role: roleOrganizer})
-
-	created := do(t, application, http.MethodPost, testBase+"/members", invite, admin, map[string]string{
-		"Origin": "http://example.com",
+	invite, _ := json.Marshal(contract.InviteMember{
+		Email: "New@Example.com",
+		Role: roleOrganizer,
 	})
+	created := do(t, application, http.MethodPost, testBase+"/members", invite, admin, map[string]string{"Origin": "http://example.com"})
 	if created.Code != http.StatusCreated {
 		t.Fatalf("invite = %d: %s", created.Code, created.Body.String())
 	}
@@ -38,26 +36,27 @@ func TestMemberAdministration(t *testing.T) {
 		t.Fatalf("invited = %+v", member)
 	}
 
-	update, _ := json.Marshal(contract.UpdateMember{Role: roleReviewer, Active: false})
-
-	updated := do(t, application, http.MethodPatch, testBase+"/members/"+member.ID, update, admin, map[string]string{
-		"Origin": "http://example.com",
+	update, _ := json.Marshal(contract.UpdateMember{
+		Active: false,
+		Role: roleReviewer,
 	})
+	updated := do(t, application, http.MethodPatch, testBase+"/members/"+member.ID, update, admin, map[string]string{"Origin": "http://example.com"})
 	if updated.Code != http.StatusOK {
 		t.Fatalf("update = %d: %s", updated.Code, updated.Body.String())
 	}
 
-	changed := decode[contract.Member](t, updated)
-	if changed.Role != roleReviewer || changed.Active {
+	if changed := decode[contract.Member](t, updated); changed.Role != roleReviewer || changed.Active {
 		t.Fatalf("updated = %+v", changed)
 	}
 
-	audit := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit", nil, admin, nil))
-	if len(audit.Entries) < 2 || !strings.HasPrefix(audit.Entries[0].Action, "member.") {
+	if audit := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit", nil, admin, nil)); len(audit.Entries) < 2 || !strings.HasPrefix(audit.Entries[0].Action, "member.") {
 		t.Fatalf("audit = %+v", audit.Entries)
 	}
 
-	demote, _ := json.Marshal(contract.UpdateMember{Role: roleReviewer, Active: true})
+	demote, _ := json.Marshal(contract.UpdateMember{
+		Active: true,
+		Role: roleReviewer,
+	})
 
 	var adminID string
 
@@ -65,7 +64,11 @@ func TestMemberAdministration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	selfDeactivate, _ := json.Marshal(contract.UpdateMember{Role: roleAdmin, Active: false})
+	selfDeactivate, _ := json.Marshal(contract.UpdateMember{
+		Active: false,
+		Role: roleAdmin,
+	})
+
 	if self := do(t, application, http.MethodPatch, testBase+"/members/"+adminID, selfDeactivate, admin, nil); self.Code != http.StatusConflict {
 		t.Fatalf("self deactivate = %d: %s", self.Code, self.Body.String())
 	} else if !strings.Contains(self.Body.String(), "cannot deactivate your own account") {
@@ -118,13 +121,17 @@ func TestReviewerAvatarsAreExposed(t *testing.T) {
 		t.Fatalf("profile avatar = %+v", profile.AvatarURL)
 	}
 
-	invite, _ := json.Marshal(contract.InviteMember{Email: "avatar-test@example.com", Role: roleReviewer})
+	invite, _ := json.Marshal(contract.InviteMember{
+		Email: "avatar-test@example.com",
+		Role: roleReviewer,
+	})
 
 	if created := do(t, application, http.MethodPost, testBase+"/members", invite, admin, nil); created.Code != http.StatusCreated {
 		t.Fatalf("invite = %d: %s", created.Code, created.Body.String())
 	}
 
 	audit := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit", nil, admin, nil))
+
 	for _, entry := range audit.Entries {
 		if entry.Action != "member.invite" || entry.ActorEmail == nil || *entry.ActorEmail != "admin@example.com" {
 			continue
@@ -136,6 +143,5 @@ func TestReviewerAvatarsAreExposed(t *testing.T) {
 
 		return
 	}
-
 	t.Fatal("invite audit entry missing")
 }

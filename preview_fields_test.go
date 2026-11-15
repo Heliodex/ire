@@ -1,10 +1,9 @@
 package main
 
 import (
+	"ire/contract"
 	"net/http"
 	"testing"
-
-	"ire/contract"
 )
 
 // TestQueueCarriesPreviewFields checks the listing has the maker slack id and requested tier the review header shows,
@@ -12,7 +11,6 @@ import (
 func TestQueueCarriesPreviewFields(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-
 	queue := decode[contract.QueueResponse](t, do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all&limit=50", nil, cookie, nil))
 
 	for _, item := range queue.Items {
@@ -34,7 +32,6 @@ func TestQueueCarriesPreviewFields(t *testing.T) {
 
 		return
 	}
-
 	t.Fatal("sub_fixture_1 not in the queue")
 }
 
@@ -42,14 +39,12 @@ func TestQueueCarriesPreviewFields(t *testing.T) {
 func TestSearchCarriesPreviewFields(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-
 	response := decode[contract.SearchResponse](t, do(t, application, http.MethodGet, testBase+"/search?q=starbie", nil, cookie, nil))
 	if len(response.Results) != 1 {
 		t.Fatalf("results = %+v", response.Results)
 	}
 
 	item := response.Results[0]
-
 	if item.MakerEmail == nil || *item.MakerEmail == "" {
 		t.Fatalf("makerEmail = %v", item.MakerEmail)
 	}

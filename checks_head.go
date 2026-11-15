@@ -1,9 +1,8 @@
 package main
 
 import (
-	"net/http"
-
 	"ire/contract"
+	"net/http"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
@@ -27,25 +26,24 @@ func (a *ireApp) handleChecksHead(w http.ResponseWriter, r *http.Request) {
 
 	var snapshotSha, forge string
 
-	_ = a.store.QueryRow(r.Context(), `select coalesce(head_sha, ''), coalesce(forge, '') from repo_snapshot where submission_id = ? and version = ?`,
-		ship.ID, ship.Version).Scan(&snapshotSha, &forge)
+	_ = a.store.QueryRow(r.Context(), `select coalesce(head_sha, ''), coalesce(forge, '') from repo_snapshot where submission_id = ? and version = ?`, ship.ID, ship.Version).Scan(&snapshotSha, &forge)
 
 	if forge != "github" {
 		// Fixture and other offline snapshots cannot drift; only a live forge head can move.
-		app.WriteJSON(w, http.StatusOK, contract.CheckHead{SnapshotSha: optionalText(snapshotSha)})
+		app.WriteJSON(w, http.StatusOK, contract.CheckHead{
+			SnapshotSha: optionalText(snapshotSha),
+		})
 		return
 	}
 
 	client := a.githubClient()
 	// The stale check must see the live head, never a cached commit list.
 	client.cache = nil
-
 	headSha, status, err := client.head(r.Context(), owner, name)
 	if err != nil || status != http.StatusOK {
 		app.WriteError(w, http.StatusBadGateway, "could not read the repository head")
 		return
 	}
-
 	app.WriteJSON(w, http.StatusOK, contract.CheckHead{
 		HeadSha: optionalText(headSha),
 		Outdated: headSha != "" && snapshotSha != "" && headSha != snapshotSha,

@@ -6,63 +6,242 @@ import (
 	"strings"
 )
 
-type queueCompare struct {
-	op string
-	value int64
+type (
+	queueCheckFilter struct {
+		key, status string
+	}
+
+	queueChecksFilter struct {
+		overallPass bool
+		count, op string
+		value int64
+	}
+
+	queueCompare struct {
+		op string
+		value int64
+	}
+
+	queueSearch struct {
+		raw string
+		supported bool
+		age *queueCompare
+		check *queueCheckFilter
+		checks *queueChecksFilter
+		journals *queueCompare
+		status string
+		text []string
+		time *queueCompare
+		kind string
+		version, week *queueCompare
+	}
+)
+
+var (
+	queueDurationPart = regexp.MustCompile(`(\d+(?:\.\d+)?)([smhdw])`)
+	queueDurationRank = map[string]int{"d": 4, "h": 3, "m": 2, "s": 1, "w": 5}
+	queueDurationUnits = map[string]int64{
+		"d": 24 * 60 * 60 * 1000,
+		"h": 60 * 60 * 1000,
+		"m": 60 * 1000,
+		"s": 1000,
+		"w": 7 * 24 * 60 * 60 * 1000,
+	}
+	queueKnownStatuses = map[string]bool{
+		"checking": true,
+		"claimed": true,
+		"decided": true,
+		"in_review": true,
+		"needs_attention": true,
+		"ready": true,
+		"stage2_hold": true,
+		"withdrawn": true,
+	}
+)
+
+func escapeLike(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `%`, `\%`)
+	value = strings.ReplaceAll(value, `_`, `\_`)
+
+	return value
 }
 
-type queueChecksFilter struct {
-	overallPass bool
-	count string
-	op string
-	value int64
+func normalizeQueueStatus(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	value = strings.ReplaceAll(value, " ", "_")
+	value = strings.ReplaceAll(value, "-", "_")
+
+	return value
 }
 
-type queueCheckFilter struct {
-	key string
-	status string
+func parseQueueChecks(value string) *queueChecksFilter {
+	lower := strings.ToLower(value)
+	if lower == "pass" {
+		return &queueChecksFilter{
+			overallPass: true,
+		}
+	}
+
+	if queueCheckCounts[lower] {
+		return &queueChecksFilter{
+			count: lower,
+			op: ">",
+			value: 0,
+		}
+	}
+
+	match := queueChecksRE.FindStringSubmatch(lower)
+	if match == nil {
+		return nil
+	}
+
+	count := match[1]
+	if count == "" {
+		count = "total"
+	}
+
+	if !queueCheckCounts[count] {
+		return nil
+	}
+
+	if count == "pass" && match[2] == "" && match[3] == "" {
+		return &queueChecksFilter{
+			overallPass: true,
+		}
+	}
+
+	op := match[2]
+	if op == "" {
+		op = "="
+	}
+
+	number, err := strconv.ParseInt(match[3], 10, 64)
+	if err != nil {
+		return nil
+	}
+
+	return &queueChecksFilter{
+		count: count,
+		op: op,
+		value: number,
+	}
 }
 
-type queueSearch struct {
-	raw string
-	supported bool
-	age *queueCompare
-	check *queueCheckFilter
-	checks *queueChecksFilter
-	journals *queueCompare
-	status string
-	text []string
-	time *queueCompare
-	kind string
-	version *queueCompare
-	week *queueCompare
+var (
+	queueCheckCounts = map[string]bool{
+		"error": true,
+		"fail": true,
+		"pass": true,
+		"running": true,
+		"total": true,
+		"warn": true,
+	}
+	queueChecksRE = regexp.MustCompile(`^(error|fail|pass|running|total|warn)?(>=|<=|!=|>|<|=)?(\d+)$`)
+)
+
+func parseQueueComparison(value string) *queueCompare {
+	body := value
+	op := "="
+
+	for _, prefix := range []string{">=", "<=", "!=", ">", "<", "="} {
+		if strings.HasPrefix(value, prefix) {
+			op = prefix
+			body = value[len(prefix):]
+			break
+		}
+	}
+
+	if body == "" || body != strings.TrimSpace(body) {
+		return nil
+	}
+
+	number, err := strconv.ParseInt(body, 10, 64)
+	if err != nil {
+		return nil
+	}
+
+	return &queueCompare{
+		op: op,
+		value: number,
+	}
 }
 
-var queueDurationPart = regexp.MustCompile(`(\d+(?:\.\d+)?)([smhdw])`)
+func parseQueueDuration(value, fallback string) *queueCompare {
+	op := fallback
+	body := strings.ToLower(value)
 
-var queueDurationUnits = map[string]int64{
-	"s": 1000,
-	"m": 60 * 1000,
-	"h": 60 * 60 * 1000,
-	"d": 24 * 60 * 60 * 1000,
-	"w": 7 * 24 * 60 * 60 * 1000,
+	for _, prefix := range []string{">=", "<=", "!=", ">", "<", "="} {
+		if strings.HasPrefix(body, prefix) {
+			op = prefix
+			body = body[len(prefix):]
+			break
+		}
+	}
+
+	if matches := queueDurationPart.FindAllStringSubmatchIndex(body, -1); len(matches) == 0 {
+		return nil
+	}
+
+	var (
+		joined string
+		total float64
+	)
+
+	previous := 99
+
+	var joinedSb242 strings.Builder
+
+	for _, match := range queueDurationPart.FindAllStringSubmatch(body, -1) {
+		joinedSb242.WriteString(match[0])
+
+		rank := queueDurationRank[match[2]]
+		if rank == 0 || rank >= previous {
+			return nil
+		}
+
+		previous = rank
+		amount, err := strconv.ParseFloat(match[1], 64)
+		if err != nil {
+			return nil
+		}
+
+		total += amount * float64(queueDurationUnits[match[2]])
+	}
+
+	joined += joinedSb242.String()
+
+	if joined != body {
+		return nil
+	}
+
+	return &queueCompare{
+		op: op,
+		value: int64(total),
+	}
 }
 
-var queueDurationRank = map[string]int{
-	"s": 1,
-	"m": 2,
-	"h": 3,
-	"d": 4,
-	"w": 5,
-}
-
-var queueKnownStatuses = map[string]bool{
-	"checking": true, "claimed": true, "decided": true, "in_review": true,
-	"needs_attention": true, "ready": true, "stage2_hold": true, "withdrawn": true,
+// queueAgeOp maps an age comparison (age = now - submitted_at/created_at) to a submission-time comparison.
+func queueAgeOp(op string) string {
+	switch op {
+	case ">":
+		return "<"
+	case ">=":
+		return "<="
+	case "<":
+		return ">"
+	case "<=":
+		return ">="
+	default:
+		return ""
+	}
 }
 
 func parseQueueSearch(raw string) queueSearch {
-	query := queueSearch{raw: strings.TrimSpace(raw), supported: true}
+	query := queueSearch{
+		raw: strings.TrimSpace(raw),
+		supported: true,
+	}
 	if query.raw == "" {
 		return query
 	}
@@ -85,8 +264,7 @@ func parseQueueSearch(raw string) queueSearch {
 				query.text = append(query.text, strings.ToLower(token))
 			}
 		case "status":
-			status := normalizeQueueStatus(value)
-			if queueKnownStatuses[status] {
+			if status := normalizeQueueStatus(value); queueKnownStatuses[status] {
 				query.status = status
 			} else {
 				query.text = append(query.text, strings.ToLower(token))
@@ -146,142 +324,6 @@ func parseQueueSearch(raw string) queueSearch {
 	return query
 }
 
-func normalizeQueueStatus(value string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
-	value = strings.ReplaceAll(value, " ", "_")
-	value = strings.ReplaceAll(value, "-", "_")
-
-	return value
-}
-
-func parseQueueComparison(value string) *queueCompare {
-	op := "="
-
-	body := value
-	for _, prefix := range []string{">=", "<=", "!=", ">", "<", "="} {
-		if strings.HasPrefix(value, prefix) {
-			op = prefix
-			body = value[len(prefix):]
-
-			break
-		}
-	}
-
-	if body == "" || body != strings.TrimSpace(body) {
-		return nil
-	}
-
-	number, err := strconv.ParseInt(body, 10, 64)
-	if err != nil {
-		return nil
-	}
-
-	return &queueCompare{op: op, value: number}
-}
-
-var queueCheckCounts = map[string]bool{
-	"error": true, "fail": true, "pass": true, "running": true, "total": true, "warn": true,
-}
-
-var queueChecksRE = regexp.MustCompile(`^(error|fail|pass|running|total|warn)?(>=|<=|!=|>|<|=)?(\d+)$`)
-
-func parseQueueChecks(value string) *queueChecksFilter {
-	lower := strings.ToLower(value)
-	if lower == "pass" {
-		return &queueChecksFilter{overallPass: true}
-	}
-
-	if queueCheckCounts[lower] {
-		return &queueChecksFilter{count: lower, op: ">", value: 0}
-	}
-
-	match := queueChecksRE.FindStringSubmatch(lower)
-	if match == nil {
-		return nil
-	}
-
-	count := match[1]
-	if count == "" {
-		count = "total"
-	}
-
-	if !queueCheckCounts[count] {
-		return nil
-	}
-
-	if count == "pass" && match[2] == "" && match[3] == "" {
-		return &queueChecksFilter{overallPass: true}
-	}
-
-	op := match[2]
-	if op == "" {
-		op = "="
-	}
-
-	number, err := strconv.ParseInt(match[3], 10, 64)
-	if err != nil {
-		return nil
-	}
-
-	return &queueChecksFilter{count: count, op: op, value: number}
-}
-
-func parseQueueDuration(value, fallback string) *queueCompare {
-	op := fallback
-
-	body := strings.ToLower(value)
-	for _, prefix := range []string{">=", "<=", "!=", ">", "<", "="} {
-		if strings.HasPrefix(body, prefix) {
-			op = prefix
-			body = body[len(prefix):]
-
-			break
-		}
-	}
-
-	matches := queueDurationPart.FindAllStringSubmatchIndex(body, -1)
-	if len(matches) == 0 {
-		return nil
-	}
-
-	joined := ""
-
-	var total float64
-
-	previous := 99
-
-	var joinedSb242 strings.Builder
-	for _, match := range queueDurationPart.FindAllStringSubmatch(body, -1) {
-		joinedSb242.WriteString(match[0])
-
-		rank := queueDurationRank[match[2]]
-		if rank == 0 || rank >= previous {
-			return nil
-		}
-
-		previous = rank
-
-		amount, err := strconv.ParseFloat(match[1], 64)
-		if err != nil {
-			return nil
-		}
-
-		total += amount * float64(queueDurationUnits[match[2]])
-	}
-
-	joined += joinedSb242.String()
-
-	if joined != body {
-		return nil
-	}
-
-	return &queueCompare{op: op, value: int64(total)}
-}
-
-func (q queueSearch) active() bool {
-	return q.raw != "" && q.supported
-}
-
 func queueChecksExpr(count string) string {
 	field := func(name string) string {
 		return "coalesce(json_extract(s.check_summary, '$." + name + "'), 0)"
@@ -299,20 +341,8 @@ func queueChecksExpr(count string) string {
 	}
 }
 
-// queueAgeOp maps an age comparison (age = now - submitted_at/created_at) to a submission-time comparison.
-func queueAgeOp(op string) string {
-	switch op {
-	case ">":
-		return "<"
-	case ">=":
-		return "<="
-	case "<":
-		return ">"
-	case "<=":
-		return ">="
-	default:
-		return ""
-	}
+func (q queueSearch) active() bool {
+	return q.raw != "" && q.supported
 }
 
 func (q queueSearch) apply(query string, args []any) (string, []any) {
@@ -324,7 +354,6 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 		if op := queueAgeOp(q.age.op); op != "" {
 			seconds := q.age.value / 1000
 			query += " and coalesce(s.submitted_at, s.created_at) " + op + " datetime('now', ?)"
-
 			args = append(args, "-"+strconv.FormatInt(seconds, 10)+" seconds")
 		}
 	}
@@ -335,7 +364,6 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 			  and lower(c.check_key) = ? and lower(c.status) = ?
 			  and c.checked_at = (select max(c2.checked_at) from check_result c2
 				where c2.submission_id = c.submission_id and c2.version = c.version and c2.check_key = c.check_key))`
-
 		args = append(args, q.check.key, q.check.status)
 	}
 
@@ -343,8 +371,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 		if q.checks.overallPass {
 			query += " and coalesce(json_extract(s.check_summary, '$.overall'), '') = 'pass'"
 		} else {
-			expr := queueChecksExpr(q.checks.count)
-			if expr != "" {
+			if expr := queueChecksExpr(q.checks.count); expr != "" {
 				query += " and " + expr + " " + q.checks.op + " ?"
 				args = append(args, q.checks.value)
 			}
@@ -358,7 +385,6 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 
 	if q.status != "" {
 		query += " and s.status = ?"
-
 		args = append(args, q.status)
 	}
 
@@ -369,7 +395,6 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 
 	if q.kind != "" {
 		query += " and lower(trim(coalesce(s.theme, ''))) = ?"
-
 		args = append(args, q.kind)
 	}
 
@@ -396,12 +421,4 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 	query += querySb363.String()
 
 	return query, args
-}
-
-func escapeLike(value string) string {
-	value = strings.ReplaceAll(value, `\`, `\\`)
-	value = strings.ReplaceAll(value, `%`, `\%`)
-	value = strings.ReplaceAll(value, `_`, `\_`)
-
-	return value
 }

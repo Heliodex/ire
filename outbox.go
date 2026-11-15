@@ -10,6 +10,11 @@ import (
 	"github.com/heliodex/better-deploy/wt/packages/v2/outbox"
 )
 
+// reviewSender keeps the in-process fake receiver for the demo and posts real HTTP deliveries with Ari's headers.
+type reviewSender struct {
+	app *ireApp
+}
+
 const outboxTable = "webhook_outbox"
 
 // outboxStore builds the signed delivery queue around the app clock, HTTP client and fake receiver.
@@ -17,52 +22,43 @@ func (a *ireApp) outboxStore() outbox.Outbox {
 	return outbox.Outbox{
 		Table: outboxTable,
 		Signer: a.signer(a.config.OutboundSecret),
-		HTTP: &http.Client{Transport: a.client.Transport, Timeout: outboundTimeout},
+		HTTP: &http.Client{
+			Transport: a.client.Transport,
+			Timeout: outboundTimeout,
+		},
 		Now: a.now,
-		Sender: reviewSender{app: a},
+		Sender: reviewSender{
+			app: a,
+		},
 	}
 }
 
-// reviewSender keeps the in-process fake receiver for the demo and posts real HTTP deliveries with Ari's headers.
-type reviewSender struct {
-	app *ireApp
-}
-
-// Send performs one delivery attempt. A dry run records the delivery as sent without touching the receiver, so a pilot can compare before cutover.
-func (s reviewSender) Send(ctx context.Context, delivery outbox.Delivery) (int, error) {
-	if s.app.config.OutboundDryRun {
-		app.Infof("outbox dry-run %s %s", delivery.Event, delivery.DeliveryID)
-
-		return http.StatusOK, nil
+// deliverDue sends every delivery whose retry time has arrived.
+func (a *ireApp) deliverDue(ctx context.Context) (int, int, int) {
+	if !a.outboundEnabled(ctx, programID) {
+		return 0, 0, 0
 	}
 
-	if strings.HasPrefix(delivery.URL, "fake://") {
-		return s.app.receiveFake(ctx, delivery)
+	summary, err := a.outboxStore().DeliverDue(ctx, a.store, outbox.DefaultLimit)
+	if err != nil {
+		app.Errorf("outbox delivery: %v", err)
+		return 0, 0, 0
 	}
 
-	sender := outbox.HTTPSender{
-		Client: s.app.outboxStore().HTTP,
-		TimestampHeader: "X-Ari-Timestamp",
-		DeliveryHeader: "X-Ari-Delivery-Id",
-		SignatureHeader: "X-Ari-Signature",
-		UserAgent: "half-life-ire",
-	}
-
-	return sender.Send(ctx, delivery)
+	return summary.Delivered, summary.Retried, summary.Failed
 }
 
 // handleTick is driven by app.json's schedule. It sends due deliveries, releases expired claims and clears expired sessions.
 func (a *ireApp) handleTick(w http.ResponseWriter, r *http.Request) {
 	now := a.nowText()
-
 	delivered, retried, failed := a.deliverDue(r.Context())
 
-	claimRows, _ := a.store.Query(r.Context(), `select submission_id from claim where expires_at <= ? limit 200`, now)
-	if claimRows != nil {
+	if claimRows, _ := a.store.Query(r.Context(), `select submission_id from claim where expires_at <= ? limit 200`, now); claimRows != nil {
 		var expired []string
 
 		for claimRows.Next() {
 			var id string
+
 			if err := claimRows.Scan(&id); err == nil {
 				expired = append(expired, id)
 			}
@@ -94,24 +90,38 @@ func (a *ireApp) handleTick(w http.ResponseWriter, r *http.Request) {
 
 	a.retryErroredChecks(r.Context())
 	a.reconcileCheckStatus(r.Context())
-
-	app.WriteJSON(w, http.StatusOK, map[string]int{"delivered": delivered, "retried": retried, "failed": failed})
+	app.WriteJSON(w, http.StatusOK, map[string]int{"delivered": delivered, "failed": failed, "retried": retried})
 }
 
-// deliverDue sends every delivery whose retry time has arrived.
-func (a *ireApp) deliverDue(ctx context.Context) (int, int, int) {
-	if !a.outboundEnabled(ctx, programID) {
-		return 0, 0, 0
+// receiveFake verifies and stores a delivery in the prototype's in-process receiver.
+func (a *ireApp) receiveFake(ctx context.Context, delivery outbox.Delivery) (int, error) {
+	signer := a.signer(a.config.OutboundSecret)
+
+	var verified int
+
+	if signer.Verify(delivery.Timestamp, delivery.DeliveryID, delivery.Signature, delivery.Payload) == nil {
+		verified = 1
 	}
 
-	summary, err := a.outboxStore().DeliverDue(ctx, a.store, outbox.DefaultLimit)
-	if err != nil {
-		app.Errorf("outbox delivery: %v", err)
-
-		return 0, 0, 0
+	if _, err := a.store.Exec(ctx, `insert or ignore into fake_receiver_delivery (id, delivery_id, event, timestamp, body, signature, verified, received_at)
+		values (?, ?, ?, ?, ?, ?, ?, ?)`, newID("rcv"), delivery.DeliveryID, delivery.Event, delivery.Timestamp, string(delivery.Payload), delivery.Signature, verified, a.nowText()); err != nil {
+		return http.StatusInternalServerError, err
 	}
 
-	return summary.Delivered, summary.Retried, summary.Failed
+	if verified == 0 {
+		return http.StatusUnauthorized, errors.New("fake receiver rejected the signature")
+	}
+
+	return http.StatusOK, nil
+}
+
+// normalizeOutboxStatus collapses a claimed delivery to pending for the API.
+func normalizeOutboxStatus(status string) string {
+	if status == outbox.StatusSending {
+		return outbox.StatusPending
+	}
+
+	return status
 }
 
 // deliverOutboxNow sends the queue and returns the stored status of one delivery.
@@ -126,33 +136,24 @@ func (a *ireApp) deliverOutboxNow(ctx context.Context, id string) string {
 	return normalizeOutboxStatus(record.Status)
 }
 
-// normalizeOutboxStatus collapses a claimed delivery to pending for the API.
-func normalizeOutboxStatus(status string) string {
-	if status == outbox.StatusSending {
-		return outbox.StatusPending
+// Send performs one delivery attempt. A dry run records the delivery as sent without touching the receiver, so a pilot can compare before cutover.
+func (s reviewSender) Send(ctx context.Context, delivery outbox.Delivery) (int, error) {
+	if s.app.config.OutboundDryRun {
+		app.Infof("outbox dry-run %s %s", delivery.Event, delivery.DeliveryID)
+		return http.StatusOK, nil
 	}
 
-	return status
-}
-
-// receiveFake verifies and stores a delivery in the prototype's in-process receiver.
-func (a *ireApp) receiveFake(ctx context.Context, delivery outbox.Delivery) (int, error) {
-	signer := a.signer(a.config.OutboundSecret)
-
-	var verified int
-	if signer.Verify(delivery.Timestamp, delivery.DeliveryID, delivery.Signature, delivery.Payload) == nil {
-		verified = 1
+	if strings.HasPrefix(delivery.URL, "fake://") {
+		return s.app.receiveFake(ctx, delivery)
 	}
 
-	if _, err := a.store.Exec(ctx, `insert or ignore into fake_receiver_delivery (id, delivery_id, event, timestamp, body, signature, verified, received_at)
-		values (?, ?, ?, ?, ?, ?, ?, ?)`,
-		newID("rcv"), delivery.DeliveryID, delivery.Event, delivery.Timestamp, string(delivery.Payload), delivery.Signature, verified, a.nowText()); err != nil {
-		return http.StatusInternalServerError, err
+	sender := outbox.HTTPSender{
+		Client: s.app.outboxStore().HTTP,
+		TimestampHeader: "X-Ari-Timestamp",
+		DeliveryHeader: "X-Ari-Delivery-Id",
+		SignatureHeader: "X-Ari-Signature",
+		UserAgent: "half-life-ire",
 	}
 
-	if verified == 0 {
-		return http.StatusUnauthorized, errors.New("fake receiver rejected the signature")
-	}
-
-	return http.StatusOK, nil
+	return sender.Send(ctx, delivery)
 }

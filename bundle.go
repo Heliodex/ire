@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-
 	"ire/contract"
 )
 
@@ -66,32 +65,33 @@ func (a *ireApp) reviewBundle(ctx context.Context, ship submissionRow, person re
 	}
 
 	var checkRun *contract.CheckRun
+
 	if hasRun {
 		checkRun = &run
 	}
 
 	var evidence *contract.Evidence
+
 	if hasEvidence {
 		evidence = &snapshot
 	}
 
 	policy := a.policyFor(ctx, ship.ProgramID)
 	claim := a.claimFor(ctx, ship.ID, person)
-
 	submission := contract.Submission{
-		ID: ship.ID,
 		ExternalID: ship.ExternalID,
-		Version: ship.Version,
-		Status: ship.Status,
+		HoursClaimedSeconds: ship.HoursClaimed,
+		HoursHackatimeSeconds: ship.HoursHackatim,
+		HoursJournalSeconds: ship.HoursJournal,
+		ID: ship.ID,
+		IngestedAt: ship.IngestedAt,
+		MakerEmail: ship.MakerEmail,
 		Stage: ship.Stage,
+		Status: ship.Status,
 		Title: ship.Title,
 		Track: ship.Track,
-		HoursClaimedSeconds: ship.HoursClaimed,
-		HoursJournalSeconds: ship.HoursJournal,
-		HoursHackatimeSeconds: ship.HoursHackatim,
-		MakerEmail: ship.MakerEmail,
-		IngestedAt: ship.IngestedAt,
 		UpdatedAt: ship.UpdatedAt,
+		Version: ship.Version,
 	}
 
 	if ship.MakerSlack != "" {

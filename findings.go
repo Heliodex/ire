@@ -3,19 +3,24 @@ package main
 import (
 	"context"
 	"errors"
+	"ire/contract"
 	"net/http"
 	"strings"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
-// findingSeverities and findingStatuses keep the database and the wire in step without a second enum.
-var findingSeverities = map[string]bool{"block": true, "fixable": true, "hold": true, "note": true}
+// findingScanner is the row shape shared by loadFinding and loadFindings.
+type findingScanner interface {
+	Scan(dest ...any) error
+}
 
-var findingStatuses = map[string]bool{"accepted": true, "disputed": true, "fixed": true, "open": true, "withdrawn": true}
+var (
+	// findingSeverities and findingStatuses keep the database and the wire in step without a second enum.
+	findingSeverities = map[string]bool{"block": true, "fixable": true, "hold": true, "note": true}
+	findingStatuses = map[string]bool{"accepted": true, "disputed": true, "fixed": true, "open": true, "withdrawn": true}
+)
 
 // findingActive reports whether a finding still needs work: open or disputed.
 // Resolved and withdrawn findings stay on the record but no longer hold anything.
@@ -23,26 +28,51 @@ func findingActive(status string) bool {
 	return status == "open" || status == "disputed"
 }
 
-// handleFindings lists the findings that follow a project across versions.
-func (a *ireApp) handleFindings(w http.ResponseWriter, r *http.Request) {
-	_, ok := a.requireReviewer(w, r)
-	if !ok {
-		return
+// resolvedSubmission keeps the submission link only when the finding has been resolved.
+func resolvedSubmission(resolvedBy any, submissionID string) any {
+	if resolvedBy == nil {
+		return nil
 	}
 
-	ship, ok := a.loadShipForReview(w, r)
-	if !ok {
-		return
+	return submissionID
+}
+
+// scanFinding turns one row into the wire shape.
+func scanFinding(row findingScanner) (contract.Finding, error) {
+	var (
+		item contract.Finding
+		question, detail, makerAction, evidence, openedBy, resolvedBy, resolution string
+		resolvedVersion int
+	)
+
+	if err := row.Scan(&item.ID, &item.ExternalID, &item.OpenedSubmissionID, &item.OpenedVersion, &item.Station, &question, &item.Severity, &item.Status, &item.Summary, &detail, &makerAction, &evidence, &openedBy, &resolvedBy, &resolvedVersion, &resolution, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		return contract.Finding{}, err
 	}
 
-	findings, err := a.loadFindings(r.Context(), ship.ProgramID, ship.ExternalID)
-	if err != nil {
-		writeStorage(w, err)
+	item.Question = optionalText(question)
+	item.Detail = optionalText(detail)
+	item.MakerAction = optionalText(makerAction)
+	item.Evidence = optionalText(evidence)
+	item.OpenedBy = optionalText(openedBy)
+	item.ResolvedBy = optionalText(resolvedBy)
+	item.Resolution = optionalText(resolution)
 
-		return
+	if resolvedVersion > 0 {
+		item.ResolvedVersion = &resolvedVersion
 	}
 
-	app.WriteJSON(w, http.StatusOK, contract.FindingsResponse{Findings: findings})
+	return item, nil
+}
+
+// loadFinding reads one finding by id.
+func (a *ireApp) loadFinding(ctx context.Context, id string) (contract.Finding, error) {
+	row := a.store.QueryRow(ctx, `select id, external_id, opened_submission_id, opened_version, station, coalesce(question, ''),
+			severity, status, summary, coalesce(detail, ''), coalesce(maker_action, ''), coalesce(evidence, '{}'),
+			coalesce(opened_by, ''), coalesce(resolved_by, ''), coalesce(resolved_version, 0), coalesce(resolution, ''),
+			created_at, updated_at
+		from finding where id = ?`, id)
+
+	return scanFinding(row)
 }
 
 // handleFindingCreate records one problem or note for a project.
@@ -90,28 +120,24 @@ func (a *ireApp) handleFindingCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	evidence := strings.TrimSpace(stringValue(request.Evidence))
-
 	now := a.nowText()
 	id := newID("fnd")
 
 	if _, err := a.store.Exec(r.Context(), `insert into finding (id, program_id, external_id, opened_submission_id, opened_version,
 			station, question, severity, status, summary, detail, maker_action, evidence, opened_by, created_at, updated_at)
-		values (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?)`,
-		id, ship.ProgramID, ship.ExternalID, ship.ID, ship.Version, station, stringValue(request.Question),
-		request.Severity, summary, stringValue(request.Detail), stringValue(request.MakerAction), evidence, person.ID, now, now); err != nil {
+		values (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?)`, id, ship.ProgramID, ship.ExternalID, ship.ID, ship.Version, station, stringValue(request.Question), request.Severity, summary, stringValue(request.Detail), stringValue(request.MakerAction), evidence, person.ID, now, now); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
 	finding, err := a.loadFinding(r.Context(), id)
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
-
-	app.WriteJSON(w, http.StatusOK, contract.FindingResponse{Finding: finding})
+	app.WriteJSON(w, http.StatusOK, contract.FindingResponse{
+		Finding: finding,
+	})
 }
 
 // handleFindingUpdate moves a finding through its lifecycle, usually from open to fixed during fix verification.
@@ -164,9 +190,7 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown finding")
 			return
 		}
-
 		writeStorage(w, err)
-
 		return
 	}
 
@@ -178,12 +202,10 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 	now := a.nowText()
 	resolution := strings.TrimSpace(stringValue(request.Resolution))
 
-	var resolvedBy any
-
-	var resolvedVersion any
+	var resolvedBy, resolvedVersion any
 
 	switch request.Status {
-	case "fixed", "accepted", "withdrawn":
+	case "accepted", "fixed", "withdrawn":
 		resolvedBy = person.ID
 		resolvedVersion = ship.Version
 	default:
@@ -192,31 +214,19 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := a.store.Exec(r.Context(), `update finding set status = ?, resolution = ?, resolved_by = ?,
 			resolved_submission_id = ?, resolved_version = ?, updated_at = ?, summary = coalesce(?, summary),
-			maker_action = coalesce(?, maker_action), severity = coalesce(?, severity) where id = ?`,
-		request.Status, nullString(resolution), resolvedBy, resolvedSubmission(resolvedBy, ship.ID), resolvedVersion, now,
-		nullString(summary), request.MakerAction, nullString(severity), finding.ID); err != nil {
+			maker_action = coalesce(?, maker_action), severity = coalesce(?, severity) where id = ?`, request.Status, nullString(resolution), resolvedBy, resolvedSubmission(resolvedBy, ship.ID), resolvedVersion, now, nullString(summary), request.MakerAction, nullString(severity), finding.ID); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
 	updated, err := a.loadFinding(r.Context(), finding.ID)
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
-
-	app.WriteJSON(w, http.StatusOK, contract.FindingResponse{Finding: updated})
-}
-
-// resolvedSubmission keeps the submission link only when the finding has been resolved.
-func resolvedSubmission(resolvedBy any, submissionID string) any {
-	if resolvedBy == nil {
-		return nil
-	}
-
-	return submissionID
+	app.WriteJSON(w, http.StatusOK, contract.FindingResponse{
+		Finding: updated,
+	})
 }
 
 // loadFindings reads every finding for a project, newest first.
@@ -229,6 +239,7 @@ func (a *ireApp) loadFindings(ctx context.Context, programID, externalID string)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	out := []contract.Finding{}
@@ -245,50 +256,26 @@ func (a *ireApp) loadFindings(ctx context.Context, programID, externalID string)
 	return out, rows.Err()
 }
 
-// loadFinding reads one finding by id.
-func (a *ireApp) loadFinding(ctx context.Context, id string) (contract.Finding, error) {
-	row := a.store.QueryRow(ctx, `select id, external_id, opened_submission_id, opened_version, station, coalesce(question, ''),
-			severity, status, summary, coalesce(detail, ''), coalesce(maker_action, ''), coalesce(evidence, '{}'),
-			coalesce(opened_by, ''), coalesce(resolved_by, ''), coalesce(resolved_version, 0), coalesce(resolution, ''),
-			created_at, updated_at
-		from finding where id = ?`, id)
-
-	return scanFinding(row)
-}
-
-// findingScanner is the row shape shared by loadFinding and loadFindings.
-type findingScanner interface {
-	Scan(dest ...any) error
-}
-
-// scanFinding turns one row into the wire shape.
-func scanFinding(row findingScanner) (contract.Finding, error) {
-	var (
-		item contract.Finding
-		question, detail, makerAction, evidence string
-		openedBy, resolvedBy, resolution string
-		resolvedVersion int
-	)
-
-	if err := row.Scan(&item.ID, &item.ExternalID, &item.OpenedSubmissionID, &item.OpenedVersion, &item.Station, &question,
-		&item.Severity, &item.Status, &item.Summary, &detail, &makerAction, &evidence,
-		&openedBy, &resolvedBy, &resolvedVersion, &resolution, &item.CreatedAt, &item.UpdatedAt); err != nil {
-		return contract.Finding{}, err
+// handleFindings lists the findings that follow a project across versions.
+func (a *ireApp) handleFindings(w http.ResponseWriter, r *http.Request) {
+	_, ok := a.requireReviewer(w, r)
+	if !ok {
+		return
 	}
 
-	item.Question = optionalText(question)
-	item.Detail = optionalText(detail)
-	item.MakerAction = optionalText(makerAction)
-	item.Evidence = optionalText(evidence)
-	item.OpenedBy = optionalText(openedBy)
-	item.ResolvedBy = optionalText(resolvedBy)
-	item.Resolution = optionalText(resolution)
-
-	if resolvedVersion > 0 {
-		item.ResolvedVersion = &resolvedVersion
+	ship, ok := a.loadShipForReview(w, r)
+	if !ok {
+		return
 	}
 
-	return item, nil
+	findings, err := a.loadFindings(r.Context(), ship.ProgramID, ship.ExternalID)
+	if err != nil {
+		writeStorage(w, err)
+		return
+	}
+	app.WriteJSON(w, http.StatusOK, contract.FindingsResponse{
+		Findings: findings,
+	})
 }
 
 // openFindings returns the open findings that make an approval unsafe.
@@ -315,13 +302,19 @@ func (a *ireApp) findingProblem(ctx context.Context, request contract.DecisionRe
 		open, err := a.openFindings(ctx, ship.ProgramID, ship.ExternalID)
 		if err != nil {
 			app.Errorf("open findings: %v", err)
-
-			return &decisionProblem{status: http.StatusInternalServerError, message: "could not read the findings"}
+			return &decisionProblem{
+				status: http.StatusInternalServerError,
+				message: "could not read the findings",
+			}
 		}
 
 		if len(open) > 0 {
-			return &decisionProblem{status: http.StatusUnprocessableEntity, code: "open_findings", field: "findings",
-				message: "resolve the open findings before approving, or return the ship with the complete list"}
+			return &decisionProblem{
+				status: http.StatusUnprocessableEntity,
+				code: "open_findings",
+				field: "findings",
+				message: "resolve the open findings before approving, or return the ship with the complete list",
+			}
 		}
 
 		return nil
@@ -334,8 +327,10 @@ func (a *ireApp) findingProblem(ctx context.Context, request contract.DecisionRe
 	findings, err := a.loadFindings(ctx, ship.ProgramID, ship.ExternalID)
 	if err != nil {
 		app.Errorf("findings: %v", err)
-
-		return &decisionProblem{status: http.StatusInternalServerError, message: "could not read the findings"}
+		return &decisionProblem{
+			status: http.StatusInternalServerError,
+			message: "could not read the findings",
+		}
 	}
 
 	open := map[string]bool{}
@@ -348,8 +343,12 @@ func (a *ireApp) findingProblem(ctx context.Context, request contract.DecisionRe
 
 	for _, id := range request.FindingIds {
 		if !open[id] {
-			return &decisionProblem{status: http.StatusUnprocessableEntity, code: "invalid_finding", field: "findingIds",
-				message: "a returned finding is missing or already resolved"}
+			return &decisionProblem{
+				status: http.StatusUnprocessableEntity,
+				code: "invalid_finding",
+				field: "findingIds",
+				message: "a returned finding is missing or already resolved",
+			}
 		}
 	}
 

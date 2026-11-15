@@ -2,9 +2,8 @@ package main
 
 import (
 	"database/sql"
-	"net/http"
-
 	"ire/contract"
+	"net/http"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
@@ -29,12 +28,15 @@ func (a *ireApp) handleParity(w http.ResponseWriter, r *http.Request) {
 		order by ingested_at asc, id asc limit ?`, program.ID, maxParityShips)
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
+
 	defer rows.Close()
 
-	response := contract.ParityResponse{GeneratedAt: a.nowText(), Ships: []contract.ParityShip{}}
+	response := contract.ParityResponse{
+		GeneratedAt: a.nowText(),
+		Ships: []contract.ParityShip{},
+	}
 
 	for rows.Next() {
 		var (
@@ -43,10 +45,8 @@ func (a *ireApp) handleParity(w http.ResponseWriter, r *http.Request) {
 			approvedHours sql.NullInt64
 		)
 
-		if err := rows.Scan(&ship.ID, &ship.ExternalID, &ship.Version, &ship.Status, &ship.Stage,
-			&ship.HoursClaimedSeconds, &approvedHours, &ship.BomTotalCents, &summary, &ship.UpdatedAt); err != nil {
+		if err := rows.Scan(&ship.ID, &ship.ExternalID, &ship.Version, &ship.Status, &ship.Stage, &ship.HoursClaimedSeconds, &approvedHours, &ship.BomTotalCents, &summary, &ship.UpdatedAt); err != nil {
 			writeStorage(w, err)
-
 			return
 		}
 
@@ -62,9 +62,7 @@ func (a *ireApp) handleParity(w http.ResponseWriter, r *http.Request) {
 
 	if err := rows.Err(); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
-
 	app.WriteJSON(w, http.StatusOK, response)
 }

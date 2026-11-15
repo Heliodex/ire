@@ -4,14 +4,30 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
+	"ire/contract"
 	"net/http"
 	"strings"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
+
+// commitSince returns the previous approval time, or the programme start for a first version.
+func (a *ireApp) commitSince(ctx context.Context, programID, previousID string) string {
+	if previousID != "" {
+		var decidedAt string
+		if err := a.store.QueryRow(ctx, `select coalesce(decided_at, '') from submission where id = ?`, previousID).Scan(&decidedAt); err == nil && decidedAt != "" {
+			return decidedAt
+		}
+	}
+
+	program, err := a.programByID(ctx, programID)
+	if err != nil {
+		return ""
+	}
+
+	return program.CreatedAt
+}
 
 // loadEvidence returns the cached repository snapshot for a submission version and whether one was stored.
 func (a *ireApp) loadEvidence(ctx context.Context, submissionID string, version int) (contract.Evidence, bool, error) {
@@ -23,9 +39,7 @@ func (a *ireApp) loadEvidence(ctx context.Context, submissionID string, version 
 
 	err := a.store.QueryRow(ctx, `select forge, full_name, coalesce(default_branch, ''), coalesce(head_sha, ''),
 			truncated, coalesce(readme_text, ''), files, commits, fetched_at, coalesce(error, '')
-		from repo_snapshot where submission_id = ? and version = ?`, submissionID, version).
-		Scan(&evidence.Forge, &evidence.FullName, &defaultBranch, &headSha, &truncated, &readme,
-			&filesJSON, &commitsJSON, &evidence.FetchedAt, &failure)
+		from repo_snapshot where submission_id = ? and version = ?`, submissionID, version).Scan(&evidence.Forge, &evidence.FullName, &defaultBranch, &headSha, &truncated, &readme, &filesJSON, &commitsJSON, &evidence.FetchedAt, &failure)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return contract.Evidence{}, false, nil
@@ -49,23 +63,6 @@ func (a *ireApp) loadEvidence(ctx context.Context, submissionID string, version 
 	}
 
 	return evidence, true, nil
-}
-
-// commitSince returns the previous approval time, or the programme start for a first version.
-func (a *ireApp) commitSince(ctx context.Context, programID, previousID string) string {
-	if previousID != "" {
-		var decidedAt string
-		if err := a.store.QueryRow(ctx, `select coalesce(decided_at, '') from submission where id = ?`, previousID).Scan(&decidedAt); err == nil && decidedAt != "" {
-			return decidedAt
-		}
-	}
-
-	program, err := a.programByID(ctx, programID)
-	if err != nil {
-		return ""
-	}
-
-	return program.CreatedAt
 }
 
 // saveEvidence replaces the snapshot for a submission version, so a refresh never leaves two copies.
@@ -94,10 +91,7 @@ func (a *ireApp) saveEvidence(ctx context.Context, submissionID string, version 
 			files = excluded.files,
 			commits = excluded.commits,
 			fetched_at = excluded.fetched_at,
-			error = excluded.error`,
-		submissionID, version, evidence.Forge, evidence.FullName, stringValue(evidence.DefaultBranch),
-		stringValue(evidence.HeadSha), len(evidence.Files), boolInt(evidence.Truncated), stringValue(evidence.Readme),
-		string(files), string(commits), evidence.FetchedAt, stringValue(evidence.Error))
+			error = excluded.error`, submissionID, version, evidence.Forge, evidence.FullName, stringValue(evidence.DefaultBranch), stringValue(evidence.HeadSha), len(evidence.Files), boolInt(evidence.Truncated), stringValue(evidence.Readme), string(files), string(commits), evidence.FetchedAt, stringValue(evidence.Error))
 
 	return err
 }
@@ -123,7 +117,6 @@ func (a *ireApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusUnprocessableEntity, "this ship has no repository URL")
 		return
 	}
-
 	a.forgeCache.clear()
 
 	_, evidence := a.repoChecks(r.Context(), ship.RepoURL, a.commitSince(r.Context(), ship.ProgramID, ship.PreviousID), a.now(), a.loadBomLines(r.Context(), ship.ID))
@@ -136,6 +129,5 @@ func (a *ireApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
-
 	app.WriteJSON(w, http.StatusOK, *evidence)
 }

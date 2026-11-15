@@ -1,12 +1,11 @@
 package main
 
 import (
+	"ire/contract"
 	"net/http"
 	"path"
 	"strings"
 	"unicode/utf8"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
@@ -20,6 +19,7 @@ var previewableKicadSuffixes = []string{".kicad_pcb", ".kicad_sch", ".kicad_pro"
 // isPreviewableKicad reports whether the review screen can render a file in-app. The frontend mirrors the same suffix set.
 func isPreviewableKicad(path string) bool {
 	lowered := strings.ToLower(path)
+
 	for _, suffix := range previewableKicadSuffixes {
 		if strings.HasSuffix(lowered, suffix) {
 			return true
@@ -48,7 +48,6 @@ func (a *ireApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	trimmed := strings.TrimPrefix(path.Clean("/"+requested), "/")
-
 	if !isPreviewableKicad(trimmed) {
 		app.WriteError(w, http.StatusUnsupportedMediaType, "only KiCad files can be previewed")
 		return
@@ -57,7 +56,6 @@ func (a *ireApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
 	evidence, found, err := a.loadEvidence(r.Context(), ship.ID, ship.Version)
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
@@ -66,12 +64,11 @@ func (a *ireApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	listed := false
+	var listed bool
 
 	for _, file := range evidence.Files {
 		if file.Path == trimmed {
 			listed = true
-
 			break
 		}
 	}
@@ -95,19 +92,16 @@ func (a *ireApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
 	body, status, err := a.githubClient().file(r.Context(), owner, name, trimmed)
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
 	if status == http.StatusNotFound {
 		app.WriteError(w, http.StatusNotFound, "that file is not in the repository")
-
 		return
 	}
 
 	if status != http.StatusOK {
 		app.WriteError(w, http.StatusBadGateway, "GitHub did not return that file")
-
 		return
 	}
 
@@ -120,7 +114,6 @@ func (a *ireApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusUnsupportedMediaType, "only text board files can be previewed")
 		return
 	}
-
 	app.WriteJSON(w, http.StatusOK, contract.SubmissionFileResponse{
 		File: contract.SubmissionFile{
 			Path: trimmed,

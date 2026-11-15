@@ -9,11 +9,361 @@ import (
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
-// schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
-const schemaVersion = 19
+const (
+	// schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
+	schemaVersion = 19
 
-// stationSortHardware keeps the hardware station after the shared narrative station.
-const stationSortHardware = 40
+	// stationAnswerReviewerKey is the per-reviewer uniqueness the answer table moved to from a shared answer per question.
+	stationAnswerReviewerKey = "unique (submission_id, station_key, question_key, reviewer_id)"
+
+	// stationSortHardware keeps the hardware station after the shared narrative station.
+	stationSortHardware = 40
+)
+
+// lateColumns are columns added to a table after it first shipped. `create table if not exists` cannot add them to a database that already has the table, so migrate adds each missing one after the versioned migration. They stay out of the versioned statement set: an alter that appears only on databases that need it would change that version's checksum between databases and deploys. A fresh database gets them from the create statement, except submitted_at, which only ever arrives this way.
+var lateColumns = []struct {
+	table, column, definition string
+}{
+	{
+		table: "journal_entry",
+		column: "approved_seconds",
+		definition: "integer",
+	},
+	{
+		table: "journal_entry",
+		column: "reviewer_note",
+		definition: "text",
+	},
+	{
+		table: "journal_entry",
+		column: "deflation_reason",
+		definition: "text",
+	},
+	{
+		table: "review",
+		column: "technical_features",
+		definition: "text not null default ''",
+	},
+	{
+		table: "review",
+		column: "deflation_reason",
+		definition: "text not null default ''",
+	},
+	{
+		table: "submission",
+		column: "submitted_at",
+		definition: "text",
+	},
+}
+
+// addLateColumns adds every late column the live database is missing.
+func addLateColumns(ctx context.Context, store *storage.Client) error {
+	for _, late := range lateColumns {
+		if _, err := store.AddColumnIfMissing(ctx, late.table, late.column, late.definition); err != nil {
+			return fmt.Errorf("add %s.%s: %w", late.table, late.column, err)
+		}
+	}
+
+	return nil
+}
+
+// ensureStationAnswerReviewers rebuilds the answer table from the shared per-question uniqueness to one answer per reviewer. The old table cannot express the new key, so the rows are copied across instead of altered.
+func (a *ireApp) ensureStationAnswerReviewers(ctx context.Context) error {
+	if definition, ok, err := a.store.TableSQL(ctx, "station_answer"); err != nil || !ok || strings.Contains(definition, stationAnswerReviewerKey) {
+		return err
+	}
+
+	return a.store.RebuildTable(ctx, storage.TableRebuild{
+		Table: "station_answer",
+		Create: `create table station_answer_new (
+			id text primary key,
+			submission_id text not null references submission(id) on delete cascade,
+			station_key text not null,
+			question_key text not null,
+			answer text not null check (answer in ('pass','fail','na')),
+			evidence text not null default '',
+			artifact_hash text,
+			reviewer_id text not null,
+			created_at text not null,
+			updated_at text not null,
+			` + stationAnswerReviewerKey + `
+		)`,
+		Copy: `insert into station_answer_new (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
+			select id, submission_id, station_key, question_key, answer, evidence, artifact_hash, coalesce(nullif(reviewer_id, ''), 'legacy'), created_at, updated_at
+			from station_answer`,
+		After: []string{
+			`create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`,
+		},
+	})
+}
+
+// removeFixtureShips deletes the three demo ships reseeded by seedFixtures, so disabling fixtures leaves an empty queue ready for real Half Life ingests. Real submissions never use these ids or external ids.
+func (a *ireApp) removeFixtureShips(ctx context.Context) error {
+	_, err := a.store.Exec(ctx, `delete from submission where id in ('sub_fixture_1', 'sub_fixture_2', 'sub_fixture_3') or external_id in ('fix-clean:design', 'fix-warned:design', 'fix-blocked:design')`)
+
+	return err
+}
+
+// removePlaceholderAccounts deletes the three development accounts and their memberships, sessions and identities. Memberships, sessions and identities cascade from the user rows; the login form no longer offers them once AllowDevAccounts is off.
+func (a *ireApp) removePlaceholderAccounts(ctx context.Context) error {
+	_, err := a.store.Exec(ctx, `delete from user where email in ('reviewer@example.com', 'organiser@example.com', 'admin@example.com')`)
+
+	return err
+}
+
+// seedPeople creates the three development accounts. They are placeholders for Hack Club Auth and must not survive a real deployment.
+func (a *ireApp) seedPeople(ctx context.Context, now string) error {
+	people := []struct {
+		id, email, name, role string
+	}{
+		{"usr_reviewer", "reviewer@example.com", "Rae Reviewer", "reviewer"},
+		{"usr_organiser", "organiser@example.com", "Oli Organiser", "organizer"},
+		{"usr_admin", "admin@example.com", "Ada Admin", "admin"},
+	}
+
+	for _, person := range people {
+		if _, err := a.store.Exec(ctx, `insert into user (id, email, name, created_at) values (?, ?, ?, ?)
+			on conflict do update set name = excluded.name`, person.id, person.email, person.name, now); err != nil {
+			return err
+		}
+
+		if _, err := a.store.Exec(ctx, `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at) values (?, ?, ?, ?, '["hardware"]', '[]', 1, ?)
+			on conflict(program_id, user_id) do update set role = excluded.role, active = 1`, "mem_"+person.id, programID, person.id, person.role, now); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// seedRoleDefinitions creates the built-in programme roles. Rows are never
+// overwritten, so admin edits to permissions survive restarts.
+func (a *ireApp) seedRoleDefinitions(ctx context.Context, now string) error {
+	defaults := defaultRolePermissions()
+	names := []string{roleAdmin, roleOrganizer, roleReviewer, roleAuditor}
+
+	for _, name := range names {
+		var locked int
+
+		if name == roleAdmin {
+			locked = 1
+		}
+
+		if _, err := a.store.Exec(ctx, `insert into role_definition (id, program_id, name, permissions, locked, created_at)
+			values (?, ?, ?, ?, ?, ?) on conflict(program_id, name) do nothing`, "rol_"+name, programID, name, marshalStrings(defaults[name]), locked, now); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// seedStations creates the Half Life review stations and their questions. Rows are never overwritten, so a programme edit survives restarts.
+func (a *ireApp) seedStations(ctx context.Context) error {
+	const evidenceText = "text"
+
+	stations := []struct {
+		key, label, description, themes string
+		stage, sort int
+		questions []struct {
+			key, prompt, evidence string
+			required int
+		}
+	}{
+		{
+			key: "triage",
+			label: "Triage",
+			stage: 1,
+			sort: 10,
+			themes: "[]",
+			description: "Cheap completeness checks before the deeper review.",
+			questions: []struct {
+				key, prompt, evidence string
+				required int
+			}{
+				{"cover_screenshot", "Is the cover a screenshot of this project?", "image", 1},
+				{
+					"description_real",
+					"Does the description describe the project, not the template?",
+					evidenceText,
+					1,
+				},
+				{"repo_right", "Does the repository link lead to the right project?", "link", 1},
+				{"images_present", "Are the required images present?", "image", 1},
+				{"profile_valid", "Is the maker profile usable for payout?", evidenceText, 1},
+			},
+		},
+		{
+			key: "time",
+			label: "Journals and time",
+			stage: 1,
+			sort: 20,
+			themes: "[]",
+			description: "Read each entry once and decide what time is productive.",
+			questions: []struct {
+				key, prompt, evidence string
+				required int
+			}{
+				{"entries_descriptive", "Does every journal entry describe what was worked on?", evidenceText, 1},
+				{
+					"time_productive",
+					"Is the logged time productive work, not tutorial consumption?",
+					evidenceText,
+					1,
+				},
+				{"deflation_explained", "Is every cut explained with a reason and a benchmark?", evidenceText, 1},
+			},
+		},
+		{
+			key: "narrative",
+			label: "README and claims",
+			stage: 1,
+			sort: 30,
+			themes: "[]",
+			description: "One reading of the README, commits and claims.",
+			questions: []struct {
+				key, prompt, evidence string
+				required int
+			}{
+				{"readme_explains", "Does the README explain the build, problems and solutions?", evidenceText, 1},
+				{
+					"commits_authored",
+					"Do the commits belong to the maker, with sync commits ignored?",
+					evidenceText,
+					1,
+				},
+				{"claims_match", "Do the README and BOM claims match the files?", evidenceText, 1},
+				{"features", "Are the specific technical features named?", evidenceText, 1},
+			},
+		},
+		{
+			key: "hardware",
+			label: "Hardware and firmware",
+			stage: 1,
+			sort: stationSortHardware,
+			themes: `["pcb","cad","synth","displays"]`,
+			description: "A plausible design and firmware, with note-only issues.",
+			questions: []struct {
+				key, prompt, evidence string
+				required int
+			}{
+				{
+					"design_plausible",
+					"Is the design plausible, and are issues noted for the maker?",
+					evidenceText,
+					1,
+				},
+				{"bom_matches", "Does the BOM match the design and the parts list?", evidenceText, 1},
+				{"firmware_matches", "Does the firmware match the claimed features?", evidenceText, 1},
+			},
+		},
+		{
+			key: "synthesis",
+			label: "Synthesis and decision",
+			stage: 1,
+			sort: 50,
+			themes: "[]",
+			description: "Turn the answers into one record and one decision.",
+			questions: []struct {
+				key, prompt, evidence string
+				required int
+			}{
+				{"findings_resolved", "Are all open findings resolved or included in the return?", evidenceText, 1},
+				{"hours_reasonable", "Are the approved hours and deflation reason defensible?", evidenceText, 1},
+				{"notes_complete", "Are the maker note and internal note complete?", evidenceText, 1},
+			},
+		},
+		{
+			key: "verify",
+			label: "Verify record",
+			stage: 2,
+			sort: 10,
+			themes: "[]",
+			description: "Stage 2 checks the record and samples the evidence.",
+			questions: []struct {
+				key, prompt, evidence string
+				required int
+			}{
+				{"record_complete", "Are the answers, evidence and time ledger complete?", evidenceText, 1},
+				{"evidence_sample", "Does a sample of the evidence support the answers?", evidenceText, 1},
+			},
+		},
+	}
+
+	for _, station := range stations {
+		if _, err := a.store.Exec(ctx, `insert into station_definition (program_id, key, label, description, stage, sort, themes, active)
+			values (?, ?, ?, ?, ?, ?, ?, 1) on conflict(program_id, key) do nothing`, programID, station.key, station.label, station.description, station.stage, station.sort, station.themes); err != nil {
+			return err
+		}
+
+		for index, question := range station.questions {
+			if _, err := a.store.Exec(ctx, `insert into station_question (program_id, station_key, key, prompt, evidence_kind, required, sort)
+				values (?, ?, ?, ?, ?, ?, ?) on conflict(program_id, station_key, key) do nothing`, programID, station.key, question.key, question.prompt, question.evidence, question.required, index*10); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// last4 returns the final four characters of a secret for display, never the secret itself.
+func last4(secret string) string {
+	if len(secret) <= 4 {
+		return secret
+	}
+
+	return secret[len(secret)-4:]
+}
+
+// seed creates the Half Life programme and, when explicitly enabled, its dev reviewers and fixture ships. Every write is idempotent, so a partial seed is repaired on the next start. When dev accounts or fixtures are disabled, any leftover placeholder rows are removed so a production copy holds only invited reviewers and real Half Life ingests.
+func (a *ireApp) seed(ctx context.Context) error {
+	now := a.nowText()
+	outboundURL := a.config.OutboundURL
+	if outboundURL == "" {
+		outboundURL = "fake://receiver"
+	}
+
+	if _, err := a.store.Exec(ctx, `insert into program (id, slug, name, timezone, active, created_at, updated_at, outbound_url, outbound_enabled, signing_secret_last4, outbound_secret_last4, policy_version)
+		values (?, ?, ?, 'Europe/London', 1, ?, ?, ?, 1, ?, ?, 1)
+		on conflict(id) do nothing`, programID, programSlug, "Half Life", now, now, outboundURL, last4(a.config.IngestSecret), last4(a.config.OutboundSecret)); err != nil {
+		return err
+	}
+
+	if a.config.AllowDevAccounts {
+		if err := a.seedPeople(ctx, now); err != nil {
+			return err
+		}
+	} else if err := a.removePlaceholderAccounts(ctx); err != nil {
+		return err
+	}
+
+	if err := a.seedRoleDefinitions(ctx, now); err != nil {
+		return err
+	}
+
+	if err := a.seedStations(ctx); err != nil {
+		return err
+	}
+
+	settings := map[string]string{
+		"allow_legacy_signature": "true",
+		"review_policy": `{"holdOnWarn":true,"holdMinApprovedSeconds":0,"holdTiers":[2,3],"noteRequiredForChanges":true,"fraudMinStage":2}`,
+	}
+
+	for key, value := range settings {
+		if _, err := a.store.Exec(ctx, `insert into program_setting (program_id, key, value, updated_at) values (?, ?, ?, ?)
+			on conflict(program_id, key) do update set value = excluded.value, updated_at = excluded.updated_at`, programID, key, value, now); err != nil {
+			return err
+		}
+	}
+
+	if !a.config.SeedFixtures {
+		return a.removeFixtureShips(ctx)
+	}
+
+	return a.seedFixtures(ctx)
+}
 
 // schemaStatements is the prototype subset of plan/03-data-model.md: programmes, people, sessions, ships, evidence, checks, claims, reviews, drafts, timeline, audit, outbox and settings. Fraud, forms, counters and retention jobs come later.
 //
@@ -34,7 +384,6 @@ func schemaStatements() []storage.Statement {
 			outbound_secret_last4 text not null default '',
 			policy_version integer not null default 1
 		)`,
-
 		`create table if not exists user (
 			id text primary key,
 			email text not null unique,
@@ -44,7 +393,6 @@ func schemaStatements() []storage.Statement {
 			created_at text not null,
 			last_login_at text
 		)`,
-
 		`create table if not exists membership (
 			id text primary key,
 			program_id text not null references program(id) on delete cascade,
@@ -57,7 +405,6 @@ func schemaStatements() []storage.Statement {
 			created_by text,
 			unique (program_id, user_id)
 		)`,
-
 		`create table if not exists login_flow (
 			state text primary key,
 			verifier text not null,
@@ -65,7 +412,6 @@ func schemaStatements() []storage.Statement {
 			redirect_uri text not null,
 			created_at text not null
 		)`,
-
 		`create table if not exists user_identity (
 			user_id text not null references user(id) on delete cascade,
 			provider text not null,
@@ -74,7 +420,6 @@ func schemaStatements() []storage.Statement {
 			primary key (provider, subject),
 			unique (user_id, provider)
 		)`,
-
 		`create table if not exists session (
 			id text primary key,
 			user_id text not null references user(id) on delete cascade,
@@ -84,7 +429,6 @@ func schemaStatements() []storage.Statement {
 			user_agent text,
 			ip text
 		)`,
-
 		`create table if not exists submission (
 			id text primary key,
 			program_id text not null references program(id) on delete cascade,
@@ -123,17 +467,13 @@ func schemaStatements() []storage.Statement {
 			updated_at text not null,
 			unique (program_id, external_id, version)
 		)`,
-
 		`create unique index if not exists submission_open_external_idx
 			on submission(program_id, external_id)
 			where status in ('checking','needs_attention','ready','claimed','in_review','stage2_hold')`,
-
 		`create index if not exists submission_queue_idx
 			on submission(program_id, stage, status, priority desc, ingested_at asc, id)`,
-
 		`create index if not exists submission_reviewed_idx
 			on submission(program_id, decided_at desc)`,
-
 		`create table if not exists submission_version (
 			submission_id text not null references submission(id) on delete cascade,
 			version integer not null,
@@ -143,11 +483,9 @@ func schemaStatements() []storage.Statement {
 			delivery_id text,
 			primary key (submission_id, version)
 		)`,
-
 		`create unique index if not exists submission_version_delivery_idx
 			on submission_version(delivery_id)
 			where delivery_id is not null`,
-
 		`create table if not exists ingest_delivery (
 			delivery_id text primary key,
 			program_id text not null references program(id) on delete cascade,
@@ -160,7 +498,6 @@ func schemaStatements() []storage.Statement {
 			received_at text not null,
 			processed_at text
 		)`,
-
 		`create table if not exists journal_entry (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
@@ -177,9 +514,7 @@ func schemaStatements() []storage.Statement {
 			reviewer_note text,
 			deflation_reason text
 		)`,
-
 		`create index if not exists journal_submission_idx on journal_entry(submission_id, at)`,
-
 		`create table if not exists hackatime_link (
 			submission_id text not null references submission(id) on delete cascade,
 			project text not null,
@@ -188,7 +523,6 @@ func schemaStatements() []storage.Statement {
 			error text,
 			primary key (submission_id, project)
 		)`,
-
 		`create table if not exists bom_line (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
@@ -200,9 +534,7 @@ func schemaStatements() []storage.Statement {
 			link text,
 			sort integer not null default 0
 		)`,
-
 		`create index if not exists bom_submission_idx on bom_line(submission_id, sort)`,
-
 		`create table if not exists check_result (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
@@ -218,10 +550,8 @@ func schemaStatements() []storage.Statement {
 			checked_at text not null,
 			duration_ms integer not null default 0
 		)`,
-
 		`create index if not exists check_result_latest_idx
 			on check_result(submission_id, version, check_key, checked_at desc)`,
-
 		`create table if not exists repo_snapshot (
 			submission_id text not null references submission(id) on delete cascade,
 			version integer not null,
@@ -238,7 +568,6 @@ func schemaStatements() []storage.Statement {
 			error text,
 			primary key (submission_id, version)
 		)`,
-
 		`create table if not exists check_run (
 			submission_id text not null references submission(id) on delete cascade,
 			version integer not null,
@@ -250,7 +579,6 @@ func schemaStatements() []storage.Statement {
 			runner_version text not null default '',
 			primary key (submission_id, version)
 		)`,
-
 		`create table if not exists check_ack (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
@@ -261,7 +589,6 @@ func schemaStatements() []storage.Statement {
 			created_at text not null,
 			unique (submission_id, version, check_key, reviewer_id)
 		)`,
-
 		`create table if not exists claim (
 			submission_id text primary key references submission(id) on delete cascade,
 			reviewer_id text not null references user(id) on delete cascade,
@@ -270,9 +597,7 @@ func schemaStatements() []storage.Statement {
 			heartbeat_at text not null,
 			created_at text not null
 		)`,
-
 		`create index if not exists claim_expiry_idx on claim(expires_at)`,
-
 		`create table if not exists review (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
@@ -306,19 +631,15 @@ func schemaStatements() []storage.Statement {
 			created_at text not null,
 			unique (submission_id, idempotency_key)
 		)`,
-
 		`create table if not exists review_override (
 			review_id text primary key references review(id) on delete cascade,
 			reason text not null,
 			created_at text not null
 		)`,
-
 		`create unique index if not exists review_final_idx
 			on review(submission_id)
 			where is_final = 1 and invalidated_at is null`,
-
 		`create index if not exists review_submission_idx on review(submission_id, created_at desc)`,
-
 		`create table if not exists station_definition (
 			program_id text not null references program(id) on delete cascade,
 			key text not null,
@@ -330,7 +651,6 @@ func schemaStatements() []storage.Statement {
 			active integer not null default 1,
 			primary key (program_id, key)
 		)`,
-
 		`create table if not exists station_question (
 			program_id text not null,
 			station_key text not null,
@@ -342,7 +662,6 @@ func schemaStatements() []storage.Statement {
 			primary key (program_id, station_key, key),
 			foreign key (program_id, station_key) references station_definition(program_id, key) on delete cascade
 		)`,
-
 		`create table if not exists station_answer (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
@@ -356,9 +675,7 @@ func schemaStatements() []storage.Statement {
 			updated_at text not null,
 			unique (submission_id, station_key, question_key, reviewer_id)
 		)`,
-
 		`create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`,
-
 		`create table if not exists finding (
 			id text primary key,
 			program_id text not null references program(id) on delete cascade,
@@ -381,11 +698,8 @@ func schemaStatements() []storage.Statement {
 			created_at text not null,
 			updated_at text not null
 		)`,
-
 		`create index if not exists finding_project_idx on finding(program_id, external_id, status)`,
-
 		`create index if not exists finding_opened_idx on finding(opened_submission_id, status)`,
-
 		`create table if not exists finding_return (
 			review_id text not null references review(id) on delete cascade,
 			finding_id text not null references finding(id) on delete cascade,
@@ -394,7 +708,6 @@ func schemaStatements() []storage.Statement {
 			created_at text not null,
 			primary key (review_id, finding_id)
 		)`,
-
 		`create table if not exists artifact_ref (
 			submission_id text not null references submission(id) on delete cascade,
 			kind text not null,
@@ -404,7 +717,6 @@ func schemaStatements() []storage.Statement {
 			created_at text not null,
 			primary key (submission_id, kind, key)
 		)`,
-
 		`create table if not exists time_adjustment (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
@@ -416,9 +728,7 @@ func schemaStatements() []storage.Statement {
 			source text not null default '',
 			created_at text not null
 		)`,
-
 		`create index if not exists time_adjustment_submission_idx on time_adjustment(submission_id)`,
-
 		`create table if not exists draft (
 			submission_id text not null references submission(id) on delete cascade,
 			reviewer_id text not null references user(id) on delete cascade,
@@ -431,7 +741,6 @@ func schemaStatements() []storage.Statement {
 			updated_at text not null,
 			primary key (submission_id, reviewer_id)
 		)`,
-
 		`create table if not exists review_note (
 			id text primary key,
 			program_id text not null references program(id) on delete cascade,
@@ -443,9 +752,7 @@ func schemaStatements() []storage.Statement {
 			body text not null,
 			created_at text not null
 		)`,
-
 		`create index if not exists review_note_subject_idx on review_note(program_id, subject_type, subject_id, created_at desc)`,
-
 		`create table if not exists submission_event (
 			id text primary key,
 			submission_id text not null references submission(id) on delete cascade,
@@ -455,9 +762,7 @@ func schemaStatements() []storage.Statement {
 			data text,
 			created_at text not null
 		)`,
-
 		`create index if not exists submission_event_idx on submission_event(submission_id, created_at)`,
-
 		`create table if not exists audit_log (
 			id text primary key,
 			program_id text not null references program(id) on delete cascade,
@@ -474,9 +779,7 @@ func schemaStatements() []storage.Statement {
 			request_id text,
 			created_at text not null
 		)`,
-
 		`create index if not exists audit_program_idx on audit_log(program_id, created_at desc)`,
-
 		`create table if not exists outbox (
 			id text primary key,
 			program_id text not null references program(id) on delete cascade,
@@ -494,9 +797,7 @@ func schemaStatements() []storage.Statement {
 			created_at text not null,
 			delivered_at text
 		)`,
-
 		`create index if not exists outbox_due_idx on outbox(status, next_attempt_at)`,
-
 		`create table if not exists program_setting (
 			program_id text not null references program(id) on delete cascade,
 			key text not null,
@@ -505,7 +806,6 @@ func schemaStatements() []storage.Statement {
 			updated_by text,
 			primary key (program_id, key)
 		)`,
-
 		`create table if not exists fake_receiver_delivery (
 			id text primary key,
 			delivery_id text not null unique,
@@ -551,83 +851,34 @@ func schemaStatements() []storage.Statement {
 		`drop table membership`,
 		`alter table membership_new rename to membership`,
 	}
-
 	out := make([]storage.Statement, 0, len(statements)+8)
+
 	for _, statement := range statements {
-		out = append(out, storage.Statement{SQL: statement})
+		out = append(out, storage.Statement{
+			SQL: statement,
+		})
 	}
 
-	boxStatements, err := outbox.Outbox{Table: outboxTable}.Schema()
+	boxStatements, err := outbox.Outbox{
+		Table: outboxTable,
+	}.Schema()
 	if err == nil {
 		out = append(out, boxStatements...)
 	}
 
 	// Move the prototype's first outbox table into the shared package table. insert or ignore keeps a replay harmless.
-	out = append(out, storage.Statement{SQL: `insert or ignore into webhook_outbox
+	out = append(out, storage.Statement{
+		SQL: `insert or ignore into webhook_outbox
 		(id, event, dedupe_key, payload, url, headers, metadata, status, attempts, max_attempts, next_attempt_at,
 			last_http_status, last_error, delivery_id, created_at, delivered_at)
 		select id, event, dedupe_key, payload, url, '{}',
 			json_object('program_id', program_id, 'submission_id', coalesce(submission_id, '')),
 			status, attempts, 8, next_attempt_at, coalesce(last_http_status, 0), coalesce(last_error, ''),
 			coalesce(delivery_id, ''), created_at, delivered_at
-		from outbox`})
+		from outbox`,
+	})
 
 	return out
-}
-
-// lateColumns are columns added to a table after it first shipped. `create table if not exists` cannot add them to a database that already has the table, so migrate adds each missing one after the versioned migration. They stay out of the versioned statement set: an alter that appears only on databases that need it would change that version's checksum between databases and deploys. A fresh database gets them from the create statement, except submitted_at, which only ever arrives this way.
-var lateColumns = []struct {
-	table, column, definition string
-}{
-	{table: "journal_entry", column: "approved_seconds", definition: "integer"},
-	{table: "journal_entry", column: "reviewer_note", definition: "text"},
-	{table: "journal_entry", column: "deflation_reason", definition: "text"},
-	{table: "review", column: "technical_features", definition: "text not null default ''"},
-	{table: "review", column: "deflation_reason", definition: "text not null default ''"},
-	{table: "submission", column: "submitted_at", definition: "text"},
-}
-
-// addLateColumns adds every late column the live database is missing.
-func addLateColumns(ctx context.Context, store *storage.Client) error {
-	for _, late := range lateColumns {
-		if _, err := store.AddColumnIfMissing(ctx, late.table, late.column, late.definition); err != nil {
-			return fmt.Errorf("add %s.%s: %w", late.table, late.column, err)
-		}
-	}
-
-	return nil
-}
-
-// stationAnswerReviewerKey is the per-reviewer uniqueness the answer table moved to from a shared answer per question.
-const stationAnswerReviewerKey = "unique (submission_id, station_key, question_key, reviewer_id)"
-
-// ensureStationAnswerReviewers rebuilds the answer table from the shared per-question uniqueness to one answer per reviewer. The old table cannot express the new key, so the rows are copied across instead of altered.
-func (a *ireApp) ensureStationAnswerReviewers(ctx context.Context) error {
-	definition, ok, err := a.store.TableSQL(ctx, "station_answer")
-	if err != nil || !ok || strings.Contains(definition, stationAnswerReviewerKey) {
-		return err
-	}
-
-	return a.store.RebuildTable(ctx, storage.TableRebuild{
-		Table: "station_answer",
-		Create: `create table station_answer_new (
-			id text primary key,
-			submission_id text not null references submission(id) on delete cascade,
-			station_key text not null,
-			question_key text not null,
-			answer text not null check (answer in ('pass','fail','na')),
-			evidence text not null default '',
-			artifact_hash text,
-			reviewer_id text not null,
-			created_at text not null,
-			updated_at text not null,
-			` + stationAnswerReviewerKey + `
-		)`,
-		Copy: `insert into station_answer_new (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
-			select id, submission_id, station_key, question_key, answer, evidence, artifact_hash, coalesce(nullif(reviewer_id, ''), 'legacy'), created_at, updated_at
-			from station_answer`,
-		After: []string{`create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`},
-	})
 }
 
 // migrate applies the prototype schema, upgrades tables older databases created in an earlier shape, and then seeds the programme and demo ships.
@@ -645,235 +896,4 @@ func (a *ireApp) migrate(ctx context.Context) error {
 	}
 
 	return a.seed(ctx)
-}
-
-// seed creates the Half Life programme and, when explicitly enabled, its dev reviewers and fixture ships. Every write is idempotent, so a partial seed is repaired on the next start. When dev accounts or fixtures are disabled, any leftover placeholder rows are removed so a production copy holds only invited reviewers and real Half Life ingests.
-func (a *ireApp) seed(ctx context.Context) error {
-	now := a.nowText()
-
-	outboundURL := a.config.OutboundURL
-	if outboundURL == "" {
-		outboundURL = "fake://receiver"
-	}
-
-	if _, err := a.store.Exec(ctx, `insert into program (id, slug, name, timezone, active, created_at, updated_at, outbound_url, outbound_enabled, signing_secret_last4, outbound_secret_last4, policy_version)
-		values (?, ?, ?, 'Europe/London', 1, ?, ?, ?, 1, ?, ?, 1)
-		on conflict(id) do nothing`,
-		programID, programSlug, "Half Life", now, now, outboundURL,
-		last4(a.config.IngestSecret), last4(a.config.OutboundSecret)); err != nil {
-		return err
-	}
-
-	if a.config.AllowDevAccounts {
-		if err := a.seedPeople(ctx, now); err != nil {
-			return err
-		}
-	} else if err := a.removePlaceholderAccounts(ctx); err != nil {
-		return err
-	}
-
-	if err := a.seedRoleDefinitions(ctx, now); err != nil {
-		return err
-	}
-
-	if err := a.seedStations(ctx); err != nil {
-		return err
-	}
-
-	settings := map[string]string{
-		"review_policy": `{"holdOnWarn":true,"holdMinApprovedSeconds":0,"holdTiers":[2,3],"noteRequiredForChanges":true,"fraudMinStage":2}`,
-		"allow_legacy_signature": "true",
-	}
-	for key, value := range settings {
-		if _, err := a.store.Exec(ctx, `insert into program_setting (program_id, key, value, updated_at) values (?, ?, ?, ?)
-			on conflict(program_id, key) do update set value = excluded.value, updated_at = excluded.updated_at`,
-			programID, key, value, now); err != nil {
-			return err
-		}
-	}
-
-	if !a.config.SeedFixtures {
-		return a.removeFixtureShips(ctx)
-	}
-
-	return a.seedFixtures(ctx)
-}
-
-// removePlaceholderAccounts deletes the three development accounts and their memberships, sessions and identities. Memberships, sessions and identities cascade from the user rows; the login form no longer offers them once AllowDevAccounts is off.
-func (a *ireApp) removePlaceholderAccounts(ctx context.Context) error {
-	_, err := a.store.Exec(ctx, `delete from user where email in ('reviewer@example.com', 'organiser@example.com', 'admin@example.com')`)
-
-	return err
-}
-
-// removeFixtureShips deletes the three demo ships reseeded by seedFixtures, so disabling fixtures leaves an empty queue ready for real Half Life ingests. Real submissions never use these ids or external ids.
-func (a *ireApp) removeFixtureShips(ctx context.Context) error {
-	_, err := a.store.Exec(ctx, `delete from submission where id in ('sub_fixture_1', 'sub_fixture_2', 'sub_fixture_3') or external_id in ('fix-clean:design', 'fix-warned:design', 'fix-blocked:design')`)
-
-	return err
-}
-
-// seedPeople creates the three development accounts. They are placeholders for Hack Club Auth and must not survive a real deployment.
-func (a *ireApp) seedPeople(ctx context.Context, now string) error {
-	people := []struct {
-		id, email, name, role string
-	}{
-		{"usr_reviewer", "reviewer@example.com", "Rae Reviewer", "reviewer"},
-		{"usr_organiser", "organiser@example.com", "Oli Organiser", "organizer"},
-		{"usr_admin", "admin@example.com", "Ada Admin", "admin"},
-	}
-
-	for _, person := range people {
-		if _, err := a.store.Exec(ctx, `insert into user (id, email, name, created_at) values (?, ?, ?, ?)
-			on conflict do update set name = excluded.name`,
-			person.id, person.email, person.name, now); err != nil {
-			return err
-		}
-
-		if _, err := a.store.Exec(ctx, `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at) values (?, ?, ?, ?, '["hardware"]', '[]', 1, ?)
-			on conflict(program_id, user_id) do update set role = excluded.role, active = 1`,
-			"mem_"+person.id, programID, person.id, person.role, now); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// seedRoleDefinitions creates the built-in programme roles. Rows are never
-// overwritten, so admin edits to permissions survive restarts.
-func (a *ireApp) seedRoleDefinitions(ctx context.Context, now string) error {
-	defaults := defaultRolePermissions()
-	names := []string{roleAdmin, roleOrganizer, roleReviewer, roleAuditor}
-
-	for _, name := range names {
-		locked := 0
-		if name == roleAdmin {
-			locked = 1
-		}
-
-		if _, err := a.store.Exec(ctx, `insert into role_definition (id, program_id, name, permissions, locked, created_at)
-			values (?, ?, ?, ?, ?, ?) on conflict(program_id, name) do nothing`,
-			"rol_"+name, programID, name, marshalStrings(defaults[name]), locked, now); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// seedStations creates the Half Life review stations and their questions. Rows are never overwritten, so a programme edit survives restarts.
-func (a *ireApp) seedStations(ctx context.Context) error {
-	const evidenceText = "text"
-
-	stations := []struct {
-		key, label, description, themes string
-		stage, sort int
-		questions []struct {
-			key, prompt, evidence string
-			required int
-		}
-	}{
-		{
-			key: "triage", label: "Triage", stage: 1, sort: 10, themes: "[]",
-			description: "Cheap completeness checks before the deeper review.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
-				{"cover_screenshot", "Is the cover a screenshot of this project?", "image", 1},
-				{"description_real", "Does the description describe the project, not the template?", evidenceText, 1},
-				{"repo_right", "Does the repository link lead to the right project?", "link", 1},
-				{"images_present", "Are the required images present?", "image", 1},
-				{"profile_valid", "Is the maker profile usable for payout?", evidenceText, 1},
-			},
-		},
-		{
-			key: "time", label: "Journals and time", stage: 1, sort: 20, themes: "[]",
-			description: "Read each entry once and decide what time is productive.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
-				{"entries_descriptive", "Does every journal entry describe what was worked on?", evidenceText, 1},
-				{"time_productive", "Is the logged time productive work, not tutorial consumption?", evidenceText, 1},
-				{"deflation_explained", "Is every cut explained with a reason and a benchmark?", evidenceText, 1},
-			},
-		},
-		{
-			key: "narrative", label: "README and claims", stage: 1, sort: 30, themes: "[]",
-			description: "One reading of the README, commits and claims.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
-				{"readme_explains", "Does the README explain the build, problems and solutions?", evidenceText, 1},
-				{"commits_authored", "Do the commits belong to the maker, with sync commits ignored?", evidenceText, 1},
-				{"claims_match", "Do the README and BOM claims match the files?", evidenceText, 1},
-				{"features", "Are the specific technical features named?", evidenceText, 1},
-			},
-		},
-		{
-			key: "hardware", label: "Hardware and firmware", stage: 1, sort: stationSortHardware, themes: `["pcb","cad","synth","displays"]`,
-			description: "A plausible design and firmware, with note-only issues.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
-				{"design_plausible", "Is the design plausible, and are issues noted for the maker?", evidenceText, 1},
-				{"bom_matches", "Does the BOM match the design and the parts list?", evidenceText, 1},
-				{"firmware_matches", "Does the firmware match the claimed features?", evidenceText, 1},
-			},
-		},
-		{
-			key: "synthesis", label: "Synthesis and decision", stage: 1, sort: 50, themes: "[]",
-			description: "Turn the answers into one record and one decision.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
-				{"findings_resolved", "Are all open findings resolved or included in the return?", evidenceText, 1},
-				{"hours_reasonable", "Are the approved hours and deflation reason defensible?", evidenceText, 1},
-				{"notes_complete", "Are the maker note and internal note complete?", evidenceText, 1},
-			},
-		},
-		{
-			key: "verify", label: "Verify record", stage: 2, sort: 10, themes: "[]",
-			description: "Stage 2 checks the record and samples the evidence.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
-				{"record_complete", "Are the answers, evidence and time ledger complete?", evidenceText, 1},
-				{"evidence_sample", "Does a sample of the evidence support the answers?", evidenceText, 1},
-			},
-		},
-	}
-
-	for _, station := range stations {
-		if _, err := a.store.Exec(ctx, `insert into station_definition (program_id, key, label, description, stage, sort, themes, active)
-			values (?, ?, ?, ?, ?, ?, ?, 1) on conflict(program_id, key) do nothing`,
-			programID, station.key, station.label, station.description, station.stage, station.sort, station.themes); err != nil {
-			return err
-		}
-
-		for index, question := range station.questions {
-			if _, err := a.store.Exec(ctx, `insert into station_question (program_id, station_key, key, prompt, evidence_kind, required, sort)
-				values (?, ?, ?, ?, ?, ?, ?) on conflict(program_id, station_key, key) do nothing`,
-				programID, station.key, question.key, question.prompt, question.evidence, question.required, index*10); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// last4 returns the final four characters of a secret for display, never the secret itself.
-func last4(secret string) string {
-	if len(secret) <= 4 {
-		return secret
-	}
-
-	return secret[len(secret)-4:]
 }

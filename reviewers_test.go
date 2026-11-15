@@ -2,10 +2,9 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"testing"
-
-	"ire/contract"
 )
 
 // TestReviewerProfile covers identity, permissions, decision stats and the recent review list.
@@ -22,7 +21,6 @@ func TestReviewerProfile(t *testing.T) {
 	}
 
 	hours := 5 * 3600
-
 	decision, _ := json.Marshal(contract.DecisionRequest{
 		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
@@ -68,13 +66,11 @@ func TestReviewerProfile(t *testing.T) {
 		t.Fatal("profile id is nil")
 	}
 
-	byID := decode[contract.ReviewerProfile](t, do(t, application, http.MethodGet, testBase+"/reviewers/"+*profile.ID, nil, reviewer, nil))
-	if byID.Email != profile.Email || byID.Stats.Total != profile.Stats.Total {
+	if byID := decode[contract.ReviewerProfile](t, do(t, application, http.MethodGet, testBase+"/reviewers/"+*profile.ID, nil, reviewer, nil)); byID.Email != profile.Email || byID.Stats.Total != profile.Stats.Total {
 		t.Errorf("profile by id = %+v", byID)
 	}
 
-	admin := decode[contract.ReviewerProfile](t, do(t, application, http.MethodGet, testBase+"/reviewers/admin@example.com", nil, reviewer, nil))
-	if admin.Role == nil || *admin.Role != roleAdmin {
+	if admin := decode[contract.ReviewerProfile](t, do(t, application, http.MethodGet, testBase+"/reviewers/admin@example.com", nil, reviewer, nil)); admin.Role == nil || *admin.Role != roleAdmin {
 		t.Errorf("admin profile = %+v", admin)
 	}
 

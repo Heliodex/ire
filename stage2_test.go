@@ -2,22 +2,19 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"testing"
-
-	"ire/contract"
 )
 
 // holdSecondPass takes fixture 2 through a stage 1 approval with every warning acknowledged.
 func holdSecondPass(t *testing.T, application *ireApp, reviewer *http.Cookie, key string) contract.ReviewBundle {
 	t.Helper()
-
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
 		t.Fatalf("first-pass claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, reviewer, nil))
-
 	approve, _ := json.Marshal(contract.DecisionRequest{
 		Decision: decisionApproved,
 		Version: 1,
@@ -26,8 +23,7 @@ func holdSecondPass(t *testing.T, application *ireApp, reviewer *http.Cookie, ke
 		IdempotencyKey: key,
 	})
 
-	held := decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, reviewer, nil))
-	if held.Held != 1 {
+	if held := decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", approve, reviewer, nil)); held.Held != 1 {
 		t.Fatalf("1st pass was not held: %+v", held)
 	}
 
@@ -49,27 +45,25 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 	organiser := login(t, application, "organiser@example.com")
 
 	holdSecondPass(t, application, reviewer, "override-hold")
-
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
 		t.Fatalf("second-pass claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
 	hours := 3000
-
 	missing, _ := json.Marshal(contract.DecisionRequest{
 		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		Version: 1,
-		NoteToMaker: "Reduce the approved hours.",
 		IdempotencyKey: "override-missing",
+		NoteToMaker: "Reduce the approved hours.",
+		Version: 1,
 	})
-
 	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", missing, organiser, nil)
 	if rejected.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("override without reason = %d: %s", rejected.Code, rejected.Body.String())
 	}
 
 	var body contract.ErrorResponse
+
 	if err := json.Unmarshal(rejected.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
@@ -82,19 +76,17 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 	confirm, _ := json.Marshal(contract.DecisionRequest{
 		Decision: decisionApproved,
 		HoursApprovedSeconds: &hours,
-		Version: 1,
+		IdempotencyKey: "override-good",
 		NoteToMaker: "Reduce the approved hours.",
 		OverrideReason: &reason,
-		IdempotencyKey: "override-good",
+		Version: 1,
 	})
-
 	confirmed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
 	if confirmed.Code != http.StatusOK {
 		t.Fatalf("override = %d: %s", confirmed.Code, confirmed.Body.String())
 	}
 
-	outcome := decode[contract.DecisionOutcome](t, confirmed)
-	if outcome.Held != 0 || outcome.DeliveryStatus == nil || *outcome.DeliveryStatus != "delivered" {
+	if outcome := decode[contract.DecisionOutcome](t, confirmed); outcome.Held != 0 || outcome.DeliveryStatus == nil || *outcome.DeliveryStatus != "delivered" {
 		t.Fatalf("outcome = %+v", outcome)
 	}
 
@@ -123,6 +115,7 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 			OverrideReason string `json:"override_reason"`
 		} `json:"review"`
 	}
+
 	if err := json.Unmarshal([]byte(received.Deliveries[0].Body), &event); err != nil {
 		t.Fatal(err)
 	}
@@ -139,24 +132,23 @@ func TestStageTwoRejectsStaleVersion(t *testing.T) {
 	organiser := login(t, application, "organiser@example.com")
 
 	holdSecondPass(t, application, reviewer, "stale-hold")
-
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
 		t.Fatalf("second-pass claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
 	confirm, _ := json.Marshal(contract.DecisionRequest{
 		Decision: decisionApproved,
-		Version: 2,
-		NoteToMaker: "Confirm a stale version.",
 		IdempotencyKey: "stale-confirm",
+		NoteToMaker: "Confirm a stale version.",
+		Version: 2,
 	})
-
 	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
 	if rejected.Code != http.StatusConflict {
 		t.Fatalf("stale 2nd pass = %d: %s", rejected.Code, rejected.Body.String())
 	}
 
 	var body contract.ErrorResponse
+
 	if err := json.Unmarshal(rejected.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
@@ -173,32 +165,38 @@ func TestStageTwoSendBack(t *testing.T) {
 	organiser := login(t, application, "organiser@example.com")
 
 	holdSecondPass(t, application, reviewer, "send-back-hold")
-
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
 		t.Fatalf("second-pass claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
-	reviewerAttempt, _ := json.Marshal(contract.SendBackRequest{Reason: "Ask a reviewer to look again.", Version: 1})
+	reviewerAttempt, _ := json.Marshal(contract.SendBackRequest{
+		Reason: "Ask a reviewer to look again.",
+		Version: 1,
+	})
 
 	if denied := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/send-back", reviewerAttempt, reviewer, nil); denied.Code != http.StatusForbidden {
 		t.Fatalf("reviewer send back = %d: %s", denied.Code, denied.Body.String())
 	}
 
-	empty, _ := json.Marshal(contract.SendBackRequest{Reason: "   ", Version: 1})
+	empty, _ := json.Marshal(contract.SendBackRequest{
+		Reason: "   ",
+		Version: 1,
+	})
 
 	if missing := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/send-back", empty, organiser, nil); missing.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("empty reason = %d: %s", missing.Code, missing.Body.String())
 	}
 
-	request, _ := json.Marshal(contract.SendBackRequest{Reason: "The warning acknowledgement needs a second opinion.", Version: 1})
-
+	request, _ := json.Marshal(contract.SendBackRequest{
+		Reason: "The warning acknowledgement needs a second opinion.",
+		Version: 1,
+	})
 	sent := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/send-back", request, organiser, nil)
 	if sent.Code != http.StatusOK {
 		t.Fatalf("send back = %d: %s", sent.Code, sent.Body.String())
 	}
 
-	result := decode[contract.SendBackResult](t, sent)
-	if result.Status != statusReady || result.Stage != stageOne {
+	if result := decode[contract.SendBackResult](t, sent); result.Status != statusReady || result.Stage != stageOne {
 		t.Fatalf("send back result = %+v", result)
 	}
 
@@ -235,8 +233,7 @@ func TestStageTwoSendBack(t *testing.T) {
 		t.Error("no sent_back event")
 	}
 
-	outbox := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, organiser, nil))
-	if len(outbox.Deliveries) != 0 {
+	if outbox := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, organiser, nil)); len(outbox.Deliveries) != 0 {
 		t.Fatalf("send back wrote %d outbound deliveries", len(outbox.Deliveries))
 	}
 
@@ -246,7 +243,6 @@ func TestStageTwoSendBack(t *testing.T) {
 
 	// Re-hold after the send-back and confirm; the invalidated review must not appear in the stage history.
 	bundle = decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, reviewer, nil))
-
 	approve, _ := json.Marshal(contract.DecisionRequest{
 		Decision: decisionApproved,
 		Version: 1,
@@ -265,13 +261,12 @@ func TestStageTwoSendBack(t *testing.T) {
 
 	confirm, _ := json.Marshal(contract.DecisionRequest{
 		Decision: decisionApproved,
-		Version: 1,
-		NoteToMaker: "Confirmed after the send-back.",
 		IdempotencyKey: "send-back-confirm",
+		NoteToMaker: "Confirmed after the send-back.",
+		Version: 1,
 	})
 
-	confirmed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
-	if confirmed.Code != http.StatusOK {
+	if confirmed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil); confirmed.Code != http.StatusOK {
 		t.Fatalf("confirm after send back = %d: %s", confirmed.Code, confirmed.Body.String())
 	}
 
@@ -285,6 +280,7 @@ func TestStageTwoSendBack(t *testing.T) {
 			Stage int `json:"stage"`
 		} `json:"stage_history"`
 	}
+
 	if err := json.Unmarshal([]byte(received.Deliveries[0].Body), &event); err != nil {
 		t.Fatal(err)
 	}

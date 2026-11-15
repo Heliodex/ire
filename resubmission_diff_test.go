@@ -1,11 +1,10 @@
 package main
 
 import (
+	"ire/contract"
 	"net/http"
 	"slices"
 	"testing"
-
-	"ire/contract"
 )
 
 // TestResubmissionDiffShowsWhatChanged covers the previous decision, commits, files, journal entries and BOM changes shown above a resubmitted ship.
@@ -19,6 +18,7 @@ func TestResubmissionDiffShowsWhatChanged(t *testing.T) {
 	}
 
 	var reviewerID string
+
 	if err := application.store.QueryRow(t.Context(), `select id from user where email = ?`, "reviewer@example.com").Scan(&reviewerID); err != nil {
 		t.Fatal(err)
 	}
@@ -32,12 +32,20 @@ func TestResubmissionDiffShowsWhatChanged(t *testing.T) {
 		sql string
 		args []any
 	}{
-		{`insert or replace into repo_snapshot (submission_id, version, forge, full_name, head_sha, files, commits, fetched_at)
+		{
+			`insert or replace into repo_snapshot (submission_id, version, forge, full_name, head_sha, files, commits, fetched_at)
 			values ('sub_fixture_1', 1, 'github', 'maker/old', 'oldsha', ?, '[]', ?)`,
-			[]any{`[{"path":"README.md","kind":"text"},{"path":"board.kicad_pcb","kind":"pcb"}]`, now}},
-		{`insert or replace into repo_snapshot (submission_id, version, forge, full_name, head_sha, files, commits, fetched_at)
+			[]any{`[{"path":"README.md","kind":"text"},{"path":"board.kicad_pcb","kind":"pcb"}]`, now},
+		},
+		{
+			`insert or replace into repo_snapshot (submission_id, version, forge, full_name, head_sha, files, commits, fetched_at)
 			values ('sub_fixture_2', 1, 'github', 'maker/new', 'newsha', ?, ?, ?)`,
-			[]any{`[{"path":"README.md","kind":"text"},{"path":"firmware/main.ino","kind":"firmware"}]`, `[{"sha":"abc123","message":"Add firmware","author":"Maker","date":"` + now + `"}]`, now}},
+			[]any{
+				`[{"path":"README.md","kind":"text"},{"path":"firmware/main.ino","kind":"firmware"}]`,
+				`[{"sha":"abc123","message":"Add firmware","author":"Maker","date":"` + now + `"}]`,
+				now,
+			},
+		},
 	}
 
 	for _, statement := range statements {
@@ -52,7 +60,6 @@ func TestResubmissionDiffShowsWhatChanged(t *testing.T) {
 	}
 
 	diff := bundle.Resubmission
-
 	if diff.PreviousDecision == nil || *diff.PreviousDecision != "changes" {
 		t.Errorf("previous decision = %v", diff.PreviousDecision)
 	}

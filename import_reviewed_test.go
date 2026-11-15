@@ -2,16 +2,19 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"testing"
-
-	"ire/contract"
 )
 
 const importReviewedPath = testBase + "/import-reviewed"
 
-func machineHeaders() map[string]string {
-	return map[string]string{"Authorization": "Bearer test-ingest"}
+func TestImportReviewedRequiresMachineToken(t *testing.T) {
+	application := newTestApp(t)
+
+	if recorder := do(t, application, http.MethodPost, importReviewedPath, []byte(`{"ships":[]}`), nil, nil); recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("no token = %d: %s", recorder.Code, recorder.Body.String())
+	}
 }
 
 // importShipRequest builds one batch entry around a normal ingest body.
@@ -19,40 +22,50 @@ func importShipRequest(t *testing.T, body []byte, externalID string, reviews []c
 	t.Helper()
 
 	var ship contract.IngestRequest
+
 	if err := json.Unmarshal(body, &ship); err != nil {
 		t.Fatal(err)
 	}
 
 	ship.ExternalID = externalID
 
-	return contract.ImportShipsRequest{Ships: []contract.ImportShip{{Ship: ship, Reviews: reviews}}}
+	return contract.ImportShipsRequest{
+		Ships: []contract.ImportShip{
+			{
+				Ship: ship,
+				Reviews: reviews,
+			},
+		},
+	}
+}
+
+func machineHeaders() map[string]string {
+	return map[string]string{"Authorization": "Bearer test-ingest"}
 }
 
 // TestImportReviewedCreatesDecidedShip covers a ship Ire never saw: the decision, artifacts and history all land.
 func TestImportReviewedCreatesDecidedShip(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-
 	note := "Lovely board."
-	request := importShipRequest(t, ingestBody("unused"), "import:reviewed", []contract.ImportReview{{
-		DecidedAt: "2026-10-20T10:00:00Z",
-		Decision: "approved",
-		HoursApprovedSeconds: 6 * 3600,
-		NoteToMaker: &note,
-		ReviewerEmail: "ari@example.com",
-		ReviewerName: stringPtr("Ari Reviewer"),
-		Stage: 1,
-	}})
-
+	request := importShipRequest(t, ingestBody("unused"), "import:reviewed", []contract.ImportReview{
+		{
+			DecidedAt: "2026-10-20T10:00:00Z",
+			Decision: "approved",
+			HoursApprovedSeconds: 6 * 3600,
+			NoteToMaker: &note,
+			ReviewerEmail: "ari@example.com",
+			ReviewerName: stringPtr("Ari Reviewer"),
+			Stage: 1,
+		},
+	})
 	body, _ := json.Marshal(request)
-
 	recorder := do(t, application, http.MethodPost, importReviewedPath, body, nil, machineHeaders())
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("import = %d: %s", recorder.Code, recorder.Body.String())
 	}
 
-	result := decode[contract.ImportResult](t, recorder)
-	if result.Imported != 1 || result.Skipped != 0 || len(result.Failed) != 0 {
+	if result := decode[contract.ImportResult](t, recorder); result.Imported != 1 || result.Skipped != 0 || len(result.Failed) != 0 {
 		t.Fatalf("result = %+v", result)
 	}
 
@@ -99,7 +112,7 @@ func TestImportReviewedCreatesDecidedShip(t *testing.T) {
 
 	reviewed := decode[contract.ReviewedResponse](t, do(t, application, http.MethodGet, testBase+"/reviewed?decision=all", nil, cookie, nil))
 
-	found := false
+	var found bool
 
 	for _, item := range reviewed.Items {
 		if item.ID == id {
@@ -116,8 +129,7 @@ func TestImportReviewedCreatesDecidedShip(t *testing.T) {
 		t.Fatalf("replay = %d: %s", replay.Code, replay.Body.String())
 	}
 
-	replayed := decode[contract.ImportResult](t, replay)
-	if replayed.Skipped != 1 || replayed.Imported != 0 {
+	if replayed := decode[contract.ImportResult](t, replay); replayed.Skipped != 1 || replayed.Imported != 0 {
 		t.Fatalf("replay result = %+v", replayed)
 	}
 }
@@ -126,7 +138,6 @@ func TestImportReviewedCreatesDecidedShip(t *testing.T) {
 func TestImportReviewedDecidesOpenShip(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-
 	queue := decode[contract.QueueResponse](t, do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all&limit=50", nil, cookie, nil))
 
 	var open contract.QueueItem
@@ -134,7 +145,6 @@ func TestImportReviewedDecidesOpenShip(t *testing.T) {
 	for _, item := range queue.Items {
 		if item.Status == statusReady {
 			open = item
-
 			break
 		}
 	}
@@ -150,29 +160,46 @@ func TestImportReviewedDecidesOpenShip(t *testing.T) {
 	}
 
 	ship := contract.IngestRequest{
-		ExternalID: open.ExternalID,
-		Title: open.Title,
 		Description: "historical import",
-		Maker: contract.IngestMaker{Email: "maker@example.com", Name: "Maker"},
-	}
-
-	request := contract.ImportShipsRequest{Ships: []contract.ImportShip{{
-		Ship: ship,
-		Reviews: []contract.ImportReview{
-			{DecidedAt: "2026-10-20T09:00:00Z", Decision: "changes", HoursApprovedSeconds: 0, NoteToMaker: stringPtr("Please fix the BOM."), ReviewerEmail: "ari@example.com", Stage: 1},
-			{DecidedAt: "2026-10-22T09:00:00Z", Decision: "approved", HoursApprovedSeconds: 5 * 3600, ReviewerEmail: "ari@example.com", ReviewerName: stringPtr("Ari"), Stage: 1},
+		ExternalID: open.ExternalID,
+		Maker: contract.IngestMaker{
+			Email: "maker@example.com",
+			Name: "Maker",
 		},
-	}}}
-
+		Title: open.Title,
+	}
+	request := contract.ImportShipsRequest{
+		Ships: []contract.ImportShip{
+			{
+				Ship: ship,
+				Reviews: []contract.ImportReview{
+					{
+						DecidedAt: "2026-10-20T09:00:00Z",
+						Decision: "changes",
+						HoursApprovedSeconds: 0,
+						NoteToMaker: stringPtr("Please fix the BOM."),
+						ReviewerEmail: "ari@example.com",
+						Stage: 1,
+					},
+					{
+						DecidedAt: "2026-10-22T09:00:00Z",
+						Decision: "approved",
+						HoursApprovedSeconds: 5 * 3600,
+						ReviewerEmail: "ari@example.com",
+						ReviewerName: stringPtr("Ari"),
+						Stage: 1,
+					},
+				},
+			},
+		},
+	}
 	body, _ := json.Marshal(request)
-
 	recorder := do(t, application, http.MethodPost, importReviewedPath, body, nil, machineHeaders())
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("import = %d: %s", recorder.Code, recorder.Body.String())
 	}
 
-	result := decode[contract.ImportResult](t, recorder)
-	if result.Imported != 1 || len(result.Failed) != 0 {
+	if result := decode[contract.ImportResult](t, recorder); result.Imported != 1 || len(result.Failed) != 0 {
 		t.Fatalf("result = %+v", result)
 	}
 
@@ -205,14 +232,5 @@ func TestImportReviewedDecidesOpenShip(t *testing.T) {
 		if item.ID == open.ID {
 			t.Fatalf("decided ship still in the queue")
 		}
-	}
-}
-
-func TestImportReviewedRequiresMachineToken(t *testing.T) {
-	application := newTestApp(t)
-
-	recorder := do(t, application, http.MethodPost, importReviewedPath, []byte(`{"ships":[]}`), nil, nil)
-	if recorder.Code != http.StatusUnauthorized {
-		t.Fatalf("no token = %d: %s", recorder.Code, recorder.Body.String())
 	}
 }

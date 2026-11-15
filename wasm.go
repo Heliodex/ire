@@ -13,6 +13,15 @@ import (
 	wasihttp "github.com/heliodex/better-deploy/wt/packages/v2/wasihttp"
 )
 
+// envOr returns the environment value or fallback when it is empty.
+func envOr(key, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value
+	}
+
+	return fallback
+}
+
 // loadConfig reads the prototype's configuration. Both development fixtures and development sign-in are opt-in (set to "1" locally); production deploys leave them unset or "0" so only Hack Club Auth for roster members can sign in.
 func loadConfig() config {
 	seed := os.Getenv("IRE_SEED_FIXTURES") == "1"
@@ -39,15 +48,6 @@ func loadConfig() config {
 	}
 }
 
-// envOr returns the environment value or fallback when it is empty.
-func envOr(key, fallback string) string {
-	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
-		return value
-	}
-
-	return fallback
-}
-
 // init is the only wasm-specific wiring: storage, the review routes, the outbound client and the wasi:http export.
 func init() {
 	store, storeErr := storage.New(wasihttp.NewClient())
@@ -62,6 +62,5 @@ func init() {
 		handler = application.handler()
 		migrate = application.migrate
 	}
-
 	wasihttp.Handle(app.ServeStorage(storeErr, migrate, handler).ServeHTTP)
 }

@@ -3,19 +3,15 @@ package main
 import (
 	"context"
 	"errors"
+	"ire/contract"
 	"net/http"
 	"slices"
 	"strings"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/session"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
-
-// reviewSessions owns the browser cookie name and lifetime shared by both sign-in methods.
-var reviewSessions = session.New(cookieName, sessionTTL)
 
 // reviewer is the signed-in person and the membership the request acts through.
 type reviewer struct {
@@ -23,9 +19,21 @@ type reviewer struct {
 	Permissions []string
 }
 
-// Has reports whether the membership grants the permission. The wildcard grants everything.
-func (p reviewer) Has(permission string) bool {
-	return slices.Contains(p.Permissions, permWildcard) || slices.Contains(p.Permissions, permission)
+// reviewSessions owns the browser cookie name and lifetime shared by both sign-in methods.
+var reviewSessions = session.New(cookieName, sessionTTL)
+
+// createSession stores a hashed session token and returns the raw cookie value.
+func (a *ireApp) createSession(ctx context.Context, userID, userAgent string) (string, error) {
+	token, err := session.NewToken()
+	if err != nil {
+		return "", err
+	}
+
+	now := a.nowText()
+	_, err = a.store.Exec(ctx, `insert into session (id, user_id, expires_at, created_at, last_seen_at, user_agent)
+		values (?, ?, ?, ?, ?, ?)`, session.Hash(token), userID, a.later(sessionTTL), now, now, userAgent)
+
+	return token, err
 }
 
 // currentReviewer reads the session cookie and resolves it to an active membership. It writes the 401 itself so handlers only branch on the boolean.
@@ -37,7 +45,6 @@ func (a *ireApp) currentReviewer(w http.ResponseWriter, r *http.Request) (review
 	}
 
 	sessionID := session.Hash(token)
-
 	row := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id, coalesce(rd.permissions, '[]')
 		from session s
 		join user u on u.id = s.user_id
@@ -52,20 +59,36 @@ func (a *ireApp) currentReviewer(w http.ResponseWriter, r *http.Request) (review
 		person reviewer
 		permissions string
 	)
+
 	if err := row.Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID, &permissions); err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			app.WriteError(w, http.StatusUnauthorized, "session expired, sign in again")
 			return reviewer{}, false
 		}
-
 		writeStorage(w, err)
-
 		return reviewer{}, false
 	}
 
 	person.Permissions = unmarshalStrings(permissions)
 
 	return person, true
+}
+
+// handleLogout deletes the session row and clears the cookie.
+func (a *ireApp) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if !session.SameOrigin(r) {
+		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
+		return
+	}
+
+	if token, ok := reviewSessions.Token(r); ok {
+		if _, err := a.store.Exec(r.Context(), `delete from session where id = ?`, session.Hash(token)); err != nil {
+			writeStorage(w, err)
+			return
+		}
+	}
+	reviewSessions.Clear(w, r)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // hasSession reports a live session without writing an error response.
@@ -81,40 +104,9 @@ func (a *ireApp) hasSession(r *http.Request) bool {
 		join user u on u.id = s.user_id
 		join membership m on m.user_id = u.id
 		join program p on p.id = m.program_id
-		where s.id = ? and s.expires_at > ? and m.active = 1 and p.active = 1 limit 1`,
-		session.Hash(token), a.nowText()).Scan(&found)
+		where s.id = ? and s.expires_at > ? and m.active = 1 and p.active = 1 limit 1`, session.Hash(token), a.nowText()).Scan(&found)
 
 	return err == nil
-}
-
-// requireReviewer is currentReviewer plus a check that the membership can review this programme.
-func (a *ireApp) requireReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions && !session.SameOrigin(r) {
-		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
-		return reviewer{}, false
-	}
-
-	person, ok := a.currentReviewer(w, r)
-	if !ok {
-		return reviewer{}, false
-	}
-
-	if program, ok := a.programFor(w, r); ok && program.ID != person.ProgramID {
-		app.WriteError(w, http.StatusForbidden, "you do not belong to this programme")
-		return reviewer{}, false
-	}
-
-	return person, true
-}
-
-// handleMe returns the signed-in reviewer and the programmes they can read.
-func (a *ireApp) handleMe(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.currentReviewer(w, r)
-	if !ok {
-		return
-	}
-
-	app.WriteJSON(w, http.StatusOK, a.meResponse(r.Context(), person))
 }
 
 // meResponse builds the shared sign-in response.
@@ -129,7 +121,6 @@ func (a *ireApp) meResponse(ctx context.Context, person reviewer) contract.MeRes
 		},
 		Programs: []contract.Membership{},
 	}
-
 	rows, err := a.store.Query(ctx, `select p.id, p.slug, p.name, m.role, coalesce(rd.permissions, '[]')
 		from membership m join program p on p.id = m.program_id
 		left join role_definition rd on rd.program_id = m.program_id and rd.name = m.role
@@ -138,12 +129,14 @@ func (a *ireApp) meResponse(ctx context.Context, person reviewer) contract.MeRes
 	if err != nil {
 		return response
 	}
+
 	defer rows.Close()
 
 	for rows.Next() {
-		var item contract.Membership
-
-		var permissions string
+		var (
+			item contract.Membership
+			permissions string
+		)
 
 		if err := rows.Scan(&item.ProgramID, &item.ProgramSlug, &item.ProgramName, &item.Role, &permissions); err != nil {
 			continue
@@ -175,29 +168,26 @@ func (a *ireApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 
 	email := strings.ToLower(strings.TrimSpace(request.Email))
 
-	var person reviewer
-
-	var permissions string
+	var (
+		person reviewer
+		permissions string
+	)
 
 	err := a.store.QueryRow(r.Context(), `select u.id, u.email, coalesce(u.name, ''), coalesce(u.avatar_url, ''), m.role, m.program_id, coalesce(rd.permissions, '[]')
 		from user u join membership m on m.user_id = u.id
 		left join role_definition rd on rd.program_id = m.program_id and rd.name = m.role
 		where u.email = ? and m.active = 1
-		limit 1`, email).
-		Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID, &permissions)
+		limit 1`, email).Scan(&person.ID, &person.Email, &person.Name, &person.AvatarURL, &person.Role, &person.ProgramID, &permissions)
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			app.WriteError(w, http.StatusUnauthorized, "no reviewer account with that email")
 			return
 		}
-
 		writeStorage(w, err)
-
 		return
 	}
 
 	person.Permissions = unmarshalStrings(permissions)
-
 	token, err := a.createSession(r.Context(), person.ID, r.UserAgent())
 	if err != nil {
 		writeStorage(w, err)
@@ -208,41 +198,40 @@ func (a *ireApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
-
 	reviewSessions.Set(w, r, token)
 	app.WriteJSON(w, http.StatusOK, a.meResponse(r.Context(), person))
 }
 
-// handleLogout deletes the session row and clears the cookie.
-func (a *ireApp) handleLogout(w http.ResponseWriter, r *http.Request) {
-	if !session.SameOrigin(r) {
-		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
+// handleMe returns the signed-in reviewer and the programmes they can read.
+func (a *ireApp) handleMe(w http.ResponseWriter, r *http.Request) {
+	person, ok := a.currentReviewer(w, r)
+	if !ok {
 		return
 	}
-
-	if token, ok := reviewSessions.Token(r); ok {
-		if _, err := a.store.Exec(r.Context(), `delete from session where id = ?`, session.Hash(token)); err != nil {
-			writeStorage(w, err)
-			return
-		}
-	}
-
-	reviewSessions.Clear(w, r)
-	w.WriteHeader(http.StatusNoContent)
+	app.WriteJSON(w, http.StatusOK, a.meResponse(r.Context(), person))
 }
 
-// createSession stores a hashed session token and returns the raw cookie value.
-func (a *ireApp) createSession(ctx context.Context, userID, userAgent string) (string, error) {
-	token, err := session.NewToken()
-	if err != nil {
-		return "", err
+// requireReviewer is currentReviewer plus a check that the membership can review this programme.
+func (a *ireApp) requireReviewer(w http.ResponseWriter, r *http.Request) (reviewer, bool) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions && !session.SameOrigin(r) {
+		app.WriteErrorCode(w, http.StatusForbidden, "forbidden", "cross-site request rejected")
+		return reviewer{}, false
 	}
 
-	now := a.nowText()
+	person, ok := a.currentReviewer(w, r)
+	if !ok {
+		return reviewer{}, false
+	}
 
-	_, err = a.store.Exec(ctx, `insert into session (id, user_id, expires_at, created_at, last_seen_at, user_agent)
-		values (?, ?, ?, ?, ?, ?)`,
-		session.Hash(token), userID, a.later(sessionTTL), now, now, userAgent)
+	if program, ok := a.programFor(w, r); ok && program.ID != person.ProgramID {
+		app.WriteError(w, http.StatusForbidden, "you do not belong to this programme")
+		return reviewer{}, false
+	}
 
-	return token, err
+	return person, true
+}
+
+// Has reports whether the membership grants the permission. The wildcard grants everything.
+func (p reviewer) Has(permission string) bool {
+	return slices.Contains(p.Permissions, permWildcard) || slices.Contains(p.Permissions, permission)
 }

@@ -4,17 +4,11 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
-	"net/http"
-
 	"ire/contract"
+	"net/http"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
-)
-
-const (
-	checkRunnerVersion = "review-checks-v1"
-	checkRunMaxAttempts = 5
 )
 
 // checkJob is the durable job payload for the repository checks.
@@ -23,28 +17,95 @@ type checkJob struct {
 	Version int `json:"version"`
 }
 
-// queueRepositoryChecks enqueues the forge work and falls back to running it inline if the queue is unavailable, so a ship never waits in checking forever.
-func (a *ireApp) queueRepositoryChecks(ctx context.Context, submissionID string, version int, idempotencyKey string) {
-	err := a.enqueueCheckJob(ctx, submissionID, version, idempotencyKey)
-	if err == nil {
-		return
+const (
+	checkRunMaxAttempts = 5
+	checkRunnerVersion = "review-checks-v1"
+)
+
+// collectRepositoryChecks fetches the forge, replaces the repository check rows, stores the evidence and moves a checking ship to its real status.
+func (a *ireApp) collectRepositoryChecks(ctx context.Context, ship submissionRow) error {
+	remote, evidence := a.repoChecks(ctx, ship.RepoURL, a.commitSince(ctx, ship.ProgramID, ship.PreviousID), a.now(), a.loadBomLines(ctx, ship.ID))
+	remote = append(remote, a.hackatimeChecks(ctx, ship)...)
+	remote = append(remote, a.demoChecks(ctx, ship)...)
+	now := a.nowText()
+	statements := make([]storage.TransactionStatement, 0, len(remote)*2)
+
+	for _, check := range remote {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `delete from check_result where submission_id = ? and version = ? and check_key = ?`,
+			Args: []any{ship.ID, ship.Version, check.Key},
+		}, storage.TransactionStatement{
+			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, data, checked_at)
+					values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			Args: []any{
+				newID("chk"),
+				ship.ID,
+				ship.Version,
+				check.Key,
+				check.Label,
+				check.Group,
+				check.Status,
+				check.Severity,
+				check.Summary,
+				stringValue(check.Detail),
+				sourceData(check.Source),
+				check.CheckedAt,
+			},
+		})
 	}
 
-	app.Warnf("checks job enqueue failed, running inline: %v", err)
-
-	ship, loadErr := a.loadSubmission(ctx, submissionID)
-	if loadErr != nil || ship.Version != version || (ship.Status != statusChecking && ship.Status != statusNeedsAttention) {
-		return
+	if _, err := a.store.Transaction(ctx, statements...); err != nil {
+		return err
 	}
 
-	if runErr := a.runRepositoryChecks(ctx, ship); runErr != nil {
-		app.Errorf("inline repository checks: %v", runErr)
+	if evidence != nil {
+		if err := a.saveEvidence(ctx, ship.ID, ship.Version, *evidence); err != nil {
+			return err
+		}
 	}
+
+	// Summarise the same newest-per-key rows the review page shows, so the queue's counts cannot disagree with its dots.
+	checks, err := a.latestChecks(ctx, ship.ID, ship.Version)
+	if err != nil {
+		return err
+	}
+
+	summary := checkCountsFor(checks)
+	summaryJSON, err := json.Marshal(summary)
+	if err != nil {
+		return err
+	}
+
+	status := statusReady
+
+	if summary.Overall == checkOverallFail {
+		status = statusNeedsAttention
+	}
+
+	// Always persist the summary: the stale sweep may have moved the ship out of checking while this job waited, and the queue reads the stored counts. Only a ship still waiting on checks may change status; a claim or decision owns it otherwise.
+	result, err := a.store.Exec(ctx, `update submission set check_summary = ?,
+		status = case when status in ('checking','needs_attention') then ? else status end, updated_at = ?
+		where id = ? and version = ?`, string(summaryJSON), status, now, ship.ID, ship.Version)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected == 0 {
+		return nil
+	}
+
+	_, err = a.store.Exec(ctx, `insert into submission_event (id, submission_id, kind, data, created_at)
+		values (?, ?, 'checks_completed', ?, ?)`, newID("evt"), ship.ID, string(summaryJSON), now)
+
+	return err
 }
 
 // enqueueCheckJob adds one idempotent job per submission version.
 func (a *ireApp) enqueueCheckJob(ctx context.Context, submissionID string, version int, idempotencyKey string) error {
-	payload, err := json.Marshal(checkJob{SubmissionID: submissionID, Version: version})
+	payload, err := json.Marshal(checkJob{
+		SubmissionID: submissionID,
+		Version: version,
+	})
 	if err != nil {
 		return err
 	}
@@ -59,98 +120,6 @@ func (a *ireApp) enqueueCheckJob(ctx context.Context, submissionID string, versi
 	})
 
 	return err
-}
-
-// handleJobChecks runs the repository checks the supervisor queued for a checking ship.
-func (a *ireApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
-	var job checkJob
-	if !app.ReadJSON(w, r, maxAPIBody, "body", &job) {
-		return
-	}
-
-	if job.SubmissionID == "" || job.Version < 1 {
-		app.WriteError(w, http.StatusUnprocessableEntity, "invalid check job")
-		return
-	}
-
-	ship, err := a.loadSubmission(r.Context(), job.SubmissionID)
-	if err != nil {
-		if errors.Is(err, storage.ErrNoRows) {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		writeStorage(w, err)
-
-		return
-	}
-
-	// A newer version, a decision or a withdrawal owns the ship now; the job has nothing left to write.
-	// A ship the stale sweep moved to needs_attention still waits on this job, so let the checks land and settle its status.
-	if ship.Version != job.Version || (ship.Status != statusChecking && ship.Status != statusNeedsAttention) || ship.RepoURL == "" {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	if err := a.runRepositoryChecks(r.Context(), ship); err != nil {
-		writeStorage(w, err)
-
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// runRepositoryChecks records one attempt around the repository fetch.
-func (a *ireApp) runRepositoryChecks(ctx context.Context, ship submissionRow) error {
-	attempts := a.startCheckRun(ctx, ship)
-
-	if err := a.collectRepositoryChecks(ctx, ship); err != nil {
-		a.failCheckRun(ctx, ship, attempts, err)
-
-		return err
-	}
-
-	a.finishCheckRun(ctx, ship)
-
-	return nil
-}
-
-// startCheckRun marks a new attempt and returns its number.
-func (a *ireApp) startCheckRun(ctx context.Context, ship submissionRow) int {
-	now := a.nowText()
-
-	result, err := a.store.Exec(ctx, `update check_run set status = 'running', attempts = attempts + 1,
-		started_at = ?, finished_at = null, error = null where submission_id = ? and version = ?`, now, ship.ID, ship.Version)
-	if err != nil {
-		app.Errorf("start check run: %v", err)
-
-		return 0
-	}
-
-	if result.RowsAffected == 0 {
-		if _, err := a.store.Exec(ctx, `insert into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version)
-			values (?, ?, 'running', 1, ?, null, null, ?)`, ship.ID, ship.Version, now, checkRunnerVersion); err != nil {
-			app.Errorf("insert check run: %v", err)
-
-			return 0
-		}
-	}
-
-	var attempts int
-	if err := a.store.QueryRow(ctx, `select attempts from check_run where submission_id = ? and version = ?`, ship.ID, ship.Version).Scan(&attempts); err != nil {
-		return 0
-	}
-
-	return attempts
-}
-
-// finishCheckRun records a successful attempt.
-func (a *ireApp) finishCheckRun(ctx context.Context, ship submissionRow) {
-	if _, err := a.store.Exec(ctx, `update check_run set status = 'succeeded', finished_at = ?, error = null
-		where submission_id = ? and version = ?`, a.nowText(), ship.ID, ship.Version); err != nil {
-		app.Errorf("finish check run: %v", err)
-	}
 }
 
 // failCheckRun records the error and surfaces a terminal failure without waiting for the stale sweep.
@@ -176,74 +145,12 @@ func (a *ireApp) failCheckRun(ctx context.Context, ship submissionRow, attempts 
 		values (?, ?, 'checks_failed', ?, ?)`, newID("evt"), ship.ID, marshalMap(map[string]any{"error": runErr.Error()}), now)
 }
 
-// collectRepositoryChecks fetches the forge, replaces the repository check rows, stores the evidence and moves a checking ship to its real status.
-func (a *ireApp) collectRepositoryChecks(ctx context.Context, ship submissionRow) error {
-	remote, evidence := a.repoChecks(ctx, ship.RepoURL, a.commitSince(ctx, ship.ProgramID, ship.PreviousID), a.now(), a.loadBomLines(ctx, ship.ID))
-	remote = append(remote, a.hackatimeChecks(ctx, ship)...)
-	remote = append(remote, a.demoChecks(ctx, ship)...)
-
-	now := a.nowText()
-	statements := make([]storage.TransactionStatement, 0, len(remote)*2)
-
-	for _, check := range remote {
-		statements = append(statements,
-			storage.TransactionStatement{
-				SQL: `delete from check_result where submission_id = ? and version = ? and check_key = ?`,
-				Args: []any{ship.ID, ship.Version, check.Key},
-			},
-			storage.TransactionStatement{
-				SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, data, checked_at)
-					values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				Args: []any{newID("chk"), ship.ID, ship.Version, check.Key, check.Label, check.Group, check.Status, check.Severity, check.Summary, stringValue(check.Detail), sourceData(check.Source), check.CheckedAt},
-			},
-		)
+// finishCheckRun records a successful attempt.
+func (a *ireApp) finishCheckRun(ctx context.Context, ship submissionRow) {
+	if _, err := a.store.Exec(ctx, `update check_run set status = 'succeeded', finished_at = ?, error = null
+		where submission_id = ? and version = ?`, a.nowText(), ship.ID, ship.Version); err != nil {
+		app.Errorf("finish check run: %v", err)
 	}
-
-	if _, err := a.store.Transaction(ctx, statements...); err != nil {
-		return err
-	}
-
-	if evidence != nil {
-		if err := a.saveEvidence(ctx, ship.ID, ship.Version, *evidence); err != nil {
-			return err
-		}
-	}
-
-	// Summarise the same newest-per-key rows the review page shows, so the queue's counts cannot disagree with its dots.
-	checks, err := a.latestChecks(ctx, ship.ID, ship.Version)
-	if err != nil {
-		return err
-	}
-
-	summary := checkCountsFor(checks)
-
-	summaryJSON, err := json.Marshal(summary)
-	if err != nil {
-		return err
-	}
-
-	status := statusReady
-	if summary.Overall == checkOverallFail {
-		status = statusNeedsAttention
-	}
-
-	// Always persist the summary: the stale sweep may have moved the ship out of checking while this job waited, and the queue reads the stored counts. Only a ship still waiting on checks may change status; a claim or decision owns it otherwise.
-	result, err := a.store.Exec(ctx, `update submission set check_summary = ?,
-		status = case when status in ('checking','needs_attention') then ? else status end, updated_at = ?
-		where id = ? and version = ?`,
-		string(summaryJSON), status, now, ship.ID, ship.Version)
-	if err != nil {
-		return err
-	}
-
-	if result.RowsAffected == 0 {
-		return nil
-	}
-
-	_, err = a.store.Exec(ctx, `insert into submission_event (id, submission_id, kind, data, created_at)
-		values (?, ?, 'checks_completed', ?, ?)`, newID("evt"), ship.ID, string(summaryJSON), now)
-
-	return err
 }
 
 // loadCheckRun returns the run row for one submission version and whether it exists.
@@ -253,10 +160,8 @@ func (a *ireApp) loadCheckRun(ctx context.Context, submissionID string, version 
 		finishedAt, failure string
 	)
 
-	err := a.store.QueryRow(ctx, `select status, attempts, started_at, coalesce(finished_at, ''), coalesce(error, ''), runner_version
-		from check_run where submission_id = ? and version = ?`, submissionID, version).
-		Scan(&run.Status, &run.Attempts, &run.StartedAt, &finishedAt, &failure, &run.RunnerVersion)
-	if err != nil {
+	if err := a.store.QueryRow(ctx, `select status, attempts, started_at, coalesce(finished_at, ''), coalesce(error, ''), runner_version
+		from check_run where submission_id = ? and version = ?`, submissionID, version).Scan(&run.Status, &run.Attempts, &run.StartedAt, &finishedAt, &failure, &run.RunnerVersion); err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return contract.CheckRun{}, false, nil
 		}
@@ -268,4 +173,97 @@ func (a *ireApp) loadCheckRun(ctx context.Context, submissionID string, version 
 	run.Error = optionalText(failure)
 
 	return run, true, nil
+}
+
+// startCheckRun marks a new attempt and returns its number.
+func (a *ireApp) startCheckRun(ctx context.Context, ship submissionRow) int {
+	now := a.nowText()
+	result, err := a.store.Exec(ctx, `update check_run set status = 'running', attempts = attempts + 1,
+		started_at = ?, finished_at = null, error = null where submission_id = ? and version = ?`, now, ship.ID, ship.Version)
+	if err != nil {
+		app.Errorf("start check run: %v", err)
+		return 0
+	}
+
+	if result.RowsAffected == 0 {
+		if _, err := a.store.Exec(ctx, `insert into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version)
+			values (?, ?, 'running', 1, ?, null, null, ?)`, ship.ID, ship.Version, now, checkRunnerVersion); err != nil {
+			app.Errorf("insert check run: %v", err)
+			return 0
+		}
+	}
+
+	var attempts int
+
+	if err := a.store.QueryRow(ctx, `select attempts from check_run where submission_id = ? and version = ?`, ship.ID, ship.Version).Scan(&attempts); err != nil {
+		return 0
+	}
+
+	return attempts
+}
+
+// runRepositoryChecks records one attempt around the repository fetch.
+func (a *ireApp) runRepositoryChecks(ctx context.Context, ship submissionRow) error {
+	attempts := a.startCheckRun(ctx, ship)
+
+	if err := a.collectRepositoryChecks(ctx, ship); err != nil {
+		a.failCheckRun(ctx, ship, attempts, err)
+		return err
+	}
+	a.finishCheckRun(ctx, ship)
+	return nil
+}
+
+// handleJobChecks runs the repository checks the supervisor queued for a checking ship.
+func (a *ireApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
+	var job checkJob
+	if !app.ReadJSON(w, r, maxAPIBody, "body", &job) {
+		return
+	}
+
+	if job.SubmissionID == "" || job.Version < 1 {
+		app.WriteError(w, http.StatusUnprocessableEntity, "invalid check job")
+		return
+	}
+
+	ship, err := a.loadSubmission(r.Context(), job.SubmissionID)
+	if err != nil {
+		if errors.Is(err, storage.ErrNoRows) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		writeStorage(w, err)
+		return
+	}
+
+	// A newer version, a decision or a withdrawal owns the ship now; the job has nothing left to write.
+	// A ship the stale sweep moved to needs_attention still waits on this job, so let the checks land and settle its status.
+	if ship.Version != job.Version || ship.Status != statusChecking && ship.Status != statusNeedsAttention || ship.RepoURL == "" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if err := a.runRepositoryChecks(r.Context(), ship); err != nil {
+		writeStorage(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// queueRepositoryChecks enqueues the forge work and falls back to running it inline if the queue is unavailable, so a ship never waits in checking forever.
+func (a *ireApp) queueRepositoryChecks(ctx context.Context, submissionID string, version int, idempotencyKey string) {
+	err := a.enqueueCheckJob(ctx, submissionID, version, idempotencyKey)
+	if err == nil {
+		return
+	}
+	app.Warnf("checks job enqueue failed, running inline: %v", err)
+
+	ship, loadErr := a.loadSubmission(ctx, submissionID)
+	if loadErr != nil || ship.Version != version || ship.Status != statusChecking && ship.Status != statusNeedsAttention {
+		return
+	}
+
+	if runErr := a.runRepositoryChecks(ctx, ship); runErr != nil {
+		app.Errorf("inline repository checks: %v", runErr)
+	}
 }

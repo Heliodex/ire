@@ -1,24 +1,38 @@
 package main
 
 import (
+	"ire/contract"
 	"net/http"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 
-	"ire/contract"
-
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 )
 
 const (
-	searchLimit = 8
-	maxSearchLimit = 20
 	maxSearchLength = 120
+	maxSearchLimit = 20
+	searchLimit = 8
 )
 
 // likeEscaper keeps a typed % or _ literal instead of letting it widen the search.
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// parseSearchLimit reads a small page size for the dropdown.
+func parseSearchLimit(r *http.Request) int {
+	value := r.URL.Query().Get("limit")
+	if value == "" {
+		return searchLimit
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 1 {
+		return searchLimit
+	}
+
+	return min(parsed, maxSearchLimit)
+}
 
 // handleSearch finds open ships by title, maker, external id or theme for the header search.
 func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +43,9 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if query == "" {
-		app.WriteJSON(w, http.StatusOK, contract.SearchResponse{Results: []contract.SearchResult{}})
+		app.WriteJSON(w, http.StatusOK, contract.SearchResponse{
+			Results: []contract.SearchResult{},
+		})
 		return
 	}
 
@@ -70,32 +86,27 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 			end,
 			s.updated_at desc,
 			s.id asc
-		limit ?`,
-		a.nowText(), person.ProgramID, needle, needle, needle, needle, prefix, prefix, parseSearchLimit(r))
+		limit ?`, a.nowText(), person.ProgramID, needle, needle, needle, needle, prefix, prefix, parseSearchLimit(r))
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
+
 	defer rows.Close()
 
-	response := contract.SearchResponse{Results: []contract.SearchResult{}}
+	response := contract.SearchResponse{
+		Results: []contract.SearchResult{},
+	}
 
 	for rows.Next() {
 		var (
 			item contract.SearchResult
-			theme, thumb, makerName string
-			makerEmail, makerSlack, tier string
-			claimedBy string
+			theme, thumb, makerName, makerEmail, makerSlack, tier, claimedBy string
 			week int
 		)
-		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &makerName,
-			&item.Status, &item.Stage, &theme, &thumb, &week,
-			&item.Version, &item.HoursClaimedSeconds,
-			&item.HoursJournalSeconds, &item.HoursHackatimeSeconds, &item.BomTotalCents, &item.IngestedAt,
-			&makerEmail, &makerSlack, &tier, &claimedBy); err != nil {
-			writeStorage(w, err)
 
+		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &makerName, &item.Status, &item.Stage, &theme, &thumb, &week, &item.Version, &item.HoursClaimedSeconds, &item.HoursJournalSeconds, &item.HoursHackatimeSeconds, &item.BomTotalCents, &item.IngestedAt, &makerEmail, &makerSlack, &tier, &claimedBy); err != nil {
+			writeStorage(w, err)
 			return
 		}
 
@@ -138,24 +149,7 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	if err := rows.Err(); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
-
 	app.WriteJSON(w, http.StatusOK, response)
-}
-
-// parseSearchLimit reads a small page size for the dropdown.
-func parseSearchLimit(r *http.Request) int {
-	value := r.URL.Query().Get("limit")
-	if value == "" {
-		return searchLimit
-	}
-
-	parsed, err := strconv.Atoi(value)
-	if err != nil || parsed < 1 {
-		return searchLimit
-	}
-
-	return min(parsed, maxSearchLimit)
 }

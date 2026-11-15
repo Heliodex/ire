@@ -50,6 +50,34 @@ func TestMigrateIsStable(t *testing.T) {
 	}
 }
 
+// oldStationAnswerTable replaces station_answer with its shape from before per-reviewer answers, holding one answer without a reviewer.
+func oldStationAnswerTable() []storage.TransactionStatement {
+	return []storage.TransactionStatement{
+		{
+			SQL: `drop table station_answer`,
+		},
+		{
+			SQL: `create table station_answer (
+			id text primary key,
+			submission_id text not null references submission(id) on delete cascade,
+			station_key text not null,
+			question_key text not null,
+			answer text not null check (answer in ('pass','fail','na')),
+			evidence text not null default '',
+			artifact_hash text,
+			reviewer_id text,
+			created_at text not null,
+			updated_at text not null,
+			unique (submission_id, station_key, question_key)
+		)`,
+		},
+		{
+			SQL: `insert into station_answer (id, submission_id, station_key, question_key, answer, created_at, updated_at)
+			select 'old-answer', id, 'narrative', 'q1', 'pass', created_at, created_at from submission limit 1`,
+		},
+	}
+}
+
 // TestStationAnswerReviewerRebuild simulates a database from before answers were kept per reviewer and checks that migrate swaps in the per-reviewer key and keeps the rows.
 func TestStationAnswerReviewerRebuild(t *testing.T) {
 	application := newTestApp(t)
@@ -76,27 +104,5 @@ func TestStationAnswerReviewerRebuild(t *testing.T) {
 	columns, err := application.store.Columns(ctx, "station_answer")
 	if err != nil || len(columns) != 10 {
 		t.Errorf("columns = %v, %v", columns, err)
-	}
-}
-
-// oldStationAnswerTable replaces station_answer with its shape from before per-reviewer answers, holding one answer without a reviewer.
-func oldStationAnswerTable() []storage.TransactionStatement {
-	return []storage.TransactionStatement{
-		{SQL: `drop table station_answer`},
-		{SQL: `create table station_answer (
-			id text primary key,
-			submission_id text not null references submission(id) on delete cascade,
-			station_key text not null,
-			question_key text not null,
-			answer text not null check (answer in ('pass','fail','na')),
-			evidence text not null default '',
-			artifact_hash text,
-			reviewer_id text,
-			created_at text not null,
-			updated_at text not null,
-			unique (submission_id, station_key, question_key)
-		)`},
-		{SQL: `insert into station_answer (id, submission_id, station_key, question_key, answer, created_at, updated_at)
-			select 'old-answer', id, 'narrative', 'q1', 'pass', created_at, created_at from submission limit 1`},
 	}
 }

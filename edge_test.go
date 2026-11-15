@@ -15,15 +15,12 @@ func TestIngestRejectsMalformedJSON(t *testing.T) {
 	application := newTestApp(t)
 	body := []byte(`{"external_id":`)
 
-	recorder := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{
-		"X-Ari-Signature": hmacHex("test-ingest", body),
-	})
-
-	if recorder.Code != http.StatusUnprocessableEntity {
+	if recorder := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)}); recorder.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("malformed ingest = %d: %s", recorder.Code, recorder.Body.String())
 	}
 
 	var deliveries int
+
 	if err := application.store.QueryRow(t.Context(), `select count(*) from ingest_delivery`).Scan(&deliveries); err != nil {
 		t.Fatal(err)
 	}
@@ -49,11 +46,11 @@ func TestRepoChecksReportTransportError(t *testing.T) {
 
 		_ = conn.Close()
 	}))
+
 	t.Cleanup(server.Close)
 
 	application := newTestApp(t)
 	application.config.GitHubAPIBase = server.URL
-
 	checks, evidence := application.repoChecks(t.Context(), "https://github.com/example/broken", "", application.now(), nil)
 	if evidence != nil {
 		t.Errorf("evidence = %+v", evidence)
@@ -68,12 +65,12 @@ func TestRepoChecksReportTransportError(t *testing.T) {
 func TestRepoChecksTruncateLargeTree(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/readme"):
 			_, _ = io.WriteString(w, strings.Repeat("Build notes. ", 40))
 		case strings.HasSuffix(r.URL.Path, "/git/trees/main"):
 			files := make([]map[string]string, 0, maxSnapshotFiles+100)
+
 			for i := range maxSnapshotFiles + 100 {
 				files = append(files, map[string]string{"path": fmt.Sprintf("hardware/part-%04d.kicad_pcb", i), "type": "blob"})
 			}
@@ -86,11 +83,11 @@ func TestRepoChecksTruncateLargeTree(t *testing.T) {
 			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"example/large","private":false}`)
 		}
 	}))
+
 	t.Cleanup(server.Close)
 
 	application := newTestApp(t)
 	application.config.GitHubAPIBase = server.URL
-
 	_, evidence := application.repoChecks(t.Context(), "https://github.com/example/large", "", application.now(), nil)
 	if evidence == nil || !evidence.Truncated {
 		t.Fatalf("evidence = %+v", evidence)

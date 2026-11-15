@@ -5,63 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"ire/contract"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-
-	"ire/contract"
 )
 
 const (
 	demoTimeout = 10 * time.Second
 	maxDemoBody = 64 << 10
 )
-
-// demoChecks probes a public HTTPS demo without letting it reach loopback or private networks.
-func (a *ireApp) demoChecks(ctx context.Context, ship submissionRow) []contract.CheckResult {
-	checkedAt := a.nowText()
-
-	if strings.TrimSpace(ship.DemoURL) == "" {
-		return []contract.CheckResult{check("demo.probe", "Demo reachable", "demo", statusSkip, severityInfo, "No demo URL", "The ship carries no demo URL to probe.", checkedAt)}
-	}
-
-	target, err := safeDemoURL(ctx, ship.DemoURL)
-	if err != nil {
-		return []contract.CheckResult{check("demo.probe", "Demo reachable", "demo", statusError, severityWarn, "Demo URL could not be probed", err.Error(), checkedAt)}
-	}
-
-	client := *a.client
-	client.CheckRedirect = func(req *http.Request, _ []*http.Request) error {
-		if _, err := safeDemoURL(req.Context(), req.URL.String()); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	requestCtx, cancel := context.WithTimeout(ctx, demoTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet, target.String(), nil)
-	if err != nil {
-		return []contract.CheckResult{check("demo.probe", "Demo reachable", "demo", statusError, severityWarn, "Demo URL could not be probed", err.Error(), checkedAt)}
-	}
-
-	req.Header.Set("Accept", "text/html")
-	req.Header.Set("User-Agent", "half-life-ire")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return []contract.CheckResult{check("demo.probe", "Demo reachable", "demo", statusWarn, severityWarn, "Demo did not respond", "Open the demo by hand; the probe could not reach it.", checkedAt)}
-	}
-	defer resp.Body.Close()
-
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxDemoBody))
-
-	return []contract.CheckResult{demoResult(resp.StatusCode, checkedAt)}
-}
 
 // demoResult maps a probe status to the reviewer-facing check.
 func demoResult(code int, checkedAt string) contract.CheckResult {
@@ -80,6 +35,11 @@ func demoResult(code int, checkedAt string) contract.CheckResult {
 	result.Source = stringPtr("probe")
 
 	return result
+}
+
+// privateIP reports addresses a browser on the public internet could not reach.
+func privateIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
 }
 
 // safeDemoURL accepts only HTTPS hosts outside loopback, private and link-local ranges.
@@ -103,6 +63,7 @@ func safeDemoURL(ctx context.Context, raw string) (*url.URL, error) {
 	}
 
 	lookupCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+
 	defer cancel()
 
 	addresses, err := net.DefaultResolver.LookupIPAddr(lookupCtx, host)
@@ -119,7 +80,54 @@ func safeDemoURL(ctx context.Context, raw string) (*url.URL, error) {
 	return parsed, nil
 }
 
-// privateIP reports addresses a browser on the public internet could not reach.
-func privateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
+// demoChecks probes a public HTTPS demo without letting it reach loopback or private networks.
+func (a *ireApp) demoChecks(ctx context.Context, ship submissionRow) []contract.CheckResult {
+	checkedAt := a.nowText()
+
+	if strings.TrimSpace(ship.DemoURL) == "" {
+		return []contract.CheckResult{
+			check("demo.probe", "Demo reachable", "demo", statusSkip, severityInfo, "No demo URL", "The ship carries no demo URL to probe.", checkedAt),
+		}
+	}
+
+	target, err := safeDemoURL(ctx, ship.DemoURL)
+	if err != nil {
+		return []contract.CheckResult{
+			check("demo.probe", "Demo reachable", "demo", statusError, severityWarn, "Demo URL could not be probed", err.Error(), checkedAt),
+		}
+	}
+
+	client := *a.client
+	client.CheckRedirect = func(req *http.Request, _ []*http.Request) error {
+		if _, err := safeDemoURL(req.Context(), req.URL.String()); err != nil {
+			return err
+		}
+
+		return nil
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, demoTimeout)
+
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet, target.String(), nil)
+	if err != nil {
+		return []contract.CheckResult{
+			check("demo.probe", "Demo reachable", "demo", statusError, severityWarn, "Demo URL could not be probed", err.Error(), checkedAt),
+		}
+	}
+	req.Header.Set("Accept", "text/html")
+	req.Header.Set("User-Agent", "half-life-ire")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return []contract.CheckResult{
+			check("demo.probe", "Demo reachable", "demo", statusWarn, severityWarn, "Demo did not respond", "Open the demo by hand; the probe could not reach it.", checkedAt),
+		}
+	}
+
+	defer resp.Body.Close()
+
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxDemoBody))
+
+	return []contract.CheckResult{demoResult(resp.StatusCode, checkedAt)}
 }

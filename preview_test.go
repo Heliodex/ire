@@ -2,17 +2,18 @@ package main
 
 import (
 	"io"
+	"ire/contract"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"ire/contract"
 )
 
-const previewBoardText = "(kicad_pcb (version 20211014) (generator pcbnew) (general (thickness 1.6)))"
-const previewSchematicText = "(kicad_sch (version 20230101) (generator eeschema) (paper \"A4\"))"
-const previewProjectText = `{"board": {"design_settings": {}}, "meta": {"version": 1}}`
+const (
+	previewBoardText = "(kicad_pcb (version 20211014) (generator pcbnew) (general (thickness 1.6)))"
+	previewProjectText = `{"board": {"design_settings": {}}, "meta": {"version": 1}}`
+	previewSchematicText = "(kicad_sch (version 20230101) (generator eeschema) (paper \"A4\"))"
+)
 
 // fakePreviewForge serves one board file, one schematic, one project and one oversized file for the preview tests.
 func fakePreviewForge(t *testing.T) *httptest.Server {
@@ -20,7 +21,6 @@ func fakePreviewForge(t *testing.T) *httptest.Server {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
 		switch r.URL.Path {
 		case "/repos/example/queued/contents/board.kicad_pcb":
 			_, _ = io.WriteString(w, previewBoardText)
@@ -35,8 +35,8 @@ func fakePreviewForge(t *testing.T) *httptest.Server {
 			http.NotFound(w, r)
 		}
 	}))
-	t.Cleanup(server.Close)
 
+	t.Cleanup(server.Close)
 	return server
 }
 
@@ -46,15 +46,12 @@ func seedPreviewShip(t *testing.T, application *ireApp) {
 
 	files := `[{"path":"board.kicad_pcb","kind":"file"},{"path":"board.kicad_sch","kind":"file"},{"path":"board.kicad_pro","kind":"file"},{"path":"big.kicad_pcb","kind":"file"},{"path":"README.md","kind":"file"}]`
 
-	if _, err := application.store.Exec(t.Context(),
-		`update submission set repo_url = 'https://github.com/example/queued' where id = 'sub_fixture_1'`); err != nil {
+	if _, err := application.store.Exec(t.Context(), `update submission set repo_url = 'https://github.com/example/queued' where id = 'sub_fixture_1'`); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := application.store.Exec(t.Context(),
-		`insert or replace into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha, file_count, truncated, readme_text, files, commits, fetched_at, error)
-		values ('sub_fixture_1', 1, 'github', 'example/queued', 'main', 'head1', 5, 0, '', ?, '[]', ?, null)`,
-		files, application.nowText()); err != nil {
+	if _, err := application.store.Exec(t.Context(), `insert or replace into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha, file_count, truncated, readme_text, files, commits, fetched_at, error)
+		values ('sub_fixture_1', 1, 'github', 'example/queued', 'main', 'head1', 5, 0, '', ?, '[]', ?, null)`, files, application.nowText()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -62,9 +59,9 @@ func seedPreviewShip(t *testing.T, application *ireApp) {
 // TestSubmissionFilePreview covers the in-app board preview: auth, the snapshot allowlist and the size cap.
 func TestSubmissionFilePreview(t *testing.T) {
 	forge := fakePreviewForge(t)
-
 	application := newTestApp(t)
 	application.config.GitHubAPIBase = forge.URL
+
 	seedPreviewShip(t, application)
 
 	cookie := login(t, application, "reviewer@example.com")
@@ -97,8 +94,7 @@ func TestSubmissionFilePreview(t *testing.T) {
 		t.Fatalf("preview = %d: %s", ok.Code, ok.Body.String())
 	}
 
-	file := decode[contract.SubmissionFileResponse](t, ok).File
-	if file.Path != "board.kicad_pcb" || file.Text != previewBoardText || file.SizeBytes != len(previewBoardText) || file.Truncated {
+	if file := decode[contract.SubmissionFileResponse](t, ok).File; file.Path != "board.kicad_pcb" || file.Text != previewBoardText || file.SizeBytes != len(previewBoardText) || file.Truncated {
 		t.Fatalf("preview file = %+v", file)
 	}
 
@@ -107,8 +103,7 @@ func TestSubmissionFilePreview(t *testing.T) {
 		t.Fatalf("schematic preview = %d: %s", schematic.Code, schematic.Body.String())
 	}
 
-	schematicFile := decode[contract.SubmissionFileResponse](t, schematic).File
-	if schematicFile.Path != "board.kicad_sch" || schematicFile.Text != previewSchematicText {
+	if schematicFile := decode[contract.SubmissionFileResponse](t, schematic).File; schematicFile.Path != "board.kicad_sch" || schematicFile.Text != previewSchematicText {
 		t.Fatalf("schematic preview file = %+v", schematicFile)
 	}
 
@@ -117,8 +112,7 @@ func TestSubmissionFilePreview(t *testing.T) {
 		t.Fatalf("project preview = %d: %s", project.Code, project.Body.String())
 	}
 
-	projectFile := decode[contract.SubmissionFileResponse](t, project).File
-	if projectFile.Path != "board.kicad_pro" || projectFile.Text != previewProjectText {
+	if projectFile := decode[contract.SubmissionFileResponse](t, project).File; projectFile.Path != "board.kicad_pro" || projectFile.Text != previewProjectText {
 		t.Fatalf("project preview file = %+v", projectFile)
 	}
 }
@@ -126,15 +120,14 @@ func TestSubmissionFilePreview(t *testing.T) {
 // TestSubmissionFilePreviewGuards covers ships the preview endpoint must refuse.
 func TestSubmissionFilePreviewGuards(t *testing.T) {
 	forge := fakePreviewForge(t)
-
 	application := newTestApp(t)
 	application.config.GitHubAPIBase = forge.URL
+
 	seedPreviewShip(t, application)
 
 	cookie := login(t, application, "reviewer@example.com")
 
-	if _, err := application.store.Exec(t.Context(),
-		`update submission set repo_url = 'https://gitlab.com/example/queued' where id = 'sub_fixture_1'`); err != nil {
+	if _, err := application.store.Exec(t.Context(), `update submission set repo_url = 'https://gitlab.com/example/queued' where id = 'sub_fixture_1'`); err != nil {
 		t.Fatal(err)
 	}
 

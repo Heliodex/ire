@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"ire/contract"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
@@ -15,51 +14,18 @@ import (
 
 const makerProfileLimit = 200
 
-// handleMakerProfile returns one maker's identity and their latest ship per project.
-func (a *ireApp) handleMakerProfile(w http.ResponseWriter, r *http.Request) {
-	program, ok := a.programFor(w, r)
-	if !ok {
-		return
-	}
-
-	if _, ok := a.requireReviewer(w, r); !ok {
-		return
-	}
-
-	email := strings.ToLower(strings.TrimSpace(r.PathValue("email")))
-	if email == "" {
-		app.WriteError(w, http.StatusNotFound, "unknown maker")
-		return
-	}
-
-	profile, err := a.makerProfile(r.Context(), program.ID, email)
-	if err != nil {
-		if errors.Is(err, storage.ErrNoRows) {
-			app.WriteError(w, http.StatusNotFound, "unknown maker")
-			return
-		}
-
-		writeStorage(w, err)
-
-		return
-	}
-
-	app.WriteJSON(w, http.StatusOK, profile)
-}
-
 // makerProfile reads the maker's latest identity and one row per project, newest first.
 func (a *ireApp) makerProfile(ctx context.Context, programID, email string) (contract.MakerProfile, error) {
-	profile := contract.MakerProfile{Submissions: []contract.MakerSubmission{}}
+	profile := contract.MakerProfile{
+		Submissions: []contract.MakerSubmission{},
+	}
 
-	var (
-		name, slack string
-	)
+	var name, slack string
 
 	err := a.store.QueryRow(ctx, `select maker_email, coalesce(maker_name, ''), coalesce(maker_slack_id, '')
 		from submission
 		where program_id = ? and lower(maker_email) = lower(?)
-		order by updated_at desc, id desc limit 1`, programID, email).
-		Scan(&profile.Email, &name, &slack)
+		order by updated_at desc, id desc limit 1`, programID, email).Scan(&profile.Email, &name, &slack)
 	if err != nil {
 		return profile, err
 	}
@@ -87,18 +53,17 @@ func (a *ireApp) makerProfile(ctx context.Context, programID, email string) (con
 	if err != nil {
 		return profile, err
 	}
+
 	defer rows.Close()
 
 	for rows.Next() {
 		var (
 			item contract.MakerSubmission
-			decidedAt, theme, thumbnail string
-			decision string
+			decidedAt, theme, thumbnail, decision string
 			hoursApproved int
 		)
 
-		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &item.Status, &item.Stage, &item.Version,
-			&item.UpdatedAt, &decidedAt, &theme, &thumbnail, &item.HoursClaimedSeconds, &hoursApproved, &decision); err != nil {
+		if err := rows.Scan(&item.ID, &item.ExternalID, &item.Title, &item.Status, &item.Stage, &item.Version, &item.UpdatedAt, &decidedAt, &theme, &thumbnail, &item.HoursClaimedSeconds, &hoursApproved, &decision); err != nil {
 			return profile, err
 		}
 
@@ -127,4 +92,33 @@ func (a *ireApp) makerProfile(ctx context.Context, programID, email string) (con
 	}
 
 	return profile, rows.Err()
+}
+
+// handleMakerProfile returns one maker's identity and their latest ship per project.
+func (a *ireApp) handleMakerProfile(w http.ResponseWriter, r *http.Request) {
+	program, ok := a.programFor(w, r)
+	if !ok {
+		return
+	}
+
+	if _, ok := a.requireReviewer(w, r); !ok {
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(r.PathValue("email")))
+	if email == "" {
+		app.WriteError(w, http.StatusNotFound, "unknown maker")
+		return
+	}
+
+	profile, err := a.makerProfile(r.Context(), program.ID, email)
+	if err != nil {
+		if errors.Is(err, storage.ErrNoRows) {
+			app.WriteError(w, http.StatusNotFound, "unknown maker")
+			return
+		}
+		writeStorage(w, err)
+		return
+	}
+	app.WriteJSON(w, http.StatusOK, profile)
 }

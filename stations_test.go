@@ -2,206 +2,92 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"testing"
-
-	"ire/contract"
 )
 
-// stationByKey finds a station in the bundle.
-func stationByKey(bundle contract.ReviewBundle, key string) contract.StationDefinition {
-	for _, station := range bundle.Stations {
-		if station.Key == key {
-			return station
-		}
+// TestAdminAuthorsStations covers the station editor API: create, read and delete.
+func TestAdminAuthorsStations(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "admin@example.com")
+	station := contract.StationDefinition{
+		Active: 1,
+		Description: "A test station.",
+		Key: "test_station",
+		Label: "Test station",
+		Questions: []contract.StationQuestion{
+			{
+				EvidenceKind: "text",
+				Key: "first",
+				Prompt: "Is the first thing right?",
+				Required: 1,
+				Sort: 0,
+			},
+		},
+		Sort: 90,
+		Stage: 1,
+		Themes: []string{},
+	}
+	body, _ := json.Marshal(station)
+
+	if saved := do(t, application, http.MethodPut, testBase+"/stations/test_station", body, cookie, nil); saved.Code != http.StatusOK {
+		t.Fatalf("save station = %d: %s", saved.Code, saved.Body.String())
 	}
 
-	return contract.StationDefinition{}
-}
-
-// answerQuestion saves one station answer.
-func answerQuestion(t *testing.T, application *ireApp, cookie *http.Cookie, submissionID, station, question, answer string, version int) contract.StationAnswerResult {
-	t.Helper()
-
-	body, _ := json.Marshal(contract.StationAnswerRequest{Answer: answer, Evidence: "Checked in the evidence.", Version: version})
-	path := testBase + "/submissions/" + submissionID + "/stations/" + station + "/answers/" + question
-
-	recorder := do(t, application, http.MethodPut, path, body, cookie, nil)
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("answer %s/%s = %d: %s", station, question, recorder.Code, recorder.Body.String())
+	if loaded := decode[contract.StationDefinition](t, do(t, application, http.MethodGet, testBase+"/stations/test_station", nil, cookie, nil)); loaded.Label != station.Label || len(loaded.Questions) != 1 || loaded.Questions[0].Key != "first" {
+		t.Fatalf("station = %+v", loaded)
 	}
 
-	return decode[contract.StationAnswerResult](t, recorder)
+	if deleted := do(t, application, http.MethodDelete, testBase+"/stations/test_station", nil, cookie, nil); deleted.Code != http.StatusNoContent {
+		t.Fatalf("delete station = %d: %s", deleted.Code, deleted.Body.String())
+	}
+
+	if missing := do(t, application, http.MethodGet, testBase+"/stations/test_station", nil, cookie, nil); missing.Code != http.StatusNotFound {
+		t.Fatalf("station after delete = %d, want 404", missing.Code)
+	}
+
+	reviewer := login(t, application, "reviewer@example.com")
+
+	if denied := do(t, application, http.MethodPut, testBase+"/stations/test_station", body, reviewer, nil); denied.Code != http.StatusForbidden {
+		t.Fatalf("reviewer save station = %d, want 403", denied.Code)
+	}
 }
 
-// TestStationFlowMovesThroughTheQueue covers the stations list, answer storage and station derivation.
-func TestStationFlowMovesThroughTheQueue(t *testing.T) {
+// TestStationAnswerGuards covers the claim, question and version checks.
+func TestStationAnswerGuards(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	body, _ := json.Marshal(contract.StationAnswerRequest{
+		Answer: "pass",
+		Evidence: "Checked.",
+		Version: bundle.Submission.Version,
+	})
+	path := testBase + "/submissions/sub_fixture_1/stations/triage/answers/cover_screenshot"
 
-	stations := decode[contract.StationsResponse](t, do(t, application, http.MethodGet, testBase+"/stations", nil, cookie, nil))
-	if len(stations.Stations) < 5 {
-		t.Fatalf("stations = %d, want the five stage 1 stations", len(stations.Stations))
-	}
-
-	if triage := stations.Stations[0]; triage.Key != "triage" || triage.Count != 3 {
-		t.Fatalf("first station = %+v, want triage with 3 waiting", triage)
+	if unclaimed := do(t, application, http.MethodPut, path, body, cookie, nil); unclaimed.Code != http.StatusConflict {
+		t.Fatalf("unclaimed answer = %d: %s", unclaimed.Code, unclaimed.Body.String())
 	}
 
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
-	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	if bundle.CurrentStation == nil || *bundle.CurrentStation != "triage" {
-		t.Fatalf("current station = %v, want triage", bundle.CurrentStation)
+	unknown := testBase + "/submissions/sub_fixture_1/stations/triage/answers/not_a_question"
+
+	if missing := do(t, application, http.MethodPut, unknown, body, cookie, nil); missing.Code != http.StatusNotFound {
+		t.Fatalf("unknown question = %d: %s", missing.Code, missing.Body.String())
 	}
 
-	triage := stationByKey(bundle, "triage")
-	for _, question := range triage.Questions {
-		if question.Required == 1 {
-			answerQuestion(t, application, cookie, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
-		}
-	}
-
-	afterTriage := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	if afterTriage.CurrentStation == nil || *afterTriage.CurrentStation != "time" {
-		t.Fatalf("current station after triage = %v, want time", afterTriage.CurrentStation)
-	}
-
-	timeStation := stationByKey(afterTriage, "time")
-	first := timeStation.Questions[0]
-
-	failed := answerQuestion(t, application, cookie, bundle.Submission.ID, "time", first.Key, "fail", bundle.Submission.Version)
-	if failed.CurrentStation == nil || *failed.CurrentStation != "time" {
-		t.Fatalf("current after fail = %v, want time", failed.CurrentStation)
-	}
-
-	var blocked bool
-
-	for _, state := range failed.States {
-		if state.Key == "time" && state.Status == "blocked" {
-			blocked = true
-		}
-	}
-
-	if !blocked {
-		t.Fatalf("time state = %+v, want blocked", failed.States)
-	}
-
-	// A recorded finding lets the failed station advance with its flag.
-	findingBody, _ := json.Marshal(contract.FindingCreateRequest{
-		MakerAction: stringPtr("Count only the productive journal time."),
-		Question: stringPtr(first.Prompt),
-		Severity: "fixable",
-		Station: "time",
-		Summary: "Tutorial consumption in the journals.",
+	staleBody, _ := json.Marshal(contract.StationAnswerRequest{
+		Answer: "pass",
+		Evidence: "Checked.",
+		Version: 99,
 	})
 
-	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", findingBody, cookie, nil); created.Code != http.StatusOK {
-		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
-	}
-
-	for _, question := range timeStation.Questions[1:] {
-		if question.Required == 1 {
-			answerQuestion(t, application, cookie, bundle.Submission.ID, "time", question.Key, "pass", bundle.Submission.Version)
-		}
-	}
-
-	afterFinding := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	if afterFinding.CurrentStation == nil || *afterFinding.CurrentStation != "narrative" {
-		t.Fatalf("current station after finding = %v, want narrative", afterFinding.CurrentStation)
-	}
-
-	for _, state := range afterFinding.StationStates {
-		if state.Key == "time" && state.Status != "done" {
-			t.Fatalf("time state = %+v, want done with an open finding", afterFinding.StationStates)
-		}
-	}
-}
-
-// TestStationAnswerClear removes one verdict and reopens its station.
-func TestStationAnswerClear(t *testing.T) {
-	application := newTestApp(t)
-	cookie := login(t, application, "reviewer@example.com")
-
-	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
-		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
-	}
-
-	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	triage := stationByKey(bundle, "triage")
-	first := triage.Questions[0]
-	path := testBase + "/submissions/" + bundle.Submission.ID + "/stations/triage/answers/" + first.Key
-
-	answerQuestion(t, application, cookie, bundle.Submission.ID, "triage", first.Key, "pass", bundle.Submission.Version)
-
-	cleared := do(t, application, http.MethodDelete, path+"?version=1", nil, cookie, nil)
-	if cleared.Code != http.StatusOK {
-		t.Fatalf("clear = %d: %s", cleared.Code, cleared.Body.String())
-	}
-
-	result := decode[contract.StationAnswerDeleteResult](t, cleared)
-	if result.CurrentStation == nil || *result.CurrentStation != "triage" {
-		t.Fatalf("current = %v, want triage", result.CurrentStation)
-	}
-
-	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	for _, answer := range after.StationAnswers {
-		if answer.StationKey == "triage" && answer.QuestionKey == first.Key {
-			t.Fatalf("answer still present = %+v", answer)
-		}
-	}
-
-	stale := do(t, application, http.MethodDelete, path+"?version=99", nil, cookie, nil)
-	if stale.Code != http.StatusConflict {
-		t.Fatalf("stale clear = %d, want 409", stale.Code)
-	}
-
-	other := login(t, application, "organiser@example.com")
-
-	unclaimed := do(t, application, http.MethodDelete, path+"?version=1", nil, other, nil)
-	if unclaimed.Code != http.StatusConflict {
-		t.Fatalf("unclaimed clear = %d, want 409", unclaimed.Code)
-	}
-
-	missing := do(t, application, http.MethodDelete, testBase+"/submissions/"+bundle.Submission.ID+"/stations/triage/answers/nope?version=1", nil, cookie, nil)
-	if missing.Code != http.StatusNotFound {
-		t.Fatalf("unknown question clear = %d, want 404", missing.Code)
-	}
-}
-
-// TestStationQueueFiltersByCurrentStation covers the focused station queues.
-func TestStationQueueFiltersByCurrentStation(t *testing.T) {
-	application := newTestApp(t)
-	cookie := login(t, application, "reviewer@example.com")
-
-	queue := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue", nil, cookie, nil))
-	if queue.Station.Key != "triage" || len(queue.Items) != 3 {
-		t.Fatalf("triage queue = %+v, want 3 ships", queue)
-	}
-
-	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
-		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
-	}
-
-	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	triage := stationByKey(bundle, "triage")
-
-	for _, question := range triage.Questions {
-		if question.Required == 1 {
-			answerQuestion(t, application, cookie, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
-		}
-	}
-
-	queue = decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue", nil, cookie, nil))
-	if len(queue.Items) != 2 {
-		t.Fatalf("triage queue after one ship = %d, want 2", len(queue.Items))
-	}
-
-	timeQueue := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/time/queue", nil, cookie, nil))
-	if len(timeQueue.Items) != 1 || timeQueue.Items[0].ID != bundle.Submission.ID {
-		t.Fatalf("time queue = %+v", timeQueue.Items)
+	if stale := do(t, application, http.MethodPut, path, staleBody, cookie, nil); stale.Code != http.StatusConflict {
+		t.Fatalf("stale answer = %d: %s", stale.Code, stale.Body.String())
 	}
 }
 
@@ -209,7 +95,6 @@ func TestStationQueueFiltersByCurrentStation(t *testing.T) {
 func TestStationQueueSearchAndSort(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-
 	miss := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue?q=no-such-ship", nil, cookie, nil))
 	if len(miss.Items) != 0 {
 		t.Fatalf("filtered queue = %d items, want 0", len(miss.Items))
@@ -230,90 +115,38 @@ func TestStationQueueSearchAndSort(t *testing.T) {
 		}
 	}
 
-	bad := do(t, application, http.MethodGet, testBase+"/stations/triage/queue?sort=bogus", nil, cookie, nil)
-	if bad.Code != http.StatusBadRequest {
+	if bad := do(t, application, http.MethodGet, testBase+"/stations/triage/queue?sort=bogus", nil, cookie, nil); bad.Code != http.StatusBadRequest {
 		t.Fatalf("bad sort = %d, want 400", bad.Code)
 	}
 }
 
-// TestStationStatusReflectsEachSection covers the per-section badge while an earlier station is still current.
-func TestStationStatusReflectsEachSection(t *testing.T) {
-	application := newTestApp(t)
-	cookie := login(t, application, "reviewer@example.com")
+// answerQuestion saves one station answer.
+func answerQuestion(t *testing.T, application *ireApp, cookie *http.Cookie, submissionID, station, question, answer string, version int) contract.StationAnswerResult {
+	t.Helper()
 
-	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
-		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
-	}
-
-	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	synthesis := stationByKey(bundle, "synthesis")
-
-	for _, question := range synthesis.Questions {
-		if question.Required == 1 {
-			answerQuestion(t, application, cookie, bundle.Submission.ID, "synthesis", question.Key, "pass", bundle.Submission.Version)
-		}
-	}
-
-	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-	if after.CurrentStation == nil || *after.CurrentStation != "triage" {
-		t.Fatalf("current = %v, want triage", after.CurrentStation)
-	}
-
-	var synthesisDone bool
-
-	for _, state := range after.StationStates {
-		if state.Key == "synthesis" && state.Status == "done" {
-			synthesisDone = true
-		}
-	}
-
-	if !synthesisDone {
-		t.Fatalf("synthesis state = %+v, want done", after.StationStates)
-	}
-
-	answerQuestion(t, application, cookie, bundle.Submission.ID, "synthesis", synthesis.Questions[0].Key, "fail", bundle.Submission.Version)
-
-	failed := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-
-	var synthesisBlocked bool
-
-	for _, state := range failed.StationStates {
-		if state.Key == "synthesis" && state.Status == "blocked" {
-			synthesisBlocked = true
-		}
-
-		if state.Key == "synthesis" && state.Answered != 3 {
-			t.Fatalf("synthesis answered = %d, want 3 including the fail", state.Answered)
-		}
-	}
-
-	if !synthesisBlocked {
-		t.Fatalf("synthesis state after fail = %+v, want blocked", failed.StationStates)
-	}
-
-	recordBody, _ := json.Marshal(contract.FindingCreateRequest{
-		MakerAction: stringPtr("Record one decision with its justification."),
-		Question: stringPtr(synthesis.Questions[0].Prompt),
-		Severity: "fixable",
-		Station: "synthesis",
-		Summary: "The synthesis record is missing.",
+	body, _ := json.Marshal(contract.StationAnswerRequest{
+		Answer: answer,
+		Evidence: "Checked in the evidence.",
+		Version: version,
 	})
-
-	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", recordBody, cookie, nil); created.Code != http.StatusOK {
-		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
+	path := testBase + "/submissions/" + submissionID + "/stations/" + station + "/answers/" + question
+	recorder := do(t, application, http.MethodPut, path, body, cookie, nil)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("answer %s/%s = %d: %s", station, question, recorder.Code, recorder.Body.String())
 	}
 
-	recorded := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	return decode[contract.StationAnswerResult](t, recorder)
+}
 
-	for _, state := range recorded.StationStates {
-		if state.Key == "synthesis" && state.Status != "done" {
-			t.Fatalf("synthesis state after finding = %+v, want done", recorded.StationStates)
-		}
-
-		if state.Key == "synthesis" && state.OpenFindings != 1 {
-			t.Fatalf("synthesis open findings = %d, want 1", state.OpenFindings)
+// stationByKey finds a station in the bundle.
+func stationByKey(bundle contract.ReviewBundle, key string) contract.StationDefinition {
+	for _, station := range bundle.Stations {
+		if station.Key == key {
+			return station
 		}
 	}
+
+	return contract.StationDefinition{}
 }
 
 // TestOpenFindingsDoNotPinStations covers flags that travel with the ship: an open
@@ -359,32 +192,104 @@ func TestOpenFindingsDoNotPinStations(t *testing.T) {
 	}
 }
 
-// TestStationAnswerGuards covers the claim, question and version checks.
-func TestStationAnswerGuards(t *testing.T) {
+// TestOrganiserResolvesStationConflict covers the override path for disagreeing reviewers.
+func TestOrganiserResolvesStationConflict(t *testing.T) {
+	application := newTestApp(t)
+	reviewer := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
+	triage := stationByKey(bundle, "triage")
+	firstQuestion := triage.Questions[0]
+
+	for _, question := range triage.Questions {
+		if question.Required == 1 {
+			answerQuestion(t, application, reviewer, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
+		}
+	}
+
+	if release := do(t, application, http.MethodDelete, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); release.Code != http.StatusNoContent {
+		t.Fatalf("release = %d", release.Code)
+	}
+
+	organiser := login(t, application, "organiser@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, organiser, nil); claim.Code != http.StatusOK {
+		t.Fatalf("organiser claim = %d: %s", claim.Code, claim.Body.String())
+	}
+	answerQuestion(t, application, organiser, bundle.Submission.ID, "triage", firstQuestion.Key, "fail", bundle.Submission.Version)
+
+	body, _ := json.Marshal(contract.StationAnswerRequest{
+		Answer: "pass",
+		Evidence: "Organiser resolved.",
+		Version: bundle.Submission.Version,
+	})
+	path := testBase + "/submissions/sub_fixture_1/stations/triage/answers/" + firstQuestion.Key + "/resolve"
+	resolved := decode[contract.StationAnswerResult](t, do(t, application, http.MethodPost, path, body, organiser, nil))
+
+	for _, state := range resolved.States {
+		if state.Key == "triage" && (state.Status != "done" || state.Conflicts != 0) {
+			t.Fatalf("triage = %+v, want done without conflicts", state)
+		}
+	}
+
+	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, organiser, nil))
+
+	for _, answer := range after.StationAnswers {
+		if answer.StationKey == "triage" && answer.QuestionKey == firstQuestion.Key && answer.Answer != "pass" {
+			t.Fatalf("answer = %+v, want pass", answer)
+		}
+	}
+}
+
+// TestStationAnswerClear removes one verdict and reopens its station.
+func TestStationAnswerClear(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
-
-	body, _ := json.Marshal(contract.StationAnswerRequest{Answer: "pass", Evidence: "Checked.", Version: bundle.Submission.Version})
-	path := testBase + "/submissions/sub_fixture_1/stations/triage/answers/cover_screenshot"
-
-	if unclaimed := do(t, application, http.MethodPut, path, body, cookie, nil); unclaimed.Code != http.StatusConflict {
-		t.Fatalf("unclaimed answer = %d: %s", unclaimed.Code, unclaimed.Body.String())
-	}
 
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
-	unknown := testBase + "/submissions/sub_fixture_1/stations/triage/answers/not_a_question"
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	triage := stationByKey(bundle, "triage")
+	first := triage.Questions[0]
+	path := testBase + "/submissions/" + bundle.Submission.ID + "/stations/triage/answers/" + first.Key
 
-	if missing := do(t, application, http.MethodPut, unknown, body, cookie, nil); missing.Code != http.StatusNotFound {
-		t.Fatalf("unknown question = %d: %s", missing.Code, missing.Body.String())
+	answerQuestion(t, application, cookie, bundle.Submission.ID, "triage", first.Key, "pass", bundle.Submission.Version)
+
+	cleared := do(t, application, http.MethodDelete, path+"?version=1", nil, cookie, nil)
+	if cleared.Code != http.StatusOK {
+		t.Fatalf("clear = %d: %s", cleared.Code, cleared.Body.String())
 	}
 
-	staleBody, _ := json.Marshal(contract.StationAnswerRequest{Answer: "pass", Evidence: "Checked.", Version: 99})
-	if stale := do(t, application, http.MethodPut, path, staleBody, cookie, nil); stale.Code != http.StatusConflict {
-		t.Fatalf("stale answer = %d: %s", stale.Code, stale.Body.String())
+	if result := decode[contract.StationAnswerDeleteResult](t, cleared); result.CurrentStation == nil || *result.CurrentStation != "triage" {
+		t.Fatalf("current = %v, want triage", result.CurrentStation)
+	}
+
+	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+
+	for _, answer := range after.StationAnswers {
+		if answer.StationKey == "triage" && answer.QuestionKey == first.Key {
+			t.Fatalf("answer still present = %+v", answer)
+		}
+	}
+
+	if stale := do(t, application, http.MethodDelete, path+"?version=99", nil, cookie, nil); stale.Code != http.StatusConflict {
+		t.Fatalf("stale clear = %d, want 409", stale.Code)
+	}
+
+	other := login(t, application, "organiser@example.com")
+
+	if unclaimed := do(t, application, http.MethodDelete, path+"?version=1", nil, other, nil); unclaimed.Code != http.StatusConflict {
+		t.Fatalf("unclaimed clear = %d, want 409", unclaimed.Code)
+	}
+
+	if missing := do(t, application, http.MethodDelete, testBase+"/submissions/"+bundle.Submission.ID+"/stations/triage/answers/nope?version=1", nil, cookie, nil); missing.Code != http.StatusNotFound {
+		t.Fatalf("unknown question clear = %d, want 404", missing.Code)
 	}
 }
 
@@ -441,7 +346,8 @@ func TestStationAnswersArePerReviewerAndConflict(t *testing.T) {
 	}
 
 	withAnswers := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, secondReviewer, nil))
-	competing := 0
+
+	var competing int
 
 	for _, answer := range withAnswers.StationAnswers {
 		if answer.StationKey == "triage" && answer.QuestionKey == firstQuestion.Key {
@@ -466,94 +372,199 @@ func TestStationAnswersArePerReviewerAndConflict(t *testing.T) {
 	}
 }
 
-// TestAdminAuthorsStations covers the station editor API: create, read and delete.
-func TestAdminAuthorsStations(t *testing.T) {
+// TestStationFlowMovesThroughTheQueue covers the stations list, answer storage and station derivation.
+func TestStationFlowMovesThroughTheQueue(t *testing.T) {
 	application := newTestApp(t)
-	cookie := login(t, application, "admin@example.com")
-
-	station := contract.StationDefinition{
-		Active: 1,
-		Description: "A test station.",
-		Key: "test_station",
-		Label: "Test station",
-		Questions: []contract.StationQuestion{
-			{EvidenceKind: "text", Key: "first", Prompt: "Is the first thing right?", Required: 1, Sort: 0},
-		},
-		Sort: 90,
-		Stage: 1,
-		Themes: []string{},
+	cookie := login(t, application, "reviewer@example.com")
+	stations := decode[contract.StationsResponse](t, do(t, application, http.MethodGet, testBase+"/stations", nil, cookie, nil))
+	if len(stations.Stations) < 5 {
+		t.Fatalf("stations = %d, want the five stage 1 stations", len(stations.Stations))
 	}
 
-	body, _ := json.Marshal(station)
-	if saved := do(t, application, http.MethodPut, testBase+"/stations/test_station", body, cookie, nil); saved.Code != http.StatusOK {
-		t.Fatalf("save station = %d: %s", saved.Code, saved.Body.String())
+	if triage := stations.Stations[0]; triage.Key != "triage" || triage.Count != 3 {
+		t.Fatalf("first station = %+v, want triage with 3 waiting", triage)
 	}
 
-	loaded := decode[contract.StationDefinition](t, do(t, application, http.MethodGet, testBase+"/stations/test_station", nil, cookie, nil))
-	if loaded.Label != station.Label || len(loaded.Questions) != 1 || loaded.Questions[0].Key != "first" {
-		t.Fatalf("station = %+v", loaded)
-	}
-
-	if deleted := do(t, application, http.MethodDelete, testBase+"/stations/test_station", nil, cookie, nil); deleted.Code != http.StatusNoContent {
-		t.Fatalf("delete station = %d: %s", deleted.Code, deleted.Body.String())
-	}
-
-	if missing := do(t, application, http.MethodGet, testBase+"/stations/test_station", nil, cookie, nil); missing.Code != http.StatusNotFound {
-		t.Fatalf("station after delete = %d, want 404", missing.Code)
-	}
-
-	reviewer := login(t, application, "reviewer@example.com")
-	if denied := do(t, application, http.MethodPut, testBase+"/stations/test_station", body, reviewer, nil); denied.Code != http.StatusForbidden {
-		t.Fatalf("reviewer save station = %d, want 403", denied.Code)
-	}
-}
-
-// TestOrganiserResolvesStationConflict covers the override path for disagreeing reviewers.
-func TestOrganiserResolvesStationConflict(t *testing.T) {
-	application := newTestApp(t)
-	reviewer := login(t, application, "reviewer@example.com")
-
-	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
-	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, reviewer, nil))
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	if bundle.CurrentStation == nil || *bundle.CurrentStation != "triage" {
+		t.Fatalf("current station = %v, want triage", bundle.CurrentStation)
+	}
+
 	triage := stationByKey(bundle, "triage")
-	firstQuestion := triage.Questions[0]
 
 	for _, question := range triage.Questions {
 		if question.Required == 1 {
-			answerQuestion(t, application, reviewer, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
+			answerQuestion(t, application, cookie, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
 		}
 	}
 
-	if release := do(t, application, http.MethodDelete, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); release.Code != http.StatusNoContent {
-		t.Fatalf("release = %d", release.Code)
+	afterTriage := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	if afterTriage.CurrentStation == nil || *afterTriage.CurrentStation != "time" {
+		t.Fatalf("current station after triage = %v, want time", afterTriage.CurrentStation)
 	}
 
-	organiser := login(t, application, "organiser@example.com")
-
-	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, organiser, nil); claim.Code != http.StatusOK {
-		t.Fatalf("organiser claim = %d: %s", claim.Code, claim.Body.String())
+	timeStation := stationByKey(afterTriage, "time")
+	first := timeStation.Questions[0]
+	failed := answerQuestion(t, application, cookie, bundle.Submission.ID, "time", first.Key, "fail", bundle.Submission.Version)
+	if failed.CurrentStation == nil || *failed.CurrentStation != "time" {
+		t.Fatalf("current after fail = %v, want time", failed.CurrentStation)
 	}
 
-	answerQuestion(t, application, organiser, bundle.Submission.ID, "triage", firstQuestion.Key, "fail", bundle.Submission.Version)
+	var blocked bool
 
-	body, _ := json.Marshal(contract.StationAnswerRequest{Answer: "pass", Evidence: "Organiser resolved.", Version: bundle.Submission.Version})
-	path := testBase + "/submissions/sub_fixture_1/stations/triage/answers/" + firstQuestion.Key + "/resolve"
-
-	resolved := decode[contract.StationAnswerResult](t, do(t, application, http.MethodPost, path, body, organiser, nil))
-
-	for _, state := range resolved.States {
-		if state.Key == "triage" && (state.Status != "done" || state.Conflicts != 0) {
-			t.Fatalf("triage = %+v, want done without conflicts", state)
+	for _, state := range failed.States {
+		if state.Key == "time" && state.Status == "blocked" {
+			blocked = true
 		}
 	}
 
-	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, organiser, nil))
-	for _, answer := range after.StationAnswers {
-		if answer.StationKey == "triage" && answer.QuestionKey == firstQuestion.Key && answer.Answer != "pass" {
-			t.Fatalf("answer = %+v, want pass", answer)
+	if !blocked {
+		t.Fatalf("time state = %+v, want blocked", failed.States)
+	}
+
+	// A recorded finding lets the failed station advance with its flag.
+	findingBody, _ := json.Marshal(contract.FindingCreateRequest{
+		MakerAction: stringPtr("Count only the productive journal time."),
+		Question: stringPtr(first.Prompt),
+		Severity: "fixable",
+		Station: "time",
+		Summary: "Tutorial consumption in the journals.",
+	})
+
+	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", findingBody, cookie, nil); created.Code != http.StatusOK {
+		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
+	}
+
+	for _, question := range timeStation.Questions[1:] {
+		if question.Required == 1 {
+			answerQuestion(t, application, cookie, bundle.Submission.ID, "time", question.Key, "pass", bundle.Submission.Version)
+		}
+	}
+
+	afterFinding := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	if afterFinding.CurrentStation == nil || *afterFinding.CurrentStation != "narrative" {
+		t.Fatalf("current station after finding = %v, want narrative", afterFinding.CurrentStation)
+	}
+
+	for _, state := range afterFinding.StationStates {
+		if state.Key == "time" && state.Status != "done" {
+			t.Fatalf("time state = %+v, want done with an open finding", afterFinding.StationStates)
+		}
+	}
+}
+
+// TestStationQueueFiltersByCurrentStation covers the focused station queues.
+func TestStationQueueFiltersByCurrentStation(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+	queue := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue", nil, cookie, nil))
+	if queue.Station.Key != "triage" || len(queue.Items) != 3 {
+		t.Fatalf("triage queue = %+v, want 3 ships", queue)
+	}
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	triage := stationByKey(bundle, "triage")
+
+	for _, question := range triage.Questions {
+		if question.Required == 1 {
+			answerQuestion(t, application, cookie, bundle.Submission.ID, "triage", question.Key, "pass", bundle.Submission.Version)
+		}
+	}
+
+	queue = decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue", nil, cookie, nil))
+
+	if len(queue.Items) != 2 {
+		t.Fatalf("triage queue after one ship = %d, want 2", len(queue.Items))
+	}
+
+	if timeQueue := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/time/queue", nil, cookie, nil)); len(timeQueue.Items) != 1 || timeQueue.Items[0].ID != bundle.Submission.ID {
+		t.Fatalf("time queue = %+v", timeQueue.Items)
+	}
+}
+
+// TestStationStatusReflectsEachSection covers the per-section badge while an earlier station is still current.
+func TestStationStatusReflectsEachSection(t *testing.T) {
+	application := newTestApp(t)
+	cookie := login(t, application, "reviewer@example.com")
+
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
+		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
+	}
+
+	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	synthesis := stationByKey(bundle, "synthesis")
+
+	for _, question := range synthesis.Questions {
+		if question.Required == 1 {
+			answerQuestion(t, application, cookie, bundle.Submission.ID, "synthesis", question.Key, "pass", bundle.Submission.Version)
+		}
+	}
+
+	after := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+	if after.CurrentStation == nil || *after.CurrentStation != "triage" {
+		t.Fatalf("current = %v, want triage", after.CurrentStation)
+	}
+
+	var synthesisDone bool
+
+	for _, state := range after.StationStates {
+		if state.Key == "synthesis" && state.Status == "done" {
+			synthesisDone = true
+		}
+	}
+
+	if !synthesisDone {
+		t.Fatalf("synthesis state = %+v, want done", after.StationStates)
+	}
+	answerQuestion(t, application, cookie, bundle.Submission.ID, "synthesis", synthesis.Questions[0].Key, "fail", bundle.Submission.Version)
+
+	failed := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+
+	var synthesisBlocked bool
+
+	for _, state := range failed.StationStates {
+		if state.Key == "synthesis" && state.Status == "blocked" {
+			synthesisBlocked = true
+		}
+
+		if state.Key == "synthesis" && state.Answered != 3 {
+			t.Fatalf("synthesis answered = %d, want 3 including the fail", state.Answered)
+		}
+	}
+
+	if !synthesisBlocked {
+		t.Fatalf("synthesis state after fail = %+v, want blocked", failed.StationStates)
+	}
+
+	recordBody, _ := json.Marshal(contract.FindingCreateRequest{
+		MakerAction: stringPtr("Record one decision with its justification."),
+		Question: stringPtr(synthesis.Questions[0].Prompt),
+		Severity: "fixable",
+		Station: "synthesis",
+		Summary: "The synthesis record is missing.",
+	})
+
+	if created := do(t, application, http.MethodPost, testBase+"/submissions/"+bundle.Submission.ID+"/findings", recordBody, cookie, nil); created.Code != http.StatusOK {
+		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
+	}
+
+	recorded := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
+
+	for _, state := range recorded.StationStates {
+		if state.Key == "synthesis" && state.Status != "done" {
+			t.Fatalf("synthesis state after finding = %+v, want done", recorded.StationStates)
+		}
+
+		if state.Key == "synthesis" && state.OpenFindings != 1 {
+			t.Fatalf("synthesis open findings = %d, want 1", state.OpenFindings)
 		}
 	}
 }

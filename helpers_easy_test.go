@@ -2,126 +2,11 @@ package main
 
 import (
 	"errors"
+	"ire/contract"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"ire/contract"
 )
-
-// TestPathExtension covers the suffix helper behind fileKind.
-func TestPathExtension(t *testing.T) {
-	cases := []struct{ in, want string }{
-		{in: "board.kicad_pcb", want: ".kicad_pcb"},
-		{in: "dir/archive.tar.gz", want: ".gz"},
-		{in: "noext", want: ""},
-		{in: "", want: ""},
-	}
-
-	for _, test := range cases {
-		if got := pathExtension(test.in); got != test.want {
-			t.Errorf("pathExtension(%q) = %q, want %q", test.in, got, test.want)
-		}
-	}
-}
-
-// TestFileKind covers the evidence tree labels.
-func TestFileKind(t *testing.T) {
-	cases := []struct{ in, want string }{
-		{in: "BOM.csv", want: "bom"},
-		{in: "docs/bill-of-materials.csv", want: "bom"},
-		{in: "README.md", want: "readme"},
-		{in: "board.kicad_pcb", want: "design"},
-		{in: "gerbers/board-F_Cu.gtl", want: "design"},
-		{in: "docs/guide.md", want: "doc"},
-		{in: "img/photo.png", want: "image"},
-		{in: "src/main.go", want: "code"},
-		{in: "notes.txt", want: "file"},
-	}
-
-	for _, test := range cases {
-		if got := fileKind(test.in); got != test.want {
-			t.Errorf("fileKind(%q) = %q, want %q", test.in, got, test.want)
-		}
-	}
-}
-
-// TestParseGitHubRepo covers URL parsing for the repository checks.
-func TestParseGitHubRepo(t *testing.T) {
-	owner, name, ok := parseGitHubRepo("https://github.com/hackclub/ire")
-	if !ok || owner != "hackclub" || name != "ire" {
-		t.Errorf("parseGitHubRepo = %q %q %v, want hackclub ire true", owner, name, ok)
-	}
-
-	owner, name, ok = parseGitHubRepo("https://github.com/hackclub/ire.git")
-	if !ok || name != "ire" {
-		t.Errorf("parseGitHubRepo(.git) = %q %q %v", owner, name, ok)
-	}
-
-	for _, raw := range []string{"", "https://gitlab.com/a/b", "https://github.com/onlyone", "https://github.com//"} {
-		if _, _, ok := parseGitHubRepo(raw); ok {
-			t.Errorf("parseGitHubRepo(%q) = true, want false", raw)
-		}
-	}
-}
-
-// TestRepoAccessFailure covers the 404, rate-limit and generic branches.
-func TestRepoAccessFailure(t *testing.T) {
-	if _, summary, _ := repoAccessFailure(http.StatusNotFound, nil); summary == "" {
-		t.Error("404 should have a summary")
-	}
-
-	if _, summary, _ := repoAccessFailure(http.StatusTooManyRequests, nil); summary == "" {
-		t.Error("429 should have a summary")
-	}
-
-	if status, _, _ := repoAccessFailure(0, errors.New("boom")); status != statusError {
-		t.Errorf("error status = %q, want error", status)
-	}
-
-	if _, _, detail := repoAccessFailure(http.StatusBadGateway, nil); detail == "" {
-		t.Error("generic failure should have detail")
-	}
-}
-
-// TestReadmeCheck covers missing, unreadable, short and full READMEs.
-func TestReadmeCheck(t *testing.T) {
-	if got := readmeCheck(nil, http.StatusNotFound, nil, "now"); got.Status != statusFail {
-		t.Errorf("missing readme = %q, want fail", got.Status)
-	}
-
-	if got := readmeCheck(nil, http.StatusBadGateway, errors.New("boom"), "now"); got.Status != statusError {
-		t.Errorf("failed readme = %q, want error", got.Status)
-	}
-
-	if got := readmeCheck([]byte("short"), http.StatusOK, nil, "now"); got.Status != statusWarn {
-		t.Errorf("short readme = %q, want warn", got.Status)
-	}
-
-	long := make([]byte, minReadmeLength+10)
-	for i := range long {
-		long[i] = 'a'
-	}
-
-	if got := readmeCheck(long, http.StatusOK, nil, "now"); got.Status != statusPass {
-		t.Errorf("long readme = %q, want pass", got.Status)
-	}
-}
-
-// TestImageAndCommitChecks covers the small pure check builders.
-func TestImageAndCommitChecks(t *testing.T) {
-	if got := imageCheck([]byte("no images"), http.StatusOK, nil, "now"); got.Status != statusWarn {
-		t.Errorf("imageless readme = %q, want warn", got.Status)
-	}
-
-	if count := imageCount([]byte("![a](https://example.com/a.png) ![a](https://example.com/a.png)")); count != 1 {
-		t.Errorf("imageCount dedup = %d, want 1", count)
-	}
-
-	if got := commitCheck(nil, "now"); got.Status != statusFail {
-		t.Errorf("empty commits = %q, want fail", got.Status)
-	}
-}
 
 // TestCheckSmallHelpers covers plural, capStrings and source round-trips.
 func TestCheckSmallHelpers(t *testing.T) {
@@ -140,8 +25,7 @@ func TestCheckSmallHelpers(t *testing.T) {
 	source := "forge"
 	encoded := sourceData(&source)
 
-	decoded := sourceFromData(encoded)
-	if decoded == nil || *decoded != "forge" {
+	if decoded := sourceFromData(encoded); decoded == nil || *decoded != "forge" {
 		t.Errorf("source round-trip = %v", decoded)
 	}
 
@@ -154,78 +38,101 @@ func TestCheckSmallHelpers(t *testing.T) {
 	}
 }
 
-// TestParseSearchLimit covers the dropdown page-size clamping.
-func TestParseSearchLimit(t *testing.T) {
+// TestDemoResultMapping covers the probe status mapping.
+func TestDemoResultMapping(t *testing.T) {
+	if got := demoResult(http.StatusOK, "now"); got.Status != statusPass {
+		t.Errorf("200 demo = %q, want pass", got.Status)
+	}
+
+	if got := demoResult(http.StatusNotFound, "now"); got.Status != statusWarn {
+		t.Errorf("404 demo = %q, want warn", got.Status)
+	}
+
+	if got := demoResult(http.StatusTeapot, "now"); got.Status != statusWarn {
+		t.Errorf("418 demo = %q, want warn", got.Status)
+	}
+}
+
+// TestFileKind covers the evidence tree labels.
+func TestFileKind(t *testing.T) {
 	cases := []struct {
-		query string
-		want int
+		in, want string
 	}{
-		{query: "", want: searchLimit},
-		{query: "not-a-number", want: searchLimit},
-		{query: "0", want: searchLimit},
-		{query: "5", want: 5},
-		{query: "99", want: maxSearchLimit},
+		{
+			in: "BOM.csv",
+			want: "bom",
+		},
+		{
+			in: "docs/bill-of-materials.csv",
+			want: "bom",
+		},
+		{
+			in: "README.md",
+			want: "readme",
+		},
+		{
+			in: "board.kicad_pcb",
+			want: "design",
+		},
+		{
+			in: "gerbers/board-F_Cu.gtl",
+			want: "design",
+		},
+		{
+			in: "docs/guide.md",
+			want: "doc",
+		},
+		{
+			in: "img/photo.png",
+			want: "image",
+		},
+		{
+			in: "src/main.go",
+			want: "code",
+		},
+		{
+			in: "notes.txt",
+			want: "file",
+		},
 	}
 
 	for _, test := range cases {
-		request := httptest.NewRequest(http.MethodGet, "/search?limit="+test.query, nil)
-		if got := parseSearchLimit(request); got != test.want {
-			t.Errorf("parseSearchLimit(%q) = %d, want %d", test.query, got, test.want)
+		if got := fileKind(test.in); got != test.want {
+			t.Errorf("fileKind(%q) = %q, want %q", test.in, got, test.want)
 		}
 	}
 }
 
-// TestParseLimitOffsetSince covers the shared pagination helpers.
-func TestParseLimitOffsetSince(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "/queue", nil)
-	if got := parseLimit(request); got != defaultLimit {
-		t.Errorf("default limit = %d, want %d", got, defaultLimit)
+// TestIDHelpers covers the identifier utilities.
+func TestIDHelpers(t *testing.T) {
+	seen := map[string]bool{}
+
+	for range 10 {
+		id := newID("evt")
+		if len(id) < 5 || seen[id] {
+			t.Fatalf("newID = %q, want unique prefixed ids", id)
+		}
+
+		seen[id] = true
 	}
 
-	request = httptest.NewRequest(http.MethodGet, "/queue?limit=5&offset=3", nil)
-	if got := parseLimit(request); got != 5 {
-		t.Errorf("limit = %d, want 5", got)
-	}
-
-	if got := parseOffset(request); got != 3 {
-		t.Errorf("offset = %d, want 3", got)
-	}
-
-	request = httptest.NewRequest(http.MethodGet, "/queue?limit=99999&offset=-1", nil)
-	if got := parseLimit(request); got != maxLimit {
-		t.Errorf("clamped limit = %d, want %d", got, maxLimit)
-	}
-
-	if got := parseOffset(request); got != 0 {
-		t.Errorf("negative offset = %d, want 0", got)
-	}
-
-	request = httptest.NewRequest(http.MethodGet, "/queue", nil)
-	if value, ok := parseSince(request); value != "" || !ok {
-		t.Errorf("empty since = %q %v", value, ok)
-	}
-
-	request = httptest.NewRequest(http.MethodGet, "/queue?since=nope", nil)
-	if _, ok := parseSince(request); ok {
-		t.Error("invalid since should be false")
-	}
-
-	request = httptest.NewRequest(http.MethodGet, "/queue?since=2026-01-01T00:00:00Z", nil)
-	if value, ok := parseSince(request); !ok || value == "" {
-		t.Errorf("valid since = %q %v", value, ok)
+	if len(sha256Hex([]byte("x"))) != 64 {
+		t.Error("sha256Hex should be 64 hex chars")
 	}
 }
 
-// TestProtectedPage covers the auth gate list.
-func TestProtectedPage(t *testing.T) {
-	for _, path := range []string{"/overview", "/station/triage", "/makers/a%40example.com", "/admin/members"} {
-		if !protectedPage(path) {
-			t.Errorf("protectedPage(%q) = false, want true", path)
-		}
+// TestImageAndCommitChecks covers the small pure check builders.
+func TestImageAndCommitChecks(t *testing.T) {
+	if got := imageCheck([]byte("no images"), http.StatusOK, nil, "now"); got.Status != statusWarn {
+		t.Errorf("imageless readme = %q, want warn", got.Status)
 	}
 
-	if protectedPage("/api/v1/me") {
-		t.Error("API route should not be a protected page")
+	if count := imageCount([]byte("![a](https://example.com/a.png) ![a](https://example.com/a.png)")); count != 1 {
+		t.Errorf("imageCount dedup = %d, want 1", count)
+	}
+
+	if got := commitCheck(nil, "now"); got.Status != statusFail {
+		t.Errorf("empty commits = %q, want fail", got.Status)
 	}
 }
 
@@ -247,8 +154,7 @@ func TestIngestScalars(t *testing.T) {
 		t.Error("nullInt(nil) should be nil")
 	}
 
-	value := 7
-	if nullInt(&value) != 7 || intValue(nil) != 0 || intValue(&value) != 7 {
+	if value := 7; nullInt(&value) != 7 || intValue(nil) != 0 || intValue(&value) != 7 {
 		t.Error("int helpers mismatch")
 	}
 
@@ -280,36 +186,194 @@ func TestLocalCheckHelpers(t *testing.T) {
 	}
 }
 
-// TestDemoResultMapping covers the probe status mapping.
-func TestDemoResultMapping(t *testing.T) {
-	if got := demoResult(http.StatusOK, "now"); got.Status != statusPass {
-		t.Errorf("200 demo = %q, want pass", got.Status)
+// TestParseGitHubRepo covers URL parsing for the repository checks.
+func TestParseGitHubRepo(t *testing.T) {
+	owner, name, ok := parseGitHubRepo("https://github.com/hackclub/ire")
+	if !ok || owner != "hackclub" || name != "ire" {
+		t.Errorf("parseGitHubRepo = %q %q %v, want hackclub ire true", owner, name, ok)
 	}
 
-	if got := demoResult(http.StatusNotFound, "now"); got.Status != statusWarn {
-		t.Errorf("404 demo = %q, want warn", got.Status)
+	owner, name, ok = parseGitHubRepo("https://github.com/hackclub/ire.git")
+
+	if !ok || name != "ire" {
+		t.Errorf("parseGitHubRepo(.git) = %q %q %v", owner, name, ok)
 	}
 
-	if got := demoResult(http.StatusTeapot, "now"); got.Status != statusWarn {
-		t.Errorf("418 demo = %q, want warn", got.Status)
+	for _, raw := range []string{"", "https://gitlab.com/a/b", "https://github.com/onlyone", "https://github.com//"} {
+		if _, _, ok := parseGitHubRepo(raw); ok {
+			t.Errorf("parseGitHubRepo(%q) = true, want false", raw)
+		}
 	}
 }
 
-// TestIDHelpers covers the identifier utilities.
-func TestIDHelpers(t *testing.T) {
-	seen := map[string]bool{}
+// TestParseLimitOffsetSince covers the shared pagination helpers.
+func TestParseLimitOffsetSince(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/queue", nil)
 
-	for range 10 {
-		id := newID("evt")
-		if len(id) < 5 || seen[id] {
-			t.Fatalf("newID = %q, want unique prefixed ids", id)
-		}
-
-		seen[id] = true
+	if got := parseLimit(request); got != defaultLimit {
+		t.Errorf("default limit = %d, want %d", got, defaultLimit)
 	}
 
-	if len(sha256Hex([]byte("x"))) != 64 {
-		t.Error("sha256Hex should be 64 hex chars")
+	request = httptest.NewRequest(http.MethodGet, "/queue?limit=5&offset=3", nil)
+
+	if got := parseLimit(request); got != 5 {
+		t.Errorf("limit = %d, want 5", got)
+	}
+
+	if got := parseOffset(request); got != 3 {
+		t.Errorf("offset = %d, want 3", got)
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/queue?limit=99999&offset=-1", nil)
+
+	if got := parseLimit(request); got != maxLimit {
+		t.Errorf("clamped limit = %d, want %d", got, maxLimit)
+	}
+
+	if got := parseOffset(request); got != 0 {
+		t.Errorf("negative offset = %d, want 0", got)
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/queue", nil)
+
+	if value, ok := parseSince(request); value != "" || !ok {
+		t.Errorf("empty since = %q %v", value, ok)
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/queue?since=nope", nil)
+
+	if _, ok := parseSince(request); ok {
+		t.Error("invalid since should be false")
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/queue?since=2026-01-01T00:00:00Z", nil)
+
+	if value, ok := parseSince(request); !ok || value == "" {
+		t.Errorf("valid since = %q %v", value, ok)
+	}
+}
+
+// TestParseSearchLimit covers the dropdown page-size clamping.
+func TestParseSearchLimit(t *testing.T) {
+	cases := []struct {
+		query string
+		want int
+	}{
+		{
+			query: "",
+			want: searchLimit,
+		},
+		{
+			query: "not-a-number",
+			want: searchLimit,
+		},
+		{
+			query: "0",
+			want: searchLimit,
+		},
+		{
+			query: "5",
+			want: 5,
+		},
+		{
+			query: "99",
+			want: maxSearchLimit,
+		},
+	}
+
+	for _, test := range cases {
+		request := httptest.NewRequest(http.MethodGet, "/search?limit="+test.query, nil)
+
+		if got := parseSearchLimit(request); got != test.want {
+			t.Errorf("parseSearchLimit(%q) = %d, want %d", test.query, got, test.want)
+		}
+	}
+}
+
+// TestPathExtension covers the suffix helper behind fileKind.
+func TestPathExtension(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{
+			in: "board.kicad_pcb",
+			want: ".kicad_pcb",
+		},
+		{
+			in: "dir/archive.tar.gz",
+			want: ".gz",
+		},
+		{
+			in: "noext",
+			want: "",
+		},
+		{
+			in: "",
+			want: "",
+		},
+	}
+
+	for _, test := range cases {
+		if got := pathExtension(test.in); got != test.want {
+			t.Errorf("pathExtension(%q) = %q, want %q", test.in, got, test.want)
+		}
+	}
+}
+
+// TestProtectedPage covers the auth gate list.
+func TestProtectedPage(t *testing.T) {
+	for _, path := range []string{"/overview", "/station/triage", "/makers/a%40example.com", "/admin/members"} {
+		if !protectedPage(path) {
+			t.Errorf("protectedPage(%q) = false, want true", path)
+		}
+	}
+
+	if protectedPage("/api/v1/me") {
+		t.Error("API route should not be a protected page")
+	}
+}
+
+// TestReadmeCheck covers missing, unreadable, short and full READMEs.
+func TestReadmeCheck(t *testing.T) {
+	if got := readmeCheck(nil, http.StatusNotFound, nil, "now"); got.Status != statusFail {
+		t.Errorf("missing readme = %q, want fail", got.Status)
+	}
+
+	if got := readmeCheck(nil, http.StatusBadGateway, errors.New("boom"), "now"); got.Status != statusError {
+		t.Errorf("failed readme = %q, want error", got.Status)
+	}
+
+	if got := readmeCheck([]byte("short"), http.StatusOK, nil, "now"); got.Status != statusWarn {
+		t.Errorf("short readme = %q, want warn", got.Status)
+	}
+
+	long := make([]byte, minReadmeLength+10)
+
+	for i := range long {
+		long[i] = 'a'
+	}
+
+	if got := readmeCheck(long, http.StatusOK, nil, "now"); got.Status != statusPass {
+		t.Errorf("long readme = %q, want pass", got.Status)
+	}
+}
+
+// TestRepoAccessFailure covers the 404, rate-limit and generic branches.
+func TestRepoAccessFailure(t *testing.T) {
+	if _, summary, _ := repoAccessFailure(http.StatusNotFound, nil); summary == "" {
+		t.Error("404 should have a summary")
+	}
+
+	if _, summary, _ := repoAccessFailure(http.StatusTooManyRequests, nil); summary == "" {
+		t.Error("429 should have a summary")
+	}
+
+	if status, _, _ := repoAccessFailure(0, errors.New("boom")); status != statusError {
+		t.Errorf("error status = %q, want error", status)
+	}
+
+	if _, _, detail := repoAccessFailure(http.StatusBadGateway, nil); detail == "" {
+		t.Error("generic failure should have detail")
 	}
 }
 
@@ -318,11 +382,15 @@ func TestTimelapseAndJournalScalars(t *testing.T) {
 	provider, external, url, covered := "youtube", "clip1", "https://example.com/c", 30
 	entry := contract.IngestJournal{
 		Timelapses: []contract.IngestRequestJournalsElemTimelapsesElem{
-			{Provider: &provider, ExternalID: &external, URL: &url, CoveredSeconds: &covered},
+			{
+				Provider: &provider,
+				ExternalID: &external,
+				URL: &url,
+				CoveredSeconds: &covered,
+			},
 			{},
 		},
 	}
-
 	records := timelapseRecords(entry)
 	if len(records) != 2 || records[0]["provider"] != "youtube" || records[0]["coveredSeconds"] != 30 {
 		t.Errorf("timelapseRecords = %v", records)
@@ -333,11 +401,15 @@ func TestTimelapseAndJournalScalars(t *testing.T) {
 	}
 
 	seconds, minutes := 90, 2
-	if journalSeconds(contract.IngestJournal{Seconds: &seconds}) != 90 {
+	if journalSeconds(contract.IngestJournal{
+		Seconds: &seconds,
+	}) != 90 {
 		t.Error("journalSeconds should prefer seconds")
 	}
 
-	if journalSeconds(contract.IngestJournal{Minutes: &minutes}) != 120 {
+	if journalSeconds(contract.IngestJournal{
+		Minutes: &minutes,
+	}) != 120 {
 		t.Error("journalSeconds should fall back to minutes")
 	}
 
@@ -345,8 +417,9 @@ func TestTimelapseAndJournalScalars(t *testing.T) {
 		t.Error("journalSeconds should default to zero")
 	}
 
-	negative := -5
-	if journalSeconds(contract.IngestJournal{Seconds: &negative}) != 0 {
+	if negative := -5; journalSeconds(contract.IngestJournal{
+		Seconds: &negative,
+	}) != 0 {
 		t.Error("journalSeconds should clamp negatives")
 	}
 

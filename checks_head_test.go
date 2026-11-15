@@ -2,31 +2,34 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"ire/contract"
 )
 
 // TestChecksHead covers the stale snapshot notice when the default branch moves.
 func TestChecksHead(t *testing.T) {
 	head := "sha1"
-
 	github := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/repos/example/head/commits" {
 			http.NotFound(w, r)
 			return
 		}
 
-		commits := []map[string]any{{"sha": head, "commit": map[string]any{
-			"author": map[string]string{"name": "Maker", "date": "2026-11-01T10:00:00Z"},
-			"message": "First",
-		}}}
-
+		commits := []map[string]any{
+			{
+				"commit": map[string]any{
+					"author": map[string]string{"date": "2026-11-01T10:00:00Z", "name": "Maker"},
+					"message": "First",
+				},
+				"sha": head,
+			},
+		}
 		body, _ := json.Marshal(commits)
 		_, _ = w.Write(body)
 	}))
+
 	t.Cleanup(github.Close)
 
 	application := newTestApp(t)
@@ -44,15 +47,13 @@ func TestChecksHead(t *testing.T) {
 
 	reviewer := login(t, application, "reviewer@example.com")
 
-	clean := decode[contract.CheckHead](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1/checks/head", nil, reviewer, nil))
-	if clean.Outdated || clean.HeadSha == nil || *clean.HeadSha != "sha1" {
+	if clean := decode[contract.CheckHead](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1/checks/head", nil, reviewer, nil)); clean.Outdated || clean.HeadSha == nil || *clean.HeadSha != "sha1" {
 		t.Fatalf("clean head = %+v", clean)
 	}
 
 	head = "sha2"
 
-	moved := decode[contract.CheckHead](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1/checks/head", nil, reviewer, nil))
-	if !moved.Outdated || moved.SnapshotSha == nil || *moved.SnapshotSha != "sha1" {
+	if moved := decode[contract.CheckHead](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1/checks/head", nil, reviewer, nil)); !moved.Outdated || moved.SnapshotSha == nil || *moved.SnapshotSha != "sha1" {
 		t.Fatalf("moved head = %+v", moved)
 	}
 }

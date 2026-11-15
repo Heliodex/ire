@@ -1,10 +1,9 @@
 package main
 
 import (
+	"ire/contract"
 	"net/http"
 	"strings"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
@@ -61,7 +60,6 @@ func (a *ireApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
 	held, found, err := a.heldReview(r.Context(), ship.ID)
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
@@ -72,29 +70,59 @@ func (a *ireApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
 
 	now := a.nowText()
 	statements := []storage.TransactionStatement{
-		{SQL: `update review set invalidated_at = ?, invalidated_by = ?, invalidation_reason = ?
+		{
+			SQL: `update review set invalidated_at = ?, invalidated_by = ?, invalidation_reason = ?
 				where id = ? and invalidated_at is null`,
-			Args: []any{now, person.ID, reason, held.ID}},
-		{SQL: `update submission set status = ?, stage = ?, hours_approved_seconds = null, held_reason = null,
+			Args: []any{now, person.ID, reason, held.ID},
+		},
+		{
+			SQL: `update submission set status = ?, stage = ?, hours_approved_seconds = null, held_reason = null,
 				decided_at = null, updated_at = ? where id = ? and status = 'stage2_hold'`,
-			Args: []any{statusReady, stageOne, now, ship.ID}},
-		{SQL: `delete from claim where submission_id = ?`, Args: []any{ship.ID}},
-		{SQL: `delete from draft where submission_id = ?`, Args: []any{ship.ID}},
-		{SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at)
+			Args: []any{statusReady, stageOne, now, ship.ID},
+		},
+		{
+			SQL: `delete from claim where submission_id = ?`,
+			Args: []any{ship.ID},
+		},
+		{
+			SQL: `delete from draft where submission_id = ?`,
+			Args: []any{ship.ID},
+		},
+		{
+			SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at)
 				values (?, ?, 'sent_back', ?, ?, ?, ?)`,
-			Args: []any{newID("evt"), ship.ID, person.ID, person.Email, marshalMap(map[string]any{"reason": reason, "review": held.ID}), now}},
-		{SQL: `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
+			Args: []any{
+				newID("evt"),
+				ship.ID,
+				person.ID,
+				person.Email,
+				marshalMap(map[string]any{"reason": reason, "review": held.ID}),
+				now,
+			},
+		},
+		{
+			SQL: `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
 				values (?, ?, ?, ?, 'review.send_back', 'submission', ?, ?, ?, ?)`,
-			Args: []any{newID("aud"), ship.ProgramID, person.ID, person.Email, ship.ID,
-				marshalMap(map[string]any{"status": ship.Status, "stage": ship.Stage, "version": ship.Version}),
-				marshalMap(map[string]any{"status": statusReady, "stage": stageOne, "invalidated": held.ID, "reason": reason}), now}},
+			Args: []any{
+				newID("aud"),
+				ship.ProgramID,
+				person.ID,
+				person.Email,
+				ship.ID,
+				marshalMap(map[string]any{"stage": ship.Stage, "status": ship.Status, "version": ship.Version}),
+				marshalMap(map[string]any{"invalidated": held.ID, "reason": reason, "stage": stageOne, "status": statusReady}),
+				now,
+			},
+		},
 	}
 
 	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
-
-	app.WriteJSON(w, http.StatusOK, contract.SendBackResult{ID: ship.ID, Status: statusReady, Stage: stageOne})
+	app.WriteJSON(w, http.StatusOK, contract.SendBackResult{
+		ID: ship.ID,
+		Stage: stageOne,
+		Status: statusReady,
+	})
 }

@@ -3,14 +3,95 @@ package main
 import (
 	"context"
 	"errors"
+	"ire/contract"
 	"net/http"
 	"strings"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
+
+// journalApprovedTotal sums each entry's approved time, using the claimed time where an entry has no adjustment.
+func (a *ireApp) journalApprovedTotal(ctx context.Context, submissionID, entryID string, approved int) (int, error) {
+	rows, err := a.store.Query(ctx, `select id, seconds, coalesce(approved_seconds, -1) from journal_entry where submission_id = ?`, submissionID)
+	if err != nil {
+		return 0, err
+	}
+
+	defer rows.Close()
+
+	var total int
+
+	for rows.Next() {
+		var (
+			id string
+			seconds, existing int
+		)
+
+		if err := rows.Scan(&id, &seconds, &existing); err != nil {
+			return 0, err
+		}
+
+		switch {
+		case id == entryID:
+			total += approved
+		case existing >= 0:
+			total += existing
+		default:
+			total += seconds
+		}
+	}
+
+	var adjustments int
+
+	if err := a.store.QueryRow(ctx, `select coalesce(sum(case kind when 'bonus' then seconds else -seconds end), 0)
+		from time_adjustment where submission_id = ?`, submissionID).Scan(&adjustments); err != nil {
+		return 0, err
+	}
+
+	return total + adjustments, rows.Err()
+}
+
+// loadJournalEntry reads one journal entry for a ship.
+func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID string) (contract.JournalEntry, error) {
+	var (
+		item contract.JournalEntry
+		title, text, markdown, mediaJSON, clipsJSON string
+		approvedSeconds int
+		reviewerNote, deflationReason string
+	)
+
+	err := a.store.QueryRow(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
+			coalesce(media, '[]'), coalesce(timelapses, '[]'), coalesce(approved_seconds, -1), coalesce(reviewer_note, ''),
+			coalesce(deflation_reason, '')
+		from journal_entry where id = ? and submission_id = ?`, entryID, submissionID).Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON, &approvedSeconds, &reviewerNote, &deflationReason)
+	if err != nil {
+		return contract.JournalEntry{}, err
+	}
+
+	item.Title = stringPtr(title)
+	item.Text = stringPtr(text)
+	item.Markdown = stringPtr(markdown)
+	item.Media = journalMediaURLs(mediaJSON)
+	item.MediaCount = jsonArrayLength(mediaJSON)
+	item.ClipCount = jsonArrayLength(clipsJSON)
+	item.CoveredSeconds = jsonCoveredSeconds(clipsJSON)
+	adjustments, err := a.loadAdjustments(ctx, submissionID)
+	if err != nil {
+		return contract.JournalEntry{}, err
+	}
+
+	item.Timelapses = journalTimelapses(item.ID, clipsJSON, adjustments)
+
+	if approvedSeconds >= 0 {
+		item.ApprovedSeconds = &approvedSeconds
+	}
+
+	item.ReviewerNote = optionalText(reviewerNote)
+	item.DeflationReason = optionalText(deflationReason)
+
+	return item, nil
+}
 
 // handleJournalReview records a reviewer's approved time and deflation note for one journal entry.
 func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
@@ -55,9 +136,7 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown journal entry")
 			return
 		}
-
 		writeStorage(w, err)
-
 		return
 	}
 
@@ -70,37 +149,59 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 	total, err := a.journalApprovedTotal(r.Context(), ship.ID, entry.ID, request.ApprovedSeconds)
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
 	now := a.nowText()
 	note := request.ReviewerNote
 
-	if _, err := a.store.Transaction(r.Context(),
-		storage.TransactionStatement{
-			SQL: `update journal_entry set approved_seconds = ?, reviewer_note = ?, deflation_reason = ? where id = ? and submission_id = ?`,
-			Args: []any{request.ApprovedSeconds, nullString(note), nullString(reason), entry.ID, ship.ID},
-		},
-		storage.TransactionStatement{
-			SQL: `update submission set hours_approved_seconds = ?, updated_at = ? where id = ?`,
-			Args: []any{total, now, ship.ID},
-		},
-		storage.TransactionStatement{
-			SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at)
+	if _, err := a.store.Transaction(r.Context(), storage.TransactionStatement{
+		SQL: `update journal_entry set approved_seconds = ?, reviewer_note = ?, deflation_reason = ? where id = ? and submission_id = ?`,
+		Args: []any{request.ApprovedSeconds, nullString(note), nullString(reason), entry.ID, ship.ID},
+	}, storage.TransactionStatement{
+		SQL: `update submission set hours_approved_seconds = ?, updated_at = ? where id = ?`,
+		Args: []any{total, now, ship.ID},
+	}, storage.TransactionStatement{
+		SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at)
 				values (?, ?, 'journal_adjusted', ?, ?, ?, ?)`,
-			Args: []any{newID("evt"), ship.ID, person.ID, person.Email, marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": request.ApprovedSeconds, "reviewerNote": note, "deflationReason": reason}), now},
+		Args: []any{
+			newID("evt"),
+			ship.ID,
+			person.ID,
+			person.Email,
+			marshalMap(map[string]any{
+				"approvedSeconds": request.ApprovedSeconds,
+				"deflationReason": reason,
+				"entry": entry.ID,
+				"reviewerNote": note,
+			}),
+			now,
 		},
-		storage.TransactionStatement{
-			SQL: `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
+	}, storage.TransactionStatement{
+		SQL: `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
 				values (?, ?, ?, ?, 'journal.adjust', 'submission', ?, ?, ?, ?)`,
-			Args: []any{newID("aud"), ship.ProgramID, person.ID, person.Email, ship.ID,
-				marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": entry.ApprovedSeconds, "reviewerNote": entry.ReviewerNote, "deflationReason": entry.DeflationReason}),
-				marshalMap(map[string]any{"entry": entry.ID, "approvedSeconds": request.ApprovedSeconds, "reviewerNote": note, "deflationReason": reason}), now},
+		Args: []any{
+			newID("aud"),
+			ship.ProgramID,
+			person.ID,
+			person.Email,
+			ship.ID,
+			marshalMap(map[string]any{
+				"approvedSeconds": entry.ApprovedSeconds,
+				"deflationReason": entry.DeflationReason,
+				"entry": entry.ID,
+				"reviewerNote": entry.ReviewerNote,
+			}),
+			marshalMap(map[string]any{
+				"approvedSeconds": request.ApprovedSeconds,
+				"deflationReason": reason,
+				"entry": entry.ID,
+				"reviewerNote": note,
+			}),
+			now,
 		},
-	); err != nil {
+	}); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
@@ -108,87 +209,8 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 	entry.ReviewerNote = optionalText(note)
 	entry.DeflationReason = optionalText(reason)
 
-	app.WriteJSON(w, http.StatusOK, contract.JournalAdjustment{Journal: entry, HoursApprovedSeconds: total})
-}
-
-// loadJournalEntry reads one journal entry for a ship.
-func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID string) (contract.JournalEntry, error) {
-	var (
-		item contract.JournalEntry
-		title, text, markdown, mediaJSON, clipsJSON string
-		approvedSeconds int
-		reviewerNote, deflationReason string
-	)
-
-	err := a.store.QueryRow(ctx, `select id, at, seconds, coalesce(title, ''), coalesce(text, ''), coalesce(markdown, ''),
-			coalesce(media, '[]'), coalesce(timelapses, '[]'), coalesce(approved_seconds, -1), coalesce(reviewer_note, ''),
-			coalesce(deflation_reason, '')
-		from journal_entry where id = ? and submission_id = ?`, entryID, submissionID).
-		Scan(&item.ID, &item.At, &item.Seconds, &title, &text, &markdown, &mediaJSON, &clipsJSON, &approvedSeconds, &reviewerNote, &deflationReason)
-	if err != nil {
-		return contract.JournalEntry{}, err
-	}
-
-	item.Title = stringPtr(title)
-	item.Text = stringPtr(text)
-	item.Markdown = stringPtr(markdown)
-	item.Media = journalMediaURLs(mediaJSON)
-	item.MediaCount = jsonArrayLength(mediaJSON)
-	item.ClipCount = jsonArrayLength(clipsJSON)
-	item.CoveredSeconds = jsonCoveredSeconds(clipsJSON)
-
-	adjustments, err := a.loadAdjustments(ctx, submissionID)
-	if err != nil {
-		return contract.JournalEntry{}, err
-	}
-
-	item.Timelapses = journalTimelapses(item.ID, clipsJSON, adjustments)
-
-	if approvedSeconds >= 0 {
-		item.ApprovedSeconds = &approvedSeconds
-	}
-
-	item.ReviewerNote = optionalText(reviewerNote)
-	item.DeflationReason = optionalText(deflationReason)
-
-	return item, nil
-}
-
-// journalApprovedTotal sums each entry's approved time, using the claimed time where an entry has no adjustment.
-func (a *ireApp) journalApprovedTotal(ctx context.Context, submissionID, entryID string, approved int) (int, error) {
-	rows, err := a.store.Query(ctx, `select id, seconds, coalesce(approved_seconds, -1) from journal_entry where submission_id = ?`, submissionID)
-	if err != nil {
-		return 0, err
-	}
-	defer rows.Close()
-
-	var total int
-
-	for rows.Next() {
-		var (
-			id string
-			seconds, existing int
-		)
-
-		if err := rows.Scan(&id, &seconds, &existing); err != nil {
-			return 0, err
-		}
-
-		switch {
-		case id == entryID:
-			total += approved
-		case existing >= 0:
-			total += existing
-		default:
-			total += seconds
-		}
-	}
-
-	var adjustments int
-	if err := a.store.QueryRow(ctx, `select coalesce(sum(case kind when 'bonus' then seconds else -seconds end), 0)
-		from time_adjustment where submission_id = ?`, submissionID).Scan(&adjustments); err != nil {
-		return 0, err
-	}
-
-	return total + adjustments, rows.Err()
+	app.WriteJSON(w, http.StatusOK, contract.JournalAdjustment{
+		HoursApprovedSeconds: total,
+		Journal: entry,
+	})
 }

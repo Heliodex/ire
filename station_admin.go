@@ -1,35 +1,39 @@
 package main
 
 import (
+	"ire/contract"
 	"net/http"
 	"strings"
-
-	"ire/contract"
 
 	"github.com/heliodex/better-deploy/wt/packages/v2/app"
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
-// handleStation returns one station and its questions.
-func (a *ireApp) handleStation(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireReviewer(w, r)
+// handleDeleteStation removes one station and its questions.
+func (a *ireApp) handleDeleteStation(w http.ResponseWriter, r *http.Request) {
+	person, ok := a.requireAdmin(w, r)
 	if !ok {
 		return
 	}
 
-	station, found, err := a.stationDefinition(r.Context(), person.ProgramID, r.PathValue("station"))
-	if err != nil {
+	key := strings.TrimSpace(r.PathValue("station"))
+	if key == "" {
+		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "station", "choose a station")
+		return
+	}
+
+	if _, err := a.store.Transaction(r.Context(), storage.TransactionStatement{
+		SQL: `delete from station_answer where station_key = ?
+			and submission_id in (select id from submission where program_id = ?)`,
+		Args: []any{key, person.ProgramID},
+	}, storage.TransactionStatement{
+		SQL: `delete from station_definition where program_id = ? and key = ?`,
+		Args: []any{person.ProgramID, key},
+	}); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
-
-	if !found {
-		app.WriteError(w, http.StatusNotFound, "unknown station")
-		return
-	}
-
-	app.WriteJSON(w, http.StatusOK, station)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleSaveStation creates or replaces one station and its questions.
@@ -106,33 +110,53 @@ func (a *ireApp) handleSaveStation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	statements := []storage.TransactionStatement{
-		{SQL: `insert into station_definition (program_id, key, label, description, stage, sort, themes, active)
+		{
+			SQL: `insert into station_definition (program_id, key, label, description, stage, sort, themes, active)
 			values (?, ?, ?, ?, ?, ?, ?, ?)
 			on conflict(program_id, key) do update set
 				label = excluded.label, description = excluded.description, stage = excluded.stage,
 				sort = excluded.sort, themes = excluded.themes, active = excluded.active`,
-			Args: []any{person.ProgramID, key, request.Label, request.Description, request.Stage, request.Sort, marshalStrings(request.Themes), request.Active}},
-		{SQL: `delete from station_question where program_id = ? and station_key = ?`, Args: []any{person.ProgramID, key}},
+			Args: []any{
+				person.ProgramID,
+				key,
+				request.Label,
+				request.Description,
+				request.Stage,
+				request.Sort,
+				marshalStrings(request.Themes),
+				request.Active,
+			},
+		},
+		{
+			SQL: `delete from station_question where program_id = ? and station_key = ?`,
+			Args: []any{person.ProgramID, key},
+		},
 	}
 
 	for _, question := range request.Questions {
 		statements = append(statements, storage.TransactionStatement{
 			SQL: `insert into station_question (program_id, station_key, key, prompt, evidence_kind, required, sort)
 				values (?, ?, ?, ?, ?, ?, ?)`,
-			Args: []any{person.ProgramID, key, question.Key, question.Prompt, question.EvidenceKind, question.Required, question.Sort},
+			Args: []any{
+				person.ProgramID,
+				key,
+				question.Key,
+				question.Prompt,
+				question.EvidenceKind,
+				question.Required,
+				question.Sort,
+			},
 		})
 	}
 
 	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
 	station, found, err := a.stationDefinition(r.Context(), person.ProgramID, key)
 	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
@@ -140,32 +164,25 @@ func (a *ireApp) handleSaveStation(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusInternalServerError, "could not read the saved station")
 		return
 	}
-
 	app.WriteJSON(w, http.StatusOK, station)
 }
 
-// handleDeleteStation removes one station and its questions.
-func (a *ireApp) handleDeleteStation(w http.ResponseWriter, r *http.Request) {
-	person, ok := a.requireAdmin(w, r)
+// handleStation returns one station and its questions.
+func (a *ireApp) handleStation(w http.ResponseWriter, r *http.Request) {
+	person, ok := a.requireReviewer(w, r)
 	if !ok {
 		return
 	}
 
-	key := strings.TrimSpace(r.PathValue("station"))
-	if key == "" {
-		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "station", "choose a station")
-		return
-	}
-
-	if _, err := a.store.Transaction(r.Context(),
-		storage.TransactionStatement{SQL: `delete from station_answer where station_key = ?
-			and submission_id in (select id from submission where program_id = ?)`, Args: []any{key, person.ProgramID}},
-		storage.TransactionStatement{SQL: `delete from station_definition where program_id = ? and key = ?`, Args: []any{person.ProgramID, key}},
-	); err != nil {
+	station, found, err := a.stationDefinition(r.Context(), person.ProgramID, r.PathValue("station"))
+	if err != nil {
 		writeStorage(w, err)
-
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	if !found {
+		app.WriteError(w, http.StatusNotFound, "unknown station")
+		return
+	}
+	app.WriteJSON(w, http.StatusOK, station)
 }

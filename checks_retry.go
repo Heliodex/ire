@@ -10,6 +10,12 @@ import (
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
+// erroredCheck is one open ship with error-status GitHub checks on its current version.
+type erroredCheck struct {
+	submissionID, status, repoURL, errorAt string
+	version int
+}
+
 const (
 	// checkRetryMaxAttempts caps automatic retries per submission version and manual rerun, so a permanently broken forge stops paging the timeline.
 	checkRetryMaxAttempts = 5
@@ -19,31 +25,6 @@ const (
 
 // retryableCheckKeys are the GitHub checks worth rerunning: an error here means the forge flaked (rate limit, timeout, outage), while a failure means the repository itself needs work.
 var retryableCheckKeys = []string{"repo.accessible", "repo.tree", "repo.commits", "repo.readme"}
-
-// retryableCheckClause renders the IN clause matching the retryable check keys with its arguments, so the key list lives in one place.
-func retryableCheckClause() (string, []any) {
-	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(retryableCheckKeys)), ",")
-
-	args := make([]any, len(retryableCheckKeys))
-	for i, key := range retryableCheckKeys {
-		args[i] = key
-	}
-
-	return placeholders, args
-}
-
-// erroredCheck is one open ship with error-status GitHub checks on its current version.
-type erroredCheck struct {
-	submissionID, status, repoURL, errorAt string
-	version int
-}
-
-// retryErroredChecks requeues ships whose GitHub checks errored, with exponential backoff and a bounded number of attempts. It runs on the schedule tick; deterministic failures (fail, not error) and closed ships are never touched.
-func (a *ireApp) retryErroredChecks(ctx context.Context) {
-	for _, candidate := range a.erroredChecks(ctx) {
-		a.maybeRetryChecks(ctx, candidate)
-	}
-}
 
 // reconcileCheckStatus fixes submissions whose stored status disagrees with a completed, non-failing check summary.
 // This catches cases where a passing/warn summary is recorded but the status stayed needs_attention, so the queue
@@ -60,7 +41,6 @@ func (a *ireApp) reconcileCheckStatus(ctx context.Context) int {
 		  )`, a.nowText())
 	if err != nil {
 		app.Errorf("reconcile check status: %v", err)
-
 		return 0
 	}
 
@@ -72,10 +52,76 @@ func (a *ireApp) reconcileCheckStatus(ctx context.Context) int {
 	return int(n)
 }
 
+// retryCount counts automatic retries since the budget restarted. A read failure closes the gate rather than retrying blind.
+func (a *ireApp) retryCount(ctx context.Context, submissionID, epoch string) int {
+	var count int
+
+	if err := a.store.QueryRow(ctx, `select count(*) from submission_event
+		where submission_id = ? and kind = 'checks_retry' and created_at > ?`, submissionID, epoch).Scan(&count); err != nil {
+		return checkRetryMaxAttempts
+	}
+
+	return count
+}
+
+// retryEpoch returns the point a ship's automatic retry budget restarts from: a new version or a manual rerun.
+func (a *ireApp) retryEpoch(ctx context.Context, submissionID string, version int) (string, bool) {
+	var received string
+	if err := a.store.QueryRow(ctx, `select received_at from submission_version where submission_id = ? and version = ?`, submissionID, version).Scan(&received); err != nil || received == "" {
+		return "", false
+	}
+
+	var rerun string
+
+	if err := a.store.QueryRow(ctx, `select coalesce(max(created_at), '') from submission_event
+		where submission_id = ? and kind = 'checks_rerun' and actor_id is not null`, submissionID).Scan(&rerun); err != nil {
+		return "", false
+	}
+
+	return max(received, rerun), true
+}
+
+// retryableCheckClause renders the IN clause matching the retryable check keys with its arguments, so the key list lives in one place.
+func retryableCheckClause() (string, []any) {
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(retryableCheckKeys)), ",")
+	args := make([]any, len(retryableCheckKeys))
+
+	for i, key := range retryableCheckKeys {
+		args[i] = key
+	}
+
+	return placeholders, args
+}
+
+// errorCheckKeys lists the errored GitHub checks a retry is chasing, for the timeline event.
+func (a *ireApp) errorCheckKeys(ctx context.Context, candidate erroredCheck) []string {
+	placeholders, keyArgs := retryableCheckClause()
+	rows, err := a.store.Query(ctx, `select distinct check_key from check_result
+		where submission_id = ? and version = ? and status = 'error'
+		  and check_key in (`+placeholders+`)
+		order by check_key`, append([]any{candidate.submissionID, candidate.version}, keyArgs...)...)
+	if err != nil {
+		return []string{}
+	}
+
+	defer rows.Close()
+
+	keys := []string{}
+
+	for rows.Next() {
+		var key string
+
+		if err := rows.Scan(&key); err == nil {
+			keys = append(keys, key)
+		}
+	}
+
+	return keys
+}
+
 // erroredChecks lists open ships with error-status GitHub checks on their current version.
 func (a *ireApp) erroredChecks(ctx context.Context) []erroredCheck {
 	placeholders, args := retryableCheckClause()
-
 	rows, err := a.store.Query(ctx, `select s.id, s.version, s.status, s.repo_url, max(c.checked_at)
 		from submission s
 		join check_result c on c.submission_id = s.id and c.version = s.version
@@ -86,15 +132,16 @@ func (a *ireApp) erroredChecks(ctx context.Context) []erroredCheck {
 		group by s.id, s.version, s.status, s.repo_url`, args...)
 	if err != nil {
 		app.Errorf("checks retry candidates: %v", err)
-
 		return nil
 	}
+
 	defer rows.Close()
 
 	var out []erroredCheck
 
 	for rows.Next() {
 		var candidate erroredCheck
+
 		if err := rows.Scan(&candidate.submissionID, &candidate.version, &candidate.status, &candidate.repoURL, &candidate.errorAt); err != nil {
 			continue
 		}
@@ -110,6 +157,7 @@ func (a *ireApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck) {
 	// A ready ship under an active claim is being reviewed; leave it alone. A stuck needs_attention ship is retried even when claimed, because its reviewer cannot rerun checks themselves.
 	if candidate.status == statusReady {
 		var claimed string
+
 		if err := a.store.QueryRow(ctx, `select submission_id from claim where submission_id = ?`, candidate.submissionID).Scan(&claimed); err == nil {
 			return
 		}
@@ -132,79 +180,33 @@ func (a *ireApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck) {
 
 	keys := a.errorCheckKeys(ctx, candidate)
 	now := a.nowText()
-
 	result, err := a.store.Exec(ctx, `update submission set status = 'checking', updated_at = ?
 		where id = ? and version = ? and status in ('needs_attention','ready')`, now, candidate.submissionID, candidate.version)
 	if err != nil || result.RowsAffected == 0 {
 		return
 	}
 
-	if _, err := a.store.Transaction(ctx,
-		storage.TransactionStatement{
-			SQL: `insert or replace into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version) values (?, ?, 'queued', 0, ?, null, null, ?)`,
-			Args: []any{candidate.submissionID, candidate.version, now, checkRunnerVersion},
+	if _, err := a.store.Transaction(ctx, storage.TransactionStatement{
+		SQL: `insert or replace into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version) values (?, ?, 'queued', 0, ?, null, null, ?)`,
+		Args: []any{candidate.submissionID, candidate.version, now, checkRunnerVersion},
+	}, storage.TransactionStatement{
+		SQL: `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'checks_retry', ?, ?)`,
+		Args: []any{
+			newID("evt"),
+			candidate.submissionID,
+			marshalMap(map[string]any{"keys": keys, "retry": count + 1, "version": candidate.version}),
+			now,
 		},
-		storage.TransactionStatement{
-			SQL: `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'checks_retry', ?, ?)`,
-			Args: []any{newID("evt"), candidate.submissionID, marshalMap(map[string]any{"version": candidate.version, "retry": count + 1, "keys": keys}), now},
-		},
-	); err != nil {
+	}); err != nil {
 		app.Errorf("checks retry record: %v", err)
-
 		return
 	}
-
 	a.queueRepositoryChecks(ctx, candidate.submissionID, candidate.version, fmt.Sprintf("checks:%s:%d:retry:%d", candidate.submissionID, candidate.version, count+1))
 }
 
-// retryEpoch returns the point a ship's automatic retry budget restarts from: a new version or a manual rerun.
-func (a *ireApp) retryEpoch(ctx context.Context, submissionID string, version int) (string, bool) {
-	var received string
-	if err := a.store.QueryRow(ctx, `select received_at from submission_version where submission_id = ? and version = ?`, submissionID, version).Scan(&received); err != nil || received == "" {
-		return "", false
+// retryErroredChecks requeues ships whose GitHub checks errored, with exponential backoff and a bounded number of attempts. It runs on the schedule tick; deterministic failures (fail, not error) and closed ships are never touched.
+func (a *ireApp) retryErroredChecks(ctx context.Context) {
+	for _, candidate := range a.erroredChecks(ctx) {
+		a.maybeRetryChecks(ctx, candidate)
 	}
-
-	var rerun string
-	if err := a.store.QueryRow(ctx, `select coalesce(max(created_at), '') from submission_event
-		where submission_id = ? and kind = 'checks_rerun' and actor_id is not null`, submissionID).Scan(&rerun); err != nil {
-		return "", false
-	}
-
-	return max(received, rerun), true
-}
-
-// retryCount counts automatic retries since the budget restarted. A read failure closes the gate rather than retrying blind.
-func (a *ireApp) retryCount(ctx context.Context, submissionID, epoch string) int {
-	var count int
-	if err := a.store.QueryRow(ctx, `select count(*) from submission_event
-		where submission_id = ? and kind = 'checks_retry' and created_at > ?`, submissionID, epoch).Scan(&count); err != nil {
-		return checkRetryMaxAttempts
-	}
-
-	return count
-}
-
-// errorCheckKeys lists the errored GitHub checks a retry is chasing, for the timeline event.
-func (a *ireApp) errorCheckKeys(ctx context.Context, candidate erroredCheck) []string {
-	placeholders, keyArgs := retryableCheckClause()
-
-	rows, err := a.store.Query(ctx, `select distinct check_key from check_result
-		where submission_id = ? and version = ? and status = 'error'
-		  and check_key in (`+placeholders+`)
-		order by check_key`, append([]any{candidate.submissionID, candidate.version}, keyArgs...)...)
-	if err != nil {
-		return []string{}
-	}
-	defer rows.Close()
-
-	keys := []string{}
-
-	for rows.Next() {
-		var key string
-		if err := rows.Scan(&key); err == nil {
-			keys = append(keys, key)
-		}
-	}
-
-	return keys
 }

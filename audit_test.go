@@ -2,12 +2,11 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
-
-	"ire/contract"
 )
 
 // TestAuditLogPage covers auditor access, action/search/age filters, target labels and before/after detail.
@@ -31,24 +30,26 @@ func TestAuditLogPage(t *testing.T) {
 		t.Fatalf("reviewer audit = %d: %s", denied.Code, denied.Body.String())
 	}
 
-	invite, _ := json.Marshal(contract.InviteMember{Email: "audit@example.com", Role: roleReviewer})
-
+	invite, _ := json.Marshal(contract.InviteMember{
+		Email: "audit@example.com",
+		Role: roleReviewer,
+	})
 	created := do(t, application, http.MethodPost, testBase+"/members", invite, admin, nil)
 	if created.Code != http.StatusCreated {
 		t.Fatalf("invite = %d: %s", created.Code, created.Body.String())
 	}
 
 	member := decode[contract.Member](t, created)
+	update, _ := json.Marshal(contract.UpdateMember{
+		Active: true,
+		Role: roleOrganizer,
+	})
 
-	update, _ := json.Marshal(contract.UpdateMember{Role: roleOrganizer, Active: true})
-
-	updated := do(t, application, http.MethodPatch, testBase+"/members/"+member.ID, update, admin, nil)
-	if updated.Code != http.StatusOK {
+	if updated := do(t, application, http.MethodPatch, testBase+"/members/"+member.ID, update, admin, nil); updated.Code != http.StatusOK {
 		t.Fatalf("update = %d: %s", updated.Code, updated.Body.String())
 	}
 
-	claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil)
-	if claim.Code != http.StatusOK {
+	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
@@ -63,8 +64,7 @@ func TestAuditLogPage(t *testing.T) {
 		t.Fatalf("decision = %d: %s", decided.Code, decided.Body.String())
 	}
 
-	all := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit", nil, auditor, nil))
-	if len(all.Entries) < 3 {
+	if all := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit", nil, auditor, nil)); len(all.Entries) < 3 {
 		t.Fatalf("auditor audit = %+v", all.Entries)
 	}
 
@@ -91,8 +91,7 @@ func TestAuditLogPage(t *testing.T) {
 		t.Errorf("review target label = %v", reviews.Entries[0].TargetLabel)
 	}
 
-	search := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit?q="+url.QueryEscape("audit@example.com"), nil, admin, nil))
-	if len(search.Entries) == 0 || !strings.HasPrefix(search.Entries[0].Action, "member.") {
+	if search := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit?q="+url.QueryEscape("audit@example.com"), nil, admin, nil)); len(search.Entries) == 0 || !strings.HasPrefix(search.Entries[0].Action, "member.") {
 		t.Errorf("search audit = %+v", search.Entries)
 	}
 
@@ -100,13 +99,11 @@ func TestAuditLogPage(t *testing.T) {
 		t.Errorf("days=0 = %d: %s", bad.Code, bad.Body.String())
 	}
 
-	paged := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit?limit=1", nil, admin, nil))
-	if len(paged.Entries) != 1 || !paged.HasMore {
+	if paged := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit?limit=1", nil, admin, nil)); len(paged.Entries) != 1 || !paged.HasMore {
 		t.Errorf("paged audit = %+v", paged)
 	}
 
-	recent := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit?days=1", nil, admin, nil))
-	if len(recent.Entries) == 0 {
+	if recent := decode[contract.AuditResponse](t, do(t, application, http.MethodGet, testBase+"/audit?days=1", nil, admin, nil)); len(recent.Entries) == 0 {
 		t.Error("days=1 returned no entries")
 	}
 }

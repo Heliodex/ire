@@ -41,26 +41,28 @@ func (a *ireApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
 
 	now := a.nowText()
 
-	if _, err := a.store.Transaction(r.Context(),
-		storage.TransactionStatement{
-			SQL: `update submission set status = 'checking', updated_at = ? where id = ?`,
-			Args: []any{now, ship.ID},
-		},
-		storage.TransactionStatement{
-			SQL: `insert or replace into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version)
+	if _, err := a.store.Transaction(r.Context(), storage.TransactionStatement{
+		SQL: `update submission set status = 'checking', updated_at = ? where id = ?`,
+		Args: []any{now, ship.ID},
+	}, storage.TransactionStatement{
+		SQL: `insert or replace into check_run (submission_id, version, status, attempts, started_at, finished_at, error, runner_version)
 				values (?, ?, 'queued', 0, ?, null, null, ?)`,
-			Args: []any{ship.ID, ship.Version, now, checkRunnerVersion},
-		},
-		storage.TransactionStatement{
-			SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at)
+		Args: []any{ship.ID, ship.Version, now, checkRunnerVersion},
+	}, storage.TransactionStatement{
+		SQL: `insert into submission_event (id, submission_id, kind, actor_id, actor_email, data, created_at)
 				values (?, ?, 'checks_rerun', ?, ?, ?, ?)`,
-			Args: []any{newID("evt"), ship.ID, person.ID, person.Email, marshalMap(map[string]any{"version": ship.Version}), now},
+		Args: []any{
+			newID("evt"),
+			ship.ID,
+			person.ID,
+			person.Email,
+			marshalMap(map[string]any{"version": ship.Version}),
+			now,
 		},
-	); err != nil {
+	}); err != nil {
 		writeStorage(w, err)
 		return
 	}
-
 	a.forgeCache.clear()
 	a.queueRepositoryChecks(r.Context(), ship.ID, ship.Version, fmt.Sprintf("checks:%s:%d:rerun:%s", ship.ID, ship.Version, newID("rerun")))
 
@@ -74,6 +76,5 @@ func (a *ireApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusInternalServerError, "checks were queued but the run could not be read back")
 		return
 	}
-
 	app.WriteJSON(w, http.StatusOK, run)
 }

@@ -35,26 +35,22 @@ func (a *ireApp) handleRevokeSessions(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown member")
 			return
 		}
-
 		writeStorage(w, err)
-
 		return
 	}
 
 	now := a.nowText()
 
-	if _, err := a.store.Transaction(r.Context(),
-		storage.TransactionStatement{SQL: `delete from session where user_id = ?`, Args: []any{target}},
-		storage.TransactionStatement{
-			SQL: `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
+	if _, err := a.store.Transaction(r.Context(), storage.TransactionStatement{
+		SQL: `delete from session where user_id = ?`,
+		Args: []any{target},
+	}, storage.TransactionStatement{
+		SQL: `insert into audit_log (id, program_id, actor_id, actor_email, action, target_type, target_id, before_json, after_json, created_at)
 				values (?, ?, ?, ?, 'user.sessions_revoke', 'user', ?, '{}', '{}', ?)`,
-			Args: []any{newID("aud"), program.ID, person.ID, person.Email, target, now},
-		},
-	); err != nil {
+		Args: []any{newID("aud"), program.ID, person.ID, person.Email, target, now},
+	}); err != nil {
 		writeStorage(w, err)
-
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -2,40 +2,30 @@ package main
 
 import (
 	"encoding/json/v2"
+	"ire/contract"
 	"net/http"
 	"strings"
 	"testing"
-
-	"ire/contract"
 )
 
 // TestDuplicateAndIdentityChecks covers cross-ship reuse warnings.
 func TestDuplicateAndIdentityChecks(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-
 	first := ingestBody("identity-a:design")
 	first = []byte(strings.Replace(string(first), "example/line-follower", "Shubhayu-Banerjee/Open-Trace", 1))
 	first = []byte(strings.Replace(string(first), `"email":"maker@example.com"`, `"email":"a@example.com","hackatime_id":"U1","slack_id":"S1"`, 1))
 
-	firstCreated := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", first, nil, map[string]string{
-		"X-Ari-Signature": hmacHex("test-ingest", first),
-	}))
-	if firstCreated.ID == "" {
+	if firstCreated := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", first, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", first)})); firstCreated.ID == "" {
 		t.Fatal("first ingest failed")
 	}
 
 	second := ingestBody("identity-b:design")
 	second = []byte(strings.Replace(string(second), "example/line-follower", "Shubhayu-Banerjee/Open-Trace", 1))
 	second = []byte(strings.Replace(string(second), `"email":"maker@example.com"`, `"email":"b@example.com","hackatime_id":"U1","slack_id":"S1"`, 1))
-
-	secondCreated := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", second, nil, map[string]string{
-		"X-Ari-Signature": hmacHex("test-ingest", second),
-	}))
-
+	secondCreated := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", second, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", second)}))
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+secondCreated.ID, nil, cookie, nil))
 	statuses := checkStatuses(bundle.Checks)
-
 	if statuses["duplicate.project"] != statusWarn {
 		t.Errorf("duplicate.project = %q", statuses["duplicate.project"])
 	}
