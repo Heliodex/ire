@@ -232,9 +232,9 @@ func queueAgeOp(op string) string {
 		return ">"
 	case "<=":
 		return ">="
-	default:
-		return ""
 	}
+
+	return ""
 }
 
 func parseQueueSearch(raw string) queueSearch {
@@ -336,9 +336,9 @@ func queueChecksExpr(count string) string {
 		return "(" + field("running") + " + case when s.status = 'checking' and " + field("running") + " = 0 then 1 else 0 end)"
 	case "total":
 		return "(" + field("pass") + " + " + field("warn") + " + " + field("fail") + " + " + field("error") + " + " + field("running") + ")"
-	default:
-		return ""
 	}
+
+	return ""
 }
 
 func (q queueSearch) active() bool {

@@ -309,9 +309,9 @@ func imageCheck(readme []byte, status int, err error, checkedAt string) contract
 		return check("repo.readme.images", "README images", "repo", statusPass, severityInfo, fmt.Sprintf("%d images", count), "The README has enough images for a 1st pass.", checkedAt)
 	case count == 1:
 		return check("repo.readme.images", "README images", "repo", statusWarn, severityWarn, "1 image (2 recommended)", "Add a schematic, board render or build photo.", checkedAt)
-	default:
-		return check("repo.readme.images", "README images", "repo", statusWarn, severityWarn, "No images", "The README has no images.", checkedAt)
 	}
+
+	return check("repo.readme.images", "README images", "repo", statusWarn, severityWarn, "No images", "The README has no images.", checkedAt)
 }
 
 // githubClient builds the configured client with the app's cache and clock.
@@ -426,9 +426,9 @@ func fileKind(path string) string {
 		return "image"
 	case slices.Contains([]string{".go", ".ts", ".js", ".py", ".c", ".cpp", ".h", ".rs", ".svelte"}, pathExtension(lower)):
 		return "code"
-	default:
-		return "file"
 	}
+
+	return "file"
 }
 
 // plural returns the plural suffix for a count.

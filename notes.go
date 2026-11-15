@@ -79,9 +79,9 @@ func noteSubjectID(ship submissionRow, subjectType string) string {
 		return ship.ExternalID
 	case noteSubjectSubmission:
 		return ship.ID
-	default:
-		return ""
 	}
+
+	return ""
 }
 
 // handleNoteCreate stores an internal note on a ship, its project or its maker.

@@ -272,9 +272,9 @@ func normalizePartName(value string) string {
 			return r
 		case r >= 'A' && r <= 'Z':
 			return r + ('a' - 'A')
-		default:
-			return ' '
 		}
+
+		return ' '
 	}, cleanBOMPart(value))
 
 	return strings.Join(strings.Fields(cleaned), " ")

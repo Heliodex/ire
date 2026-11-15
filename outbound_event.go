@@ -131,9 +131,9 @@ func outboundEventName(decision string) string {
 		return "review.approved"
 	case decisionChanges:
 		return "review.changes"
-	default:
-		return "review.rejected"
 	}
+
+	return "review.rejected"
 }
 
 // outboundPayload builds the final event. A held decision never reaches here because no outbox row is written.
