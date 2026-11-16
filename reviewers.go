@@ -13,6 +13,42 @@ import (
 
 const reviewerReviewLimit = 50
 
+// reviewerStats counts the reviewer's decisions in this programme, selected by the condition built in reviewerProfile.
+func (a *ireApp) reviewerStats(ctx context.Context, condition string, args []any) (contract.ReviewerStats, error) {
+	var (
+		total, approved, changes, rejected, held, invalidated, firstPass, secondPass, hours int
+		lastReview string
+	)
+
+	if err := a.store.QueryRow(ctx, `select count(*),
+			coalesce(sum(case when r.decision = 'approved' then 1 else 0 end), 0),
+			coalesce(sum(case when r.decision = 'changes' then 1 else 0 end), 0),
+			coalesce(sum(case when r.decision = 'rejected' then 1 else 0 end), 0),
+			coalesce(sum(case when r.held = 1 then 1 else 0 end), 0),
+			coalesce(sum(case when r.invalidated_at is not null then 1 else 0 end), 0),
+			coalesce(sum(case when r.stage = 1 then 1 else 0 end), 0),
+			coalesce(sum(case when r.stage = 2 then 1 else 0 end), 0),
+			coalesce(sum(coalesce(r.hours_approved_seconds, 0)), 0),
+			coalesce(max(r.created_at), '')
+		from review r join submission s on s.id = r.submission_id
+		where `+condition, args...).Scan(&total, &approved, &changes, &rejected, &held, &invalidated, &firstPass, &secondPass, &hours, &lastReview); err != nil {
+		return contract.ReviewerStats{}, err
+	}
+
+	return contract.ReviewerStats{
+		Approved: approved,
+		Changes: changes,
+		FirstPass: firstPass,
+		Held: held,
+		HoursApprovedSeconds: hours,
+		Invalidated: invalidated,
+		LastReviewAt: optionalText(lastReview),
+		Rejected: rejected,
+		SecondPass: secondPass,
+		Total: total,
+	}, nil
+}
+
 // reviewerProfile reads the roster entry, falling back to a historical review email for former reviewers.
 func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (contract.ReviewerProfile, error) {
 	profile := contract.ReviewerProfile{
@@ -81,44 +117,18 @@ func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (co
 		args = append(args, profile.Email)
 	}
 
-	var (
-		total, approved, changes, rejected, held, invalidated, firstPass, secondPass, hours int
-		lastReview string
-	)
-
-	if err := a.store.QueryRow(ctx, `select count(*),
-			coalesce(sum(case when r.decision = 'approved' then 1 else 0 end), 0),
-			coalesce(sum(case when r.decision = 'changes' then 1 else 0 end), 0),
-			coalesce(sum(case when r.decision = 'rejected' then 1 else 0 end), 0),
-			coalesce(sum(case when r.held = 1 then 1 else 0 end), 0),
-			coalesce(sum(case when r.invalidated_at is not null then 1 else 0 end), 0),
-			coalesce(sum(case when r.stage = 1 then 1 else 0 end), 0),
-			coalesce(sum(case when r.stage = 2 then 1 else 0 end), 0),
-			coalesce(sum(coalesce(r.hours_approved_seconds, 0)), 0),
-			coalesce(max(r.created_at), '')
-		from review r join submission s on s.id = r.submission_id
-		where `+condition, args...).Scan(&total, &approved, &changes, &rejected, &held, &invalidated, &firstPass, &secondPass, &hours, &lastReview); err != nil {
+	stats, err := a.reviewerStats(ctx, condition, args)
+	if err != nil {
 		return profile, err
 	}
 
 	// A user with no membership in this programme and no decisions here is not a reviewer of it.
-	if profile.Role == nil && total == 0 {
+	if profile.Role == nil && stats.Total == 0 {
 		return profile, storage.ErrNoRows
 	}
 
-	profile.ReviewTotal = total
-	profile.Stats = contract.ReviewerStats{
-		Approved: approved,
-		Changes: changes,
-		FirstPass: firstPass,
-		Held: held,
-		HoursApprovedSeconds: hours,
-		Invalidated: invalidated,
-		LastReviewAt: optionalText(lastReview),
-		Rejected: rejected,
-		SecondPass: secondPass,
-		Total: total,
-	}
+	profile.ReviewTotal = stats.Total
+	profile.Stats = stats
 
 	rows, err := a.store.Query(ctx, `select r.id, r.submission_id, coalesce(s.title, ''), r.decision, r.stage,
 			r.held, coalesce(r.hours_approved_seconds, 0), coalesce(r.invalidated_at, ''), r.created_at
