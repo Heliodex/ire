@@ -322,11 +322,9 @@ func parseQueueSearch(raw string) queueSearch {
 }
 
 func queueChecksExpr(count string) string {
-	field := func(name string) string {
+	switch field := func(name string) string {
 		return "coalesce(json_extract(s.check_summary, '$." + name + "'), 0)"
-	}
-
-	switch count {
+	}; count {
 	case "error", "fail", "pass", "warn":
 		return field(count)
 	case "running":

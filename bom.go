@@ -247,9 +247,7 @@ func bomColumns(row []string) (int, int, int, int) {
 	name, qty, price, vendor := -1, -1, -1, -1
 
 	for i, cell := range row {
-		header := normalizeHeader(cell)
-
-		switch {
+		switch header := normalizeHeader(cell); {
 		case name < 0 && (strings.Contains(header, "part") || strings.Contains(header, "component") || strings.Contains(header, "item") || strings.Contains(header, "name")):
 			name = i
 		case qty < 0 && (strings.Contains(header, "qty") || strings.Contains(header, "quantity") || strings.Contains(header, "count")):

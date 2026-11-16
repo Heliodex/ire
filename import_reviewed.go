@@ -202,10 +202,8 @@ func (a *ireApp) importReviewedShip(ctx context.Context, program programRow, ent
 		existingStatus string
 	)
 
-	err := a.store.QueryRow(ctx, `select id, version, status from submission
-		where program_id = ? and external_id = ? order by version desc limit 1`, program.ID, externalID).Scan(&existingID, &existingVersion, &existingStatus)
-
-	switch {
+	switch err := a.store.QueryRow(ctx, `select id, version, status from submission
+		where program_id = ? and external_id = ? order by version desc limit 1`, program.ID, externalID).Scan(&existingID, &existingVersion, &existingStatus); {
 	case err == nil:
 		if existingStatus == statusDecided {
 			submittedAt := strings.TrimSpace(stringValue(entry.Ship.SubmittedAt))

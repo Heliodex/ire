@@ -160,9 +160,7 @@ func classifyDesignFiles(tree githubTree) designFiles {
 			continue
 		}
 
-		path := strings.ToLower(file.Path)
-
-		switch {
+		switch path := strings.ToLower(file.Path); {
 		case isPCBPath(path):
 			files.PCB = append(files.PCB, file.Path)
 		case isGerberPath(path):

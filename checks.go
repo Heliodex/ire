@@ -411,9 +411,7 @@ func pathExtension(path string) string {
 
 // fileKind labels a path for the file tree without guessing at its contents.
 func fileKind(path string) string {
-	lower := strings.ToLower(path)
-
-	switch {
+	switch lower := strings.ToLower(path); {
 	case isBOMFile(lower[strings.LastIndex(lower, "/")+1:]):
 		return "bom"
 	case strings.Contains(lower, "readme"):
