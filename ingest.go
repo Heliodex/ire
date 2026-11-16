@@ -118,6 +118,44 @@ func (a *ireApp) transactShip(ctx context.Context, submissionID string, statemen
 	return nil
 }
 
+// ingestChecks runs the local and duplicate checks, then the repository checks unless they are queued as a job. It returns the inline evidence snapshot and whether the repository checks were queued.
+func (a *ireApp) ingestChecks(ctx context.Context, program programRow, request contract.IngestRequest, previousID string) ([]contract.CheckResult, *contract.Evidence, bool) {
+	nowTime := a.now()
+	checks := localChecks(request, nowTime)
+	checks = append(checks, a.duplicateChecks(ctx, program.ID, request, nowTime)...)
+
+	if request.RepoURL == nil || a.config.DisableRepoChecks {
+		return checks, nil, false
+	}
+
+	if a.config.EnableJobs && a.config.Enqueue != nil {
+		return checks, nil, true
+	}
+
+	remote, snapshot := a.repoChecks(ctx, *request.RepoURL, a.commitSince(ctx, program.ID, previousID), nowTime, submittedBom(request.Meta))
+
+	return mergeChecks(checks, remote), snapshot, false
+}
+
+// ingestReceiptStatement records the delivery receipt. It goes last: a failed batch leaves no receipt, so a retry replays the whole ship instead of adopting a half-written one.
+func ingestReceiptStatement(deliveryID string, program programRow, request contract.IngestRequest, version int, id, rawBody, now string) storage.TransactionStatement {
+	return storage.TransactionStatement{
+		SQL: `insert into ingest_delivery (delivery_id, program_id, external_id, version, submission_id, status, http_status, payload_sha256, received_at, processed_at)
+			values (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, ?)`,
+		Args: []any{
+			deliveryID,
+			program.ID,
+			request.ExternalID,
+			version,
+			id,
+			http.StatusCreated,
+			sha256Hex([]byte(rawBody)),
+			now,
+			now,
+		},
+	}
+}
+
 // ingestShip writes a new version, or reports the existing delivery or open ship. response is the API body; status is the HTTP status.
 func (a *ireApp) ingestShip(ctx context.Context, program programRow, request contract.IngestRequest, deliveryID, rawBody string) (contract.IngestAccepted, int, error) {
 	now := a.nowText()
@@ -169,25 +207,7 @@ func (a *ireApp) ingestShip(ctx context.Context, program programRow, request con
 		return contract.IngestAccepted{}, 0, err
 	}
 
-	nowTime := a.now()
-	checks := localChecks(request, nowTime)
-	checks = append(checks, a.duplicateChecks(ctx, program.ID, request, nowTime)...)
-
-	var (
-		evidence *contract.Evidence
-		queuedChecks bool
-	)
-
-	if request.RepoURL != nil && !a.config.DisableRepoChecks {
-		if a.config.EnableJobs && a.config.Enqueue != nil {
-			queuedChecks = true
-		} else {
-			remote, snapshot := a.repoChecks(ctx, *request.RepoURL, a.commitSince(ctx, program.ID, previousID), nowTime, submittedBom(request.Meta))
-			checks = mergeChecks(checks, remote)
-			evidence = snapshot
-		}
-	}
-
+	checks, evidence, queuedChecks := a.ingestChecks(ctx, program, request, previousID)
 	summary := checkCountsFor(checks)
 
 	summaryJSON, err := json.Marshal(summary)
@@ -244,22 +264,7 @@ func (a *ireApp) ingestShip(ctx context.Context, program programRow, request con
 		statements = append(statements, snapshot)
 	}
 
-	// The delivery receipt goes last: a failed batch leaves no receipt, so a retry replays the whole ship instead of adopting a half-written one.
-	statements = append(statements, storage.TransactionStatement{
-		SQL: `insert into ingest_delivery (delivery_id, program_id, external_id, version, submission_id, status, http_status, payload_sha256, received_at, processed_at)
-			values (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, ?)`,
-		Args: []any{
-			deliveryID,
-			program.ID,
-			request.ExternalID,
-			version,
-			id,
-			http.StatusCreated,
-			sha256Hex([]byte(rawBody)),
-			now,
-			now,
-		},
-	})
+	statements = append(statements, ingestReceiptStatement(deliveryID, program, request, version, id, rawBody, now))
 
 	if err := a.transactShip(ctx, id, statements); err != nil {
 		return contract.IngestAccepted{}, 0, err
