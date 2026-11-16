@@ -54,6 +54,9 @@ linters:
             - linters:
                   - unparam
               path: _test\.go
+            - linters:
+                  - funlen
+              path: fixtures\.go
     settings:
         cyclop:
             max-complexity: 40
