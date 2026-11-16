@@ -21,7 +21,9 @@ func TestApprovalRequiresJustification(t *testing.T) {
 
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
 	hours := 5 * secondsPerHour
-	note := "Thanks for the detailed journal."
+
+	const note string = "Thanks for the detailed journal."
+
 	request := contract.DecisionRequest{
 		Acknowledgements: warningKeys(bundle.Checks),
 		Decision: decisionApproved,

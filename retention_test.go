@@ -6,7 +6,9 @@ import "testing"
 func TestPruneRetention(t *testing.T) {
 	application := newTestApp(t)
 	ctx := t.Context()
-	old := "2025-01-01T00:00:00.000000000Z"
+
+	const old string = "2025-01-01T00:00:00.000000000Z"
+
 	fresh := application.nowText()
 	statements := []struct {
 		SQL string

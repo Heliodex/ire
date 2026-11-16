@@ -459,7 +459,8 @@ func TestCleanApprovalDeliversSignedPayload(t *testing.T) {
 // TestCommitSinceUsesPreviousApproval covers the resubmission commit window.
 func TestCommitSinceUsesPreviousApproval(t *testing.T) {
 	application := newTestApp(t)
-	approved := "2026-10-01T09:00:00.000000000Z"
+
+	const approved string = "2026-10-01T09:00:00.000000000Z"
 
 	if _, err := application.store.Exec(t.Context(), `update submission set decided_at = ? where id = ?`, approved, "sub_fixture_1"); err != nil {
 		t.Fatal(err)
@@ -488,7 +489,8 @@ func TestDraftSurvivesReload(t *testing.T) {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
 
-	values := `{"technicalFeatures":"Firmware and board.","deflationReason":"Tutorial build."}`
+	const values string = `{"technicalFeatures":"Firmware and board.","deflationReason":"Tutorial build."}`
+
 	draft, _ := json.Marshal(contract.DraftRequest{
 		InternalNote: "Routing looks fine.",
 		Note: "Check the USB pads.",
