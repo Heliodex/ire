@@ -152,9 +152,7 @@ func isPCBPath(path string) bool {
 }
 
 // classifyDesignFiles sorts the tree into PCB, CAD, firmware and Gerber files.
-func classifyDesignFiles(tree githubTree) designFiles {
-	var files designFiles
-
+func classifyDesignFiles(tree githubTree) (files designFiles) {
 	for _, file := range tree.Tree {
 		if file.Type != "blob" {
 			continue
@@ -176,5 +174,5 @@ func classifyDesignFiles(tree githubTree) designFiles {
 		sort.Strings(list)
 	}
 
-	return files
+	return
 }

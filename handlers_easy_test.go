@@ -248,14 +248,12 @@ func TestStatusBranches(t *testing.T) {
 
 // TestValidateIngestBranches covers every rejection in the payload validator.
 func TestValidateIngestBranches(t *testing.T) {
-	valid := func() contract.IngestRequest {
-		var request contract.IngestRequest
-
+	valid := func() (request contract.IngestRequest) {
 		if err := json.Unmarshal(ingestBody("validate-1"), &request); err != nil {
 			t.Fatal(err)
 		}
 
-		return request
+		return
 	}
 	cases := []struct {
 		name string

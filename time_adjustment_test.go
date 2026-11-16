@@ -95,9 +95,7 @@ func TestTimelapseCutRequiresReasonAndKnownClip(t *testing.T) {
 }
 
 // journalEntriesTotal sums the approved-or-claimed journal ledger the approved total follows.
-func journalEntriesTotal(journals []contract.JournalEntry) int {
-	var total int
-
+func journalEntriesTotal(journals []contract.JournalEntry) (total int) {
 	for _, entry := range journals {
 		if entry.ApprovedSeconds != nil {
 			total += *entry.ApprovedSeconds
@@ -106,7 +104,7 @@ func journalEntriesTotal(journals []contract.JournalEntry) int {
 		}
 	}
 
-	return total
+	return
 }
 
 // TestTimelapseCutSavesLedger covers one clip's approved time and the ship total it feeds.

@@ -34,16 +34,13 @@ func checkStatuses(checks []contract.CheckResult) map[string]string {
 // decode decodes a JSON response body.
 //
 //nolint:ireturn // A generic test helper has to return the caller's type.
-func decode[T any](t *testing.T, recorder *httptest.ResponseRecorder) T {
+func decode[T any](t *testing.T, recorder *httptest.ResponseRecorder) (value T) {
 	t.Helper()
-
-	var value T
-
 	if err := json.Unmarshal(recorder.Body.Bytes(), &value); err != nil {
 		t.Fatalf("decode %s: %v", recorder.Body.String(), err)
 	}
 
-	return value
+	return
 }
 
 // do sends one request to the app and returns the recorder.
@@ -1156,16 +1153,14 @@ func TestWithdrawIsIdempotent(t *testing.T) {
 }
 
 // warningKeys returns the keys that need acknowledgement.
-func warningKeys(checks []contract.CheckResult) []string {
-	var out []string
-
+func warningKeys(checks []contract.CheckResult) (out []string) {
 	for _, check := range checks {
 		if isWarning(check) {
 			out = append(out, check.Key)
 		}
 	}
 
-	return out
+	return
 }
 
 // TestApprovalRequiresAcknowledgementAndHolds covers the warning gate and the stage 2 hold.

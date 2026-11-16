@@ -77,16 +77,13 @@ func postTick(t *testing.T, application *ireApp) {
 }
 
 // retryEventCount counts automatic retry events for a ship.
-func retryEventCount(t *testing.T, application *ireApp, submissionID string) int {
+func retryEventCount(t *testing.T, application *ireApp, submissionID string) (count int) {
 	t.Helper()
-
-	var count int
-
 	if err := application.store.QueryRow(context.Background(), `select count(*) from submission_event where submission_id = ? and kind = 'checks_retry'`, submissionID).Scan(&count); err != nil {
 		t.Fatal(err)
 	}
 
-	return count
+	return
 }
 
 // retryTestApp builds an app that captures enqueued jobs instead of running them.

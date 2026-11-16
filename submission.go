@@ -390,16 +390,14 @@ func isBlocked(check contract.CheckResult) bool {
 }
 
 // blockedChecks returns the checks that forbid an approval.
-func blockedChecks(checks []contract.CheckResult) []contract.CheckResult {
-	var out []contract.CheckResult
-
+func blockedChecks(checks []contract.CheckResult) (out []contract.CheckResult) {
 	for _, check := range checks {
 		if isBlocked(check) {
 			out = append(out, check)
 		}
 	}
 
-	return out
+	return
 }
 
 // isOpen reports whether a ship can still be claimed or decided.
@@ -639,14 +637,12 @@ func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contr
 }
 
 // missingAcknowledgements returns the warning keys that were not acknowledged.
-func missingAcknowledgements(checks []contract.CheckResult, acknowledged []string) []string {
+func missingAcknowledgements(checks []contract.CheckResult, acknowledged []string) (missing []string) {
 	acked := make(map[string]struct{}, len(acknowledged))
 
 	for _, key := range acknowledged {
 		acked[key] = struct{}{}
 	}
-
-	var missing []string
 
 	for _, check := range checks {
 		if !isWarning(check) {
@@ -658,7 +654,7 @@ func missingAcknowledgements(checks []contract.CheckResult, acknowledged []strin
 		}
 	}
 
-	return missing
+	return
 }
 
 // payloadHackatimeProjects reads the Hackatime project names Half Life sent with the ship so the outbound event mirrors them.

@@ -94,9 +94,7 @@ func pluralCount(count int, singular, plural string) string {
 }
 
 // journalChecks reports the written evidence and how its time compares with the claim.
-func journalChecks(entries []contract.IngestJournal, journalTime, claimed, wordless int, checkedAt string) []contract.CheckResult {
-	var checks []contract.CheckResult
-
+func journalChecks(entries []contract.IngestJournal, journalTime, claimed, wordless int, checkedAt string) (checks []contract.CheckResult) {
 	if len(entries) == 0 {
 		checks = append(checks, check("journal.present", "Journal entries", "evidence", statusFail, severityWarn, "No journal entries", "There is no written evidence to read.", checkedAt))
 	} else {
@@ -131,7 +129,7 @@ func journalChecks(entries []contract.IngestJournal, journalTime, claimed, wordl
 		checks = append(checks, check("journal.hours", "Journal time", "evidence", hoursStatus, hoursSeverity, hoursSummary, "Journal time is compared with the claim; it is not added to Hackatime time again.", checkedAt))
 	}
 
-	return checks
+	return
 }
 
 // validHTTPSURL reports whether value parses as an absolute https URL.
