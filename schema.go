@@ -158,18 +158,26 @@ func (a *ireApp) seedRoleDefinitions(ctx context.Context, now string) error {
 	return nil
 }
 
-// seedStations creates the Half Life review stations and their questions. Rows are never overwritten, so a programme edit survives restarts.
-func (a *ireApp) seedStations(ctx context.Context) error {
-	const evidenceText = "text"
+type (
+	// questionSeed is one question of a review station.
+	questionSeed struct {
+		key, prompt, evidence string
+		required int
+	}
 
-	stations := []struct {
+	// stationSeed is a review station and its questions.
+	stationSeed struct {
 		key, label, description, themes string
 		stage, sort int
-		questions []struct {
-			key, prompt, evidence string
-			required int
-		}
-	}{
+		questions []questionSeed
+	}
+)
+
+// halfLifeStations is the review station seed. Each station's questions are stored under it.
+func halfLifeStations() []stationSeed {
+	const evidenceText = "text"
+
+	return []stationSeed{
 		{
 			key: "triage",
 			label: "Triage",
@@ -177,10 +185,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			sort: 10,
 			themes: "[]",
 			description: "Cheap completeness checks before the deeper review.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
+			questions: []questionSeed{
 				{"cover_screenshot", "Is the cover a screenshot of this project?", "image", 1},
 				{
 					"description_real",
@@ -200,10 +205,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			sort: 20,
 			themes: "[]",
 			description: "Read each entry once and decide what time is productive.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
+			questions: []questionSeed{
 				{"entries_descriptive", "Does every journal entry describe what was worked on?", evidenceText, 1},
 				{
 					"time_productive",
@@ -221,10 +223,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			sort: 30,
 			themes: "[]",
 			description: "One reading of the README, commits and claims.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
+			questions: []questionSeed{
 				{"readme_explains", "Does the README explain the build, problems and solutions?", evidenceText, 1},
 				{
 					"commits_authored",
@@ -243,10 +242,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			sort: stationSortHardware,
 			themes: `["pcb","cad","synth","displays"]`,
 			description: "A plausible design and firmware, with note-only issues.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
+			questions: []questionSeed{
 				{
 					"design_plausible",
 					"Is the design plausible, and are issues noted for the maker?",
@@ -264,10 +260,7 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			sort: 50,
 			themes: "[]",
 			description: "Turn the answers into one record and one decision.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
+			questions: []questionSeed{
 				{"findings_resolved", "Are all open findings resolved or included in the return?", evidenceText, 1},
 				{"hours_reasonable", "Are the approved hours and deflation reason defensible?", evidenceText, 1},
 				{"notes_complete", "Are the maker note and internal note complete?", evidenceText, 1},
@@ -280,17 +273,17 @@ func (a *ireApp) seedStations(ctx context.Context) error {
 			sort: 10,
 			themes: "[]",
 			description: "Stage 2 checks the record and samples the evidence.",
-			questions: []struct {
-				key, prompt, evidence string
-				required int
-			}{
+			questions: []questionSeed{
 				{"record_complete", "Are the answers, evidence and time ledger complete?", evidenceText, 1},
 				{"evidence_sample", "Does a sample of the evidence support the answers?", evidenceText, 1},
 			},
 		},
 	}
+}
 
-	for _, station := range stations {
+// seedStations creates the Half Life review stations and their questions. Rows are never overwritten, so a programme edit survives restarts.
+func (a *ireApp) seedStations(ctx context.Context) error {
+	for _, station := range halfLifeStations() {
 		if _, err := a.store.Exec(ctx, `insert into station_definition (program_id, key, label, description, stage, sort, themes, active)
 			values (?, ?, ?, ?, ?, ?, ?, 1) on conflict(program_id, key) do nothing`, programID, station.key, station.label, station.description, station.stage, station.sort, station.themes); err != nil {
 			return err
