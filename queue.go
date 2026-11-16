@@ -474,6 +474,7 @@ func (a *ireApp) queueFilteredCount(ctx context.Context, person reviewer, params
 
 func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offset int) (string, []any) {
 	query, args := a.queueListWhere(params, person)
+	order := ` order by s.priority desc, coalesce(s.submitted_at, s.created_at) asc, s.id asc`
 	query = `select s.id, s.external_id, s.version, s.status, s.stage, s.priority, s.title,
 			coalesce(s.theme, ''), coalesce(s.thumbnail_url, ''), coalesce(s.week, 0), coalesce(s.maker_name, ''), coalesce(s.maker_email, ''), coalesce(s.maker_slack_id, ''), coalesce(s.requested_tier, ''), s.hours_claimed_seconds,
 			s.hours_journal_seconds, s.hours_hackatime_seconds, ` + queueJournalCountSQL + `, ` + queueJournalImageSQL + `, ` + queueJournalTextLenSQL + `, s.bom_total_cents,
@@ -481,7 +482,6 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 			coalesce(r.status, ''), coalesce(r.attempts, 0), coalesce(r.started_at, ''), coalesce(r.finished_at, ''),
 			coalesce(r.error, ''), coalesce(r.runner_version, ''), coalesce(prev_review.reviewer_email, '')
 		` + query
-	order := ` order by s.priority desc, coalesce(s.submitted_at, s.created_at) asc, s.id asc`
 
 	if params.stage == stageOne && params.sortColumn == "" {
 		// The previous reviewer keeps a resubmission first, and other reviewers only see a fresh one behind the rest of the queue.

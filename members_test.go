@@ -82,10 +82,10 @@ func TestMemberAdministration(t *testing.T) {
 
 // TestReviewerAvatarsAreExposed covers the avatar URL on the session, roster, profile and audit payloads.
 func TestReviewerAvatarsAreExposed(t *testing.T) {
+	const avatar = "https://cdn.example.com/ada.png"
+
 	application := newTestApp(t)
 	admin := login(t, application, "admin@example.com")
-
-	const avatar = "https://cdn.example.com/ada.png"
 
 	if _, err := application.store.Exec(t.Context(), `update user set avatar_url = ? where email = 'admin@example.com'`, avatar); err != nil {
 		t.Fatal(err)

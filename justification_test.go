@@ -9,6 +9,8 @@ import (
 
 // TestApprovalRequiresJustification covers the two fields that make an approval defensible and checks that they reach the outbound record.
 func TestApprovalRequiresJustification(t *testing.T) {
+	const note string = "Thanks for the detailed journal."
+
 	application := newTestApp(t)
 
 	setJustificationPolicy(t, application, true, true)
@@ -21,9 +23,6 @@ func TestApprovalRequiresJustification(t *testing.T) {
 
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))
 	hours := 5 * secondsPerHour
-
-	const note string = "Thanks for the detailed journal."
-
 	request := contract.DecisionRequest{
 		Acknowledgements: warningKeys(bundle.Checks),
 		Decision: decisionApproved,

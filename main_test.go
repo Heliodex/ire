@@ -458,9 +458,9 @@ func TestCleanApprovalDeliversSignedPayload(t *testing.T) {
 
 // TestCommitSinceUsesPreviousApproval covers the resubmission commit window.
 func TestCommitSinceUsesPreviousApproval(t *testing.T) {
-	application := newTestApp(t)
-
 	const approved string = "2026-10-01T09:00:00.000000000Z"
+
+	application := newTestApp(t)
 
 	if _, err := application.store.Exec(t.Context(), `update submission set decided_at = ? where id = ?`, approved, "sub_fixture_1"); err != nil {
 		t.Fatal(err)
@@ -482,14 +482,14 @@ func TestCommitSinceUsesPreviousApproval(t *testing.T) {
 
 // TestDraftSurvivesReload covers the server-side draft the review page restores.
 func TestDraftSurvivesReload(t *testing.T) {
+	const values string = `{"technicalFeatures":"Firmware and board.","deflationReason":"Tutorial build."}`
+
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
 
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
-
-	const values string = `{"technicalFeatures":"Firmware and board.","deflationReason":"Tutorial build."}`
 
 	draft, _ := json.Marshal(contract.DraftRequest{
 		InternalNote: "Routing looks fine.",

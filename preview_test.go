@@ -42,10 +42,9 @@ func fakePreviewForge(t *testing.T) *httptest.Server {
 
 // seedPreviewShip points a fixture ship at the fake forge with a listed board file.
 func seedPreviewShip(t *testing.T, application *ireApp) {
-	t.Helper()
-
 	const files string = `[{"path":"board.kicad_pcb","kind":"file"},{"path":"board.kicad_sch","kind":"file"},{"path":"board.kicad_pro","kind":"file"},{"path":"big.kicad_pcb","kind":"file"},{"path":"README.md","kind":"file"}]`
 
+	t.Helper()
 	if _, err := application.store.Exec(t.Context(), `update submission set repo_url = 'https://github.com/example/queued' where id = 'sub_fixture_1'`); err != nil {
 		t.Fatal(err)
 	}

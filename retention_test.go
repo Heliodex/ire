@@ -4,11 +4,10 @@ import "testing"
 
 // TestPruneRetention covers short-lived rows and closed-ship snapshots without touching open ships.
 func TestPruneRetention(t *testing.T) {
-	application := newTestApp(t)
-	ctx := t.Context()
-
 	const old string = "2025-01-01T00:00:00.000000000Z"
 
+	application := newTestApp(t)
+	ctx := t.Context()
 	fresh := application.nowText()
 	statements := []struct {
 		SQL string
