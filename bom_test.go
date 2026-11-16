@@ -20,8 +20,8 @@ func TestBomMatchCheck(t *testing.T) {
 			UnitCostCents: 450,
 		},
 	}
-
 	result := bomMatchCheck(bom, maker, "2026-11-01T00:00:00Z")
+
 	if result.Status != statusWarn || result.Key != "repo.bom.prices" {
 		t.Fatalf("result = %+v", result)
 	}

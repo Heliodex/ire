@@ -65,8 +65,8 @@ func TestHackatimeChecks(t *testing.T) {
 		MakerHackatim: "U1",
 		HoursClaimed: 23040,
 	}
-
 	checks := checkMap(application.hackatimeChecks(t.Context(), ship))
+
 	if checks["hackatime.linked"].Status != statusPass || checks["hackatime.time"].Status != statusPass || checks["hackatime.stale"].Status != statusPass {
 		t.Fatalf("checks = %+v", checks)
 	}

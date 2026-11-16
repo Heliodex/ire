@@ -182,9 +182,9 @@ func (a *ireApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck) {
 
 	keys := a.errorCheckKeys(ctx, candidate)
 	now := a.nowText()
-
 	result, err := a.store.Exec(ctx, `update submission set status = 'checking', updated_at = ?
 		where id = ? and version = ? and status in ('needs_attention','ready')`, now, candidate.submissionID, candidate.version)
+
 	if err != nil || result.RowsAffected == 0 {
 		return
 	}

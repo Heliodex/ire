@@ -49,6 +49,42 @@ func amendApprovalProblem(request contract.AmendDecisionRequest, checks []contra
 	return nil
 }
 
+// amendText trims the amendment's reason and note and rejects values that are missing or too long.
+func amendText(request contract.AmendDecisionRequest) (reason, note string, problem *decisionProblem) {
+	reason = strings.TrimSpace(request.Reason)
+
+	if reason == "" {
+		return "", "", &decisionProblem{
+			status: http.StatusUnprocessableEntity,
+			code: "reason_required",
+			field: "reason",
+			message: "explain why this decision is being amended",
+		}
+	}
+
+	if len(reason) > maxNote {
+		return "", "", &decisionProblem{
+			status: http.StatusUnprocessableEntity,
+			code: "invalid",
+			field: "reason",
+			message: "the reason is limited to 4000 characters",
+		}
+	}
+
+	note = strings.TrimSpace(request.NoteToMaker)
+
+	if len(note) > maxNote || len(request.InternalNote) > maxNote {
+		return "", "", &decisionProblem{
+			status: http.StatusUnprocessableEntity,
+			code: "invalid",
+			field: "noteToMaker",
+			message: "notes are limited to 4000 characters",
+		}
+	}
+
+	return reason, note, nil
+}
+
 // canEditDecision reports whether the actor may revert or amend this final review.
 func canEditDecision(person reviewer, review finalReviewRow) bool {
 	if person.Has(permWildcard) {
@@ -135,7 +171,7 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 				"decision_amended",
 				record.person.ID,
 				record.person.Email,
-				marshalMap(map[string]any{keyDecision: record.request.Decision, "supersedes": finalID}),
+				marshalMap(map[string]any{"supersedes": finalID, keyDecision: record.request.Decision}),
 				record.now,
 			},
 		},
@@ -148,13 +184,13 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 				record.person.ID,
 				record.person.Email,
 				record.ship.ID,
-				marshalMap(map[string]any{keyStatus: record.ship.Status, "version": record.ship.Version}),
+				marshalMap(map[string]any{"version": record.ship.Version, keyStatus: record.ship.Status}),
 				marshalMap(map[string]any{
-					keyDecision: record.request.Decision,
 					"hours": record.hours,
 					"reason": record.overrideReason,
-					keyStatus: statusDecided,
 					"supersedes": finalID,
+					keyDecision: record.request.Decision,
+					keyStatus: statusDecided,
 				}),
 				record.now,
 			},
@@ -210,50 +246,11 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 	return statements, outboxID, nil
 }
 
-// loadFinalReview returns the ship's current final review.
-func (a *ireApp) loadFinalReview(ctx context.Context, submissionID string) (finalReviewRow, bool, error) {
-	var row finalReviewRow
-
-	if err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), reviewer_email, coalesce(reviewer_name, ''),
-			stage, decision, coalesce(hours_approved_seconds, 0), note_to_maker,
-			coalesce(technical_features, ''), coalesce(deflation_reason, ''),
-			coalesce(supersedes_review_id, ''), coalesce(held_reason, '')
-		from review where submission_id = ? and is_final = 1 and invalidated_at is null
-		order by created_at desc limit 1`, submissionID).Scan(&row.ID, &row.ReviewerID, &row.ReviewerEmail, &row.ReviewerName, &row.Stage, &row.Decision, &row.Hours, &row.NoteToMaker, &row.TechnicalFeatures, &row.DeflationReason, &row.SupersedesID, &row.HeldReason); err != nil {
-		if errors.Is(err, storage.ErrNoRows) {
-			return finalReviewRow{}, false, nil
-		}
-
-		return finalReviewRow{}, false, err
-	}
-
-	return row, true, nil
-}
-
-// amendText trims the amendment's reason and note and rejects values that are missing or too long.
-func amendText(request contract.AmendDecisionRequest) (reason, note string, problem *decisionProblem) {
-	reason = strings.TrimSpace(request.Reason)
-	if reason == "" {
-		return "", "", &decisionProblem{status: http.StatusUnprocessableEntity, code: "reason_required", field: "reason", message: "explain why this decision is being amended"}
-	}
-
-	if len(reason) > maxNote {
-		return "", "", &decisionProblem{status: http.StatusUnprocessableEntity, code: "invalid", field: "reason", message: "the reason is limited to 4000 characters"}
-	}
-
-	note = strings.TrimSpace(request.NoteToMaker)
-	if len(note) > maxNote || len(request.InternalNote) > maxNote {
-		return "", "", &decisionProblem{status: http.StatusUnprocessableEntity, code: "invalid", field: "noteToMaker", message: "notes are limited to 4000 characters"}
-	}
-
-	return reason, note, nil
-}
-
 // buildAmendRecord resolves the hours, text and payload for an amended decision. It writes the problem and returns false when the amendment is invalid.
 func (a *ireApp) buildAmendRecord(w http.ResponseWriter, r *http.Request, ship submissionRow, person reviewer, request contract.AmendDecisionRequest, final finalReviewRow, checks []contract.CheckResult, reason, note string) (decisionRecord, bool) {
+	hours := final.Hours
 	secondPass := final.Stage == 2
 
-	hours := final.Hours
 	if hours <= 0 {
 		hours = ship.HoursClaimed
 	}
@@ -284,8 +281,8 @@ func (a *ireApp) buildAmendRecord(w http.ResponseWriter, r *http.Request, ship s
 
 	now := a.nowText()
 	reviewID := newID("rev")
-
 	stage := final.Stage
+
 	if stage < stageOne {
 		stage = ship.Stage
 	}
@@ -369,6 +366,26 @@ func (a *ireApp) commitAmend(w http.ResponseWriter, r *http.Request, record deci
 		DeliveryStatus: stringPtr(deliveryStatus),
 		NextID: nil,
 	})
+}
+
+// loadFinalReview returns the ship's current final review.
+func (a *ireApp) loadFinalReview(ctx context.Context, submissionID string) (finalReviewRow, bool, error) {
+	var row finalReviewRow
+
+	if err := a.store.QueryRow(ctx, `select id, coalesce(reviewer_id, ''), reviewer_email, coalesce(reviewer_name, ''),
+			stage, decision, coalesce(hours_approved_seconds, 0), note_to_maker,
+			coalesce(technical_features, ''), coalesce(deflation_reason, ''),
+			coalesce(supersedes_review_id, ''), coalesce(held_reason, '')
+		from review where submission_id = ? and is_final = 1 and invalidated_at is null
+		order by created_at desc limit 1`, submissionID).Scan(&row.ID, &row.ReviewerID, &row.ReviewerEmail, &row.ReviewerName, &row.Stage, &row.Decision, &row.Hours, &row.NoteToMaker, &row.TechnicalFeatures, &row.DeflationReason, &row.SupersedesID, &row.HeldReason); err != nil {
+		if errors.Is(err, storage.ErrNoRows) {
+			return finalReviewRow{}, false, nil
+		}
+
+		return finalReviewRow{}, false, err
+	}
+
+	return row, true, nil
 }
 
 // handleAmendDecision replaces the final review with a corrected decision.
@@ -580,7 +597,7 @@ func (a *ireApp) handleRevertDecision(w http.ResponseWriter, r *http.Request) {
 				ship.ID,
 				person.ID,
 				person.Email,
-				marshalMap(map[string]any{keyDecision: final.Decision, "reason": reason, "review": final.ID}),
+				marshalMap(map[string]any{"reason": reason, "review": final.ID, keyDecision: final.Decision}),
 				now,
 			},
 		},
@@ -594,10 +611,10 @@ func (a *ireApp) handleRevertDecision(w http.ResponseWriter, r *http.Request) {
 				person.Email,
 				ship.ID,
 				marshalMap(map[string]any{
-					keyDecision: final.Decision,
 					"stage": ship.Stage,
-					keyStatus: ship.Status,
 					"version": ship.Version,
+					keyDecision: final.Decision,
+					keyStatus: ship.Status,
 				}),
 				marshalMap(map[string]any{"invalidated": final.ID, "reason": reason, "stage": stage, keyStatus: status}),
 				now,

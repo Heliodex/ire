@@ -24,8 +24,8 @@ func TestApprovalBlockedByDisputedFinding(t *testing.T) {
 		Station: "hardware",
 		Summary: "The Gerber ZIP is missing.",
 	})
-
 	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, cookie, nil)
+
 	if created.Code != http.StatusOK {
 		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
 	}
@@ -49,8 +49,8 @@ func TestApprovalBlockedByDisputedFinding(t *testing.T) {
 		NoteToMaker: "Nice.",
 		Version: bundle.Submission.Version,
 	})
-
 	blocked := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", approveBody, cookie, nil)
+
 	if blocked.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("approval with disputed finding = %d: %s", blocked.Code, blocked.Body.String())
 	}
@@ -77,8 +77,8 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 		Station: "narrative",
 		Summary: "The README is a placeholder.",
 	})
-
 	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, cookie, nil)
+
 	if created.Code != http.StatusOK {
 		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
 	}
@@ -98,8 +98,8 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 		Status: "open",
 		Summary: stringPtr("The README is a placeholder with no build steps."),
 	})
-
 	edited := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/findings/"+finding.ID, editBody, cookie, nil)
+
 	if edited.Code != http.StatusOK {
 		t.Fatalf("edit finding = %d: %s", edited.Code, edited.Body.String())
 	}
@@ -118,8 +118,8 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 		NoteToMaker: "Nice.",
 		Version: bundle.Submission.Version,
 	})
-
 	blocked := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", approveBody, cookie, nil)
+
 	if blocked.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("approval with open finding = %d: %s", blocked.Code, blocked.Body.String())
 	}
@@ -132,8 +132,8 @@ func TestApprovalBlockedByOpenFinding(t *testing.T) {
 		Resolution: stringPtr("README rewritten with the build steps."),
 		Status: "fixed",
 	})
-
 	fixed := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/findings/"+finding.ID, fixBody, cookie, nil)
+
 	if fixed.Code != http.StatusOK {
 		t.Fatalf("fix finding = %d: %s", fixed.Code, fixed.Body.String())
 	}
@@ -152,8 +152,8 @@ func TestFindingSurvivesResubmission(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
 	first := ingestBody("starbie:design")
-
 	created := do(t, application, http.MethodPost, "/api/ingest/half-life", first, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", first)})
+
 	if created.Code != http.StatusCreated {
 		t.Fatalf("first ingest = %d: %s", created.Code, created.Body.String())
 	}
@@ -171,8 +171,8 @@ func TestFindingSurvivesResubmission(t *testing.T) {
 		Station: "triage",
 		Summary: "The Gerber ZIP is missing.",
 	})
-
 	made := do(t, application, http.MethodPost, testBase+"/submissions/"+v1.ID+"/findings", createBody, cookie, nil)
+
 	if made.Code != http.StatusOK {
 		t.Fatalf("finding v1 = %d: %s", made.Code, made.Body.String())
 	}
@@ -185,8 +185,8 @@ func TestFindingSurvivesResubmission(t *testing.T) {
 	}
 
 	second := bytes.Replace(first, []byte("Line follower"), []byte("Line follower v2"), 1)
-
 	resubmitted := do(t, application, http.MethodPost, "/api/ingest/half-life", second, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", second)})
+
 	if resubmitted.Code != http.StatusCreated {
 		t.Fatalf("resubmit = %d: %s", resubmitted.Code, resubmitted.Body.String())
 	}
@@ -250,8 +250,8 @@ func TestReturnRecordsItsFindings(t *testing.T) {
 		Station: "triage",
 		Summary: "The Gerber ZIP is missing.",
 	})
-
 	created := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, cookie, nil)
+
 	if created.Code != http.StatusOK {
 		t.Fatalf("create finding = %d: %s", created.Code, created.Body.String())
 	}
@@ -265,8 +265,8 @@ func TestReturnRecordsItsFindings(t *testing.T) {
 		NoteToMaker: "Please add the Gerber ZIP and resubmit.",
 		Version: bundle.Submission.Version,
 	})
-
 	returned := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", returnBody, cookie, nil)
+
 	if returned.Code != http.StatusOK {
 		t.Fatalf("return = %d: %s", returned.Code, returned.Body.String())
 	}

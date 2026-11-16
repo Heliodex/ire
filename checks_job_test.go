@@ -95,8 +95,8 @@ func TestIngestFallsBackWhenQueueFails(t *testing.T) {
 	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
 	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)}))
 	cookie := login(t, application, "reviewer@example.com")
-
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+created.ID, nil, cookie, nil))
+
 	if bundle.Submission.Status != statusReady {
 		t.Fatalf("status = %q, want ready", bundle.Submission.Status)
 	}
@@ -125,8 +125,8 @@ func TestIngestQueuesRepositoryChecks(t *testing.T) {
 	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
 	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)}))
 	cookie := login(t, application, "reviewer@example.com")
-
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+created.ID, nil, cookie, nil))
+
 	if bundle.Submission.Status != statusChecking {
 		t.Fatalf("status = %q, want checking", bundle.Submission.Status)
 	}

@@ -40,9 +40,9 @@ var queueSortColumns = map[string]string{
 	"claimed": "s.hours_claimed_seconds",
 	"maker": "coalesce(s.maker_name, '') collate nocase",
 	"ship": "s.title collate nocase",
-	keyStatus: "s.status",
 	"type": "coalesce(s.theme, '') collate nocase",
 	"version": "s.version",
+	keyStatus: "s.status",
 }
 
 // holdsClaim reports whether this reviewer still holds the ship's claim.

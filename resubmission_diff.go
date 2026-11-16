@@ -22,8 +22,8 @@ func changedBom(previous, current []contract.BomLine) (added, removed []string, 
 
 	for _, line := range current {
 		seen[line.Name] = true
-
 		cents, ok := before[line.Name]
+
 		if !ok {
 			added = append(added, line.Name)
 			continue
@@ -119,8 +119,8 @@ func changedJournals(previous, current []contract.JournalEntry) (added, changed 
 			Seconds: entry.Seconds,
 			Title: entry.Title,
 		}
-
 		match, ok := before[journalKey(entry)]
+
 		if !ok {
 			added = append(added, summary)
 			continue

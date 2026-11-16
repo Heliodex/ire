@@ -94,6 +94,7 @@ func checkCountsFor(checks []contract.CheckResult) checkCounts {
 }
 
 // cleanDemoFixture is the demo ship that passes its checks and is approved.
+//
 //nolint:dupl,goconst,mnd // The fixture lists are deliberately literal: prices, durations and near-identical check rows are demo data.
 func cleanDemoFixture(base time.Time) fixture {
 	return fixture{
@@ -257,7 +258,431 @@ func cleanDemoFixture(base time.Time) fixture {
 	}
 }
 
+// fixtureBomStatements writes a demo ship's bill of materials lines.
+func fixtureBomStatements(id string, f fixture) []storage.TransactionStatement {
+	statements := make([]storage.TransactionStatement, 0, len(f.bom))
+
+	for i, line := range f.bom {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert into bom_line (id, submission_id, name, purpose, quantity, unit_cost_cents, vendor, link, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			Args: []any{newID("bom"), id, line.name, line.purpose, line.qty, line.cents, line.vendor, line.link, i},
+		})
+	}
+
+	return statements
+}
+
+// fixtureCheckStatements writes a demo ship's check results for its first version.
+func fixtureCheckStatements(id string, f fixture, ingested time.Time) []storage.TransactionStatement {
+	statements := make([]storage.TransactionStatement, 0, len(f.checks))
+
+	for _, check := range f.checks {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, checked_at)
+				values (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			Args: []any{
+				newID("chk"),
+				id,
+				check.key,
+				check.label,
+				check.group,
+				check.status,
+				check.severity,
+				check.summary,
+				check.detail,
+				ingested.Add(time.Minute).Format(timestampFormat),
+			},
+		})
+	}
+
+	return statements
+}
+
+// fixtureID returns the fixed id for a demo ship, so reseeding can skip one that is already present.
+func fixtureID(index int) string {
+	return fmt.Sprintf("sub_fixture_%d", index+1)
+}
+
+// fixtureJournalStatements writes a demo ship's journal entries with their placeholder media and timelapse clips.
+func fixtureJournalStatements(id string, f fixture) []storage.TransactionStatement {
+	statements := make([]storage.TransactionStatement, 0, len(f.journals))
+
+	for i, entry := range f.journals {
+		media := make([]map[string]string, entry.media)
+
+		for j := range media {
+			media[j] = map[string]string{"type": "image", "url": "https://example.com/journal.jpg"}
+		}
+
+		timelapses := make([]map[string]any, entry.clips)
+
+		for j := range timelapses {
+			timelapses[j] = map[string]any{
+				"provider": "lapse",
+				"externalId": "clip_" + id,
+				"coveredSeconds": entry.coverS / max(entry.clips, 1),
+			}
+		}
+
+		mediaJSON, _ := json.Marshal(media)
+		clipsJSON, _ := json.Marshal(timelapses)
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert into journal_entry (id, submission_id, at, seconds, title, text, media, timelapses, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			Args: []any{
+				newID("jrn"),
+				id,
+				entry.at,
+				entry.hours * 3600,
+				entry.title,
+				entry.text,
+				string(mediaJSON),
+				string(clipsJSON),
+				i,
+			},
+		})
+	}
+
+	return statements
+}
+
+// fixtureSnapshot builds the repo snapshot a fixture ship shows on its evidence tab.
+func fixtureSnapshot(id string, f fixture, ingested time.Time) storage.TransactionStatement {
+	files, _ := json.Marshal([]contract.EvidenceFile{
+		{
+			Path: "README.md",
+			Kind: "file",
+		},
+		{
+			Path: "BOM.csv",
+			Kind: "file",
+		},
+		{
+			Path: "board.kicad_pcb",
+			Kind: "file",
+		},
+	})
+	commits, _ := json.Marshal([]contract.EvidenceCommit{
+		{
+			Sha: "head1",
+			Message: "Initial layout",
+			Author: f.makerName,
+			Date: ingested.Format(timestampFormat),
+		},
+	})
+
+	return storage.TransactionStatement{
+		SQL: `insert into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha, file_count, truncated, readme_text, files, commits, fetched_at, error)
+			values (?, 1, 'fixture', ?, 'main', 'head1', 3, 0, ?, ?, ?, ?, null)`,
+		Args: []any{
+			id,
+			strings.TrimPrefix(f.repoURL, "https://github.com/"),
+			f.readme,
+			string(files),
+			string(commits),
+			ingested.Format(timestampFormat),
+		},
+	}
+}
+
+// refusedDemoFixture is the demo ship whose checks refuse it.
+//
+//nolint:mnd // The fixture lists are deliberately literal: prices, durations and near-identical check rows are demo data.
+func refusedDemoFixture(base time.Time) fixture {
+	return fixture{
+		externalID: "fix-blocked:design",
+		title: "Smart Alarm Clock",
+		description: "An ESP32 alarm clock that shows the weather and wakes you with a buzzer. The board has an ESP32 module, a 1.8-inch SPI display, a DS3231 RTC, a TP4056 charger and four buttons.",
+		repoURL: "https://github.com/SBdevz/Smart-Alarm-Clock",
+		thumbnailURL: "/projects/smart-alarm-clock.png",
+		readme: "# Smart Alarm Clock\n\nA seven-segment alarm clock. The README is still a stub.\n",
+		theme: "pcb",
+		makerEmail: "sbdevz@example.com",
+		makerName: "SBdevz",
+		makerSlack: "U0SMARTCLOCK",
+		tier: 1,
+		hoursClaimed: 40320,
+		hoursJournal: 40320,
+		priority: 10,
+		journals: []fixtureJournal{
+			{
+				at: base.Add(time.Hour).Format(timestampFormat),
+				hours: 6,
+				title: "Schematic and Wokwi model",
+				text: "Built the ESP32 circuit in Wokwi with the display, the RTC and the buzzer, then moved it to KiCad. The alarm logic is written but the board files still need work.",
+				clips: 0,
+				coverS: 0,
+			},
+			{
+				at: base.Add(4 * time.Hour).Format(timestampFormat),
+				hours: 5,
+				title: "Board layout",
+				text: "Started the layout and routed the display and USB-C. The repo is still private while I clean up the README.",
+				clips: 0,
+				coverS: 0,
+			},
+		},
+		bom: []fixtureBom{
+			{
+				name: "ESP32 DevKit V1",
+				purpose: "Microcontroller",
+				qty: 1,
+				cents: 650,
+				vendor: "AliExpress",
+				link: "https://www.aliexpress.com/",
+			},
+			{
+				name: "1.8 inch SPI display",
+				purpose: "Display",
+				qty: 1,
+				cents: 420,
+				vendor: "AliExpress",
+				link: "https://www.aliexpress.com/",
+			},
+			{
+				name: "DS3231 RTC",
+				purpose: "Real-time clock",
+				qty: 1,
+				cents: 250,
+				vendor: "AliExpress",
+				link: "https://www.aliexpress.com/",
+			},
+			{
+				name: "TP4056 charger",
+				purpose: "Battery charging",
+				qty: 1,
+				cents: 90,
+				vendor: "AliExpress",
+				link: "https://www.aliexpress.com/",
+			},
+			{
+				name: "PCB fabrication",
+				purpose: "5 boards",
+				qty: 5,
+				cents: 500,
+				vendor: "JLCPCB",
+				link: "https://jlcpcb.com/",
+			},
+		},
+		checks: []fixtureCheck{
+			{
+				key: "repo.accessible",
+				label: "Repository reachable",
+				group: "repo",
+				status: statusFail,
+				severity: severityBlock,
+				summary: "Repository is private or missing",
+				detail: "github.com/SBdevz/Smart-Alarm-Clock returned 404 without credentials.",
+			},
+			{
+				key: "repo.readme",
+				label: "README present",
+				group: "repo",
+				status: statusSkip,
+				severity: severityInfo,
+				summary: "Not checked",
+				detail: "The repository could not be read.",
+			},
+			{
+				key: "repo.bom",
+				label: "Bill of materials",
+				group: "repo",
+				status: statusSkip,
+				severity: severityInfo,
+				summary: "Not checked",
+				detail: "The repository could not be read.",
+			},
+			{
+				key: "repo.design_files",
+				label: "Design files",
+				group: "repo",
+				status: statusSkip,
+				severity: severityInfo,
+				summary: "Not checked",
+				detail: "The repository could not be read.",
+			},
+			{
+				key: "evidence.journals",
+				label: "Journal evidence",
+				group: "evidence",
+				status: statusPass,
+				severity: severityInfo,
+				summary: "2 entries logged",
+				detail: "Both entries explain the work and name the next step.",
+			},
+		},
+	}
+}
+
+// stringPtr returns a pointer to value. It keeps the fixture literals readable.
+func stringPtr(value string) *string {
+	if value == "" {
+		return nil
+	}
+
+	return &value
+}
+
+// fixtureChecks turns a demo ship's prescribed checks into results, checked a minute after ingest.
+func fixtureChecks(f fixture, ingested time.Time) []contract.CheckResult {
+	checks := make([]contract.CheckResult, 0, len(f.checks))
+
+	for _, check := range f.checks {
+		checks = append(checks, contract.CheckResult{
+			Key: check.key,
+			Label: check.label,
+			Group: check.group,
+			Status: check.status,
+			Severity: check.severity,
+			Summary: check.summary,
+			Detail: stringPtr(check.detail),
+			CheckedAt: ingested.Add(time.Minute).Format(timestampFormat),
+		})
+	}
+
+	return checks
+}
+
+// fixtureRequest builds the ingest request a demo ship would have been sent as, which is stored as its version payload.
+func fixtureRequest(f fixture) contract.IngestRequest {
+	request := contract.IngestRequest{
+		ExternalID: f.externalID,
+		Title: f.title,
+		Description: f.description,
+		RepoURL: stringPtr(f.repoURL),
+		ThumbnailURL: stringPtr(f.thumbnailURL),
+		Track: stringPtr("hardware"),
+		Maker: contract.IngestMaker{
+			Email: f.makerEmail,
+			Name: f.makerName,
+			SlackID: stringPtr(f.makerSlack),
+		},
+		Meta: &contract.IngestMeta{
+			Phase: stringPtr("design"),
+			Theme: stringPtr(f.theme),
+			Week: new(1),
+			RequestedTier: new(f.tier),
+			GrantCapCents: new(3000),
+			Hours: &contract.IngestHours{
+				ClaimedSeconds: f.hoursClaimed,
+				HackatimeSeconds: 0,
+				JournalSeconds: f.hoursJournal,
+			},
+		},
+	}
+
+	if f.priorReview != nil {
+		request.Meta.PriorReviews = []contract.IngestPriorReview{
+			{
+				Result: f.priorReview.result,
+				Feedback: stringPtr(f.priorReview.feedback),
+				Reviewer: stringPtr(f.priorReview.reviewer),
+				At: stringPtr(f.priorReview.at),
+			},
+		}
+	}
+
+	return request
+}
+
+// insertFixture writes one demo ship, its snapshot, evidence and prescribed checks.
+func (a *ireApp) insertFixture(ctx context.Context, index int, f fixture, now time.Time) error {
+	ingested := now.Add(-time.Duration(index+1) * 2 * time.Hour)
+	id := fixtureID(index)
+	checks := fixtureChecks(f, ingested)
+	summary := checkCountsFor(checks)
+
+	summaryJSON, err := json.Marshal(summary)
+	if err != nil {
+		return err
+	}
+
+	status := statusReady
+
+	if summary.Overall == checkOverallFail {
+		status = statusNeedsAttention
+	}
+
+	payload, err := json.Marshal(fixtureRequest(f))
+	if err != nil {
+		return err
+	}
+
+	var bomTotal int
+
+	for _, line := range f.bom {
+		bomTotal += line.qty * line.cents
+	}
+
+	tx := []storage.TransactionStatement{
+		{
+			SQL: `insert into submission (id, program_id, external_id, version, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, maker_slack_id, repo_url, thumbnail_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, submitted_at, ingested_at, created_at, updated_at)
+			values (?, ?, ?, 1, ?, 1, ?, ?, ?, 'hardware', ?, 'design', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+			Args: []any{
+				id,
+				programID,
+				f.externalID,
+				status,
+				f.priority,
+				f.title,
+				f.description,
+				f.theme,
+				f.makerEmail,
+				f.makerName,
+				f.makerSlack,
+				f.repoURL,
+				f.thumbnailURL,
+				f.tier,
+				3000,
+				bomTotal,
+				f.hoursClaimed,
+				f.hoursJournal,
+				string(summaryJSON),
+				nil,
+				ingested.Format(timestampFormat),
+				ingested.Format(timestampFormat),
+				ingested.Format(timestampFormat),
+			},
+		},
+		{
+			SQL: `insert into submission_version (submission_id, version, payload, payload_sha256, received_at, delivery_id)
+			values (?, 1, ?, ?, ?, ?)`,
+			Args: []any{id, string(payload), sha256Hex(payload), ingested.Format(timestampFormat), "seed:" + id},
+		},
+		{
+			SQL: `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'ingested', ?, ?)`,
+			Args: []any{newID("evt"), id, `{"source":"fixture"}`, ingested.Format(timestampFormat)},
+		},
+		{
+			SQL: `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'checks_ready', ?, ?)`,
+			Args: []any{newID("evt"), id, string(summaryJSON), ingested.Add(time.Minute).Format(timestampFormat)},
+		},
+	}
+	tx = append(tx, fixtureJournalStatements(id, f)...)
+	tx = append(tx, fixtureBomStatements(id, f)...)
+
+	if f.readme != "" {
+		tx = append(tx, fixtureSnapshot(id, f, ingested))
+	}
+
+	tx = append(tx, fixtureCheckStatements(id, f, ingested)...)
+	_, err = a.store.Transaction(ctx, tx...)
+
+	return err
+}
+
+// trimSpace removes leading and trailing whitespace from a pointer to a string, leaving nil alone.
+func trimSpace(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(*value)
+
+	return &trimmed
+}
+
 // warningDemoFixture is the demo ship whose checks raise warnings.
+//
 //nolint:dupl,mnd // The fixture lists are deliberately literal: prices, durations and near-identical check rows are demo data.
 func warningDemoFixture(base time.Time) fixture {
 	return fixture{
@@ -417,427 +842,10 @@ func warningDemoFixture(base time.Time) fixture {
 	}
 }
 
-// refusedDemoFixture is the demo ship whose checks refuse it.
-//nolint:mnd // The fixture lists are deliberately literal: prices, durations and near-identical check rows are demo data.
-func refusedDemoFixture(base time.Time) fixture {
-	return fixture{
-		externalID: "fix-blocked:design",
-		title: "Smart Alarm Clock",
-		description: "An ESP32 alarm clock that shows the weather and wakes you with a buzzer. The board has an ESP32 module, a 1.8-inch SPI display, a DS3231 RTC, a TP4056 charger and four buttons.",
-		repoURL: "https://github.com/SBdevz/Smart-Alarm-Clock",
-		thumbnailURL: "/projects/smart-alarm-clock.png",
-		readme: "# Smart Alarm Clock\n\nA seven-segment alarm clock. The README is still a stub.\n",
-		theme: "pcb",
-		makerEmail: "sbdevz@example.com",
-		makerName: "SBdevz",
-		makerSlack: "U0SMARTCLOCK",
-		tier: 1,
-		hoursClaimed: 40320,
-		hoursJournal: 40320,
-		priority: 10,
-		journals: []fixtureJournal{
-			{
-				at: base.Add(time.Hour).Format(timestampFormat),
-				hours: 6,
-				title: "Schematic and Wokwi model",
-				text: "Built the ESP32 circuit in Wokwi with the display, the RTC and the buzzer, then moved it to KiCad. The alarm logic is written but the board files still need work.",
-				clips: 0,
-				coverS: 0,
-			},
-			{
-				at: base.Add(4 * time.Hour).Format(timestampFormat),
-				hours: 5,
-				title: "Board layout",
-				text: "Started the layout and routed the display and USB-C. The repo is still private while I clean up the README.",
-				clips: 0,
-				coverS: 0,
-			},
-		},
-		bom: []fixtureBom{
-			{
-				name: "ESP32 DevKit V1",
-				purpose: "Microcontroller",
-				qty: 1,
-				cents: 650,
-				vendor: "AliExpress",
-				link: "https://www.aliexpress.com/",
-			},
-			{
-				name: "1.8 inch SPI display",
-				purpose: "Display",
-				qty: 1,
-				cents: 420,
-				vendor: "AliExpress",
-				link: "https://www.aliexpress.com/",
-			},
-			{
-				name: "DS3231 RTC",
-				purpose: "Real-time clock",
-				qty: 1,
-				cents: 250,
-				vendor: "AliExpress",
-				link: "https://www.aliexpress.com/",
-			},
-			{
-				name: "TP4056 charger",
-				purpose: "Battery charging",
-				qty: 1,
-				cents: 90,
-				vendor: "AliExpress",
-				link: "https://www.aliexpress.com/",
-			},
-			{
-				name: "PCB fabrication",
-				purpose: "5 boards",
-				qty: 5,
-				cents: 500,
-				vendor: "JLCPCB",
-				link: "https://jlcpcb.com/",
-			},
-		},
-		checks: []fixtureCheck{
-			{
-				key: "repo.accessible",
-				label: "Repository reachable",
-				group: "repo",
-				status: statusFail,
-				severity: severityBlock,
-				summary: "Repository is private or missing",
-				detail: "github.com/SBdevz/Smart-Alarm-Clock returned 404 without credentials.",
-			},
-			{
-				key: "repo.readme",
-				label: "README present",
-				group: "repo",
-				status: statusSkip,
-				severity: severityInfo,
-				summary: "Not checked",
-				detail: "The repository could not be read.",
-			},
-			{
-				key: "repo.bom",
-				label: "Bill of materials",
-				group: "repo",
-				status: statusSkip,
-				severity: severityInfo,
-				summary: "Not checked",
-				detail: "The repository could not be read.",
-			},
-			{
-				key: "repo.design_files",
-				label: "Design files",
-				group: "repo",
-				status: statusSkip,
-				severity: severityInfo,
-				summary: "Not checked",
-				detail: "The repository could not be read.",
-			},
-			{
-				key: "evidence.journals",
-				label: "Journal evidence",
-				group: "evidence",
-				status: statusPass,
-				severity: severityInfo,
-				summary: "2 entries logged",
-				detail: "Both entries explain the work and name the next step.",
-			},
-		},
-	}
-}
-
 // demoFixtures returns the three demo ships reseeded by seedFixtures: a clean approval,
 // a ship with warnings, and one the checks refuse.
 func demoFixtures(base time.Time) []fixture {
-	return []fixture{
-		cleanDemoFixture(base),
-		warningDemoFixture(base),
-		refusedDemoFixture(base),
-	}
-}
-
-// fixtureID returns the fixed id for a demo ship, so reseeding can skip one that is already present.
-func fixtureID(index int) string {
-	return fmt.Sprintf("sub_fixture_%d", index+1)
-}
-
-// fixtureSnapshot builds the repo snapshot a fixture ship shows on its evidence tab.
-func fixtureSnapshot(id string, f fixture, ingested time.Time) storage.TransactionStatement {
-	files, _ := json.Marshal([]contract.EvidenceFile{
-		{
-			Path: "README.md",
-			Kind: "file",
-		},
-		{
-			Path: "BOM.csv",
-			Kind: "file",
-		},
-		{
-			Path: "board.kicad_pcb",
-			Kind: "file",
-		},
-	})
-	commits, _ := json.Marshal([]contract.EvidenceCommit{
-		{
-			Sha: "head1",
-			Message: "Initial layout",
-			Author: f.makerName,
-			Date: ingested.Format(timestampFormat),
-		},
-	})
-
-	return storage.TransactionStatement{
-		SQL: `insert into repo_snapshot (submission_id, version, forge, full_name, default_branch, head_sha, file_count, truncated, readme_text, files, commits, fetched_at, error)
-			values (?, 1, 'fixture', ?, 'main', 'head1', 3, 0, ?, ?, ?, ?, null)`,
-		Args: []any{
-			id,
-			strings.TrimPrefix(f.repoURL, "https://github.com/"),
-			f.readme,
-			string(files),
-			string(commits),
-			ingested.Format(timestampFormat),
-		},
-	}
-}
-
-// stringPtr returns a pointer to value. It keeps the fixture literals readable.
-func stringPtr(value string) *string {
-	if value == "" {
-		return nil
-	}
-
-	return &value
-}
-
-// fixtureRequest builds the ingest request a demo ship would have been sent as, which is stored as its version payload.
-func fixtureRequest(f fixture) contract.IngestRequest {
-	request := contract.IngestRequest{
-		ExternalID: f.externalID,
-		Title: f.title,
-		Description: f.description,
-		RepoURL: stringPtr(f.repoURL),
-		ThumbnailURL: stringPtr(f.thumbnailURL),
-		Track: stringPtr("hardware"),
-		Maker: contract.IngestMaker{
-			Email: f.makerEmail,
-			Name: f.makerName,
-			SlackID: stringPtr(f.makerSlack),
-		},
-		Meta: &contract.IngestMeta{
-			Phase: stringPtr("design"),
-			Theme: stringPtr(f.theme),
-			Week: new(1),
-			RequestedTier: new(f.tier),
-			GrantCapCents: new(3000),
-			Hours: &contract.IngestHours{
-				ClaimedSeconds: f.hoursClaimed,
-				HackatimeSeconds: 0,
-				JournalSeconds: f.hoursJournal,
-			},
-		},
-	}
-
-	if f.priorReview != nil {
-		request.Meta.PriorReviews = []contract.IngestPriorReview{
-			{
-				Result: f.priorReview.result,
-				Feedback: stringPtr(f.priorReview.feedback),
-				Reviewer: stringPtr(f.priorReview.reviewer),
-				At: stringPtr(f.priorReview.at),
-			},
-		}
-	}
-
-	return request
-}
-
-// fixtureChecks turns a demo ship's prescribed checks into results, checked a minute after ingest.
-func fixtureChecks(f fixture, ingested time.Time) []contract.CheckResult {
-	checks := make([]contract.CheckResult, 0, len(f.checks))
-
-	for _, check := range f.checks {
-		checks = append(checks, contract.CheckResult{
-			Key: check.key,
-			Label: check.label,
-			Group: check.group,
-			Status: check.status,
-			Severity: check.severity,
-			Summary: check.summary,
-			Detail: stringPtr(check.detail),
-			CheckedAt: ingested.Add(time.Minute).Format(timestampFormat),
-		})
-	}
-
-	return checks
-}
-
-// fixtureJournalStatements writes a demo ship's journal entries with their placeholder media and timelapse clips.
-func fixtureJournalStatements(id string, f fixture) []storage.TransactionStatement {
-	statements := make([]storage.TransactionStatement, 0, len(f.journals))
-
-	for i, entry := range f.journals {
-		media := make([]map[string]string, entry.media)
-
-		for j := range media {
-			media[j] = map[string]string{"type": "image", "url": "https://example.com/journal.jpg"}
-		}
-
-		timelapses := make([]map[string]any, entry.clips)
-
-		for j := range timelapses {
-			timelapses[j] = map[string]any{
-				"provider": "lapse",
-				"externalId": "clip_" + id,
-				"coveredSeconds": entry.coverS / max(entry.clips, 1),
-			}
-		}
-
-		mediaJSON, _ := json.Marshal(media)
-		clipsJSON, _ := json.Marshal(timelapses)
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into journal_entry (id, submission_id, at, seconds, title, text, media, timelapses, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			Args: []any{
-				newID("jrn"),
-				id,
-				entry.at,
-				entry.hours * 3600,
-				entry.title,
-				entry.text,
-				string(mediaJSON),
-				string(clipsJSON),
-				i,
-			},
-		})
-	}
-
-	return statements
-}
-
-// fixtureBomStatements writes a demo ship's bill of materials lines.
-func fixtureBomStatements(id string, f fixture) []storage.TransactionStatement {
-	statements := make([]storage.TransactionStatement, 0, len(f.bom))
-
-	for i, line := range f.bom {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into bom_line (id, submission_id, name, purpose, quantity, unit_cost_cents, vendor, link, sort) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			Args: []any{newID("bom"), id, line.name, line.purpose, line.qty, line.cents, line.vendor, line.link, i},
-		})
-	}
-
-	return statements
-}
-
-// fixtureCheckStatements writes a demo ship's check results for its first version.
-func fixtureCheckStatements(id string, f fixture, ingested time.Time) []storage.TransactionStatement {
-	statements := make([]storage.TransactionStatement, 0, len(f.checks))
-
-	for _, check := range f.checks {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into check_result (id, submission_id, version, check_key, label, group_key, status, severity, summary, detail, checked_at)
-				values (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			Args: []any{
-				newID("chk"),
-				id,
-				check.key,
-				check.label,
-				check.group,
-				check.status,
-				check.severity,
-				check.summary,
-				check.detail,
-				ingested.Add(time.Minute).Format(timestampFormat),
-			},
-		})
-	}
-
-	return statements
-}
-
-// insertFixture writes one demo ship, its snapshot, evidence and prescribed checks.
-func (a *ireApp) insertFixture(ctx context.Context, index int, f fixture, now time.Time) error {
-	ingested := now.Add(-time.Duration(index+1) * 2 * time.Hour)
-	id := fixtureID(index)
-	checks := fixtureChecks(f, ingested)
-	summary := checkCountsFor(checks)
-
-	summaryJSON, err := json.Marshal(summary)
-	if err != nil {
-		return err
-	}
-
-	status := statusReady
-
-	if summary.Overall == checkOverallFail {
-		status = statusNeedsAttention
-	}
-
-	payload, err := json.Marshal(fixtureRequest(f))
-	if err != nil {
-		return err
-	}
-
-	var bomTotal int
-
-	for _, line := range f.bom {
-		bomTotal += line.qty * line.cents
-	}
-
-	tx := []storage.TransactionStatement{
-		{
-			SQL: `insert into submission (id, program_id, external_id, version, status, stage, priority, title, description, track, theme, phase, week, maker_email, maker_name, maker_slack_id, repo_url, thumbnail_url, requested_tier, grant_cap_cents, bom_total_cents, hours_claimed_seconds, hours_journal_seconds, hours_hackatime_seconds, check_summary, submitted_at, ingested_at, created_at, updated_at)
-			values (?, ?, ?, 1, ?, 1, ?, ?, ?, 'hardware', ?, 'design', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
-			Args: []any{
-				id,
-				programID,
-				f.externalID,
-				status,
-				f.priority,
-				f.title,
-				f.description,
-				f.theme,
-				f.makerEmail,
-				f.makerName,
-				f.makerSlack,
-				f.repoURL,
-				f.thumbnailURL,
-				f.tier,
-				3000,
-				bomTotal,
-				f.hoursClaimed,
-				f.hoursJournal,
-				string(summaryJSON),
-				nil,
-				ingested.Format(timestampFormat),
-				ingested.Format(timestampFormat),
-				ingested.Format(timestampFormat),
-			},
-		},
-		{
-			SQL: `insert into submission_version (submission_id, version, payload, payload_sha256, received_at, delivery_id)
-			values (?, 1, ?, ?, ?, ?)`,
-			Args: []any{id, string(payload), sha256Hex(payload), ingested.Format(timestampFormat), "seed:" + id},
-		},
-		{
-			SQL: `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'ingested', ?, ?)`,
-			Args: []any{newID("evt"), id, `{"source":"fixture"}`, ingested.Format(timestampFormat)},
-		},
-		{
-			SQL: `insert into submission_event (id, submission_id, kind, data, created_at) values (?, ?, 'checks_ready', ?, ?)`,
-			Args: []any{newID("evt"), id, string(summaryJSON), ingested.Add(time.Minute).Format(timestampFormat)},
-		},
-	}
-
-	tx = append(tx, fixtureJournalStatements(id, f)...)
-	tx = append(tx, fixtureBomStatements(id, f)...)
-
-	if f.readme != "" {
-		tx = append(tx, fixtureSnapshot(id, f, ingested))
-	}
-
-	tx = append(tx, fixtureCheckStatements(id, f, ingested)...)
-
-	_, err = a.store.Transaction(ctx, tx...)
-
-	return err
+	return []fixture{cleanDemoFixture(base), warningDemoFixture(base), refusedDemoFixture(base)}
 }
 
 // seedFixtures inserts the demo ships, skipping the ids that already exist.
@@ -918,15 +926,4 @@ func (a *ireApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.WriteJSON(w, http.StatusOK, map[string]string{"seededAt": now})
-}
-
-// trimSpace removes leading and trailing whitespace from a pointer to a string, leaving nil alone.
-func trimSpace(value *string) *string {
-	if value == nil {
-		return nil
-	}
-
-	trimmed := strings.TrimSpace(*value)
-
-	return &trimmed
 }

@@ -109,7 +109,7 @@ func (a *ireApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
 				person.ID,
 				person.Email,
 				ship.ID,
-				marshalMap(map[string]any{"stage": ship.Stage, keyStatus: ship.Status, "version": ship.Version}),
+				marshalMap(map[string]any{"stage": ship.Stage, "version": ship.Version, keyStatus: ship.Status}),
 				marshalMap(map[string]any{"invalidated": held.ID, "reason": reason, "stage": stageOne, keyStatus: statusReady}),
 				now,
 			},

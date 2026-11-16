@@ -96,8 +96,8 @@ func completeHCA(t *testing.T, application *ireApp, provider *fakeHCA) *http.Coo
 	provider.setNonce(location.Query().Get("nonce"))
 
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
-
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+
 	if callback.Header().Get("Location") != "/stations" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
@@ -205,8 +205,8 @@ func TestHCABootstrapsConfiguredEmail(t *testing.T) {
 	provider.setNonce(location.Query().Get("nonce"))
 
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
-
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+
 	if callback.Header().Get("Location") != "/stations" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
@@ -320,8 +320,8 @@ func TestHCAOAuthFlow(t *testing.T) {
 	application.config.HCClientSecret = "secret"
 	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
-
 	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+
 	if start.Code != http.StatusFound {
 		t.Fatalf("start = %d: %s", start.Code, start.Body.String())
 	}
@@ -444,8 +444,8 @@ func TestHCARejectsUnknownMember(t *testing.T) {
 	provider.setNonce(location.Query().Get("nonce"))
 
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
-
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
+
 	if callback.Header().Get("Location") != "/?error=not_member" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}
@@ -470,8 +470,8 @@ func TestHCASessionRotation(t *testing.T) {
 	provider.setNonce(location.Query().Get("nonce"))
 
 	state := location.Query().Get("state")
-
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, nil, map[string]string{"Cookie": cookieName + "=" + old.Value + "; " + oauthStateCookie + "=" + state})
+
 	if callback.Header().Get("Location") != "/stations" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
 	}

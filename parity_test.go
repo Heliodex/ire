@@ -15,8 +15,8 @@ func TestParityFeed(t *testing.T) {
 	}
 
 	recorder := do(t, application, http.MethodGet, testBase+"/parity", nil, nil, map[string]string{"Authorization": "Bearer test-ingest"})
-
 	response := decode[contract.ParityResponse](t, recorder)
+
 	if len(response.Ships) != 3 || response.GeneratedAt == "" {
 		t.Fatalf("parity = %+v", response)
 	}

@@ -21,12 +21,12 @@ func TestJournalTimelapsesExposed(t *testing.T) {
 			CreatedAt: "2026-01-01T00:00:00Z",
 		},
 	}
-
 	clips := journalTimelapses("entry_1", `[
 		{"provider":"lapse","externalId":"clip_a","url":"https://lapse.hackclub.com/clip_a","thumbnailUrl":"https://cdn.example.com/a.jpg","coveredSeconds":1800},
 		{"provider":"lapse","externalId":"clip_b","url":"javascript:alert(1)","coveredSeconds":900},
 		{"provider":"lapse","coveredSeconds":-5}
 	]`, adjustments)
+
 	if len(clips) != 3 {
 		t.Fatalf("clips = %d, want 3", len(clips))
 	}
@@ -131,8 +131,8 @@ func TestTimelapseCutSavesLedger(t *testing.T) {
 		ReviewerNote: "The clip shows another screen.",
 		Version: 1,
 	})
-
 	adjusted := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/journal/"+entry.ID+"/timelapse/0", body, reviewer, nil)
+
 	if adjusted.Code != http.StatusOK {
 		t.Fatalf("timelapse adjustment = %d: %s", adjusted.Code, adjusted.Body.String())
 	}
@@ -154,8 +154,8 @@ func TestTimelapseCutSavesLedger(t *testing.T) {
 		ApprovedSeconds: covered,
 		Version: 1,
 	})
-
 	restored := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/journal/"+entry.ID+"/timelapse/0", restoreBody, reviewer, nil)
+
 	if restored.Code != http.StatusOK {
 		t.Fatalf("restore = %d: %s", restored.Code, restored.Body.String())
 	}
@@ -219,8 +219,8 @@ func TestHackatimeCutRequiresReason(t *testing.T) {
 		ApprovedSeconds: 1800,
 		Version: 1,
 	})
-
 	refused := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/hackatime", body, reviewer, nil)
+
 	if refused.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("cut without reason = %d: %s", refused.Code, refused.Body.String())
 	}
@@ -262,8 +262,8 @@ func TestHackatimeCutSavesLedger(t *testing.T) {
 		ReviewerNote: "Half the Hackatime window was a video left playing.",
 		Version: 1,
 	})
-
 	adjusted := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/hackatime", body, reviewer, nil)
+
 	if adjusted.Code != http.StatusOK {
 		t.Fatalf("hackatime adjustment = %d: %s", adjusted.Code, adjusted.Body.String())
 	}
@@ -295,8 +295,8 @@ func TestHackatimeCutSavesLedger(t *testing.T) {
 		ApprovedSeconds: 3600,
 		Version: 1,
 	})
-
 	restored := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/hackatime", restoredBody, reviewer, nil)
+
 	if restored.Code != http.StatusOK {
 		t.Fatalf("restore = %d: %s", restored.Code, restored.Body.String())
 	}

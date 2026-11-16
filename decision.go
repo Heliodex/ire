@@ -96,6 +96,39 @@ func capturedSeconds(ship submissionRow) int {
 	return max(captured, ship.HoursClaimed)
 }
 
+// decisionFollowUpStatements builds the override, finding return and check acknowledgement writes.
+func decisionFollowUpStatements(record decisionRecord) []storage.TransactionStatement {
+	var statements []storage.TransactionStatement
+
+	if record.overrideReason != "" {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
+			Args: []any{record.reviewID, record.overrideReason, record.now},
+		})
+	}
+
+	for _, findingID := range record.findingIDs {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
+			Args: []any{record.reviewID, findingID, record.ship.ID, record.ship.Version, record.now},
+		})
+	}
+
+	if record.secondPass {
+		return statements
+	}
+
+	for _, key := range record.request.Acknowledgements {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert or ignore into check_ack (id, submission_id, version, check_key, reviewer_id, reason, created_at)
+				values (?, ?, ?, ?, ?, '', ?)`,
+			Args: []any{newID("ack"), record.ship.ID, record.ship.Version, key, record.person.ID, record.now},
+		})
+	}
+
+	return statements
+}
+
 // write sends the problem with the most specific error shape.
 func (p decisionProblem) write(w http.ResponseWriter) {
 	switch {
@@ -404,39 +437,6 @@ func marshalStrings(values []string) string {
 	return string(data)
 }
 
-// decisionFollowUpStatements builds the override, finding return and check acknowledgement writes.
-func decisionFollowUpStatements(record decisionRecord) []storage.TransactionStatement {
-	var statements []storage.TransactionStatement
-
-	if record.overrideReason != "" {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
-			Args: []any{record.reviewID, record.overrideReason, record.now},
-		})
-	}
-
-	for _, findingID := range record.findingIDs {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
-			Args: []any{record.reviewID, findingID, record.ship.ID, record.ship.Version, record.now},
-		})
-	}
-
-	if record.secondPass {
-		return statements
-	}
-
-	for _, key := range record.request.Acknowledgements {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert or ignore into check_ack (id, submission_id, version, check_key, reviewer_id, reason, created_at)
-				values (?, ?, ?, ?, ?, '', ?)`,
-			Args: []any{newID("ack"), record.ship.ID, record.ship.Version, key, record.person.ID, record.now},
-		})
-	}
-
-	return statements
-}
-
 // decisionStatements builds the review, submission update, audit, acknowledgement and outbox writes.
 func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) ([]storage.TransactionStatement, string, *decisionProblem) {
 	statements := []storage.TransactionStatement{
@@ -499,7 +499,7 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 				eventKind(record.held),
 				record.person.ID,
 				record.person.Email,
-				marshalMap(map[string]any{keyDecision: record.request.Decision, "held": record.held}),
+				marshalMap(map[string]any{"held": record.held, keyDecision: record.request.Decision}),
 				record.now,
 			},
 		},
@@ -512,18 +512,17 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 				record.person.ID,
 				record.person.Email,
 				record.ship.ID,
-				marshalMap(map[string]any{keyStatus: record.ship.Status, "version": record.ship.Version}),
+				marshalMap(map[string]any{"version": record.ship.Version, keyStatus: record.ship.Status}),
 				marshalMap(map[string]any{
-					keyDecision: record.request.Decision,
 					"held": record.held,
 					"hours": record.hours,
+					keyDecision: record.request.Decision,
 					keyStatus: record.status,
 				}),
 				record.now,
 			},
 		},
 	}
-
 	statements = append(statements, decisionFollowUpStatements(record)...)
 
 	var outboxID string
@@ -606,6 +605,51 @@ func (a *ireApp) writeDecisionAgain(w http.ResponseWriter, r *http.Request, ship
 		HeldReason: optionalString(review.HeldReason),
 		OutboxID: optionalID(outboxID),
 		DeliveryStatus: stringPtr(status),
+		NextID: optionalID(nextID),
+	})
+}
+
+// commitDecision writes the decision, delivers its outbox row if one was queued and responds with the outcome.
+func (a *ireApp) commitDecision(w http.ResponseWriter, r *http.Request, record decisionRecord) {
+	statements, outboxID, problem := a.decisionStatements(r.Context(), record)
+	if problem != nil {
+		problem.write(w)
+		return
+	}
+
+	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
+		// A concurrent retry can win the idempotency index; return the row it wrote.
+		if existing, found, findErr := a.findReview(r.Context(), record.ship.ID, record.request.IdempotencyKey); findErr == nil && found {
+			a.writeDecisionAgain(w, r, record.ship, existing)
+			return
+		}
+
+		writeStorage(w, err)
+
+		return
+	}
+
+	var deliveryStatus string
+
+	if outboxID != "" {
+		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
+	}
+
+	nextStage := record.ship.Stage
+
+	if record.held {
+		nextStage = stageOne
+	}
+
+	nextID := a.nextQueueID(r.Context(), record.ship.ProgramID, record.ship.ID, nextStage)
+
+	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
+		ID: record.reviewID,
+		Status: record.status,
+		Held: boolInt(record.held),
+		HeldReason: stringPtr(record.reason),
+		OutboxID: optionalID(outboxID),
+		DeliveryStatus: stringPtr(deliveryStatus),
 		NextID: optionalID(nextID),
 	})
 }
@@ -733,51 +777,6 @@ func (a *ireApp) buildDecisionRecord(w http.ResponseWriter, r *http.Request, shi
 	}
 
 	return record, true
-}
-
-// commitDecision writes the decision, delivers its outbox row if one was queued and responds with the outcome.
-func (a *ireApp) commitDecision(w http.ResponseWriter, r *http.Request, record decisionRecord) {
-	statements, outboxID, problem := a.decisionStatements(r.Context(), record)
-	if problem != nil {
-		problem.write(w)
-		return
-	}
-
-	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
-		// A concurrent retry can win the idempotency index; return the row it wrote.
-		if existing, found, findErr := a.findReview(r.Context(), record.ship.ID, record.request.IdempotencyKey); findErr == nil && found {
-			a.writeDecisionAgain(w, r, record.ship, existing)
-			return
-		}
-
-		writeStorage(w, err)
-
-		return
-	}
-
-	var deliveryStatus string
-
-	if outboxID != "" {
-		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
-	}
-
-	nextStage := record.ship.Stage
-
-	if record.held {
-		nextStage = stageOne
-	}
-
-	nextID := a.nextQueueID(r.Context(), record.ship.ProgramID, record.ship.ID, nextStage)
-
-	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
-		ID: record.reviewID,
-		Status: record.status,
-		Held: boolInt(record.held),
-		HeldReason: stringPtr(record.reason),
-		OutboxID: optionalID(outboxID),
-		DeliveryStatus: stringPtr(deliveryStatus),
-		NextID: optionalID(nextID),
-	})
 }
 
 // handleDecision records a stage 1 decision, applies the hold policy, writes the outbox row and returns the next ship to open.

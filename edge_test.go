@@ -51,8 +51,8 @@ func TestRepoChecksReportTransportError(t *testing.T) {
 
 	application := newTestApp(t)
 	application.config.GitHubAPIBase = server.URL
-
 	checks, evidence := application.repoChecks(t.Context(), "https://github.com/example/broken", "", application.now(), nil)
+
 	if evidence != nil {
 		t.Errorf("evidence = %+v", evidence)
 	}
@@ -90,8 +90,8 @@ func TestRepoChecksTruncateLargeTree(t *testing.T) {
 
 	application := newTestApp(t)
 	application.config.GitHubAPIBase = server.URL
-
 	_, evidence := application.repoChecks(t.Context(), "https://github.com/example/large", "", application.now(), nil)
+
 	if evidence == nil || !evidence.Truncated {
 		t.Fatalf("evidence = %+v", evidence)
 	}

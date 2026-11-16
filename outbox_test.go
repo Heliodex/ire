@@ -120,8 +120,8 @@ func TestOutboundRetriesAfterReceiverError(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		timestamp := r.Header.Get("X-Ari-Timestamp")
 		delivery := r.Header.Get("X-Ari-Delivery-Id")
-
 		signature := r.Header.Get("X-Ari-Signature")
+
 		if hmacHex("test-outbound", []byte(timestamp+"."+delivery+"."+string(body))) != signature {
 			http.Error(w, "bad signature", http.StatusUnauthorized)
 			return

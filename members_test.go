@@ -26,8 +26,8 @@ func TestMemberAdministration(t *testing.T) {
 		Email: "New@Example.com",
 		Role: roleOrganizer,
 	})
-
 	created := do(t, application, http.MethodPost, testBase+"/members", invite, admin, map[string]string{"Origin": "http://example.com"})
+
 	if created.Code != http.StatusCreated {
 		t.Fatalf("invite = %d: %s", created.Code, created.Body.String())
 	}
@@ -41,8 +41,8 @@ func TestMemberAdministration(t *testing.T) {
 		Active: false,
 		Role: roleReviewer,
 	})
-
 	updated := do(t, application, http.MethodPatch, testBase+"/members/"+member.ID, update, admin, map[string]string{"Origin": "http://example.com"})
+
 	if updated.Code != http.StatusOK {
 		t.Fatalf("update = %d: %s", updated.Code, updated.Body.String())
 	}

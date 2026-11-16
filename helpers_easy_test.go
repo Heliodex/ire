@@ -391,8 +391,8 @@ func TestTimelapseAndJournalScalars(t *testing.T) {
 			{},
 		},
 	}
-
 	records := timelapseRecords(entry)
+
 	if len(records) != 2 || records[0]["provider"] != "youtube" || records[0]["coveredSeconds"] != 30 {
 		t.Errorf("timelapseRecords = %v", records)
 	}

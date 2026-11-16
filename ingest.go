@@ -51,6 +51,25 @@ func hmacHex(secret string, message []byte) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
+// ingestReceiptStatement records the delivery receipt. It goes last: a failed batch leaves no receipt, so a retry replays the whole ship instead of adopting a half-written one.
+func ingestReceiptStatement(deliveryID string, program programRow, request contract.IngestRequest, version int, id, rawBody, now string) storage.TransactionStatement {
+	return storage.TransactionStatement{
+		SQL: `insert into ingest_delivery (delivery_id, program_id, external_id, version, submission_id, status, http_status, payload_sha256, received_at, processed_at)
+			values (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, ?)`,
+		Args: []any{
+			deliveryID,
+			program.ID,
+			request.ExternalID,
+			version,
+			id,
+			http.StatusCreated,
+			sha256Hex([]byte(rawBody)),
+			now,
+			now,
+		},
+	}
+}
+
 // intValue returns a pointer's value or zero.
 func intValue(value *int) int {
 	if value == nil {
@@ -69,6 +88,25 @@ func (a *ireApp) allowLegacySignature(ctx context.Context, programID string) boo
 	}
 
 	return strings.TrimSpace(value) == "true"
+}
+
+// ingestChecks runs the local and duplicate checks, then the repository checks unless they are queued as a job. It returns the inline evidence snapshot and whether the repository checks were queued.
+func (a *ireApp) ingestChecks(ctx context.Context, program programRow, request contract.IngestRequest, previousID string) ([]contract.CheckResult, *contract.Evidence, bool) {
+	nowTime := a.now()
+	checks := localChecks(request, nowTime)
+	checks = append(checks, a.duplicateChecks(ctx, program.ID, request, nowTime)...)
+
+	if request.RepoURL == nil || a.config.DisableRepoChecks {
+		return checks, nil, false
+	}
+
+	if a.config.EnableJobs && a.config.Enqueue != nil {
+		return checks, nil, true
+	}
+
+	remote, snapshot := a.repoChecks(ctx, *request.RepoURL, a.commitSince(ctx, program.ID, previousID), nowTime, submittedBom(request.Meta))
+
+	return mergeChecks(checks, remote), snapshot, false
 }
 
 // nextSubmissionVersion returns the next version and the ship it replaces.
@@ -116,44 +154,6 @@ func (a *ireApp) transactShip(ctx context.Context, submissionID string, statemen
 	}
 
 	return nil
-}
-
-// ingestChecks runs the local and duplicate checks, then the repository checks unless they are queued as a job. It returns the inline evidence snapshot and whether the repository checks were queued.
-func (a *ireApp) ingestChecks(ctx context.Context, program programRow, request contract.IngestRequest, previousID string) ([]contract.CheckResult, *contract.Evidence, bool) {
-	nowTime := a.now()
-	checks := localChecks(request, nowTime)
-	checks = append(checks, a.duplicateChecks(ctx, program.ID, request, nowTime)...)
-
-	if request.RepoURL == nil || a.config.DisableRepoChecks {
-		return checks, nil, false
-	}
-
-	if a.config.EnableJobs && a.config.Enqueue != nil {
-		return checks, nil, true
-	}
-
-	remote, snapshot := a.repoChecks(ctx, *request.RepoURL, a.commitSince(ctx, program.ID, previousID), nowTime, submittedBom(request.Meta))
-
-	return mergeChecks(checks, remote), snapshot, false
-}
-
-// ingestReceiptStatement records the delivery receipt. It goes last: a failed batch leaves no receipt, so a retry replays the whole ship instead of adopting a half-written one.
-func ingestReceiptStatement(deliveryID string, program programRow, request contract.IngestRequest, version int, id, rawBody, now string) storage.TransactionStatement {
-	return storage.TransactionStatement{
-		SQL: `insert into ingest_delivery (delivery_id, program_id, external_id, version, submission_id, status, http_status, payload_sha256, received_at, processed_at)
-			values (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, ?)`,
-		Args: []any{
-			deliveryID,
-			program.ID,
-			request.ExternalID,
-			version,
-			id,
-			http.StatusCreated,
-			sha256Hex([]byte(rawBody)),
-			now,
-			now,
-		},
-	}
 }
 
 // ingestShip writes a new version, or reports the existing delivery or open ship. response is the API body; status is the HTTP status.

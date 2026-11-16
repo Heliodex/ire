@@ -76,8 +76,8 @@ func TestRoleManagement(t *testing.T) {
 		Name: "Stage2",
 		Permissions: []string{permSecondPass, permReview},
 	})
-
 	created := do(t, application, http.MethodPost, testBase+"/roles", create, admin, origin)
+
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create = %d: %s", created.Code, created.Body.String())
 	}
@@ -128,8 +128,8 @@ func TestRoleManagement(t *testing.T) {
 	update, _ := json.Marshal(contract.UpdateRole{
 		Permissions: []string{permSecondPass},
 	})
-
 	updated := do(t, application, http.MethodPatch, testBase+"/roles/stage2", update, admin, origin)
+
 	if updated.Code != http.StatusOK {
 		t.Fatalf("update = %d: %s", updated.Code, updated.Body.String())
 	}
@@ -150,8 +150,8 @@ func TestRoleManagement(t *testing.T) {
 		Email: "custom@example.com",
 		Role: "stage2",
 	})
-
 	member := decode[contract.Member](t, do(t, application, http.MethodPost, testBase+"/members", invite, admin, origin))
+
 	if member.Role != "stage2" {
 		t.Fatalf("invited = %+v", member)
 	}

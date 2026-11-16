@@ -358,8 +358,8 @@ func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	state := strings.TrimSpace(r.URL.Query().Get("state"))
-
 	cookie, cookieErr := r.Cookie(oauthStateCookie)
+
 	if cookieErr != nil || state == "" || !session.Equal(cookie.Value, state) {
 		a.redirectAuthError(w, r, "state")
 		return

@@ -430,8 +430,8 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 			}
 
 			required++
-
 			values := answersAt[station.Key+"\x00"+question.Key]
+
 			if len(values) == 0 {
 				continue
 			}
@@ -578,8 +578,8 @@ func (a *ireApp) handleStationAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	states, current := stationStates(ship, definitions, answers, findings)
-
 	answer, found := answerAt(answers, station.Key, questionKey, person.ID)
+
 	if !found {
 		app.WriteError(w, http.StatusInternalServerError, "could not read the saved answer")
 		return
@@ -794,8 +794,8 @@ func (a *ireApp) handleStationConflictResolve(w http.ResponseWriter, r *http.Req
 	}
 
 	states, current := stationStates(ship, definitions, answers, findings)
-
 	answer, found := answerAt(answers, station.Key, questionKey, person.ID)
+
 	if !found {
 		app.WriteError(w, http.StatusInternalServerError, "could not read the saved answer")
 		return

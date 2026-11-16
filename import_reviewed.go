@@ -34,7 +34,7 @@ func importEventStatements(submissionID string, reviews []contract.ImportReview)
 				newID("evt"),
 				submissionID,
 				review.ReviewerEmail,
-				marshalMap(map[string]any{keyDecision: review.Decision, "imported": true}),
+				marshalMap(map[string]any{"imported": true, keyDecision: review.Decision}),
 				review.DecidedAt,
 			},
 		})
@@ -60,9 +60,9 @@ func (a *ireApp) importAuditStatement(program programRow, submissionID string, r
 			submissionID,
 			marshalMap(map[string]any{
 				"decided_at": review.DecidedAt,
-				keyDecision: review.Decision,
 				"hours": review.HoursApprovedSeconds,
 				"imported": true,
+				keyDecision: review.Decision,
 			}),
 			a.nowText(),
 		},

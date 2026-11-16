@@ -10,8 +10,8 @@ import (
 func TestQueuePagination(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-
 	first := decode[contract.QueueResponse](t, do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all&limit=1&offset=0", nil, cookie, nil))
+
 	if len(first.Items) != 1 || !first.HasMore {
 		t.Fatalf("first page = %+v", first)
 	}

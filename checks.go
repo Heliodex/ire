@@ -394,8 +394,8 @@ func parseGitHubRepo(raw string) (string, string, bool) {
 	}
 
 	owner := parts[0]
-
 	name := strings.TrimSuffix(parts[1], ".git")
+
 	if owner == "" || name == "" {
 		return "", "", false
 	}
@@ -602,8 +602,8 @@ func (a *ireApp) repoChecks(ctx context.Context, repoURL, since string, now time
 	readme, readmeStatus, readmeErr := client.readme(ctx, owner, name)
 	checks = append(checks, readmeCheck(readme, readmeStatus, readmeErr, checkedAt))
 	checks = append(checks, imageCheck(readme, readmeStatus, readmeErr, checkedAt))
-
 	tree, treeStatus, treeErr := client.tree(ctx, owner, name, meta.DefaultBranch)
+
 	if treeErr != nil || treeStatus != http.StatusOK {
 		checks = append(checks, check("repo.tree", "Repository files", "repo", statusError, severityBlock, "Repository files could not be read", "The file tree request failed; retry the checks before deciding.", checkedAt))
 	} else {

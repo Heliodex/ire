@@ -33,8 +33,8 @@ func TestCachedGetRevalidates(t *testing.T) {
 	application.config.GitHubAPIBase = server.URL
 	client := application.githubClient()
 	ctx := t.Context()
-
 	first, status, err := client.cachedGet(ctx, "/repos/example/reval", "application/vnd.github+json")
+
 	if err != nil || status != http.StatusOK {
 		t.Fatalf("first fetch = %d %v", status, err)
 	}
@@ -62,11 +62,11 @@ func TestCachedGetRevalidates(t *testing.T) {
 // TestDemoChecksRejectsBadURL covers the error branch without any network.
 func TestDemoChecksRejectsBadURL(t *testing.T) {
 	application := newTestApp(t)
-
 	checks := application.demoChecks(t.Context(), submissionRow{
 		ID: "x",
 		DemoURL: "http://example.com/demo",
 	})
+
 	if len(checks) != 1 || checks[0].Status != statusError {
 		t.Fatalf("plain-http demo = %+v, want one error check", checks)
 	}
@@ -100,8 +100,8 @@ func TestDevLoginBranches(t *testing.T) {
 func TestFailCheckRunTracksAttempts(t *testing.T) {
 	application := newTestApp(t)
 	ctx := t.Context()
-
 	ship, err := application.loadSubmission(ctx, "sub_fixture_2")
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,8 +133,8 @@ func TestHCAStartWithoutConfig(t *testing.T) {
 func TestQueueCounts(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-
 	counts, err := application.queueCounts(t.Context(), programID, "usr_reviewer", application.nowText())
+
 	if err != nil {
 		t.Fatal(err)
 	}

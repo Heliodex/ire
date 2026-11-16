@@ -60,8 +60,8 @@ func TestImportReviewedCreatesDecidedShip(t *testing.T) {
 		},
 	})
 	body, _ := json.Marshal(request)
-
 	recorder := do(t, application, http.MethodPost, importReviewedPath, body, nil, machineHeaders())
+
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("import = %d: %s", recorder.Code, recorder.Body.String())
 	}
@@ -195,8 +195,8 @@ func TestImportReviewedDecidesOpenShip(t *testing.T) {
 		},
 	}
 	body, _ := json.Marshal(request)
-
 	recorder := do(t, application, http.MethodPost, importReviewedPath, body, nil, machineHeaders())
+
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("import = %d: %s", recorder.Code, recorder.Body.String())
 	}

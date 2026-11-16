@@ -9,6 +9,21 @@ import (
 	"github.com/heliodex/better-deploy/wt/packages/v2/storage"
 )
 
+type (
+	// questionSeed is one question of a review station.
+	questionSeed struct {
+		key, prompt, evidence string
+		required int
+	}
+
+	// stationSeed is a review station and its questions.
+	stationSeed struct {
+		key, label, description, themes string
+		stage, sort int
+		questions []questionSeed
+	}
+)
+
 const (
 	// schemaVersion is bumped when the prototype schema changes. The storage service records it and refuses to apply an older version twice.
 	schemaVersion = 19
@@ -66,112 +81,6 @@ func addLateColumns(ctx context.Context, store *storage.Client) error {
 
 	return nil
 }
-
-// ensureStationAnswerReviewers rebuilds the answer table from the shared per-question uniqueness to one answer per reviewer. The old table cannot express the new key, so the rows are copied across instead of altered.
-func (a *ireApp) ensureStationAnswerReviewers(ctx context.Context) error {
-	if definition, ok, err := a.store.TableSQL(ctx, "station_answer"); err != nil || !ok || strings.Contains(definition, stationAnswerReviewerKey) {
-		return err
-	}
-
-	return a.store.RebuildTable(ctx, storage.TableRebuild{
-		Table: "station_answer",
-		Create: `create table station_answer_new (
-			id text primary key,
-			submission_id text not null references submission(id) on delete cascade,
-			station_key text not null,
-			question_key text not null,
-			answer text not null check (answer in ('pass','fail','na')),
-			evidence text not null default '',
-			artifact_hash text,
-			reviewer_id text not null,
-			created_at text not null,
-			updated_at text not null,
-			` + stationAnswerReviewerKey + `
-		)`,
-		Copy: `insert into station_answer_new (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
-			select id, submission_id, station_key, question_key, answer, evidence, artifact_hash, coalesce(nullif(reviewer_id, ''), 'legacy'), created_at, updated_at
-			from station_answer`,
-		After: []string{
-			`create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`,
-		},
-	})
-}
-
-// removeFixtureShips deletes the three demo ships reseeded by seedFixtures, so disabling fixtures leaves an empty queue ready for real Half Life ingests. Real submissions never use these ids or external ids.
-func (a *ireApp) removeFixtureShips(ctx context.Context) error {
-	_, err := a.store.Exec(ctx, `delete from submission where id in ('sub_fixture_1', 'sub_fixture_2', 'sub_fixture_3') or external_id in ('fix-clean:design', 'fix-warned:design', 'fix-blocked:design')`)
-
-	return err
-}
-
-// removePlaceholderAccounts deletes the three development accounts and their memberships, sessions and identities. Memberships, sessions and identities cascade from the user rows; the login form no longer offers them once AllowDevAccounts is off.
-func (a *ireApp) removePlaceholderAccounts(ctx context.Context) error {
-	_, err := a.store.Exec(ctx, `delete from user where email in ('reviewer@example.com', 'organiser@example.com', 'admin@example.com')`)
-
-	return err
-}
-
-// seedPeople creates the three development accounts. They are placeholders for Hack Club Auth and must not survive a real deployment.
-func (a *ireApp) seedPeople(ctx context.Context, now string) error {
-	people := []struct {
-		id, email, name, role string
-	}{
-		{"usr_reviewer", "reviewer@example.com", "Rae Reviewer", "reviewer"},
-		{"usr_organiser", "organiser@example.com", "Oli Organiser", "organizer"},
-		{"usr_admin", "admin@example.com", "Ada Admin", "admin"},
-	}
-
-	for _, person := range people {
-		if _, err := a.store.Exec(ctx, `insert into user (id, email, name, created_at) values (?, ?, ?, ?)
-			on conflict do update set name = excluded.name`, person.id, person.email, person.name, now); err != nil {
-			return err
-		}
-
-		if _, err := a.store.Exec(ctx, `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at) values (?, ?, ?, ?, '["hardware"]', '[]', 1, ?)
-			on conflict(program_id, user_id) do update set role = excluded.role, active = 1`, "mem_"+person.id, programID, person.id, person.role, now); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// seedRoleDefinitions creates the built-in programme roles. Rows are never
-// overwritten, so admin edits to permissions survive restarts.
-func (a *ireApp) seedRoleDefinitions(ctx context.Context, now string) error {
-	defaults := defaultRolePermissions()
-	names := []string{roleAdmin, roleOrganizer, roleReviewer, roleAuditor}
-
-	for _, name := range names {
-		var locked int
-
-		if name == roleAdmin {
-			locked = 1
-		}
-
-		if _, err := a.store.Exec(ctx, `insert into role_definition (id, program_id, name, permissions, locked, created_at)
-			values (?, ?, ?, ?, ?, ?) on conflict(program_id, name) do nothing`, "rol_"+name, programID, name, marshalStrings(defaults[name]), locked, now); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-type (
-	// questionSeed is one question of a review station.
-	questionSeed struct {
-		key, prompt, evidence string
-		required int
-	}
-
-	// stationSeed is a review station and its questions.
-	stationSeed struct {
-		key, label, description, themes string
-		stage, sort int
-		questions []questionSeed
-	}
-)
 
 // halfLifeStations is the review station seed. Each station's questions are stored under it.
 func halfLifeStations() []stationSeed {
@@ -281,6 +190,97 @@ func halfLifeStations() []stationSeed {
 	}
 }
 
+// ensureStationAnswerReviewers rebuilds the answer table from the shared per-question uniqueness to one answer per reviewer. The old table cannot express the new key, so the rows are copied across instead of altered.
+func (a *ireApp) ensureStationAnswerReviewers(ctx context.Context) error {
+	if definition, ok, err := a.store.TableSQL(ctx, "station_answer"); err != nil || !ok || strings.Contains(definition, stationAnswerReviewerKey) {
+		return err
+	}
+
+	return a.store.RebuildTable(ctx, storage.TableRebuild{
+		Table: "station_answer",
+		Create: `create table station_answer_new (
+			id text primary key,
+			submission_id text not null references submission(id) on delete cascade,
+			station_key text not null,
+			question_key text not null,
+			answer text not null check (answer in ('pass','fail','na')),
+			evidence text not null default '',
+			artifact_hash text,
+			reviewer_id text not null,
+			created_at text not null,
+			updated_at text not null,
+			` + stationAnswerReviewerKey + `
+		)`,
+		Copy: `insert into station_answer_new (id, submission_id, station_key, question_key, answer, evidence, artifact_hash, reviewer_id, created_at, updated_at)
+			select id, submission_id, station_key, question_key, answer, evidence, artifact_hash, coalesce(nullif(reviewer_id, ''), 'legacy'), created_at, updated_at
+			from station_answer`,
+		After: []string{
+			`create index if not exists station_answer_submission_idx on station_answer(submission_id, station_key)`,
+		},
+	})
+}
+
+// removeFixtureShips deletes the three demo ships reseeded by seedFixtures, so disabling fixtures leaves an empty queue ready for real Half Life ingests. Real submissions never use these ids or external ids.
+func (a *ireApp) removeFixtureShips(ctx context.Context) error {
+	_, err := a.store.Exec(ctx, `delete from submission where id in ('sub_fixture_1', 'sub_fixture_2', 'sub_fixture_3') or external_id in ('fix-clean:design', 'fix-warned:design', 'fix-blocked:design')`)
+
+	return err
+}
+
+// removePlaceholderAccounts deletes the three development accounts and their memberships, sessions and identities. Memberships, sessions and identities cascade from the user rows; the login form no longer offers them once AllowDevAccounts is off.
+func (a *ireApp) removePlaceholderAccounts(ctx context.Context) error {
+	_, err := a.store.Exec(ctx, `delete from user where email in ('reviewer@example.com', 'organiser@example.com', 'admin@example.com')`)
+
+	return err
+}
+
+// seedPeople creates the three development accounts. They are placeholders for Hack Club Auth and must not survive a real deployment.
+func (a *ireApp) seedPeople(ctx context.Context, now string) error {
+	people := []struct {
+		id, email, name, role string
+	}{
+		{"usr_reviewer", "reviewer@example.com", "Rae Reviewer", "reviewer"},
+		{"usr_organiser", "organiser@example.com", "Oli Organiser", "organizer"},
+		{"usr_admin", "admin@example.com", "Ada Admin", "admin"},
+	}
+
+	for _, person := range people {
+		if _, err := a.store.Exec(ctx, `insert into user (id, email, name, created_at) values (?, ?, ?, ?)
+			on conflict do update set name = excluded.name`, person.id, person.email, person.name, now); err != nil {
+			return err
+		}
+
+		if _, err := a.store.Exec(ctx, `insert into membership (id, program_id, user_id, role, tracks, permissions, active, created_at) values (?, ?, ?, ?, '["hardware"]', '[]', 1, ?)
+			on conflict(program_id, user_id) do update set role = excluded.role, active = 1`, "mem_"+person.id, programID, person.id, person.role, now); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// seedRoleDefinitions creates the built-in programme roles. Rows are never
+// overwritten, so admin edits to permissions survive restarts.
+func (a *ireApp) seedRoleDefinitions(ctx context.Context, now string) error {
+	defaults := defaultRolePermissions()
+	names := []string{roleAdmin, roleOrganizer, roleReviewer, roleAuditor}
+
+	for _, name := range names {
+		var locked int
+
+		if name == roleAdmin {
+			locked = 1
+		}
+
+		if _, err := a.store.Exec(ctx, `insert into role_definition (id, program_id, name, permissions, locked, created_at)
+			values (?, ?, ?, ?, ?, ?) on conflict(program_id, name) do nothing`, "rol_"+name, programID, name, marshalStrings(defaults[name]), locked, now); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // seedStations creates the Half Life review stations and their questions. Rows are never overwritten, so a programme edit survives restarts.
 func (a *ireApp) seedStations(ctx context.Context) error {
 	for _, station := range halfLifeStations() {
@@ -312,8 +312,8 @@ func last4(secret string) string {
 // seed creates the Half Life programme and, when explicitly enabled, its dev reviewers and fixture ships. Every write is idempotent, so a partial seed is repaired on the next start. When dev accounts or fixtures are disabled, any leftover placeholder rows are removed so a production copy holds only invited reviewers and real Half Life ingests.
 func (a *ireApp) seed(ctx context.Context) error {
 	now := a.nowText()
-
 	outboundURL := a.config.OutboundURL
+
 	if outboundURL == "" {
 		outboundURL = "fake://receiver"
 	}

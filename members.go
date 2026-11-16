@@ -213,8 +213,8 @@ func (a *ireApp) handleInviteMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := strings.ToLower(strings.TrimSpace(request.Email))
-
 	role := strings.TrimSpace(request.Role)
+
 	if !a.validMemberRole(r.Context(), person.ProgramID, role) {
 		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "role", "unknown role")
 		return

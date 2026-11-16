@@ -40,8 +40,8 @@ func (a *ireApp) handleChecksHead(w http.ResponseWriter, r *http.Request) {
 	client := a.githubClient()
 	// The stale check must see the live head, never a cached commit list.
 	client.cache = nil
-
 	headSha, status, err := client.head(r.Context(), owner, name)
+
 	if err != nil || status != http.StatusOK {
 		app.WriteError(w, http.StatusBadGateway, "could not read the repository head")
 		return
