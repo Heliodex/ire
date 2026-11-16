@@ -71,6 +71,7 @@ func (a *ireApp) collectRepositoryChecks(ctx context.Context, ship submissionRow
 	}
 
 	summary := checkCountsFor(checks)
+
 	summaryJSON, err := json.Marshal(summary)
 	if err != nil {
 		return err
@@ -178,6 +179,7 @@ func (a *ireApp) loadCheckRun(ctx context.Context, submissionID string, version 
 // startCheckRun marks a new attempt and returns its number.
 func (a *ireApp) startCheckRun(ctx context.Context, ship submissionRow) int {
 	now := a.nowText()
+
 	result, err := a.store.Exec(ctx, `update check_run set status = 'running', attempts = attempts + 1,
 		started_at = ?, finished_at = null, error = null where submission_id = ? and version = ?`, now, ship.ID, ship.Version)
 	if err != nil {
@@ -210,7 +212,9 @@ func (a *ireApp) runRepositoryChecks(ctx context.Context, ship submissionRow) er
 		a.failCheckRun(ctx, ship, attempts, err)
 		return err
 	}
+
 	a.finishCheckRun(ctx, ship)
+
 	return nil
 }
 
@@ -232,7 +236,9 @@ func (a *ireApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -247,6 +253,7 @@ func (a *ireApp) handleJobChecks(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -256,6 +263,7 @@ func (a *ireApp) queueRepositoryChecks(ctx context.Context, submissionID string,
 	if err == nil {
 		return
 	}
+
 	app.Warnf("checks job enqueue failed, running inline: %v", err)
 
 	ship, loadErr := a.loadSubmission(ctx, submissionID)

@@ -30,7 +30,9 @@ func (a *ireApp) requireWritable(w http.ResponseWriter) bool {
 	if !a.config.Shadow {
 		return true
 	}
+
 	app.WriteErrorCode(w, http.StatusConflict, shadowErrorCode, "Review is read-only while Ari owns decisions")
+
 	return false
 }
 

@@ -72,6 +72,7 @@ func (a *ireApp) withRateLimit(next http.Handler) http.Handler {
 		}
 
 		key, limit := a.rateKey(r)
+
 		decision, err := limit.Allow(r.Context(), a.store, key)
 		if err != nil {
 			// A storage outage must not lock every user out, so the request goes through unlimited.
@@ -79,8 +80,10 @@ func (a *ireApp) withRateLimit(next http.Handler) http.Handler {
 		} else if !decision.Allowed {
 			w.Header().Set("Retry-After", retryAfterSeconds(decision.RetryAfter))
 			app.WriteError(w, http.StatusTooManyRequests, "too many requests; try again shortly")
+
 			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }

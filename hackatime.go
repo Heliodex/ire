@@ -66,6 +66,7 @@ func (a *ireApp) fetchHackatimeProject(ctx context.Context, userID, project stri
 	if err != nil {
 		return 0, err
 	}
+
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "half-life-ire")
 
@@ -163,6 +164,7 @@ func (a *ireApp) refreshHackatimeLinks(ctx context.Context, ship submissionRow, 
 			failures = append(failures, link.Project+": "+err.Error())
 			total += link.Seconds
 			_, _ = a.store.Exec(ctx, `update hackatime_link set error = ? where submission_id = ? and project = ?`, err.Error(), ship.ID, link.Project)
+
 			continue
 		}
 
@@ -179,6 +181,7 @@ func (a *ireApp) refreshHackatimeLinks(ctx context.Context, ship submissionRow, 
 // hackatimeChecks reads the linked projects from Hackatime and reports what it could verify.
 func (a *ireApp) hackatimeChecks(ctx context.Context, ship submissionRow) []contract.CheckResult {
 	checkedAt := a.nowText()
+
 	links, err := a.loadHackatimeLinks(ctx, ship.ID)
 	if err != nil {
 		return []contract.CheckResult{

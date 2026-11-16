@@ -34,6 +34,7 @@ func (a *ireApp) handleReviewed(w http.ResponseWriter, r *http.Request) {
 	switch decision {
 	case decisionApproved, decisionChanges, decisionRejected:
 		query += ` and rv.decision = ?`
+
 		args = append(args, decision)
 	case reviewedFilterAll:
 	default:
@@ -43,7 +44,9 @@ func (a *ireApp) handleReviewed(w http.ResponseWriter, r *http.Request) {
 
 	limit := parseLimit(r)
 	query += ` order by coalesce(s.decided_at, rv.created_at) desc, s.id asc limit ? offset ?`
+
 	args = append(args, limit+1, parseOffset(r))
+
 	rows, err := a.store.Query(r.Context(), query, args...)
 	if err != nil {
 		writeStorage(w, err)
@@ -94,5 +97,6 @@ func (a *ireApp) handleReviewed(w http.ResponseWriter, r *http.Request) {
 		response.Items = response.Items[:limit]
 		response.HasMore = true
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }

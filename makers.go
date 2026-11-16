@@ -117,8 +117,11 @@ func (a *ireApp) handleMakerProfile(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown maker")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, profile)
 }

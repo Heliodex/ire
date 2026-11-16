@@ -64,5 +64,6 @@ func (a *ireApp) handleParity(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }

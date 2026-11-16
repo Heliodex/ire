@@ -37,6 +37,7 @@ func (a *ireApp) handleFakeDeliveries(w http.ResponseWriter, r *http.Request) {
 
 		response.Deliveries = append(response.Deliveries, item)
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }
 
@@ -59,6 +60,7 @@ func redactOutboxPayload(payload string) *string {
 	}
 
 	maker["email"] = redactEmail(email)
+
 	redacted, err := json.Marshal(event)
 	if err != nil {
 		return &payload
@@ -134,5 +136,6 @@ func (a *ireApp) handleOutbox(w http.ResponseWriter, r *http.Request) {
 
 		response.Deliveries = append(response.Deliveries, item)
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }

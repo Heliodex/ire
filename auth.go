@@ -65,7 +65,9 @@ func (a *ireApp) currentReviewer(w http.ResponseWriter, r *http.Request) (review
 			app.WriteError(w, http.StatusUnauthorized, "session expired, sign in again")
 			return reviewer{}, false
 		}
+
 		writeStorage(w, err)
+
 		return reviewer{}, false
 	}
 
@@ -87,6 +89,7 @@ func (a *ireApp) handleLogout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	reviewSessions.Clear(w, r)
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -121,6 +124,7 @@ func (a *ireApp) meResponse(ctx context.Context, person reviewer) contract.MeRes
 		},
 		Programs: []contract.Membership{},
 	}
+
 	rows, err := a.store.Query(ctx, `select p.id, p.slug, p.name, m.role, coalesce(rd.permissions, '[]')
 		from membership m join program p on p.id = m.program_id
 		left join role_definition rd on rd.program_id = m.program_id and rd.name = m.role
@@ -183,11 +187,14 @@ func (a *ireApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusUnauthorized, "no reviewer account with that email")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
 	person.Permissions = unmarshalStrings(permissions)
+
 	token, err := a.createSession(r.Context(), person.ID, r.UserAgent())
 	if err != nil {
 		writeStorage(w, err)
@@ -198,6 +205,7 @@ func (a *ireApp) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	reviewSessions.Set(w, r, token)
 	app.WriteJSON(w, http.StatusOK, a.meResponse(r.Context(), person))
 }
@@ -208,6 +216,7 @@ func (a *ireApp) handleMe(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, a.meResponse(r.Context(), person))
 }
 

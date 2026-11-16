@@ -37,7 +37,9 @@ func (a *ireApp) handleNoteDelete(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown note")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -67,6 +69,7 @@ func (a *ireApp) handleNoteDelete(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -156,6 +159,7 @@ func (a *ireApp) handleNoteCreate(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusCreated, contract.NoteCreated{
 		Note: contract.Note{
 			ID: id,

@@ -29,10 +29,12 @@ func TestHackatimeChecks(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls.Add(1)
+
 		if fail.Load() {
 			http.Error(w, "upstream", http.StatusInternalServerError)
 			return
 		}
+
 		writeTestJSON(w, map[string]any{
 			"data": map[string]any{
 				"projects": []map[string]any{
@@ -63,6 +65,7 @@ func TestHackatimeChecks(t *testing.T) {
 		MakerHackatim: "U1",
 		HoursClaimed: 23040,
 	}
+
 	checks := checkMap(application.hackatimeChecks(t.Context(), ship))
 	if checks["hackatime.linked"].Status != statusPass || checks["hackatime.time"].Status != statusPass || checks["hackatime.stale"].Status != statusPass {
 		t.Fatalf("checks = %+v", checks)

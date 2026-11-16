@@ -115,6 +115,7 @@ func (a *ireApp) demoChecks(ctx context.Context, ship submissionRow) []contract.
 			check("demo.probe", "Demo reachable", "demo", statusError, severityWarn, "Demo URL could not be probed", err.Error(), checkedAt),
 		}
 	}
+
 	req.Header.Set("Accept", "text/html")
 	req.Header.Set("User-Agent", "half-life-ire")
 

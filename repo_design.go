@@ -19,6 +19,7 @@ func (d designFiles) all() []string {
 	paths := append(append(append(append([]string{}, d.PCB...), d.CAD...), d.Firmware...), d.Gerbers...)
 
 	sort.Strings(paths)
+
 	return paths
 }
 

@@ -126,6 +126,7 @@ func (a *ireApp) handleListRoles(w http.ResponseWriter, r *http.Request) {
 			Permissions: definition.Permissions,
 		})
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.RolesResponse{
 		Roles: roles,
 	})
@@ -162,6 +163,7 @@ func (a *ireApp) handleDeleteRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := strings.ToLower(strings.TrimSpace(r.PathValue("name")))
+
 	current, found, err := a.roleDefinitionByName(r.Context(), person.ProgramID, name)
 	if err != nil {
 		writeStorage(w, err)
@@ -194,6 +196,7 @@ func (a *ireApp) handleDeleteRole(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	a.writeAudit(r.Context(), person, "role.delete", "role", name, map[string]any{"permissions": current.Permissions}, map[string]any{})
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -298,6 +301,7 @@ func (a *ireApp) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	a.writeAudit(r.Context(), person, "role.create", "role", name, map[string]any{}, map[string]any{"permissions": permissions})
 	app.WriteJSON(w, http.StatusCreated, contract.RoleDefinition{
 		Name: name,
@@ -323,6 +327,7 @@ func (a *ireApp) handleUpdateRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := strings.ToLower(strings.TrimSpace(r.PathValue("name")))
+
 	current, found, err := a.roleDefinitionByName(r.Context(), person.ProgramID, name)
 	if err != nil {
 		writeStorage(w, err)
@@ -343,6 +348,7 @@ func (a *ireApp) handleUpdateRole(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	a.writeAudit(r.Context(), person, "role.update", "role", name, map[string]any{"permissions": current.Permissions}, map[string]any{"permissions": permissions})
 	app.WriteJSON(w, http.StatusOK, contract.RoleDefinition{
 		Name: name,

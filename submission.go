@@ -71,6 +71,7 @@ func contractPolicy(policy reviewPolicy) contract.ReviewPolicy {
 	tiers := make([]int, len(policy.HoldTiers))
 
 	copy(tiers, policy.HoldTiers)
+
 	return contract.ReviewPolicy{
 		HoldOnWarn: boolInt(policy.HoldOnWarn),
 		HoldMinApprovedSeconds: policy.HoldMinApprovedSeconds,
@@ -598,6 +599,7 @@ func (a *ireApp) loadJournals(ctx context.Context, submissionID string) ([]contr
 	defer rows.Close()
 
 	out := []contract.JournalEntry{}
+
 	adjustments, err := a.loadAdjustments(ctx, submissionID)
 	if err != nil {
 		return nil, err

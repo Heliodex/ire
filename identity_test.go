@@ -25,6 +25,7 @@ func TestDuplicateAndIdentityChecks(t *testing.T) {
 	second = []byte(strings.Replace(string(second), `"email":"maker@example.com"`, `"email":"b@example.com","hackatime_id":"U1","slack_id":"S1"`, 1))
 	secondCreated := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", second, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", second)}))
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+secondCreated.ID, nil, cookie, nil))
+
 	statuses := checkStatuses(bundle.Checks)
 	if statuses["duplicate.project"] != statusWarn {
 		t.Errorf("duplicate.project = %q", statuses["duplicate.project"])

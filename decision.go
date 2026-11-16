@@ -309,6 +309,7 @@ func (a *ireApp) secondPassBase(ctx context.Context, ship submissionRow, person 
 	held, found, err := a.heldReview(ctx, ship.ID)
 	if err != nil {
 		app.Errorf("held review: %v", err)
+
 		return secondPassBase{}, &decisionProblem{
 			status: http.StatusInternalServerError,
 			message: "could not read the first-pass review",
@@ -532,6 +533,7 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 		}
 
 		outboxID = message.ID
+
 		statements = append(statements, statement)
 	}
 
@@ -727,6 +729,7 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	now := a.nowText()
 	reviewID := newID("rev")
 	status, stage, submissionStage := decisionState(ship, held)
+
 	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, request, hours, note, technicalFeatures, deflationReason, overrideReason, stage, now)
 	if err != nil {
 		writeStorage(w, err)
@@ -756,6 +759,7 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		payload: payloadJSON,
 		now: now,
 	}
+
 	statements, outboxID, problem := a.decisionStatements(r.Context(), record)
 	if problem != nil {
 		problem.write(w)
@@ -768,7 +772,9 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 			a.writeDecisionAgain(w, r, ship, existing)
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 

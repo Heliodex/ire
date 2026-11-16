@@ -11,6 +11,7 @@ import (
 func TestQueueSortOrdersPages(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
+
 	full := decode[contract.QueueResponse](t, do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all&sort=ship&dir=asc&limit=50&offset=0", nil, cookie, nil))
 	if len(full.Items) != 3 || full.Items[0].Title != "OpenTrace" || full.Items[1].Title != "Smart Alarm Clock" || full.Items[2].Title != "Starbie" {
 		t.Fatalf("sorted full fetch = %+v", full.Items)

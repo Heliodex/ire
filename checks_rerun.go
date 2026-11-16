@@ -63,6 +63,7 @@ func (a *ireApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	a.forgeCache.clear()
 	a.queueRepositoryChecks(r.Context(), ship.ID, ship.Version, fmt.Sprintf("checks:%s:%d:rerun:%s", ship.ID, ship.Version, newID("rerun")))
 
@@ -76,5 +77,6 @@ func (a *ireApp) handleChecksRerun(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusInternalServerError, "checks were queued but the run could not be read back")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, run)
 }

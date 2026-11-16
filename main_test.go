@@ -36,6 +36,7 @@ func checkStatuses(checks []contract.CheckResult) map[string]string {
 //nolint:ireturn // A generic test helper has to return the caller's type.
 func decode[T any](t *testing.T, recorder *httptest.ResponseRecorder) (value T) {
 	t.Helper()
+
 	if err := json.Unmarshal(recorder.Body.Bytes(), &value); err != nil {
 		t.Fatalf("decode %s: %v", recorder.Body.String(), err)
 	}
@@ -60,6 +61,7 @@ func do(t *testing.T, application *ireApp, method, path string, body []byte, coo
 	recorder := httptest.NewRecorder()
 
 	application.handler().ServeHTTP(recorder, request)
+
 	return recorder
 }
 
@@ -142,6 +144,7 @@ func login(t *testing.T, application *ireApp, email string) *http.Cookie {
 	body, _ := json.Marshal(contract.LoginRequest{
 		Email: email,
 	})
+
 	recorder := do(t, application, http.MethodPost, "/api/v1/dev/login", body, nil, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("login = %d: %s", recorder.Code, recorder.Body.String())
@@ -196,6 +199,7 @@ func setJustificationPolicy(t *testing.T, application *ireApp, technical, deflat
 
 	policy.RequireTechnicalFeatures = technical
 	policy.RequireDeflationReason = deflation
+
 	encoded, err := json.Marshal(policy)
 	if err != nil {
 		t.Fatal(err)
@@ -220,6 +224,7 @@ func newTestApp(t *testing.T) *ireApp {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(server.Close)
 
 	cfg := config{
@@ -238,13 +243,16 @@ func newTestApp(t *testing.T) *ireApp {
 	if err := application.migrate(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+
 	relaxReviewJustification(t, application)
+
 	return application
 }
 
 // TestAuthConfigReportsMethods covers the unauthenticated method discovery used by the login screen.
 func TestAuthConfigReportsMethods(t *testing.T) {
 	application := newTestApp(t)
+
 	config := decode[contract.AuthConfig](t, do(t, application, http.MethodGet, "/api/v1/auth/config", nil, nil, nil))
 	if !config.Dev || config.Hca {
 		t.Fatalf("config = %+v", config)
@@ -297,6 +305,7 @@ func TestBlockingCheckRefusesApproval(t *testing.T) {
 		NoteToMaker: "The repository is private, so the board cannot be reviewed. Make it public and resubmit.",
 		Version: 1,
 	})
+
 	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_3/decision", reject, cookie, nil)
 	if rejected.Code != http.StatusOK {
 		t.Fatalf("rejection = %d: %s", rejected.Code, rejected.Body.String())
@@ -322,6 +331,7 @@ func TestChangesOnWarnedShipIsFinal(t *testing.T) {
 		NoteToMaker: "Add the BOM to the repository and replace the generic journal entry.",
 		Version: 1,
 	})
+
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", body, cookie, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("changes = %d: %s", recorder.Code, recorder.Body.String())
@@ -372,6 +382,7 @@ func TestCleanApprovalDeliversSignedPayload(t *testing.T) {
 		NoteToMaker: "Clean board, clear BOM. Approved.",
 		Version: 1,
 	})
+
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("decision = %d: %s", recorder.Code, recorder.Body.String())
@@ -509,6 +520,7 @@ func TestEvidenceRefresh(t *testing.T) {
 
 	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
 		switch r.URL.Path {
 		case "/repos/example/line-follower":
 			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"example/line-follower","private":false}`)
@@ -533,6 +545,7 @@ func TestEvidenceRefresh(t *testing.T) {
 	application.config.DisableRepoChecks = false
 	application.config.GitHubAPIBase = fake.URL
 	body := ingestBody("refresh:design")
+
 	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)}))
 	if created.ID == "" {
 		t.Fatal("ingest did not create a ship")
@@ -546,6 +559,7 @@ func TestEvidenceRefresh(t *testing.T) {
 	}
 
 	before := reads.Load()
+
 	refreshed := do(t, application, http.MethodPost, testBase+"/submissions/"+created.ID+"/evidence/refresh", nil, organiser, nil)
 	if refreshed.Code != http.StatusOK {
 		t.Fatalf("refresh = %d: %s", refreshed.Code, refreshed.Body.String())
@@ -579,6 +593,7 @@ func TestEvidenceRefresh(t *testing.T) {
 func TestFixturesAppearInQueue(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
+
 	recorder := do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all", nil, cookie, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("queue = %d: %s", recorder.Code, recorder.Body.String())
@@ -650,6 +665,7 @@ func TestHTTPOutboundDelivery(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		timestamp := r.Header.Get("X-Ari-Timestamp")
 		delivery := r.Header.Get("X-Ari-Delivery-Id")
+
 		signature := r.Header.Get("X-Ari-Signature")
 		if hmacHex("test-outbound", []byte(timestamp+"."+delivery+"."+string(body))) != signature {
 			http.Error(w, "bad signature", http.StatusUnauthorized)
@@ -733,6 +749,7 @@ func TestHeldShipCannotBeDecidedAtStageOne(t *testing.T) {
 func TestIngestIsSignedAndIdempotent(t *testing.T) {
 	application := newTestApp(t)
 	body := ingestBody("demo:design")
+
 	recorder := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)})
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("ingest = %d: %s", recorder.Code, recorder.Body.String())
@@ -758,6 +775,7 @@ func TestIngestIsSignedAndIdempotent(t *testing.T) {
 
 	conflictBody := ingestBody("demo:design")
 	conflictBody = bytes.Replace(conflictBody, []byte("Line follower"), []byte("Line follower v2"), 1)
+
 	conflict := do(t, application, http.MethodPost, "/api/ingest/half-life", conflictBody, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", conflictBody)})
 	if conflict.Code != http.StatusConflict {
 		t.Fatalf("conflict = %d: %s", conflict.Code, conflict.Body.String())
@@ -780,6 +798,7 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 
 	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
 		switch r.URL.Path {
 		case "/repos/example/line-follower":
 			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"example/line-follower","private":false}`)
@@ -804,6 +823,7 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 	application.config.DisableRepoChecks = false
 	application.config.GitHubAPIBase = fake.URL
 	body := ingestBody("checks:design")
+
 	recorder := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)})
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("ingest = %d: %s", recorder.Code, recorder.Body.String())
@@ -850,6 +870,7 @@ func TestIngestRunsGitHubChecks(t *testing.T) {
 
 	missingBody := ingestBody("missing:design")
 	missingBody = bytes.Replace(missingBody, []byte("example/line-follower"), []byte("missing/absent"), 1)
+
 	missing := do(t, application, http.MethodPost, "/api/ingest/half-life", missingBody, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", missingBody)})
 	if missing.Code != http.StatusCreated {
 		t.Fatalf("missing ingest = %d: %s", missing.Code, missing.Body.String())
@@ -889,6 +910,7 @@ func TestIngestWritesLargeShipsInBatches(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(request)
+
 	recorder := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)})
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("big ingest = %d: %s", recorder.Code, recorder.Body.String())
@@ -931,6 +953,7 @@ func TestOutboundCarriesHackatimeProjects(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
 	body := ingestBody("hackatime:design")
+
 	ingested := do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)})
 	if ingested.Code != http.StatusCreated {
 		t.Fatalf("ingest = %d: %s", ingested.Code, ingested.Body.String())
@@ -1078,6 +1101,7 @@ func TestResubmissionAfterWithdraw(t *testing.T) {
 	}
 
 	second := bytes.Replace(first, []byte("Line follower"), []byte("Line follower v2"), 1)
+
 	resubmitted := do(t, application, http.MethodPost, "/api/ingest/half-life", second, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", second)})
 	if resubmitted.Code != http.StatusCreated {
 		t.Fatalf("resubmit = %d: %s", resubmitted.Code, resubmitted.Body.String())
@@ -1091,6 +1115,7 @@ func TestResubmissionAfterWithdraw(t *testing.T) {
 // TestTickIsQuietWhenNothingIsDue covers the scheduled endpoint.
 func TestTickIsQuietWhenNothingIsDue(t *testing.T) {
 	application := newTestApp(t)
+
 	recorder := do(t, application, http.MethodPost, "/jobs/tick", nil, nil, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("tick = %d: %s", recorder.Code, recorder.Body.String())
@@ -1174,6 +1199,7 @@ func TestApprovalRequiresAcknowledgementAndHolds(t *testing.T) {
 
 	bundleRecorder := do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, cookie, nil)
 	bundle := decode[contract.ReviewBundle](t, bundleRecorder)
+
 	warnings := warningKeys(bundle.Checks)
 	if len(warnings) == 0 {
 		t.Fatal("fixture has no warnings")
@@ -1200,6 +1226,7 @@ func TestApprovalRequiresAcknowledgementAndHolds(t *testing.T) {
 		NoteToMaker: "Nice board.",
 		Version: bundle.Submission.Version,
 	})
+
 	heldRecorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", body, cookie, nil)
 	if heldRecorder.Code != http.StatusOK {
 		t.Fatalf("held approval = %d: %s", heldRecorder.Code, heldRecorder.Body.String())
@@ -1237,6 +1264,7 @@ func TestStageTwoConfirmsHeldApproval(t *testing.T) {
 	}
 
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_2", nil, reviewer, nil))
+
 	warnings := warningKeys(bundle.Checks)
 	if len(warnings) == 0 {
 		t.Fatal("fixture has no warnings")
@@ -1282,6 +1310,7 @@ func TestStageTwoConfirmsHeldApproval(t *testing.T) {
 		NoteToMaker: "2nd pass confirms the approval.",
 		Version: 1,
 	})
+
 	confirmed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
 	if confirmed.Code != http.StatusOK {
 		t.Fatalf("second-pass decision = %d: %s", confirmed.Code, confirmed.Body.String())
@@ -1376,6 +1405,7 @@ func TestStageTwoRejectsOwnDecision(t *testing.T) {
 		NoteToMaker: "Confirm my own decision.",
 		Version: 1,
 	})
+
 	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
 	if rejected.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("own decision = %d: %s", rejected.Code, rejected.Body.String())

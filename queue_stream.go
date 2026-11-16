@@ -74,6 +74,7 @@ func writeQueueEvent(w http.ResponseWriter, event any) {
 func (a *ireApp) streamQueue(w http.ResponseWriter, r *http.Request, person reviewer, params queueParams) {
 	limit := parseLimit(r)
 	query, args := a.queueListQuery(params, person, limit, parseOffset(r))
+
 	rows, err := a.store.Query(r.Context(), query, args...)
 	if err != nil {
 		writeStorage(w, err)
@@ -98,6 +99,7 @@ func (a *ireApp) streamQueue(w http.ResponseWriter, r *http.Request, person revi
 		writeStorage(w, err)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -106,11 +108,13 @@ func (a *ireApp) streamQueue(w http.ResponseWriter, r *http.Request, person revi
 	if hasMore {
 		items = items[:limit]
 	}
+
 	writeQueueEvent(w, queueStreamMeta{
 		Type: "meta",
 		HasMore: hasMore,
 		Items: len(items),
 	})
+
 	for start := 0; start < len(items); start += queueStreamBatch {
 		batch := items[start:min(start+queueStreamBatch, len(items))]
 
@@ -119,8 +123,10 @@ func (a *ireApp) streamQueue(w http.ResponseWriter, r *http.Request, person revi
 				Type: "error",
 				Error: "could not load the queue",
 			})
+
 			return
 		}
+
 		writeQueueEvent(w, queueStreamShips{
 			Type: "ships",
 			Items: batch,
@@ -133,12 +139,14 @@ func (a *ireApp) streamQueue(w http.ResponseWriter, r *http.Request, person revi
 			Type: "error",
 			Error: "could not load the queue totals",
 		})
+
 		return
 	}
 
 	if !person.Has(permSecondPass) {
 		counts.Stage2Hold = 0
 	}
+
 	writeQueueEvent(w, queueStreamCounts{
 		Type: "counts",
 		Counts: counts,

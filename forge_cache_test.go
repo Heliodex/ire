@@ -42,6 +42,7 @@ func TestForgeCacheReusesResponses(t *testing.T) {
 		calls.Add(1)
 		w.Header().Set("ETag", `"v1"`)
 		w.Header().Set("Content-Type", "application/json")
+
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/readme"):
 			_, _ = io.WriteString(w, strings.Repeat("Build notes and wiring details. ", 12))
@@ -75,7 +76,9 @@ func TestForgeCacheReusesResponses(t *testing.T) {
 	if calls.Load() != first {
 		t.Errorf("cached fetch made %d more requests", calls.Load()-first)
 	}
+
 	application.forgeCache.clear()
+
 	if _, evidence := application.repoChecks(t.Context(), "https://github.com/example/cache", "", application.now(), nil); evidence == nil {
 		t.Fatal("cleared fetch returned no evidence")
 	}

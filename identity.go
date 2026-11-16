@@ -65,6 +65,7 @@ func (a *ireApp) duplicateChecks(ctx context.Context, programID string, request 
 	maker := strings.ToLower(strings.TrimSpace(request.Maker.Email))
 	hackatime := strings.TrimSpace(stringValue(request.Maker.HackatimeID))
 	slack := strings.TrimSpace(stringValue(request.Maker.SlackID))
+
 	rows, err := a.store.Query(ctx, `select external_id, title, coalesce(repo_url, ''), coalesce(demo_url, ''),
 			lower(maker_email), coalesce(maker_hackatime_id, ''), coalesce(maker_slack_id, '')
 		from submission where program_id = ? and status != 'withdrawn' and external_id != ?

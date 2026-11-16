@@ -85,6 +85,7 @@ func (a *ireApp) handleMembers(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.MembersResponse{
 		Members: members,
 	})
@@ -114,6 +115,7 @@ func (a *ireApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 
 	if query := strings.TrimSpace(r.URL.Query().Get("q")); query != "" {
 		like := "%" + strings.ToLower(query) + "%"
+
 		conditions = append(conditions, `(lower(a.action) like ? or lower(coalesce(a.actor_email, '')) like ?
 			or lower(coalesce(au.name, '')) like ? or lower(coalesce(a.target_type, '')) like ?
 			or lower(coalesce(a.target_id, '')) like ? or lower(coalesce(tu.email, ts.title, '')) like ?
@@ -141,7 +143,9 @@ func (a *ireApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 		left join submission ts on a.target_type = 'submission' and ts.id = a.target_id
 		where ` + strings.Join(conditions, " and ") + `
 		order by a.created_at desc, a.id desc limit ? offset ?`
+
 	args = append(args, limit+1, offset)
+
 	rows, err := a.store.Query(r.Context(), query, args...)
 	if err != nil {
 		writeStorage(w, err)
@@ -186,6 +190,7 @@ func (a *ireApp) handleAudit(w http.ResponseWriter, r *http.Request) {
 		response.Entries = response.Entries[:limit]
 		response.HasMore = true
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }
 
@@ -208,6 +213,7 @@ func (a *ireApp) handleInviteMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := strings.ToLower(strings.TrimSpace(request.Email))
+
 	role := strings.TrimSpace(request.Role)
 	if !a.validMemberRole(r.Context(), person.ProgramID, role) {
 		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "role", "unknown role")
@@ -239,6 +245,7 @@ func (a *ireApp) handleInviteMember(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	a.writeAudit(r.Context(), person, "member.invite", "user", userID, map[string]any{}, map[string]any{"email": email, "role": role})
 
 	member, found, err := a.memberByUserID(r.Context(), person.ProgramID, userID)
@@ -246,6 +253,7 @@ func (a *ireApp) handleInviteMember(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusInternalServerError, "member was invited but could not be read back")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusCreated, member)
 }
 
@@ -268,6 +276,7 @@ func (a *ireApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	target := r.PathValue("id")
+
 	current, found, err := a.memberByUserID(r.Context(), person.ProgramID, target)
 	if err != nil {
 		writeStorage(w, err)
@@ -316,6 +325,7 @@ func (a *ireApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	a.writeAudit(r.Context(), person, "member.update", "user", target, map[string]any{"active": current.Active, "role": current.Role}, map[string]any{"active": request.Active, "role": role})
 
 	updated, found, err := a.memberByUserID(r.Context(), person.ProgramID, target)
@@ -323,5 +333,6 @@ func (a *ireApp) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusInternalServerError, "member was updated but could not be read back")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, updated)
 }

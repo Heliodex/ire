@@ -107,6 +107,7 @@ func (a *ireApp) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 		response.Events = append(response.Events, item)
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }
 
@@ -163,6 +164,7 @@ func (a *ireApp) handleReviews(w http.ResponseWriter, r *http.Request) {
 	if len(response.Reviews) > 0 {
 		response.Cursor = &cursor
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }
 
@@ -286,6 +288,7 @@ func (a *ireApp) statusResponse(ctx context.Context, ship submissionRow) (contra
 		decision := review.Decision
 		response.Decision = &decision
 		response.Review = a.statusReview(ship, review)
+
 		break
 	}
 
@@ -349,7 +352,9 @@ func (a *ireApp) handleStatus(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown ship")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -376,5 +381,6 @@ func (a *ireApp) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if response.Decision == nil {
 		payload["decision"] = nil
 	}
+
 	app.WriteJSON(w, http.StatusOK, payload)
 }

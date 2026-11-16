@@ -96,6 +96,7 @@ func retryableCheckClause() (string, []any) {
 // errorCheckKeys lists the errored GitHub checks a retry is chasing, for the timeline event.
 func (a *ireApp) errorCheckKeys(ctx context.Context, candidate erroredCheck) []string {
 	placeholders, keyArgs := retryableCheckClause()
+
 	rows, err := a.store.Query(ctx, `select distinct check_key from check_result
 		where submission_id = ? and version = ? and status = 'error'
 		  and check_key in (`+placeholders+`)
@@ -122,6 +123,7 @@ func (a *ireApp) errorCheckKeys(ctx context.Context, candidate erroredCheck) []s
 // erroredChecks lists open ships with error-status GitHub checks on their current version.
 func (a *ireApp) erroredChecks(ctx context.Context) []erroredCheck {
 	placeholders, args := retryableCheckClause()
+
 	rows, err := a.store.Query(ctx, `select s.id, s.version, s.status, s.repo_url, max(c.checked_at)
 		from submission s
 		join check_result c on c.submission_id = s.id and c.version = s.version
@@ -180,6 +182,7 @@ func (a *ireApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck) {
 
 	keys := a.errorCheckKeys(ctx, candidate)
 	now := a.nowText()
+
 	result, err := a.store.Exec(ctx, `update submission set status = 'checking', updated_at = ?
 		where id = ? and version = ? and status in ('needs_attention','ready')`, now, candidate.submissionID, candidate.version)
 	if err != nil || result.RowsAffected == 0 {
@@ -201,6 +204,7 @@ func (a *ireApp) maybeRetryChecks(ctx context.Context, candidate erroredCheck) {
 		app.Errorf("checks retry record: %v", err)
 		return
 	}
+
 	a.queueRepositoryChecks(ctx, candidate.submissionID, candidate.version, fmt.Sprintf("checks:%s:%d:retry:%d", candidate.submissionID, candidate.version, count+1))
 }
 

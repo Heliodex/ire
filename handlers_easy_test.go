@@ -16,6 +16,7 @@ const machineAuth = "Bearer test-ingest"
 func TestCheckRunLifecycle(t *testing.T) {
 	application := newTestApp(t)
 	ctx := context.Background()
+
 	ship, err := application.loadSubmission(ctx, "sub_fixture_1")
 	if err != nil {
 		t.Fatal(err)
@@ -24,13 +25,16 @@ func TestCheckRunLifecycle(t *testing.T) {
 	if attempts := application.startCheckRun(ctx, ship); attempts < 1 {
 		t.Errorf("start attempts = %d, want >= 1", attempts)
 	}
+
 	application.finishCheckRun(ctx, ship)
 
 	var status string
 	if err := application.store.QueryRow(ctx, `select status from check_run where submission_id = ? and version = ?`, ship.ID, ship.Version).Scan(&status); err != nil || status != "succeeded" {
 		t.Errorf("check run status = %q %v, want succeeded", status, err)
 	}
+
 	application.failCheckRun(ctx, ship, 1, errors.New("boom"))
+
 	if err := application.store.QueryRow(ctx, `select status from check_run where submission_id = ? and version = ?`, ship.ID, ship.Version).Scan(&status); err != nil || status != "failed" {
 		t.Errorf("failed run status = %q %v, want failed", status, err)
 	}
@@ -39,6 +43,7 @@ func TestCheckRunLifecycle(t *testing.T) {
 	if _, err := application.store.Exec(ctx, `update submission set status = 'checking' where id = ?`, ship.ID); err != nil {
 		t.Fatal(err)
 	}
+
 	application.failCheckRun(ctx, ship, checkRunMaxAttempts, errors.New("boom"))
 
 	var shipStatus string
@@ -144,6 +149,7 @@ func TestLogAndStorageHelpers(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	writeStorage(recorder, errors.New("db down"))
+
 	if recorder.Code != http.StatusInternalServerError {
 		t.Errorf("writeStorage = %d, want 500", recorder.Code)
 	}
@@ -193,6 +199,7 @@ func TestProgramLookup(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/programs/nope/queue", nil)
 
 	request.SetPathValue("program", "nope")
+
 	if _, ok := application.programFor(recorder, request); ok {
 		t.Error("unknown program should fail lookup")
 	}
@@ -316,6 +323,7 @@ func TestValidateIngestBranches(t *testing.T) {
 		request := valid()
 
 		test.mutate(&request)
+
 		if validateIngest(recorder, request) {
 			t.Errorf("%s should not validate", test.name)
 		}

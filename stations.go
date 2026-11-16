@@ -146,6 +146,7 @@ func (a *ireApp) stationDefinitionsWith(ctx context.Context, programID string, s
 	}
 
 	query += ` order by sort, key`
+
 	rows, err := a.store.Query(ctx, query, programID, stage)
 	if err != nil {
 		return nil, err
@@ -237,6 +238,7 @@ func (a *ireApp) stationQueueItems(ctx context.Context, person reviewer, params 
 		search: params.search,
 		station: params.station,
 	}, person, stationQueuePageLimit+1, 0)
+
 	rows, err := a.store.Query(ctx, query, args...)
 	if err != nil {
 		return nil, false, 0, err
@@ -292,6 +294,7 @@ func (a *ireApp) handleStationQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params.station = station.Key
+
 	items, hasMore, filtered, err := a.stationQueueItems(r.Context(), person, params)
 	if err != nil {
 		writeStorage(w, err)
@@ -303,6 +306,7 @@ func (a *ireApp) handleStationQueue(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.StationQueueResponse{
 		FilteredTotal: filtered,
 		HasMore: hasMore,
@@ -344,6 +348,7 @@ func (a *ireApp) handleStations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stage := stationStage(r)
+
 	definitions, err := a.stationDefinitionsWith(r.Context(), person.ProgramID, stage, r.URL.Query().Get("all") == "1")
 	if err != nil {
 		writeStorage(w, err)
@@ -368,6 +373,7 @@ func (a *ireApp) handleStations(w http.ResponseWriter, r *http.Request) {
 			Stage: station.Stage,
 		})
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.StationsResponse{
 		Stations: out,
 	})
@@ -424,6 +430,7 @@ func stationStates(ship submissionRow, definitions []contract.StationDefinition,
 			}
 
 			required++
+
 			values := answersAt[station.Key+"\x00"+question.Key]
 			if len(values) == 0 {
 				continue
@@ -517,6 +524,7 @@ func (a *ireApp) handleStationAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	questionKey := r.PathValue("question")
+
 	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool {
 		return question.Key == questionKey
 	}) {
@@ -570,11 +578,13 @@ func (a *ireApp) handleStationAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	states, current := stationStates(ship, definitions, answers, findings)
+
 	answer, found := answerAt(answers, station.Key, questionKey, person.ID)
 	if !found {
 		app.WriteError(w, http.StatusInternalServerError, "could not read the saved answer")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.StationAnswerResult{
 		Answer: answer,
 		CurrentStation: current,
@@ -622,6 +632,7 @@ func (a *ireApp) handleStationAnswerDelete(w http.ResponseWriter, r *http.Reques
 	}
 
 	questionKey := r.PathValue("question")
+
 	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool {
 		return question.Key == questionKey
 	}) {
@@ -707,6 +718,7 @@ func (a *ireApp) handleStationConflictResolve(w http.ResponseWriter, r *http.Req
 	}
 
 	questionKey := r.PathValue("question")
+
 	if !slices.ContainsFunc(station.Questions, func(question contract.StationQuestion) bool {
 		return question.Key == questionKey
 	}) {
@@ -782,11 +794,13 @@ func (a *ireApp) handleStationConflictResolve(w http.ResponseWriter, r *http.Req
 	}
 
 	states, current := stationStates(ship, definitions, answers, findings)
+
 	answer, found := answerAt(answers, station.Key, questionKey, person.ID)
 	if !found {
 		app.WriteError(w, http.StatusInternalServerError, "could not read the saved answer")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.StationAnswerResult{
 		Answer: answer,
 		CurrentStation: current,

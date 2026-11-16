@@ -612,6 +612,7 @@ func (a *ireApp) insertFixture(ctx context.Context, index int, f fixture, now ti
 	}
 
 	summary := checkCountsFor(checks)
+
 	summaryJSON, err := json.Marshal(summary)
 	if err != nil {
 		return err
@@ -862,6 +863,7 @@ func (a *ireApp) handleDevReset(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, map[string]string{"seededAt": now})
 }
 

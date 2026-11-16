@@ -38,6 +38,7 @@ func newFlakyGitHub(t *testing.T) *flakyGitHub {
 	fake := &flakyGitHub{}
 	fake.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
 		switch r.URL.Path {
 		case "/repos/example/retry":
 			if fake.failMeta.Load() {
@@ -65,12 +66,14 @@ func newFlakyGitHub(t *testing.T) *flakyGitHub {
 	}))
 
 	t.Cleanup(fake.server.Close)
+
 	return fake
 }
 
 // postTick runs the schedule tick.
 func postTick(t *testing.T, application *ireApp) {
 	t.Helper()
+
 	if recorder := do(t, application, http.MethodPost, "/jobs/tick", nil, nil, nil); recorder.Code != http.StatusOK {
 		t.Fatalf("tick = %d: %s", recorder.Code, recorder.Body.String())
 	}
@@ -79,6 +82,7 @@ func postTick(t *testing.T, application *ireApp) {
 // retryEventCount counts automatic retry events for a ship.
 func retryEventCount(t *testing.T, application *ireApp, submissionID string) (count int) {
 	t.Helper()
+
 	if err := application.store.QueryRow(context.Background(), `select count(*) from submission_event where submission_id = ? and kind = 'checks_retry'`, submissionID).Scan(&count); err != nil {
 		t.Fatal(err)
 	}
@@ -140,15 +144,18 @@ func TestTickCapsAutomaticRetries(t *testing.T) {
 	id := ingestRetryShip(t, application, "retry:capped", "example/retry")
 
 	runCheckJob(t, application, id)
+
 	for attempt := 1; attempt <= checkRetryMaxAttempts; attempt++ {
 		application.clock = func() time.Time {
 			return base.Add(time.Duration(attempt) * 4 * time.Hour)
 		}
 
 		postTick(t, application)
+
 		if status := shipStatus(t, application, id); status != statusChecking {
 			t.Fatalf("status on attempt %d = %q, want checking", attempt, status)
 		}
+
 		runCheckJob(t, application, id)
 	}
 
@@ -157,6 +164,7 @@ func TestTickCapsAutomaticRetries(t *testing.T) {
 	}
 
 	postTick(t, application)
+
 	if status := shipStatus(t, application, id); status != statusNeedsAttention {
 		t.Fatalf("status = %q, want needs_attention", status)
 	}
@@ -183,6 +191,7 @@ func TestTickRetriesErroredCommitsOnReadyShip(t *testing.T) {
 	id := ingestRetryShip(t, application, "retry:commits", "example/retry")
 
 	runCheckJob(t, application, id)
+
 	if status := shipStatus(t, application, id); status != statusReady {
 		t.Fatalf("status = %q, want ready", status)
 	}
@@ -198,6 +207,7 @@ func TestTickRetriesErroredCommitsOnReadyShip(t *testing.T) {
 	}
 
 	postTick(t, application)
+
 	if status := shipStatus(t, application, id); status != statusClaimed {
 		t.Fatalf("status while claimed = %q, want claimed", status)
 	}
@@ -209,7 +219,9 @@ func TestTickRetriesErroredCommitsOnReadyShip(t *testing.T) {
 	if release := do(t, application, http.MethodDelete, testBase+"/submissions/"+id+"/claim", nil, cookie, nil); release.Code != http.StatusNoContent {
 		t.Fatalf("release = %d: %s", release.Code, release.Body.String())
 	}
+
 	postTick(t, application)
+
 	if status := shipStatus(t, application, id); status != statusChecking {
 		t.Fatalf("status after release = %q, want checking", status)
 	}
@@ -232,10 +244,13 @@ func TestTickRetriesErroredRepoAccess(t *testing.T) {
 	id := ingestRetryShip(t, application, "retry:design", "example/retry")
 
 	runCheckJob(t, application, id)
+
 	if status := shipStatus(t, application, id); status != statusNeedsAttention {
 		t.Fatalf("status = %q, want needs_attention", status)
 	}
+
 	postTick(t, application)
+
 	if status := shipStatus(t, application, id); status != statusNeedsAttention {
 		t.Fatalf("status before backoff = %q, want needs_attention", status)
 	}
@@ -249,6 +264,7 @@ func TestTickRetriesErroredRepoAccess(t *testing.T) {
 	}
 
 	postTick(t, application)
+
 	if status := shipStatus(t, application, id); status != statusChecking {
 		t.Fatalf("status after backoff = %q, want checking", status)
 	}
@@ -260,8 +276,10 @@ func TestTickRetriesErroredRepoAccess(t *testing.T) {
 	if len(jobs) != 2 || jobs[1].IdempotencyKey != "checks:"+id+":1:retry:1" {
 		t.Fatalf("jobs = %+v", jobs)
 	}
+
 	fake.failMeta.Store(false)
 	runCheckJob(t, application, id)
+
 	if status := shipStatus(t, application, id); status != statusReady {
 		t.Fatalf("status after recovery = %q, want ready", status)
 	}
@@ -271,6 +289,7 @@ func TestTickRetriesErroredRepoAccess(t *testing.T) {
 	}
 
 	postTick(t, application)
+
 	if count := retryEventCount(t, application, id); count != 1 {
 		t.Fatalf("retries after recovery = %d, want 1", count)
 	}
@@ -291,6 +310,7 @@ func TestTickSkipsDeterministicFailures(t *testing.T) {
 	id := ingestRetryShip(t, application, "retry:missing", "example/missing")
 
 	runCheckJob(t, application, id)
+
 	if status := shipStatus(t, application, id); status != statusNeedsAttention {
 		t.Fatalf("status = %q, want needs_attention", status)
 	}
@@ -300,6 +320,7 @@ func TestTickSkipsDeterministicFailures(t *testing.T) {
 	}
 
 	postTick(t, application)
+
 	if status := shipStatus(t, application, id); status != statusNeedsAttention {
 		t.Fatalf("status = %q, want needs_attention", status)
 	}

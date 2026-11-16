@@ -120,6 +120,7 @@ func (a *ireApp) handleSendBack(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.SendBackResult{
 		ID: ship.ID,
 		Stage: stageOne,

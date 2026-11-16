@@ -76,6 +76,7 @@ func (a *ireApp) loadJournalEntry(ctx context.Context, submissionID, entryID str
 	item.MediaCount = jsonArrayLength(mediaJSON)
 	item.ClipCount = jsonArrayLength(clipsJSON)
 	item.CoveredSeconds = jsonCoveredSeconds(clipsJSON)
+
 	adjustments, err := a.loadAdjustments(ctx, submissionID)
 	if err != nil {
 		return contract.JournalEntry{}, err
@@ -136,7 +137,9 @@ func (a *ireApp) handleJournalReview(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown journal entry")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 

@@ -95,6 +95,7 @@ func TestStationAnswerGuards(t *testing.T) {
 func TestStationQueueSearchAndSort(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
+
 	miss := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue?q=no-such-ship", nil, cookie, nil))
 	if len(miss.Items) != 0 {
 		t.Fatalf("filtered queue = %d items, want 0", len(miss.Items))
@@ -130,6 +131,7 @@ func answerQuestion(t *testing.T, application *ireApp, cookie *http.Cookie, subm
 		Version: version,
 	})
 	path := testBase + "/submissions/" + submissionID + "/stations/" + station + "/answers/" + question
+
 	recorder := do(t, application, http.MethodPut, path, body, cookie, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("answer %s/%s = %d: %s", station, question, recorder.Code, recorder.Body.String())
@@ -220,6 +222,7 @@ func TestOrganiserResolvesStationConflict(t *testing.T) {
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, organiser, nil); claim.Code != http.StatusOK {
 		t.Fatalf("organiser claim = %d: %s", claim.Code, claim.Body.String())
 	}
+
 	answerQuestion(t, application, organiser, bundle.Submission.ID, "triage", firstQuestion.Key, "fail", bundle.Submission.Version)
 
 	body, _ := json.Marshal(contract.StationAnswerRequest{
@@ -376,6 +379,7 @@ func TestStationAnswersArePerReviewerAndConflict(t *testing.T) {
 func TestStationFlowMovesThroughTheQueue(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
+
 	stations := decode[contract.StationsResponse](t, do(t, application, http.MethodGet, testBase+"/stations", nil, cookie, nil))
 	if len(stations.Stations) < 5 {
 		t.Fatalf("stations = %d, want the five stage 1 stations", len(stations.Stations))
@@ -409,6 +413,7 @@ func TestStationFlowMovesThroughTheQueue(t *testing.T) {
 
 	timeStation := stationByKey(afterTriage, "time")
 	first := timeStation.Questions[0]
+
 	failed := answerQuestion(t, application, cookie, bundle.Submission.ID, "time", first.Key, "fail", bundle.Submission.Version)
 	if failed.CurrentStation == nil || *failed.CurrentStation != "time" {
 		t.Fatalf("current after fail = %v, want time", failed.CurrentStation)
@@ -461,6 +466,7 @@ func TestStationFlowMovesThroughTheQueue(t *testing.T) {
 func TestStationQueueFiltersByCurrentStation(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
+
 	queue := decode[contract.StationQueueResponse](t, do(t, application, http.MethodGet, testBase+"/stations/triage/queue", nil, cookie, nil))
 	if queue.Station.Key != "triage" || len(queue.Items) != 3 {
 		t.Fatalf("triage queue = %+v, want 3 ships", queue)
@@ -524,6 +530,7 @@ func TestStationStatusReflectsEachSection(t *testing.T) {
 	if !synthesisDone {
 		t.Fatalf("synthesis state = %+v, want done", after.StationStates)
 	}
+
 	answerQuestion(t, application, cookie, bundle.Submission.ID, "synthesis", synthesis.Questions[0].Key, "fail", bundle.Submission.Version)
 
 	failed := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/sub_fixture_1", nil, cookie, nil))

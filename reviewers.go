@@ -73,9 +73,11 @@ func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (co
 
 	if profile.ID != nil {
 		condition += " and (r.reviewer_id = ? or (r.reviewer_id is null and lower(r.reviewer_email) = lower(?)))"
+
 		args = append(args, *profile.ID, profile.Email)
 	} else {
 		condition += " and lower(r.reviewer_email) = lower(?)"
+
 		args = append(args, profile.Email)
 	}
 
@@ -117,6 +119,7 @@ func (a *ireApp) reviewerProfile(ctx context.Context, programID, key string) (co
 		SecondPass: secondPass,
 		Total: total,
 	}
+
 	rows, err := a.store.Query(ctx, `select r.id, r.submission_id, coalesce(s.title, ''), r.decision, r.stage,
 			r.held, coalesce(r.hours_approved_seconds, 0), coalesce(r.invalidated_at, ''), r.created_at
 		from review r join submission s on s.id = r.submission_id
@@ -173,8 +176,11 @@ func (a *ireApp) handleReviewerProfile(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown reviewer")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, profile)
 }

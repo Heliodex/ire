@@ -103,6 +103,7 @@ func bomMoney(value string) (int, bool) {
 
 		return -1
 	}, value)
+
 	amount, err := strconv.ParseFloat(cleaned, 64)
 	if err != nil || amount < 0 {
 		return 0, false
@@ -120,6 +121,7 @@ func bomQuantity(value string) int {
 
 		return -1
 	}, value)
+
 	quantity, err := strconv.Atoi(digits)
 	if err != nil || quantity < 1 {
 		return 1
@@ -155,6 +157,7 @@ func bomRows(text string, delimiter rune) [][]string {
 	reader.Comma = delimiter
 	reader.FieldsPerRecord = -1
 	reader.LazyQuotes = true
+
 	rows, err := reader.ReadAll()
 	if err != nil {
 		return nil
@@ -354,6 +357,7 @@ func parseBOM(path string, content []byte) bomSummary {
 		Path: path,
 		Parts: []string{},
 	}
+
 	text := strings.TrimPrefix(string(content), "\ufeff")
 	if strings.TrimSpace(text) == "" {
 		return summary
@@ -381,6 +385,7 @@ func parseBOM(path string, content []byte) bomSummary {
 			summary.Rows++
 			summary.Parts = append(summary.Parts, part)
 			quantity := bomQuantity(bomCell(line, qty))
+
 			cents, priced := bomMoney(bomCell(line, price))
 			if priced {
 				summary.TotalCents += quantity * cents

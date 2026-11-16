@@ -67,7 +67,9 @@ func (a *ireApp) loadShipForReview(w http.ResponseWriter, r *http.Request) (subm
 			app.WriteError(w, http.StatusNotFound, "unknown submission")
 			return submissionRow{}, false
 		}
+
 		writeStorage(w, err)
+
 		return submissionRow{}, false
 	}
 
@@ -100,6 +102,7 @@ func (a *ireApp) handleBundle(w http.ResponseWriter, r *http.Request) {
 	if ship.FirstOpenedAt == "" {
 		_, _ = a.store.Exec(r.Context(), `update submission set first_opened_at = ? where id = ?`, a.nowText(), ship.ID)
 	}
+
 	app.WriteJSON(w, http.StatusOK, bundle)
 }
 
@@ -138,6 +141,7 @@ func (a *ireApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 
 	now := a.nowText()
 	expires := a.later(claimTTL)
+
 	result, err := a.store.Exec(r.Context(), `insert into claim (submission_id, reviewer_id, stage, expires_at, heartbeat_at, created_at)
 		values (?, ?, ?, ?, ?, ?)
 		on conflict(submission_id) do update set
@@ -157,7 +161,9 @@ func (a *ireApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusConflict, "could not claim this ship")
 			return
 		}
+
 		app.WriteErrorField(w, http.StatusConflict, "claim_taken", "claim", "another reviewer is working on this ship until "+holder.ExpiresAt)
+
 		return
 	}
 
@@ -178,6 +184,7 @@ func (a *ireApp) handleClaim(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusInternalServerError, "claim was written but could not be read back")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.ClaimResponse{
 		Claim: *claim,
 	})
@@ -215,6 +222,7 @@ func (a *ireApp) handleDraft(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.DraftSaved{
 		Saved: 1,
 		UpdatedAt: now,
@@ -251,6 +259,7 @@ func (a *ireApp) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusInternalServerError, "claim disappeared")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.ClaimResponse{
 		Claim: *claim,
 	})
@@ -290,6 +299,7 @@ func (a *ireApp) handleRelease(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -435,6 +445,7 @@ func (a *ireApp) queueListWhere(params queueParams, person reviewer) (string, []
 
 	if params.station != "" {
 		query += ` and ` + currentStationSQL() + ` = ? and s.status not in ('checking','stage2_hold')`
+
 		args = append(args, params.station)
 	}
 
@@ -452,6 +463,7 @@ func (a *ireApp) queueListWhere(params queueParams, person reviewer) (string, []
 		query += ` and s.status = 'needs_attention'`
 	case queueFilterMine:
 		query += ` and c.reviewer_id = ?`
+
 		args = append(args, person.ID)
 	}
 
@@ -491,6 +503,7 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 				when prev_review.reviewer_id is not null and s.ingested_at > ? then 2
 				else 1
 			end asc, s.ingested_at asc, s.id asc`
+
 		args = append(args, person.ID, a.later(-reviewerHold))
 	}
 
@@ -500,6 +513,7 @@ func (a *ireApp) queueListQuery(params queueParams, person reviewer, limit, offs
 	}
 
 	query += order + ` limit ? offset ?`
+
 	args = append(args, limit+1, offset)
 
 	return query, args
@@ -630,6 +644,7 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 
 	limit := parseLimit(r)
 	query, args := a.queueListQuery(params, person, limit, parseOffset(r))
+
 	rows, err := a.store.Query(r.Context(), query, args...)
 	if err != nil {
 		writeStorage(w, err)
@@ -684,5 +699,6 @@ func (a *ireApp) handleQueue(w http.ResponseWriter, r *http.Request) {
 
 		response.Counts = counts
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }

@@ -107,6 +107,7 @@ func (a *ireApp) importReviewStatements(ctx context.Context, programID, submissi
 func (a *ireApp) createImportedShip(ctx context.Context, program programRow, ship contract.IngestRequest, version int, reviews []contract.ImportReview, final contract.ImportReview) error {
 	id := newID("sub")
 	fields := buildSubmissionFields(ship)
+
 	summary, err := json.Marshal(contract.CheckSummary{
 		Overall: checkOverallPass,
 	})
@@ -266,12 +267,14 @@ func (a *ireApp) handleImportReviewed(w http.ResponseWriter, r *http.Request) {
 
 	for _, entry := range request.Ships {
 		externalID := strings.TrimSpace(entry.Ship.ExternalID)
+
 		imported, err := a.importReviewedShip(r.Context(), program, entry)
 		if err != nil {
 			response.Failed = append(response.Failed, contract.ImportResultFailedElem{
 				Error: err.Error(),
 				ExternalID: externalID,
 			})
+
 			continue
 		}
 
@@ -281,5 +284,6 @@ func (a *ireApp) handleImportReviewed(w http.ResponseWriter, r *http.Request) {
 			response.Skipped++
 		}
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }

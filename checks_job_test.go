@@ -27,6 +27,7 @@ func TestTickKeepsFreshCheckRun(t *testing.T) {
 	id := ingestRetryShip(t, application, "retry:fresh", "example/retry")
 
 	runCheckJob(t, application, id)
+
 	if status := shipStatus(t, application, id); status != statusNeedsAttention {
 		t.Fatalf("status after the failed run = %q, want needs_attention", status)
 	}
@@ -36,6 +37,7 @@ func TestTickKeepsFreshCheckRun(t *testing.T) {
 	}
 
 	postTick(t, application)
+
 	if status := shipStatus(t, application, id); status != statusChecking {
 		t.Fatalf("status after the retry = %q, want checking", status)
 	}
@@ -45,6 +47,7 @@ func TestTickKeepsFreshCheckRun(t *testing.T) {
 	}
 
 	postTick(t, application)
+
 	if status := shipStatus(t, application, id); status != statusChecking {
 		t.Fatalf("status after a fresh retry = %q, want checking", status)
 	}
@@ -56,6 +59,7 @@ func fakeGitHub(t *testing.T) *httptest.Server {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
 		switch r.URL.Path {
 		case "/repos/example/queued":
 			_, _ = io.WriteString(w, `{"default_branch":"main","full_name":"example/queued","private":false}`)
@@ -73,6 +77,7 @@ func fakeGitHub(t *testing.T) *httptest.Server {
 	}))
 
 	t.Cleanup(server.Close)
+
 	return server
 }
 
@@ -90,6 +95,7 @@ func TestIngestFallsBackWhenQueueFails(t *testing.T) {
 	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
 	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)}))
 	cookie := login(t, application, "reviewer@example.com")
+
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+created.ID, nil, cookie, nil))
 	if bundle.Submission.Status != statusReady {
 		t.Fatalf("status = %q, want ready", bundle.Submission.Status)
@@ -119,6 +125,7 @@ func TestIngestQueuesRepositoryChecks(t *testing.T) {
 	body = []byte(strings.Replace(string(body), "example/line-follower", "example/queued", 1))
 	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)}))
 	cookie := login(t, application, "reviewer@example.com")
+
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+created.ID, nil, cookie, nil))
 	if bundle.Submission.Status != statusChecking {
 		t.Fatalf("status = %q, want checking", bundle.Submission.Status)
@@ -272,6 +279,7 @@ func TestQueueCountsFollowChecks(t *testing.T) {
 
 		return
 	}
+
 	t.Fatalf("ship %s is missing from the queue", created.ID)
 }
 
@@ -287,7 +295,9 @@ func queuedCheckSummary(t *testing.T, application *ireApp, submissionID string) 
 			return item.CheckSummary
 		}
 	}
+
 	t.Fatalf("ship %s is missing from the queue", submissionID)
+
 	return contract.CheckSummary{}
 }
 
@@ -309,7 +319,9 @@ func TestCheckSummaryIgnoresSupersededRows(t *testing.T) {
 		values (?, ?, 1, 'repo.description', 'Project description', 'repo', 'error', 'warn', 'Stale failure', '', '', '2026-11-03T11:00:00Z')`, newID("chk"), created.ID); err != nil {
 		t.Fatal(err)
 	}
+
 	runCheckJob(t, application, created.ID)
+
 	if summary := queuedCheckSummary(t, application, created.ID); summary.Error != 0 {
 		t.Fatalf("summary = %+v, want the superseded error ignored", summary)
 	}
@@ -333,10 +345,13 @@ func TestChecksLandAfterStaleSweep(t *testing.T) {
 	}
 
 	postTick(t, application)
+
 	if status := shipStatus(t, application, created.ID); status != statusNeedsAttention {
 		t.Fatalf("status after the stale sweep = %q, want needs_attention", status)
 	}
+
 	runCheckJob(t, application, created.ID)
+
 	if status := shipStatus(t, application, created.ID); status != statusReady {
 		t.Fatalf("status after the late job = %q, want ready", status)
 	}
@@ -375,7 +390,9 @@ func TestChecksSettleAfterSweepWithoutClobberingClaim(t *testing.T) {
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/"+created.ID+"/claim", nil, cookie, nil); claim.Code != http.StatusOK {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
+
 	runCheckJob(t, application, created.ID)
+
 	if status := shipStatus(t, application, created.ID); status != statusReady {
 		t.Fatalf("status after the late job = %q, want ready", status)
 	}

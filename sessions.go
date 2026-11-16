@@ -35,7 +35,9 @@ func (a *ireApp) handleRevokeSessions(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown member")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -52,5 +54,6 @@ func (a *ireApp) handleRevokeSessions(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }

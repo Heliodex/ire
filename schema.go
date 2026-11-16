@@ -319,6 +319,7 @@ func last4(secret string) string {
 // seed creates the Half Life programme and, when explicitly enabled, its dev reviewers and fixture ships. Every write is idempotent, so a partial seed is repaired on the next start. When dev accounts or fixtures are disabled, any leftover placeholder rows are removed so a production copy holds only invited reviewers and real Half Life ingests.
 func (a *ireApp) seed(ctx context.Context) error {
 	now := a.nowText()
+
 	outboundURL := a.config.OutboundURL
 	if outboundURL == "" {
 		outboundURL = "fake://receiver"

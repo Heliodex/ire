@@ -121,15 +121,19 @@ func (c githubClient) cachedGet(ctx context.Context, path, accept string) ([]byt
 			entry.expires = now.Add(forgeTTL(path))
 
 			c.cache.store(key, entry)
+
 			return entry.body, entry.status, entry.err
 		}
+
 		c.cacheResult(key, path, body, status, etag, err, now)
+
 		return body, status, err
 	}
 
 	body, status, etag, err := c.fetch(ctx, path, accept, "")
 
 	c.cacheResult(key, path, body, status, etag, err, now)
+
 	return body, status, err
 }
 

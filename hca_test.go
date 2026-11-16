@@ -64,6 +64,7 @@ func (f *fakeHCA) idToken() string {
 	})
 	signing := header + "." + claims
 	digest := sha256.Sum256([]byte(signing))
+
 	signature, err := rsa.SignPKCS1v15(rand.Reader, f.key, crypto.SHA256, digest[:])
 	if err != nil {
 		return ""
@@ -86,13 +87,16 @@ func completeHCA(t *testing.T, application *ireApp, provider *fakeHCA) *http.Coo
 	t.Helper()
 
 	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
+
 	location, err := url.Parse(start.Header().Get("Location"))
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	provider.setNonce(location.Query().Get("nonce"))
 
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
 	if callback.Header().Get("Location") != "/stations" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
@@ -130,6 +134,7 @@ func (f *fakeHCA) handle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error":"invalid_grant"}`, http.StatusBadRequest)
 			return
 		}
+
 		writeTestJSON(w, map[string]any{
 			"access_token": "hca-token",
 			"expires_in": 300,
@@ -152,6 +157,7 @@ func (f *fakeHCA) handle(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
+
 		writeTestJSON(w, map[string]string{"email": f.email, "name": f.displayName, "picture": f.picture, "sub": f.subject})
 	default:
 		http.NotFound(w, r)
@@ -177,6 +183,7 @@ func newFakeHCA(t *testing.T) *fakeHCA {
 	provider.server = httptest.NewServer(http.HandlerFunc(provider.handle))
 
 	t.Cleanup(provider.server.Close)
+
 	return provider
 }
 
@@ -198,6 +205,7 @@ func TestHCABootstrapsConfiguredEmail(t *testing.T) {
 	provider.setNonce(location.Query().Get("nonce"))
 
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
 	if callback.Header().Get("Location") != "/stations" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
@@ -248,6 +256,7 @@ func TestHCAExpiredState(t *testing.T) {
 	location, _ := url.Parse(start.Header().Get("Location"))
 
 	provider.setNonce(location.Query().Get("nonce"))
+
 	if _, err := application.store.Exec(t.Context(), `update login_flow set created_at = ?`, "2020-01-01T00:00:00.000000000Z"); err != nil {
 		t.Fatal(err)
 	}
@@ -311,6 +320,7 @@ func TestHCAOAuthFlow(t *testing.T) {
 	application.config.HCClientSecret = "secret"
 	application.config.HCRedirectURI = "http://ire.localhost/auth/callback"
 	application.config.HCAuthBase = provider.server.URL
+
 	start := do(t, application, http.MethodGet, "/auth/login", nil, nil, nil)
 	if start.Code != http.StatusFound {
 		t.Fatalf("start = %d: %s", start.Code, start.Body.String())
@@ -333,6 +343,7 @@ func TestHCAOAuthFlow(t *testing.T) {
 	if state == "" || location.Query().Get("client_id") != "client" {
 		t.Fatalf("authorize = %s", location)
 	}
+
 	provider.setNonce(location.Query().Get("nonce"))
 
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
@@ -433,6 +444,7 @@ func TestHCARejectsUnknownMember(t *testing.T) {
 	provider.setNonce(location.Query().Get("nonce"))
 
 	stateCookie := findCookie(start.Result().Cookies(), oauthStateCookie)
+
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(location.Query().Get("state")), nil, stateCookie, nil)
 	if callback.Header().Get("Location") != "/?error=not_member" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))
@@ -458,6 +470,7 @@ func TestHCASessionRotation(t *testing.T) {
 	provider.setNonce(location.Query().Get("nonce"))
 
 	state := location.Query().Get("state")
+
 	callback := do(t, application, http.MethodGet, "/auth/callback?code=good&state="+url.QueryEscape(state), nil, nil, map[string]string{"Cookie": cookieName + "=" + old.Value + "; " + oauthStateCookie + "=" + state})
 	if callback.Header().Get("Location") != "/stations" {
 		t.Fatalf("callback redirect = %q", callback.Header().Get("Location"))

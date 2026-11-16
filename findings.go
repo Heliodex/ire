@@ -135,6 +135,7 @@ func (a *ireApp) handleFindingCreate(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.FindingResponse{
 		Finding: finding,
 	})
@@ -190,7 +191,9 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown finding")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -224,6 +227,7 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.FindingResponse{
 		Finding: updated,
 	})
@@ -273,6 +277,7 @@ func (a *ireApp) handleFindings(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.FindingsResponse{
 		Findings: findings,
 	})
@@ -302,6 +307,7 @@ func (a *ireApp) findingProblem(ctx context.Context, request contract.DecisionRe
 		open, err := a.openFindings(ctx, ship.ProgramID, ship.ExternalID)
 		if err != nil {
 			app.Errorf("open findings: %v", err)
+
 			return &decisionProblem{
 				status: http.StatusInternalServerError,
 				message: "could not read the findings",
@@ -327,6 +333,7 @@ func (a *ireApp) findingProblem(ctx context.Context, request contract.DecisionRe
 	findings, err := a.loadFindings(ctx, ship.ProgramID, ship.ExternalID)
 	if err != nil {
 		app.Errorf("findings: %v", err)
+
 		return &decisionProblem{
 			status: http.StatusInternalServerError,
 			message: "could not read the findings",

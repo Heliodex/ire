@@ -109,6 +109,7 @@ func commitCheck(commits []githubCommit, checkedAt string) contract.CheckResult 
 	for name := range authors {
 		names = append(names, name)
 	}
+
 	sort.Strings(names)
 
 	summary := fmt.Sprintf("%d commits over %d days", len(commits), len(days))
@@ -145,9 +146,11 @@ func (c githubClient) fetch(ctx context.Context, path, accept, etag string) ([]b
 	if err != nil {
 		return nil, 0, "", err
 	}
+
 	req.Header.Set("Accept", accept)
 	req.Header.Set("User-Agent", "half-life-ire")
 	req.Header.Set("X-Github-Api-Version", "2022-11-28")
+
 	if etag != "" {
 		req.Header.Set("If-None-Match", etag)
 	}
@@ -391,6 +394,7 @@ func parseGitHubRepo(raw string) (string, string, bool) {
 	}
 
 	owner := parts[0]
+
 	name := strings.TrimSuffix(parts[1], ".git")
 	if owner == "" || name == "" {
 		return "", "", false
@@ -598,6 +602,7 @@ func (a *ireApp) repoChecks(ctx context.Context, repoURL, since string, now time
 	readme, readmeStatus, readmeErr := client.readme(ctx, owner, name)
 	checks = append(checks, readmeCheck(readme, readmeStatus, readmeErr, checkedAt))
 	checks = append(checks, imageCheck(readme, readmeStatus, readmeErr, checkedAt))
+
 	tree, treeStatus, treeErr := client.tree(ctx, owner, name, meta.DefaultBranch)
 	if treeErr != nil || treeStatus != http.StatusOK {
 		checks = append(checks, check("repo.tree", "Repository files", "repo", statusError, severityBlock, "Repository files could not be read", "The file tree request failed; retry the checks before deciding.", checkedAt))

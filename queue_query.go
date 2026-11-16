@@ -145,6 +145,7 @@ func parseQueueComparison(value string) *queueCompare {
 		if strings.HasPrefix(value, prefix) {
 			op = prefix
 			body = value[len(prefix):]
+
 			break
 		}
 	}
@@ -172,6 +173,7 @@ func parseQueueDuration(value, fallback string) *queueCompare {
 		if strings.HasPrefix(body, prefix) {
 			op = prefix
 			body = body[len(prefix):]
+
 			break
 		}
 	}
@@ -198,6 +200,7 @@ func parseQueueDuration(value, fallback string) *queueCompare {
 		}
 
 		previous = rank
+
 		amount, err := strconv.ParseFloat(match[1], 64)
 		if err != nil {
 			return nil
@@ -349,6 +352,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 		if op := queueAgeOp(q.age.op); op != "" {
 			seconds := q.age.value / 1000
 			query += " and coalesce(s.submitted_at, s.created_at) " + op + " datetime('now', ?)"
+
 			args = append(args, "-"+strconv.FormatInt(seconds, 10)+" seconds")
 		}
 	}
@@ -359,6 +363,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 			  and lower(c.check_key) = ? and lower(c.status) = ?
 			  and c.checked_at = (select max(c2.checked_at) from check_result c2
 				where c2.submission_id = c.submission_id and c2.version = c.version and c2.check_key = c.check_key))`
+
 		args = append(args, q.check.key, q.check.status)
 	}
 
@@ -380,6 +385,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 
 	if q.status != "" {
 		query += " and s.status = ?"
+
 		args = append(args, q.status)
 	}
 
@@ -390,6 +396,7 @@ func (q queueSearch) apply(query string, args []any) (string, []any) {
 
 	if q.kind != "" {
 		query += " and lower(trim(coalesce(s.theme, ''))) = ?"
+
 		args = append(args, q.kind)
 	}
 

@@ -14,6 +14,7 @@ import (
 func TestQueueStream(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
+
 	recorder := do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all&limit=50&stream=1", nil, cookie, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("stream = %d: %s", recorder.Code, recorder.Body.String())
@@ -125,6 +126,7 @@ func TestQueueStreamBatches(t *testing.T) {
 	}
 
 	cookie := login(t, application, "reviewer@example.com")
+
 	recorder := do(t, application, http.MethodGet, testBase+"/queue?stage=1&filter=all&limit=50&stream=1", nil, cookie, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("stream = %d: %s", recorder.Code, recorder.Body.String())
@@ -155,6 +157,7 @@ func TestQueueStreamBatches(t *testing.T) {
 			}
 
 			batches++
+
 			items = append(items, event.Items...)
 		case "error":
 			t.Fatalf("stream error after %d batches: %s", batches, scanner.Text())

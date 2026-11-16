@@ -22,6 +22,7 @@ func changedBom(previous, current []contract.BomLine) (added, removed []string, 
 
 	for _, line := range current {
 		seen[line.Name] = true
+
 		cents, ok := before[line.Name]
 		if !ok {
 			added = append(added, line.Name)
@@ -42,11 +43,13 @@ func changedBom(previous, current []contract.BomLine) (added, removed []string, 
 			removed = append(removed, line.Name)
 		}
 	}
+
 	slices.Sort(added)
 	slices.Sort(removed)
 	slices.SortFunc(prices, func(x, y contract.ResubmissionPrice) int {
 		return strings.Compare(x.Name, y.Name)
 	})
+
 	return added, removed, prices
 }
 
@@ -73,8 +76,10 @@ func changedPaths(previous, current contract.Evidence) (added, removed []string)
 			removed = append(removed, file.Path)
 		}
 	}
+
 	slices.Sort(added)
 	slices.Sort(removed)
+
 	return added, removed
 }
 
@@ -114,6 +119,7 @@ func changedJournals(previous, current []contract.JournalEntry) (added, changed 
 			Seconds: entry.Seconds,
 			Title: entry.Title,
 		}
+
 		match, ok := before[journalKey(entry)]
 		if !ok {
 			added = append(added, summary)
@@ -156,6 +162,7 @@ func (a *ireApp) resubmissionDiff(ctx context.Context, ship submissionRow, curre
 		PreviousVersion: previous.Version,
 		RemovedFiles: []string{},
 	}
+
 	previousEvidence, hasPreviousEvidence, err := a.loadEvidence(ctx, previous.ID, previous.Version)
 	if err != nil {
 		return nil, err
@@ -175,6 +182,7 @@ func (a *ireApp) resubmissionDiff(ctx context.Context, ship submissionRow, curre
 	}
 
 	diff.NewEntries, diff.ChangedEntries = changedJournals(previousJournals, journals)
+
 	previousBom, err := a.loadBom(ctx, previous.ID)
 	if err != nil {
 		return nil, err
@@ -188,5 +196,6 @@ func (a *ireApp) resubmissionDiff(ctx context.Context, ship submissionRow, curre
 	diff.BomAdded, diff.BomRemoved, diff.BomPriceChanges = changedBom(previousBom, currentBom)
 
 	a.fillPreviousReview(ctx, previous.ID, diff)
+
 	return diff, nil
 }

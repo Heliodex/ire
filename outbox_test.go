@@ -43,6 +43,7 @@ func TestOutboundDryRun(t *testing.T) {
 	})
 
 	decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil))
+
 	if outbox := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, cookie, nil)); len(outbox.Deliveries) != 1 || outbox.Deliveries[0].Status != "delivered" {
 		t.Fatalf("outbox = %+v", outbox.Deliveries)
 	}
@@ -119,6 +120,7 @@ func TestOutboundRetriesAfterReceiverError(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		timestamp := r.Header.Get("X-Ari-Timestamp")
 		delivery := r.Header.Get("X-Ari-Delivery-Id")
+
 		signature := r.Header.Get("X-Ari-Signature")
 		if hmacHex("test-outbound", []byte(timestamp+"."+delivery+"."+string(body))) != signature {
 			http.Error(w, "bad signature", http.StatusUnauthorized)
@@ -129,6 +131,7 @@ func TestOutboundRetriesAfterReceiverError(t *testing.T) {
 			http.Error(w, "try again", http.StatusInternalServerError)
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -205,6 +208,7 @@ func TestOutboundRetriesOnTransportError(t *testing.T) {
 
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -230,6 +234,7 @@ func TestOutboundRetriesOnTransportError(t *testing.T) {
 	})
 
 	decode[contract.DecisionOutcome](t, do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil))
+
 	if first := decode[contract.OutboxResponse](t, do(t, application, http.MethodGet, testBase+"/outbox", nil, cookie, nil)); len(first.Deliveries) != 1 || first.Deliveries[0].Status != "pending" || first.Deliveries[0].Attempts != 1 {
 		t.Fatalf("outbox after a dropped connection = %+v", first.Deliveries)
 	}

@@ -306,8 +306,10 @@ func (a *ireApp) overviewTurnaround(ctx context.Context, programID, monthAgo str
 	if err := rows.Err(); err != nil {
 		return contract.OverviewTurnaround{}, err
 	}
+
 	slices.Sort(firstGaps)
 	slices.Sort(decisionGaps)
+
 	return contract.OverviewTurnaround{
 		Decisions: len(decisionGaps),
 		MedianDecisionMS: int(overviewMedian(decisionGaps)),
@@ -362,6 +364,7 @@ func (a *ireApp) overviewResponse(ctx context.Context, programID string) (contra
 		Leaderboard: []contract.OverviewLeader{},
 		Outcomes: []contract.OverviewOutcome{},
 	}
+
 	wait, err := a.overviewWait(ctx, programID, now)
 	if err != nil {
 		return response, err
@@ -426,5 +429,6 @@ func (a *ireApp) handleOverview(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }

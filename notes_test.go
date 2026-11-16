@@ -24,6 +24,7 @@ func TestClosedShipsRefuseNotesAndFindingUpdates(t *testing.T) {
 		Station: "triage",
 		Summary: "The Gerber ZIP is missing.",
 	})
+
 	made := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/findings", createBody, reviewer, nil)
 	if made.Code != http.StatusOK {
 		t.Fatalf("create finding = %d: %s", made.Code, made.Body.String())

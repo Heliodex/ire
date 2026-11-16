@@ -9,6 +9,7 @@ import (
 
 func addReviewer(t *testing.T, application *ireApp, id, email, name string) *http.Cookie {
 	t.Helper()
+
 	if _, err := application.store.Exec(t.Context(), `insert into user (id, email, name, created_at) values (?, ?, ?, ?)`, id, email, name, application.nowText()); err != nil {
 		t.Fatal(err)
 	}
@@ -23,6 +24,7 @@ func addReviewer(t *testing.T, application *ireApp, id, email, name string) *htt
 
 func decideFixture1(t *testing.T, application *ireApp, cookie *http.Cookie, key string) contract.DecisionOutcome {
 	t.Helper()
+
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/claim", nil, cookie, nil); claim.Code != http.StatusOK {
 		t.Fatalf("claim = %d: %s", claim.Code, claim.Body.String())
 	}
@@ -35,6 +37,7 @@ func decideFixture1(t *testing.T, application *ireApp, cookie *http.Cookie, key 
 		Acknowledgements: warningKeys(bundle.Checks),
 		IdempotencyKey: key,
 	})
+
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", body, cookie, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("decision = %d: %s", recorder.Code, recorder.Body.String())
@@ -54,6 +57,7 @@ func TestAdminCanRevertDecision(t *testing.T) {
 		Reason: "Recorded by mistake.",
 		Version: 1,
 	})
+
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision/revert", body, admin, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("revert = %d: %s", recorder.Code, recorder.Body.String())
@@ -99,6 +103,7 @@ func TestAmendDecision(t *testing.T) {
 		Reason: "Should have asked for changes.",
 		Version: bundle.Submission.Version,
 	})
+
 	recorder := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision/amend", body, admin, nil)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("amend = %d: %s", recorder.Code, recorder.Body.String())

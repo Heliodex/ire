@@ -114,6 +114,7 @@ func (a *ireApp) handleSubmissionFile(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusUnsupportedMediaType, "only text board files can be previewed")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.SubmissionFileResponse{
 		File: contract.SubmissionFile{
 			Path: trimmed,

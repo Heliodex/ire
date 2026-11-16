@@ -171,7 +171,9 @@ func (a *ireApp) programFor(w http.ResponseWriter, r *http.Request) (programRow,
 			app.WriteError(w, http.StatusNotFound, "unknown program")
 			return programRow{}, false
 		}
+
 		app.WriteError(w, http.StatusInternalServerError, err.Error())
+
 		return programRow{}, false
 	}
 
@@ -265,6 +267,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/stations", http.StatusFound)
 			return
 		}
+
 		app.StaticPage(w, "/")
 	case path == "/login":
 		target := "/"
@@ -285,6 +288,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		if !signedIn {
 			target = "/"
 		}
+
 		http.Redirect(w, r, target, http.StatusFound)
 	case path == "/makers" && r.URL.Query().Get("email") != "":
 		http.Redirect(w, r, "/makers/"+url.PathEscape(r.URL.Query().Get("email")), http.StatusFound)
@@ -308,6 +312,7 @@ func (a *ireApp) handlePage(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(path, "/makers/") {
 			page = "/makers"
 		}
+
 		app.StaticPage(w, page)
 	default:
 		http.NotFound(w, r)
@@ -412,6 +417,7 @@ func newIreApp(store *storage.Client, client *http.Client, cfg config) *ireApp {
 	a.forgeCache = newForgeCache()
 
 	a.routes()
+
 	return a
 }
 

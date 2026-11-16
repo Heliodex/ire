@@ -61,6 +61,7 @@ func TestJournalAdjustmentSavesDeflation(t *testing.T) {
 		ReviewerNote: "Schematic work, the layout is not finished.",
 		Version: 1,
 	})
+
 	adjusted := do(t, application, http.MethodPatch, testBase+"/submissions/sub_fixture_1/journal/"+entry.ID, body, reviewer, nil)
 	if adjusted.Code != http.StatusOK {
 		t.Fatalf("journal adjustment = %d: %s", adjusted.Code, adjusted.Body.String())
@@ -115,6 +116,7 @@ func TestJournalCutRequiresReason(t *testing.T) {
 		ApprovedSeconds: entry.Seconds / 2,
 		Version: 1,
 	})
+
 	refused := do(t, application, http.MethodPatch, path, body, reviewer, nil)
 	if refused.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("cut without reason = %d: %s", refused.Code, refused.Body.String())
@@ -139,6 +141,7 @@ func TestJournalCutRequiresReason(t *testing.T) {
 // TestJournalMediaReachesTheBundle loads the seeded attachments through the bundle path.
 func TestJournalMediaReachesTheBundle(t *testing.T) {
 	application := newTestApp(t)
+
 	journals, err := application.loadJournals(t.Context(), "sub_fixture_1")
 	if err != nil {
 		t.Fatal(err)
@@ -153,6 +156,7 @@ func TestJournalMediaReachesTheBundle(t *testing.T) {
 			return
 		}
 	}
+
 	t.Fatal("fixture journals carry no media")
 }
 

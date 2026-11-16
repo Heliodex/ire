@@ -54,6 +54,7 @@ func TestIngestPayloadLimits(t *testing.T) {
 	}
 
 	request.Journals[0].Text = strings.Repeat("A detailed account of the board and the firmware. ", 48000)
+
 	body, _ := json.Marshal(request)
 	if len(body) <= 1<<20 {
 		t.Fatalf("test payload is only %d bytes", len(body))
@@ -93,6 +94,7 @@ func TestNestedMetaRoundTrip(t *testing.T) {
 	body, _ := json.Marshal(request)
 	created := decode[contract.IngestAccepted](t, do(t, application, http.MethodPost, "/api/ingest/half-life", body, nil, map[string]string{"X-Ari-Signature": hmacHex("test-ingest", body)}))
 	cookie := login(t, application, "reviewer@example.com")
+
 	bundle := decode[contract.ReviewBundle](t, do(t, application, http.MethodGet, testBase+"/submissions/"+created.ID, nil, cookie, nil))
 	if len(bundle.Bom) != 2 {
 		t.Errorf("bom lines = %d", len(bundle.Bom))

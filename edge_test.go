@@ -51,6 +51,7 @@ func TestRepoChecksReportTransportError(t *testing.T) {
 
 	application := newTestApp(t)
 	application.config.GitHubAPIBase = server.URL
+
 	checks, evidence := application.repoChecks(t.Context(), "https://github.com/example/broken", "", application.now(), nil)
 	if evidence != nil {
 		t.Errorf("evidence = %+v", evidence)
@@ -65,6 +66,7 @@ func TestRepoChecksReportTransportError(t *testing.T) {
 func TestRepoChecksTruncateLargeTree(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/readme"):
 			_, _ = io.WriteString(w, strings.Repeat("Build notes. ", 40))
@@ -88,6 +90,7 @@ func TestRepoChecksTruncateLargeTree(t *testing.T) {
 
 	application := newTestApp(t)
 	application.config.GitHubAPIBase = server.URL
+
 	_, evidence := application.repoChecks(t.Context(), "https://github.com/example/large", "", application.now(), nil)
 	if evidence == nil || !evidence.Truncated {
 		t.Fatalf("evidence = %+v", evidence)

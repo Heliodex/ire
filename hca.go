@@ -53,7 +53,6 @@ func (a *ireApp) bindIdentity(ctx context.Context, userID, provider, subject str
 	var boundSubject string
 
 	err = a.store.QueryRow(ctx, `select subject from user_identity where user_id = ? and provider = ?`, userID, provider).Scan(&boundSubject)
-
 	if err == nil {
 		if boundSubject != subject {
 			return errIdentityConflict
@@ -182,6 +181,7 @@ func (a *ireApp) bootstrapMember(ctx context.Context, email, name string) (revie
 		values (?, ?, ?, ?, 'user.bootstrap', 'user', ?, '{}', ?, ?)`, newID("aud"), programID, userID, email, userID, marshalMap(map[string]any{"role": a.config.BootstrapRole}), now)
 
 	app.Infof("bootstrapped %s as %s", email, a.config.BootstrapRole)
+
 	return a.memberByEmail(ctx, email)
 }
 
@@ -289,6 +289,7 @@ func (a *ireApp) handleHCAStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	redirect := a.redirectURI(r)
+
 	authoriseURL, err := client.AuthoriseURL(r.Context(), redirect, state, nonce, challenge)
 	if err != nil {
 		app.WriteError(w, http.StatusBadGateway, "the identity provider is unavailable")
@@ -303,6 +304,7 @@ func (a *ireApp) handleHCAStart(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	session.Set(w, r, oauthStateCookie, state, oauthStateTTL)
 	//nolint:gosec // The URL comes from the configured issuer discovery document, not from user input.
 	http.Redirect(w, r, authoriseURL, http.StatusFound)
@@ -349,17 +351,20 @@ func safeAvatarURL(value string) string {
 // handleHCACallback verifies state, exchanges the code, verifies the ID token and opens a session for a roster member.
 func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+
 	if !a.hcaConfigured() {
 		app.WriteError(w, http.StatusServiceUnavailable, "Hack Club Auth is not configured")
 		return
 	}
 
 	state := strings.TrimSpace(r.URL.Query().Get("state"))
+
 	cookie, cookieErr := r.Cookie(oauthStateCookie)
 	if cookieErr != nil || state == "" || !session.Equal(cookie.Value, state) {
 		a.redirectAuthError(w, r, "state")
 		return
 	}
+
 	session.Clear(w, r, oauthStateCookie)
 
 	flow, found, err := a.takeLoginFlow(r.Context(), state)
@@ -419,7 +424,6 @@ func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 
 	if !found {
 		person, found, err = a.memberByEmail(r.Context(), email)
-
 		if err != nil {
 			writeStorage(w, err)
 			return
@@ -428,7 +432,6 @@ func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 
 	if !found && a.canBootstrap(r.Context(), email) {
 		person, found, err = a.bootstrapMember(r.Context(), email, identity.Name)
-
 		if err != nil {
 			writeStorage(w, err)
 			return
@@ -446,7 +449,9 @@ func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 				a.redirectAuthError(w, r, "identity_conflict")
 				return
 			}
+
 			writeStorage(w, err)
+
 			return
 		}
 	}
@@ -470,6 +475,7 @@ func (a *ireApp) handleHCACallback(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	reviewSessions.Set(w, r, token)
 	http.Redirect(w, r, "/stations", http.StatusFound)
 }

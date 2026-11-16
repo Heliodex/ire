@@ -166,6 +166,7 @@ func writeLedgerCutError(w http.ResponseWriter, err error) {
 		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "approvedSeconds", "approved time must not exceed the claimed time")
 		return
 	}
+
 	writeStorage(w, err)
 }
 
@@ -211,6 +212,7 @@ func (a *ireApp) handleHackatimeReview(w http.ResponseWriter, r *http.Request) {
 		writeLedgerCutError(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.HackatimeAdjustment{
 		Adjustment: adjustment,
 		HoursApprovedSeconds: total,
@@ -260,7 +262,9 @@ func (a *ireApp) handleTimelapseReview(w http.ResponseWriter, r *http.Request) {
 			app.WriteError(w, http.StatusNotFound, "unknown journal entry")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -289,6 +293,7 @@ func (a *ireApp) handleTimelapseReview(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.TimelapseAdjustment{
 		Adjustment: adjustment,
 		HoursApprovedSeconds: total,

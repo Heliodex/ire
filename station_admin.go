@@ -33,6 +33,7 @@ func (a *ireApp) handleDeleteStation(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -164,6 +165,7 @@ func (a *ireApp) handleSaveStation(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusInternalServerError, "could not read the saved station")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, station)
 }
 
@@ -184,5 +186,6 @@ func (a *ireApp) handleStation(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusNotFound, "unknown station")
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, station)
 }

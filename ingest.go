@@ -47,6 +47,7 @@ func hmacHex(secret string, message []byte) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 
 	mac.Write(message)
+
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
@@ -188,6 +189,7 @@ func (a *ireApp) ingestShip(ctx context.Context, program programRow, request con
 	}
 
 	summary := checkCountsFor(checks)
+
 	summaryJSON, err := json.Marshal(summary)
 	if err != nil {
 		return contract.IngestAccepted{}, 0, err
@@ -317,6 +319,7 @@ func (a *ireApp) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAPIBody)
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		app.WriteError(w, http.StatusRequestEntityTooLarge, "payload is too large")
@@ -338,13 +341,14 @@ func (a *ireApp) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 
 	err = a.store.QueryRow(r.Context(), `select id, status from submission
 		where program_id = ? and external_id = ? order by version desc limit 1`, program.ID, request.ExternalID).Scan(&id, &status)
-
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			app.WriteError(w, http.StatusNotFound, "unknown ship")
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -353,6 +357,7 @@ func (a *ireApp) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 			ID: id,
 			Status: "withdrawn",
 		})
+
 		return
 	}
 
@@ -376,6 +381,7 @@ func (a *ireApp) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.WithdrawOutcome{
 		ID: id,
 		Status: "withdrawn",
@@ -511,6 +517,7 @@ func (a *ireApp) handleIngest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxIngestBody)
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		app.WriteError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("payload is larger than %d MiB", maxIngestBody>>20))
@@ -544,7 +551,9 @@ func (a *ireApp) handleIngest(w http.ResponseWriter, r *http.Request) {
 			app.WriteJSON(w, http.StatusConflict, map[string]any{"error": "already_queued", "id": id, "version": version})
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -552,5 +561,6 @@ func (a *ireApp) handleIngest(w http.ResponseWriter, r *http.Request) {
 		app.WriteJSON(w, status, map[string]any{"error": "already_queued", "id": response.ID, "version": response.Version})
 		return
 	}
+
 	app.WriteJSON(w, status, response)
 }

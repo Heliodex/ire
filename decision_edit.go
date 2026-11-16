@@ -203,6 +203,7 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 		}
 
 		outboxID = message.ID
+
 		statements = append(statements, statement)
 	}
 
@@ -354,6 +355,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 
 	now := a.nowText()
 	reviewID := newID("rev")
+
 	stage := final.Stage
 	if stage < stageOne {
 		stage = ship.Stage
@@ -372,6 +374,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		TechnicalFeatures: &technicalFeatures,
 		Version: request.Version,
 	}
+
 	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, decisionReq, hours, note, technicalFeatures, deflationReason, reason, stage, now)
 	if err != nil {
 		writeStorage(w, err)
@@ -401,6 +404,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		payload: payloadJSON,
 		now: now,
 	}
+
 	statements, outboxID, problem := a.amendStatements(r.Context(), record, final.ID, person, now)
 	if problem != nil {
 		problem.write(w)
@@ -412,7 +416,9 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 			a.writeDecisionAgain(w, r, ship, existing)
 			return
 		}
+
 		writeStorage(w, err)
+
 		return
 	}
 
@@ -421,6 +427,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 	if outboxID != "" {
 		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
 		ID: reviewID,
 		Status: statusDecided,
@@ -441,7 +448,6 @@ func (a *ireApp) revertStageTwoState(ctx context.Context, final finalReviewRow) 
 
 	err = a.store.QueryRow(ctx, `select coalesce(hours_approved_seconds, 0), coalesce(held_reason, '')
 		from review where id = ?`, final.SupersedesID).Scan(&heldHours, &heldReason)
-
 	if err != nil {
 		if errors.Is(err, storage.ErrNoRows) {
 			return statusStage2Hold, 2, final.Hours, "", nil
@@ -579,6 +585,7 @@ func (a *ireApp) handleRevertDecision(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, contract.RevertDecisionResult{
 		ID: ship.ID,
 		Stage: stage,

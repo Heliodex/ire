@@ -117,6 +117,7 @@ func (a *ireApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request) {
 		app.WriteError(w, http.StatusUnprocessableEntity, "this ship has no repository URL")
 		return
 	}
+
 	a.forgeCache.clear()
 
 	_, evidence := a.repoChecks(r.Context(), ship.RepoURL, a.commitSince(r.Context(), ship.ProgramID, ship.PreviousID), a.now(), a.loadBomLines(r.Context(), ship.ID))
@@ -129,5 +130,6 @@ func (a *ireApp) handleEvidenceRefresh(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, *evidence)
 }

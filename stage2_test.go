@@ -10,6 +10,7 @@ import (
 // holdSecondPass takes fixture 2 through a stage 1 approval with every warning acknowledged.
 func holdSecondPass(t *testing.T, application *ireApp, reviewer *http.Cookie, key string) contract.ReviewBundle {
 	t.Helper()
+
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, reviewer, nil); claim.Code != http.StatusOK {
 		t.Fatalf("first-pass claim = %d: %s", claim.Code, claim.Body.String())
 	}
@@ -45,6 +46,7 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 	organiser := login(t, application, "organiser@example.com")
 
 	holdSecondPass(t, application, reviewer, "override-hold")
+
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
 		t.Fatalf("second-pass claim = %d: %s", claim.Code, claim.Body.String())
 	}
@@ -57,6 +59,7 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 		NoteToMaker: "Reduce the approved hours.",
 		Version: 1,
 	})
+
 	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", missing, organiser, nil)
 	if rejected.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("override without reason = %d: %s", rejected.Code, rejected.Body.String())
@@ -81,6 +84,7 @@ func TestStageTwoOverrideRequiresReason(t *testing.T) {
 		OverrideReason: &reason,
 		Version: 1,
 	})
+
 	confirmed := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
 	if confirmed.Code != http.StatusOK {
 		t.Fatalf("override = %d: %s", confirmed.Code, confirmed.Body.String())
@@ -132,6 +136,7 @@ func TestStageTwoRejectsStaleVersion(t *testing.T) {
 	organiser := login(t, application, "organiser@example.com")
 
 	holdSecondPass(t, application, reviewer, "stale-hold")
+
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
 		t.Fatalf("second-pass claim = %d: %s", claim.Code, claim.Body.String())
 	}
@@ -142,6 +147,7 @@ func TestStageTwoRejectsStaleVersion(t *testing.T) {
 		NoteToMaker: "Confirm a stale version.",
 		Version: 2,
 	})
+
 	rejected := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/decision", confirm, organiser, nil)
 	if rejected.Code != http.StatusConflict {
 		t.Fatalf("stale 2nd pass = %d: %s", rejected.Code, rejected.Body.String())
@@ -165,6 +171,7 @@ func TestStageTwoSendBack(t *testing.T) {
 	organiser := login(t, application, "organiser@example.com")
 
 	holdSecondPass(t, application, reviewer, "send-back-hold")
+
 	if claim := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/claim", nil, organiser, nil); claim.Code != http.StatusOK {
 		t.Fatalf("second-pass claim = %d: %s", claim.Code, claim.Body.String())
 	}
@@ -191,6 +198,7 @@ func TestStageTwoSendBack(t *testing.T) {
 		Reason: "The warning acknowledgement needs a second opinion.",
 		Version: 1,
 	})
+
 	sent := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_2/send-back", request, organiser, nil)
 	if sent.Code != http.StatusOK {
 		t.Fatalf("send back = %d: %s", sent.Code, sent.Body.String())

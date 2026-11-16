@@ -21,6 +21,7 @@ func fakePreviewForge(t *testing.T) *httptest.Server {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
 		switch r.URL.Path {
 		case "/repos/example/queued/contents/board.kicad_pcb":
 			_, _ = io.WriteString(w, previewBoardText)
@@ -37,6 +38,7 @@ func fakePreviewForge(t *testing.T) *httptest.Server {
 	}))
 
 	t.Cleanup(server.Close)
+
 	return server
 }
 
@@ -45,6 +47,7 @@ func seedPreviewShip(t *testing.T, application *ireApp) {
 	const files string = `[{"path":"board.kicad_pcb","kind":"file"},{"path":"board.kicad_sch","kind":"file"},{"path":"board.kicad_pro","kind":"file"},{"path":"big.kicad_pcb","kind":"file"},{"path":"README.md","kind":"file"}]`
 
 	t.Helper()
+
 	if _, err := application.store.Exec(t.Context(), `update submission set repo_url = 'https://github.com/example/queued' where id = 'sub_fixture_1'`); err != nil {
 		t.Fatal(err)
 	}

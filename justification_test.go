@@ -33,6 +33,7 @@ func TestApprovalRequiresJustification(t *testing.T) {
 		Version: bundle.Submission.Version,
 	}
 	enc, _ := json.Marshal(request)
+
 	missingFeatures := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", enc, cookie, nil)
 	if missingFeatures.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("missing features = %d: %s", missingFeatures.Code, missingFeatures.Body.String())
@@ -45,6 +46,7 @@ func TestApprovalRequiresJustification(t *testing.T) {
 	features := "Firmware drives the OLED from the MPU6050 over I2C; the custom board routes both switches and the DHT11."
 	request.TechnicalFeatures = &features
 	enc, _ = json.Marshal(request)
+
 	missingDeflation := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", enc, cookie, nil)
 	if missingDeflation.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("missing deflation = %d: %s", missingDeflation.Code, missingDeflation.Body.String())
@@ -57,6 +59,7 @@ func TestApprovalRequiresJustification(t *testing.T) {
 	copiedNote := note
 	request.DeflationReason = &copiedNote
 	enc, _ = json.Marshal(request)
+
 	copied := do(t, application, http.MethodPost, testBase+"/submissions/sub_fixture_1/decision", enc, cookie, nil)
 	if copied.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("copied note = %d: %s", copied.Code, copied.Body.String())

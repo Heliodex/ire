@@ -34,6 +34,7 @@ func TestAuditLogPage(t *testing.T) {
 		Email: "audit@example.com",
 		Role: roleReviewer,
 	})
+
 	created := do(t, application, http.MethodPost, testBase+"/members", invite, admin, nil)
 	if created.Code != http.StatusCreated {
 		t.Fatalf("invite = %d: %s", created.Code, created.Body.String())

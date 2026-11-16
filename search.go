@@ -46,6 +46,7 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 		app.WriteJSON(w, http.StatusOK, contract.SearchResponse{
 			Results: []contract.SearchResult{},
 		})
+
 		return
 	}
 
@@ -151,5 +152,6 @@ func (a *ireApp) handleSearch(w http.ResponseWriter, r *http.Request) {
 		writeStorage(w, err)
 		return
 	}
+
 	app.WriteJSON(w, http.StatusOK, response)
 }
