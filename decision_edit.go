@@ -41,7 +41,7 @@ func amendApprovalProblem(request contract.AmendDecisionRequest, checks []contra
 		return &decisionProblem{
 			status: http.StatusUnprocessableEntity,
 			code: "check_blocked",
-			field: "decision",
+			field: keyDecision,
 			message: "approval is blocked: " + blocked[0].Summary + ". Ask the maker to resubmit or reject with a note.",
 		}
 	}
@@ -135,7 +135,7 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 				"decision_amended",
 				record.person.ID,
 				record.person.Email,
-				marshalMap(map[string]any{"decision": record.request.Decision, "supersedes": finalID}),
+				marshalMap(map[string]any{keyDecision: record.request.Decision, "supersedes": finalID}),
 				record.now,
 			},
 		},
@@ -148,12 +148,12 @@ func (a *ireApp) amendStatements(ctx context.Context, record decisionRecord, fin
 				record.person.ID,
 				record.person.Email,
 				record.ship.ID,
-				marshalMap(map[string]any{"status": record.ship.Status, "version": record.ship.Version}),
+				marshalMap(map[string]any{keyStatus: record.ship.Status, "version": record.ship.Version}),
 				marshalMap(map[string]any{
-					"decision": record.request.Decision,
+					keyDecision: record.request.Decision,
 					"hours": record.hours,
 					"reason": record.overrideReason,
-					"status": statusDecided,
+					keyStatus: statusDecided,
 					"supersedes": finalID,
 				}),
 				record.now,
@@ -243,7 +243,7 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request contract.AmendDecisionRequest
-	if !app.ReadJSON(w, r, maxAPIBody, "decision", &request) {
+	if !app.ReadJSON(w, r, maxAPIBody, keyDecision, &request) {
 		return
 	}
 
@@ -556,7 +556,7 @@ func (a *ireApp) handleRevertDecision(w http.ResponseWriter, r *http.Request) {
 				ship.ID,
 				person.ID,
 				person.Email,
-				marshalMap(map[string]any{"decision": final.Decision, "reason": reason, "review": final.ID}),
+				marshalMap(map[string]any{keyDecision: final.Decision, "reason": reason, "review": final.ID}),
 				now,
 			},
 		},
@@ -570,12 +570,12 @@ func (a *ireApp) handleRevertDecision(w http.ResponseWriter, r *http.Request) {
 				person.Email,
 				ship.ID,
 				marshalMap(map[string]any{
-					"decision": final.Decision,
+					keyDecision: final.Decision,
 					"stage": ship.Stage,
-					"status": ship.Status,
+					keyStatus: ship.Status,
 					"version": ship.Version,
 				}),
-				marshalMap(map[string]any{"invalidated": final.ID, "reason": reason, "stage": stage, "status": status}),
+				marshalMap(map[string]any{"invalidated": final.ID, "reason": reason, "stage": stage, keyStatus: status}),
 				now,
 			},
 		},

@@ -379,7 +379,7 @@ func (a *ireApp) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if response.Decision == nil {
-		payload["decision"] = nil
+		payload[keyDecision] = nil
 	}
 
 	app.WriteJSON(w, http.StatusOK, payload)

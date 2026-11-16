@@ -263,7 +263,7 @@ func parseQueueSearch(raw string) queueSearch {
 			} else {
 				query.text = append(query.text, strings.ToLower(token))
 			}
-		case "status":
+		case keyStatus:
 			if status := normalizeQueueStatus(value); queueKnownStatuses[status] {
 				query.status = status
 			} else {

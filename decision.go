@@ -81,7 +81,7 @@ func approvalProblem(request contract.DecisionRequest, checks []contract.CheckRe
 		return &decisionProblem{
 			status: http.StatusUnprocessableEntity,
 			code: "check_blocked",
-			field: "decision",
+			field: keyDecision,
 			message: "approval is blocked: " + blocked[0].Summary + ". Ask the maker to resubmit or reject with a note.",
 		}
 	}
@@ -466,7 +466,7 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 				eventKind(record.held),
 				record.person.ID,
 				record.person.Email,
-				marshalMap(map[string]any{"decision": record.request.Decision, "held": record.held}),
+				marshalMap(map[string]any{keyDecision: record.request.Decision, "held": record.held}),
 				record.now,
 			},
 		},
@@ -479,12 +479,12 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 				record.person.ID,
 				record.person.Email,
 				record.ship.ID,
-				marshalMap(map[string]any{"status": record.ship.Status, "version": record.ship.Version}),
+				marshalMap(map[string]any{keyStatus: record.ship.Status, "version": record.ship.Version}),
 				marshalMap(map[string]any{
-					"decision": record.request.Decision,
+					keyDecision: record.request.Decision,
 					"held": record.held,
 					"hours": record.hours,
-					"status": record.status,
+					keyStatus: record.status,
 				}),
 				record.now,
 			},
@@ -648,7 +648,7 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request contract.DecisionRequest
-	if !app.ReadJSON(w, r, maxAPIBody, "decision", &request) {
+	if !app.ReadJSON(w, r, maxAPIBody, keyDecision, &request) {
 		return
 	}
 

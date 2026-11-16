@@ -40,7 +40,7 @@ var queueSortColumns = map[string]string{
 	"claimed": "s.hours_claimed_seconds",
 	"maker": "coalesce(s.maker_name, '') collate nocase",
 	"ship": "s.title collate nocase",
-	"status": "s.status",
+	keyStatus: "s.status",
 	"type": "coalesce(s.theme, '') collate nocase",
 	"version": "s.version",
 }

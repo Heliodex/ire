@@ -17,7 +17,7 @@ func (a *ireApp) handleReviewed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	decision := strings.TrimSpace(r.URL.Query().Get("decision"))
+	decision := strings.TrimSpace(r.URL.Query().Get(keyDecision))
 	if decision == "" {
 		decision = reviewedFilterAll
 	}
@@ -38,7 +38,7 @@ func (a *ireApp) handleReviewed(w http.ResponseWriter, r *http.Request) {
 		args = append(args, decision)
 	case reviewedFilterAll:
 	default:
-		app.WriteErrorField(w, http.StatusBadRequest, "invalid", "decision", "decision must be all, approved, changes or rejected")
+		app.WriteErrorField(w, http.StatusBadRequest, "invalid", keyDecision, "decision must be all, approved, changes or rejected")
 		return
 	}
 

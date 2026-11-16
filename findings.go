@@ -164,12 +164,12 @@ func (a *ireApp) handleFindingUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request contract.FindingUpdateRequest
-	if !app.ReadJSON(w, r, maxAPIBody, "status", &request) {
+	if !app.ReadJSON(w, r, maxAPIBody, keyStatus, &request) {
 		return
 	}
 
 	if !findingStatuses[request.Status] {
-		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "status", "choose open, fixed, accepted, disputed or withdrawn")
+		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", keyStatus, "choose open, fixed, accepted, disputed or withdrawn")
 		return
 	}
 

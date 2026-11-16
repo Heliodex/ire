@@ -67,6 +67,8 @@ const (
 	secondsPerDay = 24 * secondsPerHour
 	maxHours = 30 * secondsPerDay
 	sessionTTL = 7 * 24 * time.Hour
+	keyDecision = "decision"
+	keyStatus = "status"
 	statusChecking = "checking"
 	statusNeedsAttention = "needs_attention"
 	statusReady = "ready"
