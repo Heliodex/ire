@@ -292,6 +292,7 @@ func (a *ireApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request, p
 			return false
 		}
 
+		//nolint:staticcheck // the documented protocol signs timestamp + "." + body concatenated, which VerifyFields would reject
 		if !signer.VerifyParts(signature, []byte(timestamp), []byte("."), body) {
 			app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "signature does not match")
 			return false
@@ -302,6 +303,7 @@ func (a *ireApp) verifyIngestSignature(w http.ResponseWriter, r *http.Request, p
 			return false
 		}
 
+		//nolint:staticcheck // legacy clients sign only the raw body in the concatenated form, which VerifyFields would reject
 		if !signer.VerifyParts(signature, body) {
 			app.WriteErrorCode(w, http.StatusUnauthorized, "bad_signature", "signature does not match")
 			return false

@@ -368,7 +368,7 @@ func (a *ireApp) seed(ctx context.Context) error {
 
 // schemaStatements is the prototype subset of plan/03-data-model.md: programmes, people, sessions, ships, evidence, checks, claims, reviews, drafts, timeline, audit, outbox and settings. Fraud, forms, counters and retention jobs come later.
 //
-//nolint:funlen // One statement per table keeps the migration reviewable next to the plan.
+//nolint:funlen,maintidx // One statement per table keeps the migration reviewable next to the plan.
 func schemaStatements() []storage.Statement {
 	statements := []string{
 		`create table if not exists program (

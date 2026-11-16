@@ -129,7 +129,7 @@ func journalChecks(entries []contract.IngestJournal, journalTime, claimed, wordl
 		checks = append(checks, check("journal.hours", "Journal time", "evidence", hoursStatus, hoursSeverity, hoursSummary, "Journal time is compared with the claim; it is not added to Hackatime time again.", checkedAt))
 	}
 
-	return
+	return checks
 }
 
 // validHTTPSURL reports whether value parses as an absolute https URL.
