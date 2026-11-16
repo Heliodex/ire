@@ -230,6 +230,147 @@ func (a *ireApp) loadFinalReview(ctx context.Context, submissionID string) (fina
 	return row, true, nil
 }
 
+// amendText trims the amendment's reason and note and rejects values that are missing or too long.
+func amendText(request contract.AmendDecisionRequest) (reason, note string, problem *decisionProblem) {
+	reason = strings.TrimSpace(request.Reason)
+	if reason == "" {
+		return "", "", &decisionProblem{status: http.StatusUnprocessableEntity, code: "reason_required", field: "reason", message: "explain why this decision is being amended"}
+	}
+
+	if len(reason) > maxNote {
+		return "", "", &decisionProblem{status: http.StatusUnprocessableEntity, code: "invalid", field: "reason", message: "the reason is limited to 4000 characters"}
+	}
+
+	note = strings.TrimSpace(request.NoteToMaker)
+	if len(note) > maxNote || len(request.InternalNote) > maxNote {
+		return "", "", &decisionProblem{status: http.StatusUnprocessableEntity, code: "invalid", field: "noteToMaker", message: "notes are limited to 4000 characters"}
+	}
+
+	return reason, note, nil
+}
+
+// buildAmendRecord resolves the hours, text and payload for an amended decision. It writes the problem and returns false when the amendment is invalid.
+func (a *ireApp) buildAmendRecord(w http.ResponseWriter, r *http.Request, ship submissionRow, person reviewer, request contract.AmendDecisionRequest, final finalReviewRow, checks []contract.CheckResult, reason, note string) (decisionRecord, bool) {
+	secondPass := final.Stage == 2
+
+	hours := final.Hours
+	if hours <= 0 {
+		hours = ship.HoursClaimed
+	}
+
+	if request.HoursApprovedSeconds != nil {
+		hours = *request.HoursApprovedSeconds
+	}
+
+	if hours < 0 || hours > maxHours {
+		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "hoursApprovedSeconds", "approved hours must be between 0 and 30 days")
+		return decisionRecord{}, false
+	}
+
+	technicalFeatures := strings.TrimSpace(stringValue(request.TechnicalFeatures))
+	if technicalFeatures == "" {
+		technicalFeatures = final.TechnicalFeatures
+	}
+
+	deflationReason := strings.TrimSpace(stringValue(request.DeflationReason))
+	if deflationReason == "" {
+		deflationReason = final.DeflationReason
+	}
+
+	if problem := justificationProblem(request.Decision, hours, capturedSeconds(ship), technicalFeatures, deflationReason, note, a.policyFor(r.Context(), ship.ProgramID)); problem != nil {
+		problem.write(w)
+		return decisionRecord{}, false
+	}
+
+	now := a.nowText()
+	reviewID := newID("rev")
+
+	stage := final.Stage
+	if stage < stageOne {
+		stage = ship.Stage
+	}
+
+	decisionReq := contract.DecisionRequest{
+		Acknowledgements: request.Acknowledgements,
+		Decision: request.Decision,
+		DeflationReason: &deflationReason,
+		FindingIds: request.FindingIds,
+		HoursApprovedSeconds: request.HoursApprovedSeconds,
+		IdempotencyKey: request.IdempotencyKey,
+		InternalNote: request.InternalNote,
+		NoteToMaker: request.NoteToMaker,
+		OverrideReason: &reason,
+		TechnicalFeatures: &technicalFeatures,
+		Version: request.Version,
+	}
+
+	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, decisionReq, hours, note, technicalFeatures, deflationReason, reason, stage, now)
+	if err != nil {
+		writeStorage(w, err)
+		return decisionRecord{}, false
+	}
+
+	record := decisionRecord{
+		ship: ship,
+		person: person,
+		request: decisionReq,
+		reviewID: reviewID,
+		status: statusDecided,
+		stage: stage,
+		submissionStage: ship.Stage,
+		hours: hours,
+		note: note,
+		technicalFeatures: technicalFeatures,
+		deflationReason: deflationReason,
+		reason: "",
+		overrideReason: reason,
+		supersedes: final.ID,
+		findingIDs: request.FindingIds,
+		held: false,
+		secondPass: secondPass,
+		event: outboundEventName(request.Decision),
+		payload: payloadJSON,
+		now: now,
+	}
+
+	return record, true
+}
+
+// commitAmend writes the amendment, delivers its outbox row if one was queued and responds with the outcome.
+func (a *ireApp) commitAmend(w http.ResponseWriter, r *http.Request, record decisionRecord) {
+	statements, outboxID, problem := a.amendStatements(r.Context(), record, record.supersedes, record.person, record.now)
+	if problem != nil {
+		problem.write(w)
+		return
+	}
+
+	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
+		if existing, found, findErr := a.findReview(r.Context(), record.ship.ID, record.request.IdempotencyKey); findErr == nil && found {
+			a.writeDecisionAgain(w, r, record.ship, existing)
+			return
+		}
+
+		writeStorage(w, err)
+
+		return
+	}
+
+	var deliveryStatus string
+
+	if outboxID != "" {
+		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
+	}
+
+	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
+		ID: record.reviewID,
+		Status: statusDecided,
+		Held: 0,
+		OutboxID: optionalID(outboxID),
+		DeliveryStatus: stringPtr(deliveryStatus),
+		NextID: nil,
+	})
+}
+
 // handleAmendDecision replaces the final review with a corrected decision.
 func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
@@ -265,20 +406,9 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reason := strings.TrimSpace(request.Reason)
-	if reason == "" {
-		app.WriteErrorField(w, http.StatusUnprocessableEntity, "reason_required", "reason", "explain why this decision is being amended")
-		return
-	}
-
-	if len(reason) > maxNote {
-		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "reason", "the reason is limited to 4000 characters")
-		return
-	}
-
-	note := strings.TrimSpace(request.NoteToMaker)
-	if len(note) > maxNote || len(request.InternalNote) > maxNote {
-		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "noteToMaker", "notes are limited to 4000 characters")
+	reason, note, problem := amendText(request)
+	if problem != nil {
+		problem.write(w)
 		return
 	}
 
@@ -324,118 +454,12 @@ func (a *ireApp) handleAmendDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hours := final.Hours
-	if hours <= 0 {
-		hours = ship.HoursClaimed
-	}
-
-	if request.HoursApprovedSeconds != nil {
-		hours = *request.HoursApprovedSeconds
-	}
-
-	if hours < 0 || hours > maxHours {
-		app.WriteErrorField(w, http.StatusUnprocessableEntity, "invalid", "hoursApprovedSeconds", "approved hours must be between 0 and 30 days")
+	record, ok := a.buildAmendRecord(w, r, ship, person, request, final, checks, reason, note)
+	if !ok {
 		return
 	}
 
-	technicalFeatures := strings.TrimSpace(stringValue(request.TechnicalFeatures))
-	if technicalFeatures == "" {
-		technicalFeatures = final.TechnicalFeatures
-	}
-
-	deflationReason := strings.TrimSpace(stringValue(request.DeflationReason))
-	if deflationReason == "" {
-		deflationReason = final.DeflationReason
-	}
-
-	if problem := justificationProblem(request.Decision, hours, capturedSeconds(ship), technicalFeatures, deflationReason, note, a.policyFor(r.Context(), ship.ProgramID)); problem != nil {
-		problem.write(w)
-		return
-	}
-
-	now := a.nowText()
-	reviewID := newID("rev")
-
-	stage := final.Stage
-	if stage < stageOne {
-		stage = ship.Stage
-	}
-
-	decisionReq := contract.DecisionRequest{
-		Acknowledgements: request.Acknowledgements,
-		Decision: request.Decision,
-		DeflationReason: &deflationReason,
-		FindingIds: request.FindingIds,
-		HoursApprovedSeconds: request.HoursApprovedSeconds,
-		IdempotencyKey: request.IdempotencyKey,
-		InternalNote: request.InternalNote,
-		NoteToMaker: request.NoteToMaker,
-		OverrideReason: &reason,
-		TechnicalFeatures: &technicalFeatures,
-		Version: request.Version,
-	}
-
-	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, decisionReq, hours, note, technicalFeatures, deflationReason, reason, stage, now)
-	if err != nil {
-		writeStorage(w, err)
-		return
-	}
-
-	event := outboundEventName(request.Decision)
-	record := decisionRecord{
-		ship: ship,
-		person: person,
-		request: decisionReq,
-		reviewID: reviewID,
-		status: statusDecided,
-		stage: stage,
-		submissionStage: ship.Stage,
-		hours: hours,
-		note: note,
-		technicalFeatures: technicalFeatures,
-		deflationReason: deflationReason,
-		reason: "",
-		overrideReason: reason,
-		supersedes: final.ID,
-		findingIDs: request.FindingIds,
-		held: false,
-		secondPass: secondPass,
-		event: event,
-		payload: payloadJSON,
-		now: now,
-	}
-
-	statements, outboxID, problem := a.amendStatements(r.Context(), record, final.ID, person, now)
-	if problem != nil {
-		problem.write(w)
-		return
-	}
-
-	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
-		if existing, found, findErr := a.findReview(r.Context(), ship.ID, request.IdempotencyKey); findErr == nil && found {
-			a.writeDecisionAgain(w, r, ship, existing)
-			return
-		}
-
-		writeStorage(w, err)
-
-		return
-	}
-
-	var deliveryStatus string
-
-	if outboxID != "" {
-		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
-	}
-
-	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
-		ID: reviewID,
-		Status: statusDecided,
-		Held: 0,
-		OutboxID: optionalID(outboxID),
-		DeliveryStatus: stringPtr(deliveryStatus),
-		NextID: nil,
-	})
+	a.commitAmend(w, r, record)
 }
 
 // revertStageTwoState restores a stage 2 decided ship to its held state.

@@ -404,6 +404,39 @@ func marshalStrings(values []string) string {
 	return string(data)
 }
 
+// decisionFollowUpStatements builds the override, finding return and check acknowledgement writes.
+func decisionFollowUpStatements(record decisionRecord) []storage.TransactionStatement {
+	var statements []storage.TransactionStatement
+
+	if record.overrideReason != "" {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
+			Args: []any{record.reviewID, record.overrideReason, record.now},
+		})
+	}
+
+	for _, findingID := range record.findingIDs {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
+			Args: []any{record.reviewID, findingID, record.ship.ID, record.ship.Version, record.now},
+		})
+	}
+
+	if record.secondPass {
+		return statements
+	}
+
+	for _, key := range record.request.Acknowledgements {
+		statements = append(statements, storage.TransactionStatement{
+			SQL: `insert or ignore into check_ack (id, submission_id, version, check_key, reviewer_id, reason, created_at)
+				values (?, ?, ?, ?, ?, '', ?)`,
+			Args: []any{newID("ack"), record.ship.ID, record.ship.Version, key, record.person.ID, record.now},
+		})
+	}
+
+	return statements
+}
+
 // decisionStatements builds the review, submission update, audit, acknowledgement and outbox writes.
 func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) ([]storage.TransactionStatement, string, *decisionProblem) {
 	statements := []storage.TransactionStatement{
@@ -491,29 +524,7 @@ func (a *ireApp) decisionStatements(ctx context.Context, record decisionRecord) 
 		},
 	}
 
-	if record.overrideReason != "" {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert into review_override (review_id, reason, created_at) values (?, ?, ?)`,
-			Args: []any{record.reviewID, record.overrideReason, record.now},
-		})
-	}
-
-	for _, findingID := range record.findingIDs {
-		statements = append(statements, storage.TransactionStatement{
-			SQL: `insert or ignore into finding_return (review_id, finding_id, submission_id, version, created_at) values (?, ?, ?, ?, ?)`,
-			Args: []any{record.reviewID, findingID, record.ship.ID, record.ship.Version, record.now},
-		})
-	}
-
-	if !record.secondPass {
-		for _, key := range record.request.Acknowledgements {
-			statements = append(statements, storage.TransactionStatement{
-				SQL: `insert or ignore into check_ack (id, submission_id, version, check_key, reviewer_id, reason, created_at)
-					values (?, ?, ?, ?, ?, '', ?)`,
-				Args: []any{newID("ack"), record.ship.ID, record.ship.Version, key, record.person.ID, record.now},
-			})
-		}
-	}
+	statements = append(statements, decisionFollowUpStatements(record)...)
 
 	var outboxID string
 
@@ -635,6 +646,140 @@ func resolveHours(request contract.DecisionRequest, hours int, secondPass bool, 
 	return hours, overrideReason, nil
 }
 
+// buildDecisionRecord resolves the text, hours and hold for a decision. It writes the problem and returns false when the decision is invalid.
+func (a *ireApp) buildDecisionRecord(w http.ResponseWriter, r *http.Request, ship submissionRow, person reviewer, request contract.DecisionRequest, checks []contract.CheckResult, secondPass bool) (decisionRecord, bool) {
+	note := strings.TrimSpace(request.NoteToMaker)
+	technicalFeatures := strings.TrimSpace(stringValue(request.TechnicalFeatures))
+	deflationReason := strings.TrimSpace(stringValue(request.DeflationReason))
+	policy := a.policyFor(r.Context(), ship.ProgramID)
+
+	if problem := noteProblem(request, note, policy); problem != nil {
+		problem.write(w)
+		return decisionRecord{}, false
+	}
+
+	hours := ship.HoursClaimed
+
+	var (
+		supersedes, heldDecision string
+		heldHours int
+	)
+
+	if secondPass {
+		base, problem := a.secondPassBase(r.Context(), ship, person, request, note)
+		if problem != nil {
+			problem.write(w)
+			return decisionRecord{}, false
+		}
+
+		if base.hours > 0 {
+			hours = base.hours
+		}
+
+		note, supersedes, heldDecision, heldHours = base.note, base.supersedes, base.heldDecision, base.heldHours
+
+		if technicalFeatures == "" {
+			technicalFeatures = base.technicalFeatures
+		}
+
+		if deflationReason == "" {
+			deflationReason = base.deflationReason
+		}
+	}
+
+	hours, overrideReason, problem := resolveHours(request, hours, secondPass, heldDecision, heldHours)
+	if problem != nil {
+		problem.write(w)
+		return decisionRecord{}, false
+	}
+
+	if problem := justificationProblem(request.Decision, hours, capturedSeconds(ship), technicalFeatures, deflationReason, note, policy); problem != nil {
+		problem.write(w)
+		return decisionRecord{}, false
+	}
+
+	held, reason := decisionHold(request, secondPass, ship, policy, checks, hours)
+	now := a.nowText()
+	reviewID := newID("rev")
+	status, stage, submissionStage := decisionState(ship, held)
+
+	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, request, hours, note, technicalFeatures, deflationReason, overrideReason, stage, now)
+	if err != nil {
+		writeStorage(w, err)
+		return decisionRecord{}, false
+	}
+
+	record := decisionRecord{
+		ship: ship,
+		person: person,
+		request: request,
+		reviewID: reviewID,
+		status: status,
+		stage: stage,
+		submissionStage: submissionStage,
+		hours: hours,
+		note: note,
+		technicalFeatures: technicalFeatures,
+		deflationReason: deflationReason,
+		reason: reason,
+		overrideReason: overrideReason,
+		supersedes: supersedes,
+		findingIDs: request.FindingIds,
+		held: held,
+		secondPass: secondPass,
+		event: outboundEventName(request.Decision),
+		payload: payloadJSON,
+		now: now,
+	}
+
+	return record, true
+}
+
+// commitDecision writes the decision, delivers its outbox row if one was queued and responds with the outcome.
+func (a *ireApp) commitDecision(w http.ResponseWriter, r *http.Request, record decisionRecord) {
+	statements, outboxID, problem := a.decisionStatements(r.Context(), record)
+	if problem != nil {
+		problem.write(w)
+		return
+	}
+
+	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
+		// A concurrent retry can win the idempotency index; return the row it wrote.
+		if existing, found, findErr := a.findReview(r.Context(), record.ship.ID, record.request.IdempotencyKey); findErr == nil && found {
+			a.writeDecisionAgain(w, r, record.ship, existing)
+			return
+		}
+
+		writeStorage(w, err)
+
+		return
+	}
+
+	var deliveryStatus string
+
+	if outboxID != "" {
+		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
+	}
+
+	nextStage := record.ship.Stage
+
+	if record.held {
+		nextStage = stageOne
+	}
+
+	nextID := a.nextQueueID(r.Context(), record.ship.ProgramID, record.ship.ID, nextStage)
+
+	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
+		ID: record.reviewID,
+		Status: record.status,
+		Held: boolInt(record.held),
+		HeldReason: stringPtr(record.reason),
+		OutboxID: optionalID(outboxID),
+		DeliveryStatus: stringPtr(deliveryStatus),
+		NextID: optionalID(nextID),
+	})
+}
+
 // handleDecision records a stage 1 decision, applies the hold policy, writes the outbox row and returns the next ship to open.
 func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 	person, ok := a.requireReviewerWrite(w, r)
@@ -675,132 +820,12 @@ func (a *ireApp) handleDecision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note := strings.TrimSpace(request.NoteToMaker)
-	technicalFeatures := strings.TrimSpace(stringValue(request.TechnicalFeatures))
-	deflationReason := strings.TrimSpace(stringValue(request.DeflationReason))
-	policy := a.policyFor(r.Context(), ship.ProgramID)
-
-	if problem := noteProblem(request, note, policy); problem != nil {
-		problem.write(w)
+	record, ok := a.buildDecisionRecord(w, r, ship, person, request, checks, secondPass)
+	if !ok {
 		return
 	}
 
-	hours := ship.HoursClaimed
-
-	var (
-		supersedes, heldDecision string
-		heldHours int
-	)
-
-	if secondPass {
-		base, problem := a.secondPassBase(r.Context(), ship, person, request, note)
-		if problem != nil {
-			problem.write(w)
-			return
-		}
-
-		if base.hours > 0 {
-			hours = base.hours
-		}
-
-		note, supersedes, heldDecision, heldHours = base.note, base.supersedes, base.heldDecision, base.heldHours
-
-		if technicalFeatures == "" {
-			technicalFeatures = base.technicalFeatures
-		}
-
-		if deflationReason == "" {
-			deflationReason = base.deflationReason
-		}
-	}
-
-	hours, overrideReason, problem := resolveHours(request, hours, secondPass, heldDecision, heldHours)
-	if problem != nil {
-		problem.write(w)
-		return
-	}
-
-	if problem := justificationProblem(request.Decision, hours, capturedSeconds(ship), technicalFeatures, deflationReason, note, policy); problem != nil {
-		problem.write(w)
-		return
-	}
-
-	held, reason := decisionHold(request, secondPass, ship, policy, checks, hours)
-	now := a.nowText()
-	reviewID := newID("rev")
-	status, stage, submissionStage := decisionState(ship, held)
-
-	payloadJSON, err := a.decisionPayloadJSON(r.Context(), ship, person, checks, request, hours, note, technicalFeatures, deflationReason, overrideReason, stage, now)
-	if err != nil {
-		writeStorage(w, err)
-		return
-	}
-
-	event := outboundEventName(request.Decision)
-	record := decisionRecord{
-		ship: ship,
-		person: person,
-		request: request,
-		reviewID: reviewID,
-		status: status,
-		stage: stage,
-		submissionStage: submissionStage,
-		hours: hours,
-		note: note,
-		technicalFeatures: technicalFeatures,
-		deflationReason: deflationReason,
-		reason: reason,
-		overrideReason: overrideReason,
-		supersedes: supersedes,
-		findingIDs: request.FindingIds,
-		held: held,
-		secondPass: secondPass,
-		event: event,
-		payload: payloadJSON,
-		now: now,
-	}
-
-	statements, outboxID, problem := a.decisionStatements(r.Context(), record)
-	if problem != nil {
-		problem.write(w)
-		return
-	}
-
-	if _, err := a.store.Transaction(r.Context(), statements...); err != nil {
-		// A concurrent retry can win the idempotency index; return the row it wrote.
-		if existing, found, findErr := a.findReview(r.Context(), ship.ID, request.IdempotencyKey); findErr == nil && found {
-			a.writeDecisionAgain(w, r, ship, existing)
-			return
-		}
-
-		writeStorage(w, err)
-
-		return
-	}
-
-	var deliveryStatus string
-
-	if outboxID != "" {
-		deliveryStatus = a.deliverOutboxNow(r.Context(), outboxID)
-	}
-
-	nextStage := ship.Stage
-
-	if held {
-		nextStage = stageOne
-	}
-
-	nextID := a.nextQueueID(r.Context(), ship.ProgramID, ship.ID, nextStage)
-
-	app.WriteJSON(w, http.StatusOK, contract.DecisionOutcome{
-		ID: reviewID,
-		Status: status,
-		Held: boolInt(held),
-		HeldReason: stringPtr(reason),
-		OutboxID: optionalID(outboxID),
-		DeliveryStatus: stringPtr(deliveryStatus),
-		NextID: optionalID(nextID),
-	})
+	a.commitDecision(w, r, record)
 }
 
 // unmarshalStrings decodes a stored string slice, returning an empty list for a missing value.
