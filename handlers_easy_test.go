@@ -16,8 +16,8 @@ const machineAuth = "Bearer test-ingest"
 func TestCheckRunLifecycle(t *testing.T) {
 	application := newTestApp(t)
 	ctx := context.Background()
-	ship, err := application.loadSubmission(ctx, "sub_fixture_1")
 
+	ship, err := application.loadSubmission(ctx, "sub_fixture_1")
 	if err != nil {
 		t.Fatal(err)
 	}

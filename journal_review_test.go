@@ -141,8 +141,8 @@ func TestJournalCutRequiresReason(t *testing.T) {
 // TestJournalMediaReachesTheBundle loads the seeded attachments through the bundle path.
 func TestJournalMediaReachesTheBundle(t *testing.T) {
 	application := newTestApp(t)
-	journals, err := application.loadJournals(t.Context(), "sub_fixture_1")
 
+	journals, err := application.loadJournals(t.Context(), "sub_fixture_1")
 	if err != nil {
 		t.Fatal(err)
 	}

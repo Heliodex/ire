@@ -100,8 +100,8 @@ func TestDevLoginBranches(t *testing.T) {
 func TestFailCheckRunTracksAttempts(t *testing.T) {
 	application := newTestApp(t)
 	ctx := t.Context()
-	ship, err := application.loadSubmission(ctx, "sub_fixture_2")
 
+	ship, err := application.loadSubmission(ctx, "sub_fixture_2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,8 +133,8 @@ func TestHCAStartWithoutConfig(t *testing.T) {
 func TestQueueCounts(t *testing.T) {
 	application := newTestApp(t)
 	cookie := login(t, application, "reviewer@example.com")
-	counts, err := application.queueCounts(t.Context(), programID, "usr_reviewer", application.nowText())
 
+	counts, err := application.queueCounts(t.Context(), programID, "usr_reviewer", application.nowText())
 	if err != nil {
 		t.Fatal(err)
 	}
